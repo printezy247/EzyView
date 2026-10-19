@@ -1,0 +1,33 @@
+# deps / build
+node_modules/
+dist/
+.next/
+out/
+build/
+coverage/
+*.tsbuildinfo
+
+# env
+.env
+.env.local
+.env.*.local
+
+# python (mt5 bridge)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# tauri
+apps/desktop/src-tauri/target/
+
+# logs / os
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# rea / analysis artifacts (never commit)
+*.asar
+rea-out/

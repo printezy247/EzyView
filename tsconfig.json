@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@ezyview/data-adapters": ["packages/data-adapters/src/index.ts"],
+      "@ezyview/indicators": ["packages/indicators/src/index.ts"],
+      "@ezyview/chart-engine": ["packages/chart-engine/src/index.ts"],
+      "@ezyview/drawing-tools": ["packages/drawing-tools/src/index.ts"],
+      "@ezyview/journal": ["packages/journal/src/index.ts"],
+      "@ezyview/pine-transpiler": ["packages/pine-transpiler/src/index.ts"]
+    }
+  },
+  "include": [
+    "packages/*/src/**/*.ts",
+    "apps/desktop/src/**/*.ts",
+    "apps/desktop/src/**/*.tsx",
+    "apps/desktop/vite.config.ts",
+    "vitest.config.ts"
+  ],
+  "exclude": ["node_modules", "dist", ".next", "target"]
+}
