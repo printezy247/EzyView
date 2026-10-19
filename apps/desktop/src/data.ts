@@ -31,6 +31,22 @@ export const RESOLUTION_SECONDS: Record<Resolution, number> = {
 /** Intervals offered in the P1 interval picker. */
 export const PICKER_RESOLUTIONS: Resolution[] = ["1m", "5m", "15m", "1h", "4h", "1D", "1W"];
 
+/** Every chartable interval, grouped the way the interval menu lists them. */
+export const RESOLUTION_GROUPS: { label: string; items: Resolution[] }[] = [
+  { label: "Minutes", items: ["1m", "3m", "5m", "15m", "30m"] },
+  { label: "Hours", items: ["1h", "2h", "4h", "6h", "12h"] },
+  { label: "Days", items: ["1D", "1W", "1M"] },
+];
+
+const UNIT_NAME: Record<string, string> = { m: "minute", h: "hour", D: "day", W: "week", M: "month" };
+
+/** Long name for an interval, e.g. "15m" → "15 minutes", "1D" → "1 day". */
+export function resolutionName(r: Resolution): string {
+  const n = Number.parseInt(r, 10);
+  const unit = UNIT_NAME[r.slice(String(n).length)] ?? r;
+  return `${n} ${unit}${n === 1 ? "" : "s"}`;
+}
+
 export const DEFAULT_SYMBOL = "BINANCE:BTCUSDT";
 
 /** Display ticker: the part after the exchange prefix, e.g. "BTCUSDT". */

@@ -18,6 +18,7 @@ import { FundamentalsPanel } from "./FundamentalsPanel";
 import { OptionsPanel } from "./OptionsPanel";
 import { openChartWindow } from "./windows";
 import { Mt5Setup } from "./Mt5Setup";
+import { RightRail } from "./RightRail";
 import { useWorkspace } from "./store";
 import { loadHistory } from "./data";
 import { bootstrapMt5, getMt5, useMt5 } from "./mt5";
@@ -155,6 +156,15 @@ export default function App() {
     setOptionsOpen(id === "options" && next);
   };
 
+  const panels = {
+    watchlist: watchlistOpen,
+    depth: domOpen,
+    trading: tradingOpen,
+    journal: journalOpen,
+    fundamentals: fundamentalsOpen,
+    options: optionsOpen,
+  };
+
   return (
     <div className="flex h-full flex-col bg-[#0e1117] text-[#d1d4dc]">
       <TabBar />
@@ -180,15 +190,9 @@ export default function App() {
         pineActive={pineOpen}
         onToggleReplay={() => setReplay(replayBar === null ? 0 : null)}
         replayActive={replayBar !== null}
-        panels={{
-          watchlist: watchlistOpen,
-          depth: domOpen,
-          trading: tradingOpen,
-          journal: journalOpen,
-          fundamentals: fundamentalsOpen,
-          options: optionsOpen,
-        }}
+        panels={panels}
         onOpenWindow={() => void openChartWindow(state.symbol, state.resolution)}
+        onOpenAlerts={() => setAlertOpen(true)}
         onTogglePanel={togglePanel}
       />
 
@@ -217,6 +221,7 @@ export default function App() {
 
         {watchlistOpen && <Watchlist onOpenAlerts={() => setAlertOpen(true)} />}
         {domOpen && <DepthOfMarket symbol={state.symbol} precision={2} />}
+        <RightRail panels={panels} onToggle={togglePanel} />
       </div>
 
       {journalOpen && <JournalPanel onClose={() => setJournalOpen(false)} />}
