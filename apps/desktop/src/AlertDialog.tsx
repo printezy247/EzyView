@@ -139,6 +139,7 @@ function AlertForm({
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-[#1e222d] px-4 py-3">
       <select
+        aria-label="Alert condition"
         value={kind}
         onChange={(e) => setKind(e.target.value as AlertCondition["kind"])}
         className="rounded border border-[#2a2e39] bg-[#0e1117] px-2 py-1 text-xs text-white"
@@ -152,6 +153,7 @@ function AlertForm({
 
       {needsValue && (
         <input
+          aria-label="Alert price"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder="Price"
@@ -161,6 +163,7 @@ function AlertForm({
       )}
       {needsBars && (
         <input
+          aria-label="Bars"
           value={bars}
           onChange={(e) => setBars(e.target.value)}
           placeholder="Bars"
@@ -170,6 +173,7 @@ function AlertForm({
       )}
       {needsMult && (
         <input
+          aria-label="Multiplier"
           value={mult}
           onChange={(e) => setMult(e.target.value)}
           placeholder="σ mult"
@@ -179,6 +183,7 @@ function AlertForm({
       )}
 
       <select
+        aria-label="Alert frequency"
         value={frequency}
         onChange={(e) => setFrequency(e.target.value as AlertFrequency)}
         className="rounded border border-[#2a2e39] bg-[#0e1117] px-2 py-1 text-xs text-white"
@@ -191,6 +196,7 @@ function AlertForm({
       </select>
 
       <input
+        aria-label="Alert message"
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         placeholder="Message (optional)"

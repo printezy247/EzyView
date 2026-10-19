@@ -37,6 +37,7 @@ export function IndicatorDialog({ open, onClose }: Props) {
 
         <div className="border-b border-[#1e222d] px-4 py-2">
           <input
+            aria-label="Search indicators"
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}

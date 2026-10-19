@@ -146,7 +146,7 @@ export function Menu({ label, caption, entries, icon, badge, triggerActive, alig
           role="menu"
           aria-label={caption ?? label}
           onKeyDown={onListKey}
-          className={`absolute top-full z-30 mt-1 min-w-44 rounded border border-[#2a2e39] bg-[#131722] py-1 shadow-xl ${
+          className={`absolute top-full z-30 mt-1 min-w-44 whitespace-nowrap rounded border border-[#2a2e39] bg-[#131722] py-1 shadow-xl ${
             align === "right" ? "right-0" : "left-0"
           }`}
         >

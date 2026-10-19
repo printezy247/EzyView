@@ -51,7 +51,7 @@ export function PineEditor({ open, onClose, bars, symbol }: Props) {
     let disposed = false;
     let sub: Monaco.IDisposable | null = null;
 
-    void import("monaco-editor").then((monaco) => {
+    void loadMonaco().then((monaco) => {
       // The panel can close while the chunk is still in flight.
       if (disposed || !host.current || editor.current) return;
       registerPineLanguage(monaco);
@@ -135,6 +135,7 @@ export function PineEditor({ open, onClose, bars, symbol }: Props) {
 
         <div className="flex items-center gap-2 border-b border-[#1e222d] px-4 py-2">
           <input
+            aria-label="Script name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="w-48 rounded bg-[#0e1117] px-2.5 py-1.5 text-sm text-white outline-none placeholder:text-[#787b86]"
@@ -281,6 +282,24 @@ function Metric({ label, value, tone }: { label: string; value: string; tone?: "
 
 /** Register Pine's Monaco language once, with TradingView-like coloring. */
 let registered = false;
+/**
+ * Editor core plus its standard contributions (find, folding, suggest…), but
+ * none of the bundled languages. Pine is registered by hand, so pulling in the
+ * full package would ship ~9 MB of TypeScript/CSS/HTML/JSON workers for nothing.
+ */
+async function loadMonaco(): Promise<typeof Monaco> {
+  // The only worker the editor core needs (diffing, word ranges, links).
+  (self as unknown as { MonacoEnvironment: unknown }).MonacoEnvironment = {
+    getWorker: () =>
+      new Worker(new URL("monaco-editor/esm/vs/editor/editor.worker.js", import.meta.url), { type: "module" }),
+  };
+  const [, api] = await Promise.all([
+    import("monaco-editor/esm/vs/editor/editor.all.js"),
+    import("monaco-editor/esm/vs/editor/editor.api.js"),
+  ]);
+  return api as unknown as typeof Monaco;
+}
+
 function registerPineLanguage(monaco: typeof Monaco): void {
   if (registered) return;
   registered = true;

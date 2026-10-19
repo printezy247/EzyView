@@ -95,6 +95,7 @@ export function Watchlist({ onOpenAlerts }: Props) {
       {adding && (
         <div className="border-b border-[#1e222d] px-2 py-1.5">
           <input
+            aria-label="Add symbol to watchlist"
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
