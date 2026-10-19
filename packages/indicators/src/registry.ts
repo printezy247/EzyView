@@ -1,13 +1,18 @@
+import { CATALOG } from "./catalog.js";
 import type { IndicatorDef } from "./types.js";
 
-/**
- * Static indicator catalogue. `catalog()` returns everything shipped with
- * EzyView (the full 50+ list lands in P2).
- */
+/** Full shipped indicator catalogue. */
 export function catalog(): IndicatorDef[] {
-  return [];
+  return CATALOG;
 }
 
 export function getIndicator(id: string): IndicatorDef | null {
-  return catalog().find((d) => d.id === id) ?? null;
+  return CATALOG.find((d) => d.id === id) ?? null;
+}
+
+/** Indicator ids grouped by family, for the indicator picker UI. */
+export function catalogByFamily(): Record<string, IndicatorDef[]> {
+  const out: Record<string, IndicatorDef[]> = {};
+  for (const def of CATALOG) (out[def.family] ??= []).push(def);
+  return out;
 }

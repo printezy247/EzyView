@@ -1,10 +1,4 @@
-/**
- * EzyView indicator library.
- *
- * Pure, dependency-free computations over OHLCV series. Every indicator returns
- * a `SeriesResult` aligned 1:1 with the input candles (leading nulls where the
- * warm-up period has not yet produced a value).
- */
+import type { OHLCV } from "./helpers.js";
 
 export type SeriesValue = number | null;
 
@@ -13,32 +7,33 @@ export interface SeriesResult {
   id: string;
   /** Display name, e.g. "Relative Strength Index". */
   name: string;
-  /** One aligned value per input candle. */
+  /** One aligned value per input candle; leading nulls are warm-up. */
   values: SeriesValue[];
-  /** Optional per-index plot labels (histograms, bands). */
+  /** Extra aligned plots (bands, histogram, signal line). */
   plots?: Record<string, SeriesValue[]>;
-}
-
-export interface IndicatorInput {
-  values: number[];
 }
 
 export interface IndicatorParam {
   id: string;
   label: string;
-  type: "int" | "float" | "source" | "bool" | "color";
-  default: number | string | boolean;
+  type: "int" | "float" | "source" | "bool";
+  default: number | boolean | string;
   min?: number;
   max?: number;
 }
 
+export type PaneKind = "overlay" | "separate";
+export type IndicatorFamily = "trend" | "momentum" | "volatility" | "volume" | "overlap" | "other";
+
 export interface IndicatorDef {
   id: string;
   name: string;
-  /** Where the output renders: overlay on price, or its own pane. */
-  pane: "overlay" | "separate";
-  family: "trend" | "momentum" | "volatility" | "volume" | "overlap" | "other";
+  pane: PaneKind;
+  family: IndicatorFamily;
+  /** Default palette index; the app cycles colors per series. */
+  defaultColorIndex: number;
   params: IndicatorParam[];
-  /** Compute the output. `inputs` provides OHLCV slices keyed open/high/low/close/volume. */
-  compute(inputs: Record<"open" | "high" | "low" | "close" | "volume", number[]>, params: Record<string, number | string | boolean>): SeriesResult;
+  compute(data: OHLCV, params: Record<string, number | boolean | string>): SeriesResult;
 }
+
+export type { OHLCV } from "./helpers.js";

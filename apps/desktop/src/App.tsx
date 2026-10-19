@@ -1,42 +1,111 @@
-import { Activity, Cpu } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { ChartHost } from "./ChartHost";
+import { DrawingToolbar } from "./DrawingToolbar";
+import { IndicatorDialog } from "./IndicatorDialog";
+import { TabBar } from "./TabBar";
+import { Toolbar } from "./Toolbar";
+import { useWorkspace } from "./store";
 
-/**
- * P0 shell. P1 replaces `<WorkspacePlaceholder>` with the real chart workspace.
- */
 export default function App() {
+  const layout = useWorkspace((s) => s.activeLayout());
+  const updateActive = useWorkspace((s) => s.updateActive);
+  const activeTool = useWorkspace((s) => s.activeTool);
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [crosshairTime, setCrosshairTime] = useState<number | null>(null);
+
+  const onCrosshairTime = useCallback((t: number | null) => setCrosshairTime(t), []);
+
+  // Escape clears the armed drawing tool, like TradingView.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") useWorkspace.getState().setActiveTool(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const { state } = layout;
+
   return (
     <div className="flex h-full flex-col bg-[#0e1117] text-[#d1d4dc]">
-      <header className="flex h-11 shrink-0 items-center gap-3 border-b border-[#1e222d] px-4">
-        <span className="font-semibold tracking-tight text-white">EzyView</span>
-        <span className="rounded border border-[#2a2e39] px-1.5 py-0.5 text-[11px] text-[#787b86]">
-          scaffold
-        </span>
-        <div className="ml-auto flex items-center gap-2 text-[12px] text-[#787b86]">
-          <Cpu size={14} aria-hidden />
-          <span>desktop-first · Tauri v2</span>
-        </div>
-      </header>
+      <TabBar />
 
-      <main className="flex min-h-0 flex-1 items-center justify-center">
-        <div className="max-w-md px-8 text-center">
-          <div className="mb-4 flex justify-center text-[#2962ff]">
-            <Activity size={40} strokeWidth={1.5} aria-hidden />
-          </div>
-          <h1 className="mb-2 text-lg font-semibold text-white">Workspace coming online</h1>
-          <p className="text-sm leading-relaxed text-[#787b86]">
-            P0 scaffold is in place: monorepo, typed packages, adapter contracts and the Tauri
-            shell. Charts, indicators, drawings and layouts arrive in P1.
-          </p>
-        </div>
-      </main>
+      <Toolbar
+        symbol={state.symbol}
+        resolution={state.resolution}
+        chartType={state.chartType}
+        showVolume={state.showVolume}
+        showGrid={state.showGrid}
+        indicatorCount={state.indicators.length}
+        onSymbol={(symbol) => updateActive({ symbol })}
+        onResolution={(resolution) => updateActive({ resolution })}
+        onChartType={(chartType) => updateActive({ chartType })}
+        onToggleVolume={() => updateActive({ showVolume: !state.showVolume })}
+        onToggleGrid={() => updateActive({ showGrid: !state.showGrid })}
+        onToggleTheme={() => updateActive({ theme: state.theme === "dark" ? "light" : "dark" })}
+        theme={state.theme}
+        onOpenIndicators={() => setDialogOpen(true)}
+      />
 
-      <footer className="flex h-7 shrink-0 items-center gap-4 border-t border-[#1e222d] px-4 text-[11px] text-[#787b86]">
+      <div className="relative flex min-h-0 flex-1">
+        <DrawingToolbar />
+
+        <div className="relative min-w-0 flex-1">
+          <ChartHost
+            key={layout.id}
+            symbol={state.symbol}
+            resolution={state.resolution}
+            chartType={state.chartType}
+            showVolume={state.showVolume}
+            showGrid={state.showGrid}
+            theme={state.theme}
+            indicators={state.indicators}
+            drawings={state.drawings}
+            onCrosshairTime={onCrosshairTime}
+          />
+          <Readout symbol={state.symbol} time={crosshairTime} />
+          {activeTool && <ToolHint tool={activeTool} />}
+        </div>
+      </div>
+
+      <IndicatorDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
+
+      <footer className="flex h-6 shrink-0 items-center gap-4 border-t border-[#1e222d] px-3 text-[11px] text-[#787b86]">
         <span className="flex items-center gap-1.5">
           <span className="size-1.5 rounded-full bg-[#26a69a]" aria-hidden />
           offline demo feed
         </span>
-        <span>v0.1.0 · P0</span>
+        <span>
+          {state.drawings.length} drawing{state.drawings.length === 1 ? "" : "s"}
+        </span>
+        <span className="ml-auto">{state.theme}</span>
       </footer>
+    </div>
+  );
+}
+
+function Readout({ symbol, time }: { symbol: string; time: number | null }) {
+  return (
+    <div className="pointer-events-none absolute left-2 top-2 text-[11px] text-[#787b86]">
+      <span className="font-medium text-white">{symbol}</span>
+      {time !== null && <span className="ml-2">{new Date(time * 1000).toLocaleString()}</span>}
+    </div>
+  );
+}
+
+const TOOL_HINTS: Record<string, string> = {
+  trend_line: "Click two points",
+  horizontal_line: "Click once",
+  vertical_line: "Click once",
+  rectangle: "Click two corners",
+  fib_retracement: "Click the swing start and end",
+};
+
+function ToolHint({ tool }: { tool: string }) {
+  return (
+    <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded border border-[#2a2e39] bg-[#131722] px-2.5 py-1 text-[11px] text-[#d1d4dc] shadow-lg">
+      {TOOL_HINTS[tool] ?? "Click to place"} · Esc to cancel
     </div>
   );
 }

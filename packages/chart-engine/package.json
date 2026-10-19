@@ -10,6 +10,10 @@
     "./*": "./src/*.ts"
   },
   "dependencies": {
+    "@ezyview/data-adapters": "*",
+    "@ezyview/drawing-tools": "*",
+    "@ezyview/indicators": "*",
+    "fancy-canvas": "^2.1.0",
     "lightweight-charts": "^5.2.1"
   }
 }
