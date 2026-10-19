@@ -63,6 +63,7 @@ export function SymbolSearch({ symbol, onSelect }: Props) {
           <div className="flex items-center gap-2 border-b border-[#1e222d] px-3 py-2">
             <Search size={14} aria-hidden className="text-[#787b86]" />
             <input
+              aria-label="Search symbol"
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
