@@ -1,0 +1,224 @@
+import { beforeEach, describe, expect, it } from "vitest";
+import { PaperTradingEngine, PaperTradingError } from "./engine.js";
+
+/** Deterministic ids and clock so the assertions below are stable. */
+function makeEngine(startingBalance = 100_000): PaperTradingEngine {
+  let seq = 0;
+  let clock = 1_700_000_000;
+  return new PaperTradingEngine({
+    startingBalance,
+    idGenerator: () => `id-${seq++}`,
+    now: () => (clock += 1),
+  });
+}
+
+describe("PaperTradingEngine", () => {
+  let engine: PaperTradingEngine;
+
+  beforeEach(() => {
+    engine = makeEngine();
+  });
+
+  it("starts with the advertised account and no exposure", async () => {
+    await engine.connect();
+    await expect(engine.getAccount()).resolves.toMatchObject({
+      balance: 100_000,
+      equity: 100_000,
+      margin: 0,
+      freeMargin: 100_000,
+      tradeMode: "demo",
+    });
+    await expect(engine.getPositions()).resolves.toEqual([]);
+  });
+
+  it("fills a market buy at the last price and opens a long", async () => {
+    engine.updateQuote("DEMO:BTCUSDT", 100);
+    const order = await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "market", qty: 10 });
+
+    expect(order.status).toBe("filled");
+    expect(order.avgFillPrice).toBe(100);
+
+    const [position] = await engine.getPositions();
+    expect(position).toMatchObject({ side: "long", qty: 10, entryPrice: 100 });
+    // 10 × $100 notional at 100× leaves $10 aside.
+    expect(position?.margin).toBeCloseTo(10);
+  });
+
+  it("averages the entry when adding to an existing position", async () => {
+    engine.updateQuote("DEMO:BTCUSDT", 100);
+    await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "market", qty: 10 });
+    engine.updateQuote("DEMO:BTCUSDT", 110);
+    await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "market", qty: 10 });
+
+    const [position] = await engine.getPositions();
+    expect(position).toMatchObject({ qty: 20, entryPrice: 105 });
+  });
+
+  it("realizes P&L when reducing and closes at zero", async () => {
+    engine.updateQuote("DEMO:BTCUSDT", 100);
+    await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "market", qty: 10 });
+    engine.updateQuote("DEMO:BTCUSDT", 120);
+
+    // Sell 10 at 120 → $200 realized.
+    await engine.closePosition("DEMO:BTCUSDT", 10);
+    const account = await engine.getAccount();
+    expect(account.balance).toBeCloseTo(100_200);
+    await expect(engine.getPositions()).resolves.toEqual([]);
+    await expect(engine.getHistory()).resolves.toHaveLength(1);
+  });
+
+  it("flips a long into a short when the sell overshoots", async () => {
+    engine.updateQuote("DEMO:BTCUSDT", 100);
+    await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "market", qty: 10 });
+    engine.updateQuote("DEMO:BTCUSDT", 110);
+
+    await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "sell", type: "market", qty: 15 });
+
+    const [position] = await engine.getPositions();
+    expect(position).toMatchObject({ side: "short", qty: 5, entryPrice: 110 });
+    // 10 closed at +10 each, 5 opened short at 110.
+    expect(await engine.getHistory()).toHaveLength(1);
+  });
+
+  it("marks unrealized P&L on both sides", async () => {
+    engine.updateQuote("DEMO:BTCUSDT", 100);
+    await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "market", qty: 2 });
+    engine.updateQuote("DEMO:BTCUSDT", 125);
+    expect((await engine.getAccount()).equity).toBeCloseTo(100_050);
+
+    await engine.closePosition("DEMO:BTCUSDT");
+    engine.updateQuote("DEMO:BTCUSDT", 130);
+    await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "sell", type: "market", qty: 2 });
+    engine.updateQuote("DEMO:BTCUSDT", 120);
+    // Short 2 from 130 down to 120 → +20.
+    expect((await engine.getAccount()).equity).toBeCloseTo(100_070);
+  });
+
+  it("rejects an order that exceeds free margin", async () => {
+    engine.updateQuote("DEMO:BTCUSDT", 100);
+    // $100k at 100× covers $10m of notional, so $10,001 is over the line.
+    await expect(
+      engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "market", qty: 100_001 }),
+    ).rejects.toThrow(PaperTradingError);
+    await expect(engine.getPositions()).resolves.toEqual([]);
+  });
+
+  it("holds a limit order until a tick crosses it", async () => {
+    engine.updateQuote("DEMO:BTCUSDT", 100);
+    await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "limit", price: 90, qty: 1 });
+
+    // Price has not reached the limit yet.
+    await expect(engine.getPositions()).resolves.toEqual([]);
+    expect(await engine.getOrders()).toHaveLength(1);
+
+    engine.updateQuote("DEMO:BTCUSDT", 95);
+    await expect(engine.getPositions()).resolves.toEqual([]);
+
+    engine.updateQuote("DEMO:BTCUSDT", 89);
+    const [position] = await engine.getPositions();
+    expect(position?.entryPrice).toBe(90);
+    // The resting order is gone once it has filled.
+    await expect(engine.getOrders()).resolves.toEqual([]);
+  });
+
+  it("cancels a resting order so it can never fill", async () => {
+    engine.updateQuote("DEMO:BTCUSDT", 100);
+    const order = await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "limit", price: 90, qty: 1 });
+    await expect(engine.cancelOrder(order.id)).resolves.toBe(true);
+
+    engine.updateQuote("DEMO:BTCUSDT", 80);
+    await expect(engine.getPositions()).resolves.toEqual([]);
+  });
+
+  it("takes profit automatically at the trigger price", async () => {
+    engine.updateQuote("DEMO:BTCUSDT", 100);
+    await engine.placeOrder({
+      symbol: "DEMO:BTCUSDT",
+      side: "buy",
+      type: "market",
+      qty: 10,
+      takeProfit: 120,
+    });
+
+    engine.updateQuote("DEMO:BTCUSDT", 119);
+    await expect(engine.getPositions()).resolves.toHaveLength(1);
+
+    engine.updateQuote("DEMO:BTCUSDT", 121);
+    await expect(engine.getPositions()).resolves.toEqual([]);
+    expect((await engine.getAccount()).balance).toBeCloseTo(100_200);
+  });
+
+  it("stops out at the stop-loss price", async () => {
+    engine.updateQuote("DEMO:BTCUSDT", 100);
+    await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "market", qty: 10, stopLoss: 95 });
+
+    engine.updateQuote("DEMO:BTCUSDT", 96);
+    await expect(engine.getPositions()).resolves.toHaveLength(1);
+
+    engine.updateQuote("DEMO:BTCUSDT", 94);
+    await expect(engine.getPositions()).resolves.toEqual([]);
+    expect((await engine.getAccount()).balance).toBeCloseTo(99_950);
+  });
+
+  it("liquidates everything when the margin level falls under the stop-out level", async () => {
+    // $50k posted against $5m of notional, so a 1.6% drop takes the equity
+    // below the 50% stop-out level and the venue liquidates to save the rest.
+    engine.updateQuote("DEMO:BTCUSDT", 100);
+    await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "market", qty: 50_000 });
+
+    engine.updateQuote("DEMO:BTCUSDT", 99);
+    await expect(engine.getPositions()).resolves.toHaveLength(1);
+
+    engine.updateQuote("DEMO:BTCUSDT", 98.4);
+    await expect(engine.getPositions()).resolves.toEqual([]);
+    // Equity survives the liquidation rather than going to zero.
+    expect((await engine.getAccount()).equity).toBeGreaterThan(0);
+  });
+
+  it("resets the account back to its starting balance", async () => {
+    engine.updateQuote("DEMO:BTCUSDT", 100);
+    await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "market", qty: 10 });
+    engine.updateQuote("DEMO:BTCUSDT", 150);
+    await engine.closePosition("DEMO:BTCUSDT");
+
+    engine.reset();
+    await expect(engine.getAccount()).resolves.toMatchObject({ balance: 100_000, margin: 0, equity: 100_000 });
+    await expect(engine.getPositions()).resolves.toEqual([]);
+    await expect(engine.getHistory()).resolves.toEqual([]);
+  });
+
+  it("round-trips the account through a snapshot", async () => {
+    engine.updateQuote("DEMO:BTCUSDT", 100);
+    await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "market", qty: 10, stopLoss: 90 });
+    await engine.placeOrder({ symbol: "DEMO:ETHUSDT", side: "buy", type: "limit", price: 80, qty: 5 });
+    engine.updateQuote("DEMO:BTCUSDT", 110);
+
+    const restored = PaperTradingEngine.restore(engine.snapshot());
+    const account = await restored.getAccount();
+    expect(account.balance).toBe(100_000);
+    expect(account.equity).toBeCloseTo(100_100);
+
+    const [position] = await restored.getPositions();
+    expect(position).toMatchObject({ symbol: "DEMO:BTCUSDT", qty: 10, entryPrice: 100, stopLoss: 90 });
+    await expect(restored.getOrders()).resolves.toHaveLength(1);
+
+    // The snapshot must not alias the live engine's records.
+    const snap = engine.snapshot();
+    snap.balance = 1;
+    expect((await engine.getAccount()).balance).toBe(100_000);
+  });
+
+  it("boots a fresh account when the snapshot comes from a future version", async () => {
+    const stale = { ...engine.snapshot(), version: 999, balance: 5 };
+    await expect(PaperTradingEngine.restore(stale).getAccount()).resolves.toMatchObject({ balance: 100_000 });
+  });
+
+  it("exposes the TradingAdapter surface the live brokers will share", async () => {
+    await expect(engine.connect()).resolves.toMatchObject({ provider: "paper" });
+    expect(engine.mode).toBe("paper");
+    expect(typeof engine.closePosition).toBe("function");
+    expect(typeof engine.modifyOrder).toBe("function");
+    await engine.disconnect();
+    expect(engine.isConnected()).toBe(false);
+  });
+});

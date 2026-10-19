@@ -10,7 +10,8 @@
       "@ezyview/chart-engine": ["packages/chart-engine/src/index.ts"],
       "@ezyview/drawing-tools": ["packages/drawing-tools/src/index.ts"],
       "@ezyview/journal": ["packages/journal/src/index.ts"],
-      "@ezyview/pine-transpiler": ["packages/pine-transpiler/src/index.ts"]
+      "@ezyview/pine-transpiler": ["packages/pine-transpiler/src/index.ts"],
+      "@ezyview/paper-trading": ["packages/paper-trading/src/index.ts"]
     }
   },
   "include": [

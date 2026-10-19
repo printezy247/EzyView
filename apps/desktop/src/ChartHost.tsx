@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { Candle, Resolution } from "@ezyview/data-adapters";
 import { EzyChart } from "@ezyview/chart-engine";
-import type { ChartType, IndicatorInstance, ScriptPlotSpec } from "@ezyview/chart-engine";
+import type { ChartType, IndicatorInstance, ScriptPlotSpec, TradingLine } from "@ezyview/chart-engine";
 import type { Drawing, DrawingToolId } from "@ezyview/drawing-tools";
 import { isComplete } from "@ezyview/drawing-tools";
 import { DEFAULT_DRAWING_STYLE } from "@ezyview/drawing-tools";
@@ -21,6 +21,8 @@ interface Props {
   drawings: Drawing[];
   /** Replay cursor: show bars up to and including this index, or null for all. */
   replayBar?: number | null;
+  /** Entry/stop/target levels for the open position on this symbol. */
+  tradingLines?: TradingLine[];
   onCrosshairTime?: (time: number | null) => void;
 }
 
@@ -125,6 +127,11 @@ export function ChartHost(props: Props) {
   useEffect(() => {
     chartRef.current?.setDrawings(props.drawings);
   }, [props.drawings]);
+
+  // Position levels are constant, so they only change when a fill does.
+  useEffect(() => {
+    chartRef.current?.setTradingLines(props.tradingLines ?? []);
+  }, [props.tradingLines]);
 
   // Switching tools abandons any half-placed drawing.
   useEffect(() => {

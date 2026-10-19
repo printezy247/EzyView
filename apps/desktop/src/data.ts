@@ -32,6 +32,23 @@ export const PICKER_RESOLUTIONS: Resolution[] = ["1m", "5m", "15m", "1h", "4h", 
 
 export const DEFAULT_SYMBOL = "BINANCE:BTCUSDT";
 
+/** Display ticker: the part after the exchange prefix, e.g. "BTCUSDT". */
+export const tickerOf = (symbol: string): string => symbol.split(":").pop() ?? symbol;
+
+/**
+ * Decimals that keep a price readable.
+ *
+ * Synchronous on purpose: taking precision from the price in hand avoids an
+ * async symbol lookup whose result would arrive after the first render.
+ */
+export function precisionFor(price: number | null): number {
+  if (price === null || !Number.isFinite(price) || price <= 0) return 2;
+  if (price >= 1000) return 2;
+  if (price >= 1) return 3;
+  if (price >= 0.01) return 5;
+  return 8;
+}
+
 export async function searchSymbols(query: string): Promise<SymbolInfo[]> {
   return market.searchSymbols(query);
 }

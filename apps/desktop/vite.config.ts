@@ -12,6 +12,7 @@ const alias = {
   "@ezyview/drawing-tools": src("../../packages/drawing-tools/src/index.ts"),
   "@ezyview/journal": src("../../packages/journal/src/index.ts"),
   "@ezyview/pine-transpiler": src("../../packages/pine-transpiler/src/index.ts"),
+  "@ezyview/paper-trading": src("../../packages/paper-trading/src/index.ts"),
 };
 
 // Tauri expects the dev server on a fixed port with a fixed host.

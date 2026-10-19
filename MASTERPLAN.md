@@ -1,6 +1,6 @@
 # EzyView — Master Plan
 
-> Status: **Draft for approval. No code has been written.**
+> Status: **In build.** P0–P4 merged to `main`; P5–P9 remaining, P10 optional.
 > Owner: printezy247 · Date: 2026-10-19
 
 ---
@@ -197,14 +197,14 @@ EzyView/
 
 ## 7. Phases & milestones
 
-| Phase | Scope | Exit criteria |
-|---|---|---|
-| P0 | Repo scaffold, CI, docs, adapter interfaces | repo builds empty shells |
-| P1 | Charting core + 10 indicators + 5 drawings + layouts/tabs | demo chart with live crypto data |
-| P2 | Full indicator library (50+) + all drawings + alerts + watchlist + DOM | feature parity with TV free tier |
-| P3 | Pine editor + transpiler + strategy tester + replay | custom indicator runs on chart |
-| P4 | Paper trading engine + order ticket + positions | full paper trading loop |
-| P5 | MT5 bridge + live trading (demo-first) + broker/EzyView chart source toggle | place/close order via MT5; switch chart feed between broker and EzyView |
+| Phase | Scope | Exit criteria | Status |
+|---|---|---|---|
+| P0 | Repo scaffold, CI, docs, adapter interfaces | repo builds empty shells | done |
+| P1 | Charting core + 10 indicators + 5 drawings + layouts/tabs | demo chart with live crypto data | done |
+| P2 | Full indicator library (50+) + all drawings + alerts + watchlist + DOM | feature parity with TV free tier | done |
+| P3 | Pine editor + transpiler + strategy tester + replay | custom indicator runs on chart | done |
+| P4 | Paper trading engine + order ticket + positions | full paper trading loop | done |
+| P5 | MT5 bridge + live trading (demo-first) + broker/EzyView chart source toggle | place/close order via MT5; switch chart feed between broker and EzyView | next |
 | P6 | Trading journal + stats + screenshots | journal usable daily |
 | P7 | Fundamentals (calendar/news/earnings) + screeners/heatmaps | fundamentals panel live |
 | P8 | Options chain + volatility | options view |
