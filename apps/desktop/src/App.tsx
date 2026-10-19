@@ -12,9 +12,12 @@ import { AlertDialog } from "./AlertDialog";
 import { DepthOfMarket } from "./DepthOfMarket";
 import { TradingPanel } from "./TradingPanel";
 import { Watchlist } from "./Watchlist";
+import { Mt5Setup } from "./Mt5Setup";
 import { useWorkspace } from "./store";
 import { loadHistory } from "./data";
-import { usePaperTicks, useTrading } from "./trading";
+import { bootstrapMt5, useMt5 } from "./mt5";
+import type { ChartSource } from "./mt5";
+import { useTrading, useTradingTicks } from "./trading";
 
 export default function App() {
   const layout = useWorkspace((s) => s.activeLayout());
@@ -37,6 +40,11 @@ export default function App() {
   const [crosshairTime, setCrosshairTime] = useState<number | null>(null);
 
   const onCrosshairTime = useCallback((t: number | null) => setCrosshairTime(t), []);
+
+  // Honour a remembered broker feed once, if MT5 answers on first load.
+  useEffect(() => {
+    void bootstrapMt5();
+  }, []);
 
   // Load bars for the Pine editor on demand — not on every chart tick.
   useEffect(() => {
@@ -79,7 +87,7 @@ export default function App() {
   const exposure = new Set<string>(positions.map((p) => p.symbol));
   for (const order of orders) exposure.add(order.symbol);
   if (tradingOpen) exposure.add(state.symbol);
-  usePaperTicks([...exposure].join("|"));
+  useTradingTicks([...exposure].join("|"));
 
   // Entry/stop/target for the position on this chart, as constant price lines.
   const tradingLines = useMemo(() => {
@@ -172,16 +180,93 @@ export default function App() {
       />
 
       <footer className="flex h-6 shrink-0 items-center gap-4 border-t border-[#1e222d] px-3 text-[11px] text-[#787b86]">
-        <span className="flex items-center gap-1.5">
-          <span className="size-1.5 rounded-full bg-[#26a69a]" aria-hidden />
-          offline demo feed
-        </span>
+        <SourceToggle />
+        <FeedStatus />
         <span>
           {state.drawings.length} drawing{state.drawings.length === 1 ? "" : "s"}
         </span>
-        <span className="ml-auto">{state.theme}</span>
+        <span className="ml-auto flex items-center gap-3">
+          <Mt5Setup />
+          <span className="uppercase">{state.theme}</span>
+        </span>
       </footer>
     </div>
+  );
+}
+
+const SOURCE_LABEL: Record<ChartSource, string> = {
+  ezyview: "EzyView feed",
+  mt5: "Broker · MT5",
+};
+
+/** Segmented switch between the bundled feed and the connected broker. */
+function SourceToggle() {
+  const source = useMt5((s) => s.source);
+  const setSource = useMt5((s) => s.setSource);
+  const [busy, setBusy] = useState(false);
+
+  const pick = (id: ChartSource) => {
+    if (busy || id === source) return;
+    setBusy(true);
+    void setSource(id).finally(() => setBusy(false));
+  };
+
+  return (
+    <div
+      role="group"
+      aria-label="Chart price source"
+      className="flex items-center rounded border border-[#2a2e39] p-px"
+    >
+      {(Object.keys(SOURCE_LABEL) as ChartSource[]).map((id) => (
+        <button
+          key={id}
+          type="button"
+          aria-pressed={source === id}
+          disabled={busy}
+          onClick={() => pick(id)}
+          title={
+            id === "mt5"
+              ? "Candles, quotes, account and orders from the connected MT5 terminal"
+              : "Bundled demo market feed"
+          }
+          className={
+            source === id
+              ? `rounded px-2 py-px font-medium text-white ${id === "mt5" ? "bg-[#2962ff]" : "bg-[#1e222d]"}`
+              : "rounded px-2 py-px text-[#787b86] hover:text-white"
+          }
+        >
+          {SOURCE_LABEL[id]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** One dot that says whether the broker feed is answering. */
+function FeedStatus() {
+  const source = useMt5((s) => s.source);
+  const status = useMt5((s) => s.status);
+  const error = useMt5((s) => s.error);
+
+  if (source !== "mt5") {
+    return (
+      <span className="flex items-center gap-1.5">
+        <span className="size-1.5 rounded-full bg-[#26a69a]" aria-hidden />
+        demo feed
+      </span>
+    );
+  }
+
+  const dot =
+    status === "online" ? "#26a69a" : status === "connecting" ? "#f0b90b" : status === "error" ? "#ef5350" : "#434651";
+  const label =
+    status === "online" ? "MT5 live" : status === "connecting" ? "MT5 connecting…" : status === "error" ? "MT5 offline" : "MT5";
+
+  return (
+    <span className="flex items-center gap-1.5" title={error ?? undefined}>
+      <span className="size-1.5 rounded-full" style={{ background: dot }} aria-hidden />
+      {label}
+    </span>
   );
 }
 
