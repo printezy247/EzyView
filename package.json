@@ -1,0 +1,37 @@
+{
+  "name": "ezyview",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Open-source TradingView-class trading terminal: charts, indicators, Pine editor, drawings, layouts, alerts, trading journal, MT5 integration, fundamentals. Desktop-first (Tauri v2).",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/printezy247/EzyView.git"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "dev": "npm run tauri dev --workspace apps/desktop",
+    "tauri": "npm run tauri --workspace apps/desktop --",
+    "build:web": "npm run build --workspace apps/desktop",
+    "build:desktop": "npm run tauri build --workspace apps/desktop",
+    "lint": "oxlint .",
+    "format": "oxfmt .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "oxlint": "^1.68.0",
+    "oxfmt": "^0.3.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4",
+    "@types/node": "^22.15.0"
+  }
+}
