@@ -8,6 +8,7 @@ import {
   HistogramSeries,
   LineSeries,
   LineStyle,
+  LineType,
   createChart,
   createSeriesMarkers,
   type IChartApi,
@@ -25,8 +26,32 @@ import type { Drawing, ScreenPoint } from "@ezyview/drawing-tools";
 import { BgBandsPrimitive } from "./bands.js";
 import { DrawingsPrimitive } from "./drawings.js";
 import { DARK_THEME, colorAt, type ChartTheme } from "./theme.js";
+import { autoBoxSize, heikinAshi, kagi, pointAndFigure, renko, sequentialTimes, type PriceBox } from "./transforms.js";
+import { VolumeProfilePrimitive } from "./volumeProfile.js";
 
-export type ChartType = "candles" | "bars" | "hollow" | "line" | "area" | "baseline";
+export type ChartType =
+  | "candles"
+  | "bars"
+  | "hollow"
+  | "heikin"
+  | "line"
+  | "area"
+  | "baseline"
+  | "renko"
+  | "kagi"
+  | "pnf";
+
+/**
+ * Renko, Kagi and Point & Figure plot price moves, not time: their bars do not
+ * line up with candles, so time-aligned layers (volume, indicators, scripts)
+ * are hidden while one is shown.
+ */
+export function isTimeBased(type: ChartType): boolean {
+  return type !== "renko" && type !== "kagi" && type !== "pnf";
+}
+
+/** Types drawn with the candlestick series and the theme's up/down colors. */
+const CANDLE_TYPES = new Set<ChartType>(["candles", "hollow", "bars", "heikin", "renko", "pnf"]);
 
 export interface IndicatorInstance {
   uid: string;
@@ -69,6 +94,7 @@ export interface EzyChartOptions {
   theme?: ChartTheme;
   chartType?: ChartType;
   showVolume?: boolean;
+  showVolumeProfile?: boolean;
   showGrid?: boolean;
   onCrosshairTime?: (time: number | null) => void;
   onClick?: (info: ClickInfo) => void;
@@ -114,6 +140,8 @@ export class EzyChart {
   private readonly plotSeriesByUid = new Map<string, ISeriesApi<never>[]>();
   /** Translucent `bgcolor()` regions, painted behind the price series. */
   private readonly bgBands = new BgBandsPrimitive();
+  /** Volume-by-price for the visible range, along the right edge. */
+  private readonly volumeProfile = new VolumeProfilePrimitive((price) => this.priceToCoordinate(price));
   /** Markers contributed by `plotshape()`-style plots, rebuilt with the data. */
   private markerLayer: SeriesMarker<Time>[] = [];
   /** v5 exposes markers as a series plugin, so it is bound to the main series. */
@@ -159,6 +187,8 @@ export class EzyChart {
 
     this.chart.panes()[0]!.attachPrimitive(this.drawings);
     this.chart.panes()[0]!.attachPrimitive(this.bgBands);
+    this.chart.panes()[0]!.attachPrimitive(this.volumeProfile);
+    this.volumeProfile.setEnabled(options.showVolumeProfile ?? false);
     this.createMainSeries();
     if (this.showVolume) this.ensureVolume();
 
@@ -182,30 +212,59 @@ export class EzyChart {
   // --- data -----------------------------------------------------------------
 
   setData(candles: Candle[]): void {
+    const firstLoad = this.data.length === 0;
     this.data = candles;
-    this.mainSeries?.setData(toSeriesData(this.type, candles));
-    this.volumeSeries?.setData(toVolumeData(candles));
+    this.mainSeries?.setData(this.seriesData());
+    this.volumeSeries?.setData(toVolumeData(this.layerData));
+    this.volumeProfile.setCandles(candles);
     // Refresh indicator series in place — rebuilding panes per tick is too costly.
     for (const inst of this.currentInstances) this.renderIndicator(inst, "refresh");
     for (const plot of this.currentPlots) this.renderPlot(plot, "refresh");
     this.syncScriptLayers();
     this.drawings.setDrawings(this.drawingsLayer);
+    if (firstLoad) this.frameBars();
+  }
+
+  /**
+   * Price-only types print a few dozen bars at most, which the default bar
+   * spacing would crowd against the right edge, so they fill the width.
+   */
+  private frameBars(): void {
+    if (isTimeBased(this.type)) this.chart.timeScale().resetTimeScale();
+    else this.chart.timeScale().fitContent();
   }
 
   candles(): readonly Candle[] {
     return this.data;
   }
 
+  /** Candles for time-aligned layers; none while a price-only type is shown. */
+  private get layerData(): Candle[] {
+    return isTimeBased(this.type) ? this.data : [];
+  }
+
   // --- presentation ---------------------------------------------------------
 
   setChartType(type: ChartType): void {
     if (type === this.type) return;
+    const axisChanged = isTimeBased(type) !== isTimeBased(this.type) || !isTimeBased(type);
     this.type = type;
     // The marker plugin is bound to the series instance about to be removed.
     this.resetMarkers();
     if (this.mainSeries) this.chart.removeSeries(this.mainSeries);
     this.createMainSeries();
+    if (axisChanged) {
+      // Price-only types have their own bar count; show or hide the
+      // time-aligned layers, then frame the new bars.
+      this.volumeSeries?.setData(toVolumeData(this.layerData));
+      this.reconcileLayers();
+      this.frameBars();
+    }
     this.drawings.setDrawings(this.drawingsLayer);
+  }
+
+  setShowVolumeProfile(show: boolean): void {
+    this.volumeProfile.setEnabled(show);
   }
 
   setTheme(theme: ChartTheme): void {
@@ -222,6 +281,8 @@ export class EzyChart {
       timeScale: { borderColor: theme.grid },
     });
     this.applyCandleColors();
+    // Kagi colors its line per point, so the data carries the theme.
+    if (this.type === "kagi") this.mainSeries?.setData(this.seriesData());
     for (const line of this.levelLines) line.applyOptions({ color: theme.paneSeparator });
   }
 
@@ -322,8 +383,10 @@ export class EzyChart {
     const panes = this.chart.panes();
     for (let i = panes.length - 1; i >= 1; i--) this.chart.removePane(i);
 
-    for (const inst of this.currentInstances) this.renderIndicator(inst, "create");
-    for (const plot of this.currentPlots) this.renderPlot(plot, "create");
+    if (isTimeBased(this.type)) {
+      for (const inst of this.currentInstances) this.renderIndicator(inst, "create");
+      for (const plot of this.currentPlots) this.renderPlot(plot, "create");
+    }
     this.syncScriptLayers();
 
     this.drawings.setDrawings(this.drawingsLayer);
@@ -333,7 +396,7 @@ export class EzyChart {
   private syncScriptLayers(): void {
     this.bgBands.setBands(
       this.currentBands.map((b) => ({ color: b.color, flags: this.litFlags(b.values) })),
-      this.data.map((c) => c.time as UTCTimestamp),
+      this.layerData.map((c) => c.time as UTCTimestamp),
     );
     this.markerLayer = this.buildMarkers();
     this.applyMarkers();
@@ -341,20 +404,21 @@ export class EzyChart {
 
   /** A band is lit wherever its value is a present, non-`na` number. */
   private litFlags(values: SeriesValue[]): boolean[] {
-    return Array.from({ length: this.data.length }, (_, i) => typeof values[i] === "number");
+    return Array.from({ length: this.layerData.length }, (_, i) => typeof values[i] === "number");
   }
 
   /** Markers for every shape-style plot, ordered the way the chart requires. */
   private buildMarkers(): SeriesMarker<Time>[] {
     const out: SeriesMarker<Time>[] = [];
+    const data = this.layerData;
     for (const plot of this.currentPlots) {
       if (!MARKER_STYLES.has(plot.style)) continue;
-      for (let i = 0; i < this.data.length; i++) {
+      for (let i = 0; i < data.length; i++) {
         const value = plot.values[i];
         if (typeof value !== "number") continue;
         // `location.top`/`bottom` pin the value far off-scale on purpose.
         out.push({
-          time: this.data[i]!.time as UTCTimestamp,
+          time: data[i]!.time as UTCTimestamp,
           position: value < -1e15 ? "belowBar" : "aboveBar",
           shape: plot.style === "triangle" ? "arrowUp" : plot.style === "cross" ? "square" : "circle",
           color: plot.color,
@@ -600,11 +664,25 @@ export class EzyChart {
           wickVisible: true,
         }) as ISeriesApi<never>;
         break;
+      case "renko":
+      case "pnf":
+        // Bricks and columns have no wicks: high/low equal the body.
+        this.mainSeries = this.chart.addSeries(CandlestickSeries, { ...base, borderVisible: true, wickVisible: false }) as ISeriesApi<never>;
+        break;
+      case "kagi":
+        // A step line draws the shoulder across, then the next line vertically.
+        this.mainSeries = this.chart.addSeries(LineSeries, {
+          ...base,
+          lineWidth: 2,
+          lineType: LineType.WithSteps,
+          crosshairMarkerVisible: false,
+        }) as ISeriesApi<never>;
+        break;
       default:
         this.mainSeries = this.chart.addSeries(CandlestickSeries, { ...base, borderVisible: true, wickVisible: true }) as ISeriesApi<never>;
     }
     this.applyCandleColors();
-    this.mainSeries.setData(toSeriesData(this.type, this.data));
+    this.mainSeries.setData(this.seriesData());
     // Chart-type switches rebuild the series, which drops any markers on it.
     this.applyMarkers();
     this.applyTradingLines();
@@ -612,7 +690,7 @@ export class EzyChart {
 
   private applyCandleColors(): void {
     if (!this.mainSeries) return;
-    if (this.type !== "candles" && this.type !== "hollow" && this.type !== "bars") return;
+    if (!CANDLE_TYPES.has(this.type)) return;
     const t = this.theme;
     const series = this.mainSeries as ISeriesApi<"Candlestick">;
     if (this.type === "hollow") {
@@ -636,8 +714,35 @@ export class EzyChart {
       wickUpColor: t.wickUpColor,
       wickDownColor: t.wickDownColor,
       borderVisible: true,
-      wickVisible: true,
+      wickVisible: this.type !== "renko" && this.type !== "pnf",
     });
+  }
+
+  /** Main-series points for the current type, theme and candles. */
+  private seriesData(): never[] {
+    const candles = this.data;
+    switch (this.type) {
+      case "heikin":
+        return toSeriesData("candles", heikinAshi(candles));
+      case "renko":
+        return toBoxData(renko(candles, autoBoxSize(candles)));
+      case "pnf":
+        return toBoxData(pointAndFigure(candles, autoBoxSize(candles)));
+      case "kagi": {
+        // Reverse on one average true range, as Renko and P&F box on it.
+        const lines = kagi(candles, autoBoxSize(candles));
+        const first = lines[0];
+        if (!first) return [];
+        const times = sequentialTimes([first.time, ...lines.map((l) => l.time)]);
+        const color = (yang: boolean) => (yang ? this.theme.upColor : this.theme.downColor);
+        return [
+          { time: times[0] as UTCTimestamp, value: first.start, color: color(first.yang) },
+          ...lines.map((l, i) => ({ time: times[i + 1] as UTCTimestamp, value: l.end, color: color(l.yang) })),
+        ] as never[];
+      }
+      default:
+        return toSeriesData(this.type, candles);
+    }
   }
 
   private ensureVolume(): void {
@@ -651,7 +756,7 @@ export class EzyChart {
       priceFormat: { type: "volume" },
     });
     this.volumeSeries.priceScale().applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
-    this.volumeSeries.setData(toVolumeData(this.data));
+    this.volumeSeries.setData(toVolumeData(this.layerData));
   }
 }
 
@@ -667,6 +772,18 @@ function toSeriesData(type: ChartType, candles: Candle[]): never[] {
     high: c.high,
     low: c.low,
     close: c.close,
+  })) as never[];
+}
+
+/** Bricks or columns as wickless candles at strictly increasing times. */
+function toBoxData(boxes: PriceBox[]): never[] {
+  const times = sequentialTimes(boxes.map((b) => b.time));
+  return boxes.map((b, i) => ({
+    time: times[i] as UTCTimestamp,
+    open: b.open,
+    high: Math.max(b.open, b.close),
+    low: Math.min(b.open, b.close),
+    close: b.close,
   })) as never[];
 }
 

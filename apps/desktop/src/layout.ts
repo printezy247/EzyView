@@ -21,6 +21,8 @@ export interface ChartState {
   resolution: Resolution;
   chartType: ChartType;
   showVolume: boolean;
+  /** Optional so layouts saved before it existed still load. */
+  showVolumeProfile?: boolean;
   showGrid: boolean;
   theme: "dark" | "light";
   indicators: ActiveIndicator[];

@@ -50,6 +50,7 @@ export function defaultChartState(): ChartState {
     resolution: "1D",
     chartType: "candles",
     showVolume: true,
+    showVolumeProfile: false,
     showGrid: true,
     theme: "dark",
     indicators: [],

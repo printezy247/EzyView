@@ -190,12 +190,14 @@ export default function App() {
         resolution={state.resolution}
         chartType={state.chartType}
         showVolume={state.showVolume}
+        showVolumeProfile={state.showVolumeProfile ?? false}
         showGrid={state.showGrid}
         indicatorCount={state.indicators.length}
         onSymbol={(symbol) => updateActive({ symbol })}
         onResolution={(resolution) => updateActive({ resolution })}
         onChartType={(chartType) => updateActive({ chartType })}
         onToggleVolume={() => updateActive({ showVolume: !state.showVolume })}
+        onToggleVolumeProfile={() => updateActive({ showVolumeProfile: !state.showVolumeProfile })}
         onToggleGrid={() => updateActive({ showGrid: !state.showGrid })}
         onToggleTheme={() => updateActive({ theme: state.theme === "dark" ? "light" : "dark" })}
         theme={state.theme}
@@ -399,6 +401,7 @@ function ChartGrid({ layout, replayBar, linesFor, onCrosshairTime, crosshairTime
               resolution={chart.resolution}
               chartType={chart.chartType}
               showVolume={chart.showVolume}
+              showVolumeProfile={chart.showVolumeProfile ?? false}
               showGrid={chart.showGrid}
               theme={chart.theme}
               indicators={chart.indicators}

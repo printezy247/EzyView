@@ -15,6 +15,7 @@ interface Props {
   resolution: Resolution;
   chartType: ChartType;
   showVolume: boolean;
+  showVolumeProfile?: boolean;
   showGrid: boolean;
   theme: "dark" | "light";
   indicators: ActiveIndicator[];
@@ -118,9 +119,10 @@ export function ChartHost(props: Props) {
     if (!chart) return;
     chart.setTheme(THEME_OF[props.theme]);
     chart.setShowVolume(props.showVolume);
+    chart.setShowVolumeProfile(props.showVolumeProfile ?? false);
     chart.setShowGrid(props.showGrid);
     chart.setIndicators(toInstances(props.indicators));
-  }, [props.theme, props.showVolume, props.showGrid, props.indicators]);
+  }, [props.theme, props.showVolume, props.showVolumeProfile, props.showGrid, props.indicators]);
 
   // Every run replaces its script's output wholesale; the chart reconciles both
   // layers in one pass so they cannot fight over pane indices.
