@@ -10,9 +10,13 @@ export const CHART_TYPES: { id: ChartType; label: string }[] = [
   { id: "candles", label: "Candles" },
   { id: "bars", label: "Bars" },
   { id: "hollow", label: "Hollow candles" },
+  { id: "heikin", label: "Heikin Ashi" },
   { id: "line", label: "Line" },
   { id: "area", label: "Area" },
   { id: "baseline", label: "Baseline" },
+  { id: "renko", label: "Renko" },
+  { id: "kagi", label: "Kagi" },
+  { id: "pnf", label: "Point & Figure" },
 ];
 
 /** Panels the View menu shows or hides. Trade, Journal, Fundamentals and Options share one slot. */
@@ -23,6 +27,7 @@ interface Props {
   resolution: Resolution;
   chartType: ChartType;
   showVolume: boolean;
+  showVolumeProfile: boolean;
   showGrid: boolean;
   theme: "dark" | "light";
   indicatorCount: number;
@@ -33,6 +38,7 @@ interface Props {
   onResolution: (r: Resolution) => void;
   onChartType: (t: ChartType) => void;
   onToggleVolume: () => void;
+  onToggleVolumeProfile: () => void;
   onToggleGrid: () => void;
   onToggleTheme: () => void;
   onOpenIndicators: () => void;
@@ -114,6 +120,13 @@ export function Toolbar(props: Props) {
     { kind: "separator", id: "s-chart" },
     { kind: "label", id: "chart", label: "Chart" },
     { kind: "toggle", id: "volume", label: "Volume", checked: props.showVolume, onSelect: props.onToggleVolume },
+    {
+      kind: "toggle",
+      id: "volume-profile",
+      label: "Volume profile",
+      checked: props.showVolumeProfile,
+      onSelect: props.onToggleVolumeProfile,
+    },
     { kind: "toggle", id: "grid", label: "Grid", checked: props.showGrid, onSelect: props.onToggleGrid },
     { kind: "separator", id: "s-theme" },
     { kind: "label", id: "appearance", label: "Appearance" },

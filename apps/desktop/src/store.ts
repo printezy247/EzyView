@@ -36,6 +36,8 @@ export interface ChartState {
   resolution: Resolution;
   chartType: ChartType;
   showVolume: boolean;
+  /** Optional so layouts saved before it existed still load. */
+  showVolumeProfile?: boolean;
   showGrid: boolean;
   theme: "dark" | "light";
   indicators: ActiveIndicator[];
@@ -73,6 +75,7 @@ export function defaultChartState(): ChartState {
     resolution: "1D",
     chartType: "candles",
     showVolume: true,
+    showVolumeProfile: false,
     showGrid: true,
     theme: "dark",
     indicators: [],

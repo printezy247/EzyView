@@ -164,12 +164,14 @@ export default function App() {
         resolution={state.resolution}
         chartType={state.chartType}
         showVolume={state.showVolume}
+        showVolumeProfile={state.showVolumeProfile ?? false}
         showGrid={state.showGrid}
         indicatorCount={state.indicators.length}
         onSymbol={(symbol) => updateActive({ symbol })}
         onResolution={(resolution) => updateActive({ resolution })}
         onChartType={(chartType) => updateActive({ chartType })}
         onToggleVolume={() => updateActive({ showVolume: !state.showVolume })}
+        onToggleVolumeProfile={() => updateActive({ showVolumeProfile: !state.showVolumeProfile })}
         onToggleGrid={() => updateActive({ showGrid: !state.showGrid })}
         onToggleTheme={() => updateActive({ theme: state.theme === "dark" ? "light" : "dark" })}
         theme={state.theme}
@@ -200,6 +202,7 @@ export default function App() {
             resolution={state.resolution}
             chartType={state.chartType}
             showVolume={state.showVolume}
+            showVolumeProfile={state.showVolumeProfile ?? false}
             showGrid={state.showGrid}
             theme={state.theme}
             indicators={state.indicators}
