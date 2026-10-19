@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Candle } from "@ezyview/data-adapters";
+import type { TradingLine } from "@ezyview/chart-engine";
 import { ChartHost } from "./ChartHost";
 import { DrawingToolbar } from "./DrawingToolbar";
 import { IndicatorDialog } from "./IndicatorDialog";
@@ -9,9 +10,11 @@ import { TabBar } from "./TabBar";
 import { Toolbar } from "./Toolbar";
 import { AlertDialog } from "./AlertDialog";
 import { DepthOfMarket } from "./DepthOfMarket";
+import { TradingPanel } from "./TradingPanel";
 import { Watchlist } from "./Watchlist";
 import { useWorkspace } from "./store";
 import { loadHistory } from "./data";
+import { usePaperTicks, useTrading } from "./trading";
 
 export default function App() {
   const layout = useWorkspace((s) => s.activeLayout());
@@ -22,10 +25,13 @@ export default function App() {
   const removeAlert = useWorkspace((s) => s.removeAlert);
   const replayBar = useWorkspace((s) => s.replayBar);
   const setReplay = useWorkspace((s) => s.setReplay);
+  const positions = useTrading((s) => s.positions);
+  const orders = useTrading((s) => s.orders);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
   const [pineOpen, setPineOpen] = useState(false);
+  const [tradingOpen, setTradingOpen] = useState(true);
   const [pineBars, setPineBars] = useState<Candle[]>([]);
   const [historyBars, setHistoryBars] = useState(0);
   const [crosshairTime, setCrosshairTime] = useState<number | null>(null);
@@ -67,6 +73,30 @@ export default function App() {
 
   const { state } = layout;
 
+  // The engine only needs ticks where it has something at stake: an open
+  // position or a resting order, plus the chart's symbol while the ticket can
+  // be used to open one.
+  const exposure = new Set<string>(positions.map((p) => p.symbol));
+  for (const order of orders) exposure.add(order.symbol);
+  if (tradingOpen) exposure.add(state.symbol);
+  usePaperTicks([...exposure].join("|"));
+
+  // Entry/stop/target for the position on this chart, as constant price lines.
+  const tradingLines = useMemo(() => {
+    const position = positions.find((p) => p.symbol === state.symbol);
+    if (!position) return [];
+    const lines: TradingLine[] = [
+      { price: position.entryPrice, color: "#2962ff", title: position.side === "long" ? "LONG" : "SHORT" },
+    ];
+    if (position.stopLoss !== undefined) {
+      lines.push({ price: position.stopLoss, color: "#ef5350", title: "SL", dashed: true });
+    }
+    if (position.takeProfit !== undefined) {
+      lines.push({ price: position.takeProfit, color: "#26a69a", title: "TP", dashed: true });
+    }
+    return lines;
+  }, [positions, state.symbol]);
+
   return (
     <div className="flex h-full flex-col bg-[#0e1117] text-[#d1d4dc]">
       <TabBar />
@@ -89,6 +119,8 @@ export default function App() {
         onOpenPine={() => setPineOpen(true)}
         onToggleReplay={() => setReplay(replayBar === null ? 0 : null)}
         replayActive={replayBar !== null}
+        onToggleTrading={() => setTradingOpen((v) => !v)}
+        tradingActive={tradingOpen}
       />
 
       <div className="relative flex min-h-0 flex-1">
@@ -106,6 +138,7 @@ export default function App() {
             indicators={state.indicators}
             drawings={state.drawings}
             replayBar={replayBar}
+            tradingLines={tradingLines}
             onCrosshairTime={onCrosshairTime}
           />
           <Readout symbol={state.symbol} time={crosshairTime} />
@@ -115,6 +148,8 @@ export default function App() {
         <Watchlist onOpenAlerts={() => setAlertOpen(true)} />
         <DepthOfMarket symbol={state.symbol} precision={2} />
       </div>
+
+      {tradingOpen && <TradingPanel symbol={state.symbol} />}
 
       <ReplayBar totalBars={historyBars} />
 

@@ -30,6 +30,8 @@ interface Props {
   onOpenPine: () => void;
   onToggleReplay: () => void;
   replayActive: boolean;
+  onToggleTrading: () => void;
+  tradingActive: boolean;
   indicatorCount: number;
   theme: "dark" | "light";
 }
@@ -97,6 +99,18 @@ export function Toolbar(props: Props) {
       </button>
 
       <div className="mx-1 h-4 w-px bg-[#1e222d]" />
+
+      <button
+        type="button"
+        onClick={props.onToggleTrading}
+        className={
+          props.tradingActive
+            ? "rounded bg-[#2962ff] px-2 py-1 text-xs font-medium text-white"
+            : "rounded px-2 py-1 text-xs text-[#787b86] hover:bg-[#1e222d] hover:text-white"
+        }
+      >
+        Trade
+      </button>
 
       <Toggle label="Volume" on={props.showVolume} onClick={props.onToggleVolume} />
       <Toggle label="Grid" on={props.showGrid} onClick={props.onToggleGrid} />

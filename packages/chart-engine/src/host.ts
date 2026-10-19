@@ -56,6 +56,15 @@ export interface ClickInfo {
   y: number;
 }
 
+/** One constant level drawn across the price scale for the open position. */
+export interface TradingLine {
+  price: number;
+  color: string;
+  title: string;
+  /** Exits are dashed so the entry reads as the primary level. */
+  dashed?: boolean;
+}
+
 export interface EzyChartOptions {
   theme?: ChartTheme;
   chartType?: ChartType;
@@ -109,6 +118,9 @@ export class EzyChart {
   private markerLayer: SeriesMarker<Time>[] = [];
   /** v5 exposes markers as a series plugin, so it is bound to the main series. */
   private markerApi: ISeriesMarkersPluginApi<Time> | null = null;
+  /** Entry/stop/target levels for the open position, drawn as price lines. */
+  private tradingLines: TradingLine[] = [];
+  private priceLineApi: IPriceLine[] = [];
   private type: ChartType;
   private theme: ChartTheme;
   private showVolume: boolean;
@@ -226,6 +238,38 @@ export class EzyChart {
   setShowGrid(show: boolean): void {
     const color = show ? this.theme.grid : "transparent";
     this.chart.applyOptions({ grid: { vertLines: { color }, horzLines: { color } } });
+  }
+
+  /**
+   * Draw the open position's levels on the price scale.
+   *
+   * Price lines rather than a series: an entry/stop/target is a constant level,
+   * and giving each one a series would drag the price scale around with it.
+   */
+  setTradingLines(lines: TradingLine[]): void {
+    this.tradingLines = lines;
+    this.applyTradingLines();
+  }
+
+  private applyTradingLines(): void {
+    // Price lines belong to the series they were made from, which a chart-type
+    // switch or an unmount has already discarded.
+    const series = this.mainSeries as unknown as ISeriesApi<SeriesType, Time> | null;
+    for (const line of this.priceLineApi) series?.removePriceLine(line);
+    this.priceLineApi = [];
+    if (!series) return;
+    for (const line of this.tradingLines) {
+      this.priceLineApi.push(
+        series.createPriceLine({
+          price: line.price,
+          color: line.color,
+          lineWidth: 1,
+          lineStyle: line.dashed ? LineStyle.Dashed : LineStyle.Solid,
+          axisLabelVisible: true,
+          title: line.title,
+        }),
+      );
+    }
   }
 
   // --- indicators -----------------------------------------------------------
@@ -563,6 +607,7 @@ export class EzyChart {
     this.mainSeries.setData(toSeriesData(this.type, this.data));
     // Chart-type switches rebuild the series, which drops any markers on it.
     this.applyMarkers();
+    this.applyTradingLines();
   }
 
   private applyCandleColors(): void {

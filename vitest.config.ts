@@ -22,6 +22,7 @@ export default defineConfig({
       "@ezyview/drawing-tools": pkg("drawing-tools"),
       "@ezyview/journal": pkg("journal"),
       "@ezyview/pine-transpiler": pkg("pine-transpiler"),
+      "@ezyview/paper-trading": pkg("paper-trading"),
     },
   },
 });

@@ -15,6 +15,7 @@
     "@ezyview/drawing-tools": "*",
     "@ezyview/indicators": "*",
     "@ezyview/journal": "*",
+    "@ezyview/paper-trading": "*",
     "@ezyview/pine-transpiler": "*",
     "@tauri-apps/api": "^2.12.4",
     "@tauri-apps/plugin-sql": "^2.6.0",
