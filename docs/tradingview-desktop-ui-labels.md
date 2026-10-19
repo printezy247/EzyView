@@ -1,0 +1,374 @@
+# TradingView Desktop — UI label inventory (v3.4.1)
+
+Extracted from `resources/locales/en.json` of `tradingview_amd64.deb` (367 labels).
+Used as the feature-parity checklist for EzyView.
+
+## Labels
+
+- "So happy I spent $200 on trading signals" - said no trader ever.
+- APP DATA
+- About
+- Add to favorites
+- Add tools
+- Adjusting the interval updates it across all synced tabs with the same color tag
+- Ah. You've reached the limit of saved chart layouts in your plan. But no stress, our upgraded plans let you save multiple layouts, up to an unlimited amount - perfect if you want to revisit your market analysis at a moment's notice.
+- Alerts
+- All layouts
+- Allow
+- Allow access to the camera on this device
+- Allow access to the microphone on this device
+- Already granted access but still seeing this? Copy the secret key from the authentication page in your browser and then return here.
+- Always ask where to save files
+- Always do your research.
+- Always look first. Never rush into a trade or investment blindly.
+- App cache
+- App can't be updated due to an unsupported version of your operating system.
+- App onboarding...
+- App wasn't able to open your browser. Make sure the default browser is set in your system.
+- App's not allowed to access to your microphone
+- App's not allowed to access to your webcam
+- Application requests permission to {{permission}}
+- Are you sure you want to delete chart layout "{{layoutName}}" containing {{drawingsInfo}}? All information within this layout will be permanently lost.
+- Are you sure you want to delete chart layout "{{layoutName}}"? All information within this layout will be permanently lost.
+- As an alternative you can enter the following commands in a terminal window:
+- Auto-fill broker credentials
+- Auto-restore tickers and intervals
+- Back to defaults
+- Bonds
+- CAMERA
+- CEX pairs
+- CREDENTIALS AND CROSSHAIR
+- CROSSHAIR
+- Calendars
+- Camera
+- Cancel
+- Change
+- Changing the point of time in a chart will sync this change to all tabs marked with the same color tag
+- Changing the symbol updates it across all synced tabs with the same color tag
+- Check your internet connection and try to delete it again
+- Check your internet connection and try to save changes again.
+- Checking for updates
+- Clear cache
+- Click to quit the app
+- Close
+- Close all
+- Close anyway
+- Close other tabs
+- Close tab?
+- Close tabs to the right
+- Close this group?
+- Close window
+- Close without saving
+- Collapse
+- Color theme
+- Community
+- Community ideas
+- Cookies Policy
+- Copy
+- Copy chart layout
+- Copy image
+- Copy image address
+- Copy link
+- Copyright
+- Couldn't delete layout
+- Create
+- Create new layout
+- Crosshair sync
+- Crypto
+- Crypto Heatmap
+- Crypto coins
+- Customize tab title...
+- Cut
+- D
+- DEX pairs
+- DOWNLOADS
+- Dark
+- Date modified (newest first)
+- Date modified (oldest first)
+- Date range
+- Decline
+- Delete layout?
+- Delete permanently
+- Detach tab
+- Developer tools
+- Dips happen.
+- Disable hardware acceleration
+- Dividend Calendar
+- Do your own research, plan ahead, and think for the long term.
+- Don't have an account?
+- Duplicate tab
+- ETF Heatmap
+- ETFs
+- Earnings Calendar
+- Economic Calendar
+- Edit
+- Enter a new chart layout name
+- Error details: 
+- Error during the update. Application cannot be updated. Please try again or contact the support team.
+- Everyone started somewhere.
+- Exit
+- Exit TradingView
+- Exit full screen
+- Explore features
+- Export failed
+- Factory reset
+- File downloaded
+- File export was cancelled
+- File export was interrupted
+- Fundamental Graphs
+- General
+- Go back
+- Go forward
+- Good traders try to avoid losing money. Great traders accept they will lose money.
+- Got it
+- Grant access
+- Heatmaps
+- Help Center
+- Help Center and Support
+- Help and resources
+- Hide TradingView
+- Hide others
+- Hide tabs in full screen mode
+- House rules
+- How to feel awful: stare at your account / trades all day.
+- IPO Calendar
+- Ideal for a thorough study of the market, your crosshairs will move in sync across all your displays to help you streamline your trading workflow.
+- If something went wrong,
+- In the first instance, the Desktop app matches its appearance to your system's existing theme, but you're welcome to change it here.
+- In your browser, grant this application access to your TradingView account and come back.
+- Increase your chart layout limit
+- Indicators
+- Indicators and strategies
+- Individual tools
+- Input level
+- Interval
+- It's okay to love trading.
+- Keyboard shortcuts
+- Last price
+- Layout name
+- Layout name (A to Z)
+- Layout name (Z to A)
+- Learn Spelling
+- Learn more
+- Let's start with the theme
+- Libraries we use
+- Light
+- M
+- MCP Server
+- MICROPHONE
+- Macro Maps
+- Main menu
+- Make a copy...
+- Make your workspace yours. Keep only the tools you need.
+- Markets
+- Max volume, it might be loud
+- Maximize
+- Microphone
+- Minimize
+- Modifying the date range updates it across all tabs synced with the same color tag
+- More windows mean more options.
+- Move tab
+- My layout
+- NOTIFICATIONS
+- Native multi-monitor support
+- Network
+- New Tab
+- New tab
+- New version is downloading
+- New window
+- News
+- News Flow
+- Next
+- No alarms and no surprises, please
+- No charts match your criteria
+- Not being stressed from a loss is the real flex.
+- Notices & Acknowledgements
+- ON FULLSCREEN
+- ON STARTUP
+- Ok
+- Only available on chart tabs
+- Oops, something went wrong
+- Open Crash View
+- Open Tab Monitor
+- Open chart
+- Open in new tab
+- Open in new window
+- Open link from clipboard
+- Open link in browser
+- Open link in new tab
+- Open link in new window
+- Open new window
+- Options
+- Options Chain
+- Options Strategy Builder
+- Options Strategy Finder
+- Options Volatility
+- Options Volume
+- PERFORMANCE
+- PROXY SETTINGS
+- Page could not be loaded. Please check your internet connection and try again.
+- Password
+- Paste
+- Pick your favorites to build your ideal workspace.
+- Pin tab
+- Pine
+- Pine Screener
+- Plan for the long term.
+- Plan the trade, see the trade, feel the trade.
+- Please check your internet connection or try again later
+- Poor signal means delays. Leave the woodland for flawless updates.
+- Port
+- Portfolios
+- Press ESC to exit full screen
+- Press F11 to exit full screen
+- Prev
+- Price change %
+- Price change icon
+- Proxy mode is currently turned on. Try to turn off proxy mode.
+- Proxy protocol
+- Quit
+- Quit TradingView
+- Quit anyway
+- R
+- Redo
+- Relaunch
+- Relaunch app
+- Relaunch for changes to take effect
+- Relaunch to update
+- Relaunch to update the app
+- Relaunching the app to install new version
+- Release notes
+- Reload
+- Reload tab
+- Reload tab?
+- Reload without saving
+- Remove from favorites
+- Remove layout
+- Reopen closed tab
+- Reopen closed window
+- Request a feature
+- Reset to 100%
+- Reset to default
+- Restore
+- Return to my layouts
+- Revenue Calendar
+- Rule #1 - Don't get rugged
+- SOUND
+- Save
+- Save and close
+- Save and reload
+- Save credentials?
+- Save image
+- Saving changes...
+- Screeners
+- Search
+- Search results
+- See all results
+- Select All
+- Select all
+- Server IP address or domain name
+- Service
+- Set up TradingView MCP Server
+- Settings
+- Settings...
+- Share the screen
+- Show in folder
+- Sign In
+- Sign in
+- Sign in with browser
+- Sign up
+- Sign up for free
+- Simplify your life. Good traders have simple lives.
+- Something went wrong
+- Sometimes the best trades are the ones you did not take.
+- Stock Heatmap
+- Stocks
+- Stop buying lottery tickets.
+- Supercharts
+- Switch to dark theme and click here
+- Symbol
+- Symbol logo
+- Sync crosshair across windows
+- System
+- T
+- TAB TITLE (DRAG TO REORDER)
+- THEME
+- Tab linking
+- Tab title
+- Tabs
+- Tabs linking by symbol
+- The content you're looking for might have been removed or it's no longer available. Please close this tab or explore other features.
+- The market doesn't care about you or your position.
+- The trend is your friend.
+- There are only three things you can do in markets: 1. Buy 2. Sell 3. Wait.
+- There are unsaved changes on your chart layout. You will lose them if you close the tab.
+- There are unsaved changes on your charts layouts. You will lose them if you close the group.
+- This field is required
+- This is our attribution notice on third party software, which may be included in some sections of our Libraries. Also, we have to say a big thanks to everybody in the open source community for all their help, sweat and hard work.
+- This link isn't active anymore
+- This tab crashed due to an error
+- Ticker
+- Time
+- To enable access to the microphone and webcam, please open your software center and give the appropriate permissions to TradingView.
+- Toggle debug backdrop
+- Toggle developer tools
+- Toggle full screen
+- Trader
+- Trading ideas
+- Trading more ≠ more profits.
+- TradingView Desktop allows you to set up and restore your multi-monitor workspace. Create a new window with
+- TradingView is up to date
+- TradingView wants to provide access to your screen. Select the window you want to show.
+- Try again
+- Turn off Tokyo Night
+- Turn on Tokyo Night
+- Unable to update the app
+- Undo
+- Unpin tab
+- Update
+- Update saved password for
+- Update the app
+- Upgrade now
+- Use Shift+click or Alt+F4 to close only this window
+- Use a proxy server
+- Use system notifications for alerts
+- Username
+- Video & Audio
+- Video is being recorded. Are you sure you want to leave this page?
+- View
+- W
+- Weak traders focus on results - Strong traders focus on process.
+- Welcome to TradingView
+- When in doubt, zoom out.
+- When you set the same color for different tabs, any changes to the symbol will automatically load on all tabs of that same color.
+- When you think you've got the keys to the market, they change the locks.
+- Window
+- With our free account you can open as many windows as you like and get the most out of your multi-monitor setup. Don't have an account yet? Click the button below to get started and start working with multiple windows.
+- Workspace setup and tips
+- Yield Curves
+- You can reload the tab and pick up where you left off. If the tab crashes too often, check out {startLink}this troubleshooting guide{endLink}.
+- You haven't selected any tools yet
+- Zoom
+- Zoom +
+- Zoom -
+- across {{symbols}} symbol_one
+- across {{symbols}} symbol_other
+- and retry
+- day
+- display capture
+- h
+- hour
+- m
+- media
+- minute
+- month
+- no available devices
+- or just detach the tab.
+- range
+- s
+- second
+- step back
+- tick
+- week
+- {{drawings}} drawing_one
+- {{drawings}} drawing_other
