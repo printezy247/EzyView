@@ -1,5 +1,7 @@
 import { create } from "zustand";
-import type { Resolution } from "@ezyview/data-adapters";
+import type { Candle, Resolution } from "@ezyview/data-adapters";
+import { evaluateAlert, pushHistory } from "@ezyview/data-adapters";
+import type { AlertCondition, AlertFrequency, AlertHistory, PriceAlert } from "@ezyview/data-adapters";
 import type { ChartType } from "@ezyview/chart-engine";
 import { DARK_THEME, LIGHT_THEME } from "@ezyview/chart-engine";
 import type { Drawing, DrawingToolId } from "@ezyview/drawing-tools";
@@ -25,6 +27,19 @@ export interface ChartState {
   theme: "dark" | "light";
   indicators: ActiveIndicator[];
   drawings: Drawing[];
+}
+
+/** A symbol tracked in the watchlist panel. */
+export interface WatchEntry {
+  symbol: string;
+  ticker: string;
+  description: string;
+  assetClass: string;
+  precision: number;
+  /** Last traded price, updated by the feed. */
+  price: number | null;
+  /** Percent change over the current session. */
+  changePct: number | null;
 }
 
 /** A named, restorable chart. Tabs in the tab bar map 1:1 to layouts. */
@@ -68,6 +83,12 @@ interface WorkspaceStore {
   activeTool: DrawingToolId | null;
   /** Layout ids that have unsaved local edits. */
   dirty: Record<string, boolean>;
+  /** All price alerts across layouts. */
+  alerts: PriceAlert[];
+  /** Per-alert rolling close history, newest last. */
+  alertHistory: AlertHistory;
+  /** Symbols tracked in the watchlist panel. */
+  watchlist: WatchEntry[];
 
   activeLayout(): Layout;
   setActiveLayout(id: string): void;
@@ -85,6 +106,15 @@ interface WorkspaceStore {
   setDrawings(drawings: Drawing[]): void;
   setActiveTool(tool: DrawingToolId | null): void;
 
+  addAlert(symbol: string, condition: AlertCondition, frequency: AlertFrequency, message: string): void;
+  removeAlert(id: string): void;
+  /** Fold one candle into every matching alert; returns ids that just fired. */
+  applyCandle(symbol: string, candle: Candle, barClosed: boolean): string[];
+
+  addToWatchlist(entry: WatchEntry): void;
+  removeFromWatchlist(symbol: string): void;
+  updateWatchPrice(symbol: string, price: number, changePct: number | null): void;
+
   markSaved(id: string): void;
 }
 
@@ -95,6 +125,9 @@ export const useWorkspace = create<WorkspaceStore>((set, get) => ({
   activeLayoutId: initial[0]!.id,
   activeTool: null,
   dirty: {},
+  alerts: [],
+  alertHistory: {},
+  watchlist: [],
 
   activeLayout: () => {
     const { layouts, activeLayoutId } = get();
@@ -194,6 +227,56 @@ export const useWorkspace = create<WorkspaceStore>((set, get) => ({
     })),
 
   setActiveTool: (tool) => set({ activeTool: tool }),
+
+  addAlert: (symbol, condition, frequency, message) =>
+    set((s) => ({
+      alerts: [
+        ...s.alerts,
+        {
+          id: uid(),
+          symbol,
+          message,
+          condition,
+          frequency,
+          state: "armed",
+          createdAt: Date.now(),
+        },
+      ],
+    })),
+
+  removeAlert: (id) =>
+    set((s) => {
+      const { [id]: _dropped, ...rest } = s.alertHistory;
+      return { alerts: s.alerts.filter((a) => a.id !== id), alertHistory: rest };
+    }),
+
+  applyCandle: (symbol, candle, barClosed) => {
+    const fired: string[] = [];
+    let alerts = get().alerts;
+    let history = get().alertHistory;
+    alerts = alerts.map((alert) => {
+      if (alert.symbol !== symbol) return alert;
+      const closes = history[alert.id] ?? [];
+      const next = evaluateAlert(alert, closes, candle, barClosed);
+      history = pushHistory(history, alert.id, candle.close);
+      if (!next) return alert;
+      if (next.state === "triggered" && alert.state !== "triggered") fired.push(next.id);
+      return next;
+    });
+    set({ alerts, alertHistory: history });
+    return fired;
+  },
+
+  addToWatchlist: (entry) =>
+    set((s) => (s.watchlist.some((w) => w.symbol === entry.symbol) ? s : { watchlist: [...s.watchlist, entry] })),
+
+  removeFromWatchlist: (symbol) =>
+    set((s) => ({ watchlist: s.watchlist.filter((w) => w.symbol !== symbol) })),
+
+  updateWatchPrice: (symbol, price, changePct) =>
+    set((s) => ({
+      watchlist: s.watchlist.map((w) => (w.symbol === symbol ? { ...w, price, changePct } : w)),
+    })),
 
   markSaved: (id) => set((s) => ({ dirty: { ...s.dirty, [id]: false } })),
 }));

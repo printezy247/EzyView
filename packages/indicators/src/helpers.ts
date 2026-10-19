@@ -156,3 +156,107 @@ export function round(values: SeriesValue[], precision = 6): SeriesValue[] {
   const f = 10 ** precision;
   return values.map((v) => (v === null ? null : Math.round(v * f) / f));
 }
+
+/** Weighted moving average: linear weights, most recent sample weighted `period`. */
+export function wma(values: number[], period: number): SeriesValue[] {
+  const out: SeriesValue[] = Array.from({ length: values.length }, () => null);
+  const denom = (period * (period + 1)) / 2;
+  if (period <= 0) return out;
+  for (let i = period - 1; i < values.length; i++) {
+    let sum = 0;
+    for (let j = 0; j < period; j++) sum += values[i - j]! * (period - j);
+    out[i] = sum / denom;
+  }
+  return out;
+}
+
+/** Hull MA: WMA(2*WMA(n/2) - WMA(n), sqrt(n)). Responsive with little lag. */
+export function hma(values: number[], period: number): SeriesValue[] {
+  const half = Math.max(1, Math.floor(period / 2));
+  const sqrtP = Math.max(1, Math.round(Math.sqrt(period)));
+  const raw = map2(
+    map2(wma(values, half), wma(values, period), (a, b) => 2 * a - b),
+    wma(values, sqrtP),
+    (a, b) => a + b,
+  );
+  // Map2 output feeds WMA; nulls become 0 so the window math stays aligned.
+  return wma(fillForward(raw), sqrtP).map((v, i) => (raw[i] === null && i < period ? null : v));
+}
+
+/** Arnaud Legoux MA — gaussian-weighted, configurable lag/sigma tradeoff. */
+export function alma(values: number[], period: number, offset = 0.85, sigma = 6): SeriesValue[] {
+  const out: SeriesValue[] = Array.from({ length: values.length }, () => null);
+  if (period <= 0) return out;
+  const m = offset * (period - 1);
+  const s = period / sigma;
+  let norm = 0;
+  const weights: number[] = [];
+  for (let j = 0; j < period; j++) {
+    const w = Math.exp(-((j - m) ** 2) / (2 * s * s));
+    weights.push(w);
+    norm += w;
+  }
+  for (let i = period - 1; i < values.length; i++) {
+    let sum = 0;
+    for (let j = 0; j < period; j++) sum += values[i - j]! * weights[j]!;
+    out[i] = sum / norm;
+  }
+  return out;
+}
+
+/** Zero-lag EMA: removes dominant-cycle lag by re-centering the input. */
+export function zlema(values: number[], period: number): SeriesValue[] {
+  const lag = Math.floor((period - 1) / 2);
+  const src = values.map((v, i) => (i < lag ? v : 2 * v - values[i - lag]!));
+  return ema(src, period);
+}
+
+/** Least-squares slope over a trailing `period` window, per bar. */
+export function linregSlope(values: number[], period: number): SeriesValue[] {
+  const out: SeriesValue[] = Array.from({ length: values.length }, () => null);
+  if (period <= 1) return out;
+  // Σx and Σx² are constants for a fixed window of x = 0..period-1.
+  const sumX = (period * (period - 1)) / 2;
+  const sumXX = (period * (period - 1) * (2 * period - 1)) / 6;
+  const denom = period * sumXX - sumX * sumX;
+  for (let i = period - 1; i < values.length; i++) {
+    let sumY = 0;
+    let sumXY = 0;
+    for (let j = 0; j < period; j++) {
+      const y = values[i - j]!;
+      sumY += y;
+      sumXY += j * y;
+    }
+    out[i] = (period * sumXY - sumX * sumY) / denom;
+  }
+  return out;
+}
+
+/** Sum of `values` over a rolling window. */
+export function sumRolling(values: number[], period: number): SeriesValue[] {
+  const out: SeriesValue[] = Array.from({ length: values.length }, () => null);
+  let sum = 0;
+  for (let i = 0; i < values.length; i++) {
+    sum += values[i]!;
+    if (i >= period) sum -= values[i - period]!;
+    if (i >= period - 1) out[i] = sum;
+  }
+  return out;
+}
+
+/** True when every element of `a` exceeds its partner in `b` (both warm). */
+export function greater(a: SeriesValue[], b: SeriesValue[]): boolean[] {
+  return a.map((x, i) => {
+    const y = b[i] ?? null;
+    return x !== null && y !== null && x > y;
+  });
+}
+
+/** Cumulative sum, treating leading nulls as zero. */
+export function cumSum(values: SeriesValue[]): number[] {
+  let total = 0;
+  return values.map((v) => {
+    if (typeof v === "number") total += v;
+    return total;
+  });
+}

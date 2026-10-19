@@ -91,6 +91,25 @@ describe("hitTest", () => {
     expect(hitTest(hidden, trendScreen, { x: 0, y: 100 }, 6)).toBeNull();
   });
 
+  it("hit-tests a 3-anchor tool across all three points", () => {
+    // Regression: triangle/long/short previously bboxed only the first two
+    // anchors, so the third corner was unreachable.
+    const triangle = line("t3", "triangle", [
+      { time: 0, price: 100 },
+      { time: 10, price: 100 },
+      { time: 5, price: 90 },
+    ]);
+    const screen = [
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+      { x: 50, y: 100 },
+    ];
+    // Body hit, away from every anchor.
+    expect(hitTest(triangle, screen, { x: 50, y: 60 }, 6)?.handle).toBe(-1);
+    // The third anchor is grabbable — under the old 2-point bbox this missed.
+    expect(hitTest(triangle, screen, { x: 50, y: 98 }, 6)?.handle).toBe(2);
+  });
+
   it("returns the topmost drawing from a layer stack", () => {
     const layers = [
       { drawing: line("a", "horizontal_line", [{ time: 0, price: 1 }]), screen: [{ x: 0, y: 50 }] },

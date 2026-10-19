@@ -4,14 +4,21 @@ import { DrawingToolbar } from "./DrawingToolbar";
 import { IndicatorDialog } from "./IndicatorDialog";
 import { TabBar } from "./TabBar";
 import { Toolbar } from "./Toolbar";
+import { AlertDialog } from "./AlertDialog";
+import { DepthOfMarket } from "./DepthOfMarket";
+import { Watchlist } from "./Watchlist";
 import { useWorkspace } from "./store";
 
 export default function App() {
   const layout = useWorkspace((s) => s.activeLayout());
   const updateActive = useWorkspace((s) => s.updateActive);
   const activeTool = useWorkspace((s) => s.activeTool);
+  const alerts = useWorkspace((s) => s.alerts);
+  const addAlert = useWorkspace((s) => s.addAlert);
+  const removeAlert = useWorkspace((s) => s.removeAlert);
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [alertOpen, setAlertOpen] = useState(false);
   const [crosshairTime, setCrosshairTime] = useState<number | null>(null);
 
   const onCrosshairTime = useCallback((t: number | null) => setCrosshairTime(t), []);
@@ -67,9 +74,21 @@ export default function App() {
           <Readout symbol={state.symbol} time={crosshairTime} />
           {activeTool && <ToolHint tool={activeTool} />}
         </div>
+
+        <Watchlist onOpenAlerts={() => setAlertOpen(true)} />
+        <DepthOfMarket symbol={state.symbol} precision={2} />
       </div>
 
       <IndicatorDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
+      <AlertDialog
+        open={alertOpen}
+        onClose={() => setAlertOpen(false)}
+        alerts={alerts.filter((a) => a.symbol === state.symbol)}
+        onAdd={addAlert}
+        onRemove={removeAlert}
+        symbol={state.symbol}
+        lastPrice={null}
+      />
 
       <footer className="flex h-6 shrink-0 items-center gap-4 border-t border-[#1e222d] px-3 text-[11px] text-[#787b86]">
         <span className="flex items-center gap-1.5">
@@ -96,10 +115,22 @@ function Readout({ symbol, time }: { symbol: string; time: number | null }) {
 
 const TOOL_HINTS: Record<string, string> = {
   trend_line: "Click two points",
+  ray: "Click the origin and a direction",
+  extended_line: "Click two points on the line",
   horizontal_line: "Click once",
   vertical_line: "Click once",
+  parallel_channel: "Click the base start, base end, then offset",
   rectangle: "Click two corners",
+  ellipse: "Click two opposite corners of the bounding box",
+  triangle: "Click three corners",
   fib_retracement: "Click the swing start and end",
+  fib_extension: "Click start, end, then the projection anchor",
+  arrow: "Click the tail and the head",
+  text: "Click where the text should sit",
+  brush: "Drag to paint, release to commit",
+  measure: "Click the start and end of the range",
+  long_position: "Click entry, stop, then target",
+  short_position: "Click entry, stop, then target",
 };
 
 function ToolHint({ tool }: { tool: string }) {
