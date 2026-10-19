@@ -57,6 +57,8 @@ export interface Drawing {
   text?: string;
   locked?: boolean;
   hidden?: boolean;
+  /** User label shown in the object tree; falls back to the tool name. */
+  name?: string;
 }
 
 export const DEFAULT_DRAWING_STYLE: DrawingStyle = {
