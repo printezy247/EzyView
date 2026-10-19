@@ -87,7 +87,7 @@ export function OrderTicket({ symbol }: Props) {
   };
 
   return (
-    <div className="flex w-64 shrink-0 flex-col gap-3 border-r border-[#1e222d] px-3 py-3">
+    <div className="flex min-h-0 w-64 shrink-0 flex-col gap-3 overflow-y-auto border-r border-[#1e222d] px-3 py-3">
       <div className="flex items-center justify-between">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-[#787b86]">Order</h2>
         <span className="text-[10px] text-[#434651]">{ticker}</span>

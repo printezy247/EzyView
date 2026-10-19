@@ -643,6 +643,9 @@ export class EzyChart {
   private ensureVolume(): void {
     if (this.volumeSeries) return;
     this.volumeSeries = this.chart.addSeries(HistogramSeries, {
+      // Own overlay scale: sharing the price scale would drag it down to 0 and
+      // the 0.82 top margin below would squash the candles into a flat line.
+      priceScaleId: "",
       priceLineVisible: false,
       lastValueVisible: false,
       priceFormat: { type: "volume" },
