@@ -79,7 +79,8 @@ for dividends (if that key is set) instead.
    Your key appears on the dashboard (<https://finnhub.io/dashboard>) as "API key". Copy it.
 2. **Alpha Vantage key**: go to <https://www.alphavantage.co/support/#api-key>, fill in the short
    form (choose "Individual" / "Investor"), click **GET FREE API KEY** and copy the key it shows.
-3. Open EzyView, open the **Fundamentals** panel, and click **API keys** (key icon, top right of the panel).
+3. Open EzyView and choose **Analysis → Data provider API keys…** (or press `Ctrl+K` and type "api keys",
+   or click **API keys** at the top right of the Fundamentals panel).
 4. Paste each key into its box and click **Save**. "Key saved · live" means it worked.
 5. Close the dialog. The tabs reload with live data. Pick a stock symbol (for example `AAPL`) for
    earnings, profile and dividends; crypto and forex symbols get crypto/forex news only.

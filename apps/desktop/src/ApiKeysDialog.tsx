@@ -1,14 +1,7 @@
 import { useState } from "react";
 import { KeyRound } from "lucide-react";
-import type { ApiKeyName, ApiKeys } from "@ezyview/fundamentals";
-import { keyringAvailable, saveApiKey } from "./apiKeys";
-
-interface Props {
-  keys: ApiKeys;
-  onClose: () => void;
-  /** Called after a key was saved or removed, so the panel can reload. */
-  onChanged: () => void;
-}
+import type { ApiKeyName } from "@ezyview/fundamentals";
+import { keyringAvailable, saveApiKey, useApiKeys } from "./apiKeys";
 
 const PROVIDERS: { name: ApiKeyName; label: string; signup: string; covers: string; limit: string }[] = [
   {
@@ -28,7 +21,9 @@ const PROVIDERS: { name: ApiKeyName; label: string; signup: string; covers: stri
 ];
 
 /** Enter or remove provider API keys. Keys go straight to the OS keyring. */
-export function ApiKeysDialog({ keys, onClose, onChanged }: Props) {
+export function ApiKeysDialog() {
+  const { keys, closeDialog: onClose, reload } = useApiKeys();
+  const onChanged = () => void reload();
   const canStore = keyringAvailable();
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>

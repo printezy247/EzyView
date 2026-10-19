@@ -8,9 +8,8 @@ import {
   runScreener,
   scanUniverse,
 } from "@ezyview/fundamentals";
-import type { ApiKeys, FundamentalsSources, ScreenerField, ScreenerRow, SourceSlot } from "@ezyview/fundamentals";
-import { ApiKeysDialog } from "./ApiKeysDialog";
-import { loadApiKeys } from "./apiKeys";
+import type { FundamentalsSources, ScreenerField, ScreenerRow, SourceSlot } from "@ezyview/fundamentals";
+import { useApiKeys } from "./apiKeys";
 import { market, tickerOf } from "./data";
 
 interface Props {
@@ -44,28 +43,13 @@ const tone = (v: number): string => (v >= 0 ? "text-[#26a69a]" : "text-[#ef5350]
 /** Calendar, news, earnings, IPOs, dividends, screener and heatmap in one bottom panel. */
 export function FundamentalsPanel({ symbol, onClose, onPickSymbol }: Props) {
   const [tab, setTab] = useState<Tab>("calendar");
-  const [keys, setKeys] = useState<ApiKeys>({});
-  const [keyError, setKeyError] = useState<string | null>(null);
-  const [keysVersion, setKeysVersion] = useState(0);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const keys = useApiKeys((s) => s.keys);
+  const keyError = useApiKeys((s) => s.error);
+  const openApiKeys = useApiKeys((s) => s.openDialog);
 
-  useEffect(() => {
-    let cancelled = false;
-    loadApiKeys()
-      .then((k) => {
-        if (cancelled) return;
-        setKeys(k);
-        setKeyError(null);
-      })
-      .catch((err: unknown) => !cancelled && setKeyError(`Could not read the system keyring: ${String(err)}`));
-    return () => {
-      cancelled = true;
-    };
-  }, [keysVersion]);
-
-  const sources = useMemo(() => buildSources(keys), [keys]);
-  // Bumps whenever the providers change so every tab reloads.
-  const src = { sources, version: `${keysVersion}:${Object.values(sources.live).join(",")}` };
+  // A new keys object means a key was saved or removed: rebuild and reload every tab.
+  const src = useMemo(() => ({ sources: buildSources(keys), version: String(Math.random()) }), [keys]);
+  const sources = src.sources;
   const active = TABS.find((t) => t.id === tab)!;
 
   return (
@@ -92,7 +76,7 @@ export function FundamentalsPanel({ symbol, onClose, onPickSymbol }: Props) {
         <SourceBadge slots={active.slots} live={sources.live} keyError={keyError} />
         <button
           type="button"
-          onClick={() => setSettingsOpen(true)}
+          onClick={openApiKeys}
           className="ml-auto flex items-center gap-1 rounded px-2 py-1 text-[#787b86] hover:bg-[#1e222d] hover:text-white"
         >
           <KeyRound size={12} aria-hidden />
@@ -116,9 +100,6 @@ export function FundamentalsPanel({ symbol, onClose, onPickSymbol }: Props) {
         {tab === "screener" && <ScreenerTab onPick={onPickSymbol} />}
         {tab === "heatmap" && <HeatmapTab onPick={onPickSymbol} />}
       </div>
-      {settingsOpen && (
-        <ApiKeysDialog keys={keys} onClose={() => setSettingsOpen(false)} onChanged={() => setKeysVersion((v) => v + 1)} />
-      )}
     </section>
   );
 }
