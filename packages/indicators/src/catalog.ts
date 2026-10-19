@@ -3,12 +3,12 @@ import { change, ema, highest, lowest, map2, rma, round, sma, stdev, trueRange }
 
 type Params = Record<string, number | boolean | string>;
 
-const num = (params: Params, id: string, fallback: number): number => {
+export const num = (params: Params, id: string, fallback: number): number => {
   const v = params[id];
   return typeof v === "number" && Number.isFinite(v) ? v : fallback;
 };
 
-const res = (id: string, name: string, values: SeriesValue[], plots?: Record<string, SeriesValue[]>): SeriesResult => ({
+export const res = (id: string, name: string, values: SeriesValue[], plots?: Record<string, SeriesValue[]>): SeriesResult => ({
   id,
   name,
   values: round(values),
@@ -16,7 +16,7 @@ const res = (id: string, name: string, values: SeriesValue[], plots?: Record<str
 });
 
 /** Price source by id, matching TV's source selector. */
-function source(data: { close: number[]; open: number[]; high: number[]; low: number[]; hl2?: number[] }, id: string): number[] {
+export function source(data: { close: number[]; open: number[]; high: number[]; low: number[]; hl2?: number[] }, id: string): number[] {
   switch (id) {
     case "open":
       return data.open;
@@ -35,7 +35,7 @@ function source(data: { close: number[]; open: number[]; high: number[]; low: nu
   }
 }
 
-const srcParam = (def: string) => ({
+export const srcParam = (def: string) => ({
   id: "source",
   label: "Source",
   type: "source" as const,

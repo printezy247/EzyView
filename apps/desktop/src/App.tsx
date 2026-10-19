@@ -96,10 +96,22 @@ function Readout({ symbol, time }: { symbol: string; time: number | null }) {
 
 const TOOL_HINTS: Record<string, string> = {
   trend_line: "Click two points",
+  ray: "Click the origin and a direction",
+  extended_line: "Click two points on the line",
   horizontal_line: "Click once",
   vertical_line: "Click once",
+  parallel_channel: "Click the base start, base end, then offset",
   rectangle: "Click two corners",
+  ellipse: "Click two opposite corners of the bounding box",
+  triangle: "Click three corners",
   fib_retracement: "Click the swing start and end",
+  fib_extension: "Click start, end, then the projection anchor",
+  arrow: "Click the tail and the head",
+  text: "Click where the text should sit",
+  brush: "Drag to paint, release to commit",
+  measure: "Click the start and end of the range",
+  long_position: "Click entry, stop, then target",
+  short_position: "Click entry, stop, then target",
 };
 
 function ToolHint({ tool }: { tool: string }) {

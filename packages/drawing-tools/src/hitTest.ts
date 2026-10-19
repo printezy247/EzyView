@@ -42,11 +42,8 @@ export function hitTest(drawing: Drawing, screen: ScreenPoint[], click: ScreenPo
       return Math.abs(click.x - screen[0]!.x) <= tol ? { id: drawing.id, handle: -1 } : null;
     }
     case "rectangle":
-    case "triangle":
     case "ellipse":
-    case "measure":
-    case "long_position":
-    case "short_position": {
+    case "measure": {
       if (screen.length < 2) return null;
       return insideRect(click, screen[0]!, screen[1]!, tol) ? { id: drawing.id, handle: -1 } : null;
     }
