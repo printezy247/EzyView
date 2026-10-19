@@ -1,4 +1,12 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
+
+/** Resolve a workspace package's entry point to a real filesystem path.
+ *
+ * `new URL(...).pathname` URL-encodes spaces, so it breaks in any directory
+ * whose name contains one. `fileURLToPath` decodes correctly.
+ */
+const pkg = (name: string): string => fileURLToPath(new URL(`./packages/${name}/src/index.ts`, import.meta.url));
 
 export default defineConfig({
   test: {
@@ -8,12 +16,12 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@ezyview/data-adapters": new URL("./packages/data-adapters/src/index.ts", import.meta.url).pathname,
-      "@ezyview/indicators": new URL("./packages/indicators/src/index.ts", import.meta.url).pathname,
-      "@ezyview/chart-engine": new URL("./packages/chart-engine/src/index.ts", import.meta.url).pathname,
-      "@ezyview/drawing-tools": new URL("./packages/drawing-tools/src/index.ts", import.meta.url).pathname,
-      "@ezyview/journal": new URL("./packages/journal/src/index.ts", import.meta.url).pathname,
-      "@ezyview/pine-transpiler": new URL("./packages/pine-transpiler/src/index.ts", import.meta.url).pathname,
+      "@ezyview/data-adapters": pkg("data-adapters"),
+      "@ezyview/indicators": pkg("indicators"),
+      "@ezyview/chart-engine": pkg("chart-engine"),
+      "@ezyview/drawing-tools": pkg("drawing-tools"),
+      "@ezyview/journal": pkg("journal"),
+      "@ezyview/pine-transpiler": pkg("pine-transpiler"),
     },
   },
 });

@@ -9,14 +9,20 @@ import {
   LineSeries,
   LineStyle,
   createChart,
+  createSeriesMarkers,
   type IChartApi,
   type IPriceLine,
   type ISeriesApi,
+  type ISeriesMarkersPluginApi,
+  type SeriesMarker,
+  type SeriesType,
+  type Time,
   type UTCTimestamp,
 } from "lightweight-charts";
 import type { Candle } from "@ezyview/data-adapters";
 import type { IndicatorDef, SeriesValue } from "@ezyview/indicators";
 import type { Drawing, ScreenPoint } from "@ezyview/drawing-tools";
+import { BgBandsPrimitive } from "./bands.js";
 import { DrawingsPrimitive } from "./drawings.js";
 import { DARK_THEME, colorAt, type ChartTheme } from "./theme.js";
 
@@ -27,6 +33,20 @@ export interface IndicatorInstance {
   def: IndicatorDef;
   params: Record<string, number | boolean | string>;
   colorIndex: number;
+}
+
+/** One output of a compiled Pine script, already coerced to chart-ready values. */
+export interface ScriptPlotSpec {
+  /** Stable across re-runs of the same script: `<scriptId>:<site>`. */
+  uid: string;
+  title: string;
+  /** One entry per bar, aligned to the candle series; null = `na`. */
+  values: SeriesValue[];
+  color: string;
+  linewidth: number;
+  style: "line" | "histogram" | "cross" | "shape" | "circle" | "triangle";
+  /** `overlay=false` gives the plot its own pane instead of sharing price. */
+  overlay: boolean;
 }
 
 export interface ClickInfo {
@@ -55,6 +75,18 @@ const LEVEL_LINES: Record<string, number[]> = {
 
 const PANE_HEIGHT = 140;
 
+/** Plot styles rendered as bar markers rather than a value series. */
+const MARKER_STYLES = new Set<ScriptPlotSpec["style"]>(["shape", "circle", "triangle", "cross"]);
+
+/** Pine line widths are unbounded; the chart only draws 1–4 px. */
+function toLineWidth(width: number): 1 | 2 | 3 | 4 {
+  const n = Math.trunc(width);
+  if (n <= 1) return 1;
+  if (n === 2) return 2;
+  if (n === 3) return 3;
+  return 4;
+}
+
 /**
  * Imperative wrapper around a Lightweight Charts instance.
  *
@@ -70,6 +102,13 @@ export class EzyChart {
   private volumeSeries: ISeriesApi<"Histogram"> | null = null;
   private readonly levelLines: IPriceLine[] = [];
   private readonly seriesByUid = new Map<string, ISeriesApi<never>[]>();
+  private readonly plotSeriesByUid = new Map<string, ISeriesApi<never>[]>();
+  /** Translucent `bgcolor()` regions, painted behind the price series. */
+  private readonly bgBands = new BgBandsPrimitive();
+  /** Markers contributed by `plotshape()`-style plots, rebuilt with the data. */
+  private markerLayer: SeriesMarker<Time>[] = [];
+  /** v5 exposes markers as a series plugin, so it is bound to the main series. */
+  private markerApi: ISeriesMarkersPluginApi<Time> | null = null;
   private type: ChartType;
   private theme: ChartTheme;
   private showVolume: boolean;
@@ -107,6 +146,7 @@ export class EzyChart {
     });
 
     this.chart.panes()[0]!.attachPrimitive(this.drawings);
+    this.chart.panes()[0]!.attachPrimitive(this.bgBands);
     this.createMainSeries();
     if (this.showVolume) this.ensureVolume();
 
@@ -135,6 +175,8 @@ export class EzyChart {
     this.volumeSeries?.setData(toVolumeData(candles));
     // Refresh indicator series in place — rebuilding panes per tick is too costly.
     for (const inst of this.currentInstances) this.renderIndicator(inst, "refresh");
+    for (const plot of this.currentPlots) this.renderPlot(plot, "refresh");
+    this.syncScriptLayers();
     this.drawings.setDrawings(this.drawingsLayer);
   }
 
@@ -147,6 +189,8 @@ export class EzyChart {
   setChartType(type: ChartType): void {
     if (type === this.type) return;
     this.type = type;
+    // The marker plugin is bound to the series instance about to be removed.
+    this.resetMarkers();
     if (this.mainSeries) this.chart.removeSeries(this.mainSeries);
     this.createMainSeries();
     this.drawings.setDrawings(this.drawingsLayer);
@@ -194,22 +238,159 @@ export class EzyChart {
    */
   setIndicators(instances: IndicatorInstance[]): void {
     this.currentInstances = instances;
+    this.reconcileLayers();
+  }
 
+  private currentInstances: IndicatorInstance[] = [];
+
+  /**
+   * Replace every Pine output on the chart.
+   *
+   * Called as one job with the indicator pass because pane indices shift on
+   * removal — two independent reconcilers would fight over the same panes.
+   */
+  setScriptPlots(plots: readonly ScriptPlotSpec[], bands: readonly { color: string; values: SeriesValue[] }[] = []): void {
+    this.currentPlots = [...plots];
+    this.currentBands = [...bands];
+    this.reconcileLayers();
+  }
+
+  private currentPlots: ScriptPlotSpec[] = [];
+  private currentBands: { color: string; values: SeriesValue[] }[] = [];
+
+  /**
+   * Tear down every overlay layer and rebuild indicators then script plots.
+   *
+   * Full teardown is deliberate: pane indices shift on removal, so patching in
+   * place is where off-by-one pane bugs come from.
+   */
+  private reconcileLayers(): void {
     for (const series of this.seriesByUid.values()) {
       for (const s of series) this.chart.removeSeries(s);
     }
+    for (const series of this.plotSeriesByUid.values()) {
+      for (const s of series) this.chart.removeSeries(s);
+    }
     this.seriesByUid.clear();
+    this.plotSeriesByUid.clear();
     this.levelLines.length = 0;
 
     const panes = this.chart.panes();
     for (let i = panes.length - 1; i >= 1; i--) this.chart.removePane(i);
 
-    for (const inst of instances) this.renderIndicator(inst, "create");
+    for (const inst of this.currentInstances) this.renderIndicator(inst, "create");
+    for (const plot of this.currentPlots) this.renderPlot(plot, "create");
+    this.syncScriptLayers();
 
     this.drawings.setDrawings(this.drawingsLayer);
   }
 
-  private currentInstances: IndicatorInstance[] = [];
+  /** Push `bgcolor()` bands and `plotshape()` markers onto the live data. */
+  private syncScriptLayers(): void {
+    this.bgBands.setBands(
+      this.currentBands.map((b) => ({ color: b.color, flags: this.litFlags(b.values) })),
+      this.data.map((c) => c.time as UTCTimestamp),
+    );
+    this.markerLayer = this.buildMarkers();
+    this.applyMarkers();
+  }
+
+  /** A band is lit wherever its value is a present, non-`na` number. */
+  private litFlags(values: SeriesValue[]): boolean[] {
+    return Array.from({ length: this.data.length }, (_, i) => typeof values[i] === "number");
+  }
+
+  /** Markers for every shape-style plot, ordered the way the chart requires. */
+  private buildMarkers(): SeriesMarker<Time>[] {
+    const out: SeriesMarker<Time>[] = [];
+    for (const plot of this.currentPlots) {
+      if (!MARKER_STYLES.has(plot.style)) continue;
+      for (let i = 0; i < this.data.length; i++) {
+        const value = plot.values[i];
+        if (typeof value !== "number") continue;
+        // `location.top`/`bottom` pin the value far off-scale on purpose.
+        out.push({
+          time: this.data[i]!.time as UTCTimestamp,
+          position: value < -1e15 ? "belowBar" : "aboveBar",
+          shape: plot.style === "triangle" ? "arrowUp" : plot.style === "cross" ? "square" : "circle",
+          color: plot.color,
+        });
+      }
+    }
+    return out.toSorted((a, b) => Number(a.time) - Number(b.time));
+  }
+
+  /**
+   * Push the current markers onto the main series, creating the plugin on
+   * first use so a script with no shapes costs nothing.
+   */
+  private applyMarkers(): void {
+    const series = this.mainSeries;
+    if (!series) return;
+    if (this.markerApi === null) {
+      if (this.markerLayer.length === 0) return;
+      this.markerApi = createSeriesMarkers(
+        series as unknown as ISeriesApi<SeriesType, Time>,
+        [...this.markerLayer],
+      );
+      return;
+    }
+    this.markerApi.setMarkers([...this.markerLayer]);
+  }
+
+  /** The plugin is bound to one series instance; unbind before rebuilding it. */
+  private resetMarkers(): void {
+    this.markerApi?.detach();
+    this.markerApi = null;
+  }
+
+  private renderPlot(plot: ScriptPlotSpec, mode: "create" | "refresh"): void {
+    // Shapes ride on the candle series rather than getting one of their own.
+    if (MARKER_STYLES.has(plot.style)) return;
+
+    if (mode === "refresh") {
+      const series = this.plotSeriesByUid.get(plot.uid)?.[0];
+      if (!series) return;
+      series.setData(
+        plot.style === "histogram"
+          ? toValueData(this.data, plot.values, plot.color, true)
+          : toValueData(this.data, plot.values),
+      );
+      return;
+    }
+
+    const overlay = plot.overlay;
+    const paneIndex = overlay ? 0 : this.chart.addPane().paneIndex();
+    const created: ISeriesApi<never>[] = [];
+
+    if (plot.style === "histogram") {
+      const series = this.chart.addSeries(
+        HistogramSeries,
+        { priceLineVisible: false, lastValueVisible: false, priceFormat: { type: "price", precision: 4, minMove: 0.0001 } },
+        paneIndex,
+      );
+      series.setData(toValueData(this.data, plot.values, plot.color, true));
+      created.push(series as ISeriesApi<never>);
+    } else {
+      const series = this.chart.addSeries(
+        LineSeries,
+        {
+          color: plot.color,
+          lineWidth: toLineWidth(plot.linewidth),
+          priceLineVisible: false,
+          lastValueVisible: false,
+          crosshairMarkerVisible: false,
+          ...(overlay ? {} : { priceScaleId: "" }),
+        },
+        paneIndex,
+      );
+      series.setData(toValueData(this.data, plot.values));
+      created.push(series as ISeriesApi<never>);
+    }
+
+    this.plotSeriesByUid.set(plot.uid, created);
+    if (!overlay) this.chart.panes()[paneIndex]?.setHeight(PANE_HEIGHT);
+  }
 
   private renderIndicator(inst: IndicatorInstance, mode: "create" | "refresh"): void {
     const color = colorAt(inst.colorIndex);
@@ -380,6 +561,8 @@ export class EzyChart {
     }
     this.applyCandleColors();
     this.mainSeries.setData(toSeriesData(this.type, this.data));
+    // Chart-type switches rebuild the series, which drops any markers on it.
+    this.applyMarkers();
   }
 
   private applyCandleColors(): void {

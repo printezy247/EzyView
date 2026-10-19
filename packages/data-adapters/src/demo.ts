@@ -104,7 +104,7 @@ export class DemoMarketAdapter implements MarketDataAdapter {
   }
 
   async getSymbol(symbol: string): Promise<SymbolInfo | null> {
-    const found = DEMO_SYMBOLS.find((s) => s.symbol === symbol || s.ticker === symbol);
+    const found = this.findSpec(symbol);
     return found ? this.toInfo(found) : null;
   }
 
@@ -195,7 +195,13 @@ export class DemoMarketAdapter implements MarketDataAdapter {
   }
 
   private findSpec(symbol: string): DemoSpec | null {
-    return DEMO_SYMBOLS.find((s) => s.symbol === symbol || s.ticker === symbol) ?? null;
+    // The workspace defaults to a TradingView-style id (`BINANCE:BTCUSDT`)
+    // while this feed knows only its own instruments, so any `EXCHANGE:TICKER`
+    // prefix resolves by ticker instead of silently missing.
+    const ticker = symbol.includes(":") ? symbol.slice(symbol.indexOf(":") + 1) : symbol;
+    return (
+      DEMO_SYMBOLS.find((s) => s.symbol === symbol || s.ticker === symbol || s.ticker === ticker) ?? null
+    );
   }
 
   private toInfo(spec: DemoSpec): SymbolInfo {

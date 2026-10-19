@@ -27,6 +27,9 @@ interface Props {
   onToggleGrid: () => void;
   onToggleTheme: () => void;
   onOpenIndicators: () => void;
+  onOpenPine: () => void;
+  onToggleReplay: () => void;
+  replayActive: boolean;
   indicatorCount: number;
   theme: "dark" | "light";
 }
@@ -71,6 +74,26 @@ export function Toolbar(props: Props) {
         {props.indicatorCount > 0 && (
           <span className="ml-1 rounded bg-[#2962ff] px-1 text-[10px] text-white">{props.indicatorCount}</span>
         )}
+      </button>
+
+      <button
+        type="button"
+        onClick={props.onOpenPine}
+        className="rounded px-2 py-1 text-xs text-[#787b86] hover:bg-[#1e222d] hover:text-white"
+      >
+        Pine Editor
+      </button>
+
+      <button
+        type="button"
+        onClick={props.onToggleReplay}
+        className={
+          props.replayActive
+            ? "rounded bg-[#2962ff] px-2 py-1 text-xs font-medium text-white"
+            : "rounded px-2 py-1 text-xs text-[#787b86] hover:bg-[#1e222d] hover:text-white"
+        }
+      >
+        Replay
       </button>
 
       <div className="mx-1 h-4 w-px bg-[#1e222d]" />

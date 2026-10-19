@@ -113,6 +113,7 @@ Organized to mirror the TradingView desktop shell + Supercharts. Each item is a 
 - Features: live quotes, symbol info, account/equity/margin, positions, orders (market/limit/stop), modify SL/TP, close/partial close, history deals/orders, tester.
 - Safety: demo-first, risk veto, single-use approval tokens, audit log (borrow from devilforcex/Metatrader patterns).
 - Also support MetaApi cloud as alternative (optional).
+- **Chart source toggle** (status bar): `Broker (MT5 live)` vs `EzyView feed`. MT5 exposes no chart UI, so this swaps the adapter behind `loadHistory` + the quote stream — both sources render through the one `EzyChart`. Broker side additionally overlays open positions/orders on the same chart; the toggle never implies a second renderer.
 
 ### 3.3 Fundamentals integration
 - ForexFactory economic calendar (unofficial API / scraper).
@@ -203,7 +204,7 @@ EzyView/
 | P2 | Full indicator library (50+) + all drawings + alerts + watchlist + DOM | feature parity with TV free tier |
 | P3 | Pine editor + transpiler + strategy tester + replay | custom indicator runs on chart |
 | P4 | Paper trading engine + order ticket + positions | full paper trading loop |
-| P5 | MT5 bridge + live trading (demo-first) | place/close order via MT5 |
+| P5 | MT5 bridge + live trading (demo-first) + broker/EzyView chart source toggle | place/close order via MT5; switch chart feed between broker and EzyView |
 | P6 | Trading journal + stats + screenshots | journal usable daily |
 | P7 | Fundamentals (calendar/news/earnings) + screeners/heatmaps | fundamentals panel live |
 | P8 | Options chain + volatility | options view |

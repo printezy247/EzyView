@@ -26,6 +26,15 @@ describe("DemoMarketAdapter", () => {
     await expect(adapter.getSymbol("NOPE")).resolves.toBeNull();
   });
 
+  it("accepts an exchange-prefixed alias for the default workspace symbol", async () => {
+    // The workspace seeds charts with BINANCE:BTCUSDT, an instrument this feed
+    // does not list. It has to resolve by ticker instead of returning no bars,
+    // which would leave the chart blank forever.
+    await expect(adapter.getSymbol("BINANCE:BTCUSDT")).resolves.toMatchObject({ ticker: "BTCUSDT" });
+    const bars = await adapter.getHistory({ symbol: "BINANCE:BTCUSDT", resolution: "1m", from: 0, to: 0, limit: 10 });
+    expect(bars).toHaveLength(10);
+  });
+
   it("produces deterministic, oldest-first OHLCV", async () => {
     const req = { symbol: "DEMO:BTCUSDT", resolution: "5m" as const, from: 1_700_000_000, to: 1_700_100_000, limit: 120 };
     const a = await adapter.getHistory(req);

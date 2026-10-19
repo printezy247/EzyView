@@ -1,19 +1,12 @@
-/**
- * EzyView Pine transpiler.
- *
- * Clean-room compiler that turns Pine Script v6 (with v5 compatibility) into a
- * plain JS indicator program. Parser + codegen land in P3.
- */
-
-export interface TranspileResult {
-  ok: boolean;
-  /** Generated JS module source when ok. */
-  code?: string;
-  errors: TranspileError[];
-}
-
-export interface TranspileError {
-  line: number;
-  column: number;
-  message: string;
-}
+export { lex, stripNewlines } from "./lexer.js";
+export type { Token, TokenType } from "./lexer.js";
+export { parse, PineSyntaxError } from "./parser.js";
+export { transpile, PineUnsupportedError, DEFAULT_SCRIPT_OPTIONS } from "./transpile.js";
+export type { ScriptOptions } from "./transpile.js";
+export { runPine } from "./evaluate.js";
+export type { PineResult } from "./evaluate.js";
+export { NA, isNa, nz, ta, math, color, shape, location, size } from "./runtime.js";
+export type { Context, PineValue, PinePlot, PineOrder, PineOutput } from "./runtime.js";
+export { backtest } from "./backtest.js";
+export type { BacktestResult, BacktestOptions, Trade } from "./backtest.js";
+export type { Node, Script } from "./ast.js";
