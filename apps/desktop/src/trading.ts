@@ -1,9 +1,10 @@
 import { useEffect } from "react";
 import { create } from "zustand";
-import type { AccountInfo, Deal, OrderRequest } from "@ezyview/data-adapters";
+import type { AccountInfo, Deal, Order, OrderRequest, Position } from "@ezyview/data-adapters";
 import { PaperTradingEngine, PaperTradingError } from "@ezyview/paper-trading";
-import type { PaperOrder, PaperPosition, PaperSnapshot } from "@ezyview/paper-trading";
+import type { PaperSnapshot } from "@ezyview/paper-trading";
 import { market } from "./data";
+import { getMt5, useMt5 } from "./mt5";
 
 const STORAGE_KEY = "ezyview.paper-account.v1";
 
@@ -51,10 +52,18 @@ function message(err: unknown): string {
   return String(err);
 }
 
+/**
+ * Rows both feeds can render.
+ *
+ * The paper engine posts a margin figure per position; MT5 does not, so the
+ * panel reads it as optional.
+ */
+export type PanelPosition = Position & { margin?: number };
+
 export interface TradingState {
   account: AccountInfo | null;
-  positions: PaperPosition[];
-  orders: PaperOrder[];
+  positions: PanelPosition[];
+  orders: Order[];
   deals: Deal[];
   /** Rejection from the last submit, cleared on the next successful one. */
   error: string | null;
@@ -78,7 +87,9 @@ export const useTrading = create<TradingState & TradingActions>((set) => ({
 
   async submit(request) {
     try {
-      await paperEngine.placeOrder(request);
+      // Same ticket, two venues: paper keeps its engine, MT5 hits the bridge.
+      if (useMt5.getState().source === "mt5") await getMt5().trading.placeOrder(request);
+      else await paperEngine.placeOrder(request);
       set({ error: null });
       await refreshInto(set);
       return true;
@@ -89,14 +100,25 @@ export const useTrading = create<TradingState & TradingActions>((set) => ({
   },
 
   async cancel(id) {
-    const cancelled = await paperEngine.cancelOrder(id);
-    await refreshInto(set);
-    return cancelled;
+    try {
+      if (useMt5.getState().source === "mt5") {
+        await getMt5().trading.cancelOrder(id);
+        await refreshInto(set);
+        return true;
+      }
+      const cancelled = await paperEngine.cancelOrder(id);
+      await refreshInto(set);
+      return cancelled;
+    } catch (err) {
+      set({ error: message(err) });
+      return false;
+    }
   },
 
   async close(symbol, qty) {
     try {
-      await paperEngine.closePosition(symbol, qty);
+      if (useMt5.getState().source === "mt5") await getMt5().trading.closePosition(symbol, qty);
+      else await paperEngine.closePosition(symbol, qty);
       set({ error: null });
     } catch (err) {
       set({ error: message(err) });
@@ -105,11 +127,27 @@ export const useTrading = create<TradingState & TradingActions>((set) => ({
   },
 
   async closeAll() {
-    await paperEngine.closeAll();
+    try {
+      if (useMt5.getState().source === "mt5") {
+        const broker = getMt5().trading;
+        const open = await broker.getPositions();
+        await Promise.all(open.map((position) => broker.closePosition(position.symbol, position.qty)));
+      } else {
+        await paperEngine.closeAll();
+      }
+      set({ error: null });
+    } catch (err) {
+      set({ error: message(err) });
+    }
     await refreshInto(set);
   },
 
   async reset() {
+    // The broker's balance is the broker's; a reset there only re-reads state.
+    if (useMt5.getState().source === "mt5") {
+      await refreshInto(set);
+      return;
+    }
     paperEngine.reset();
     set({ error: null });
     await refreshInto(set);
@@ -124,6 +162,25 @@ type SetState = (patch: Partial<TradingState>) => void;
 
 /** Pull everything the panels read in one pass, so no view sees half a fill. */
 async function refreshInto(set: SetState): Promise<void> {
+  if (useMt5.getState().source === "mt5") {
+    const broker = getMt5().trading;
+    try {
+      const [account, positions, orders, deals] = await Promise.all([
+        broker.getAccount(),
+        broker.getPositions(),
+        broker.getOrders(),
+        broker.getHistory(),
+      ]);
+      set({ account, positions, orders, deals });
+      if (useMt5.getState().status !== "online") useMt5.setState({ status: "online", error: null });
+    } catch (err) {
+      // Keep the last good rows on screen and say why they stopped moving.
+      set({ error: message(err) });
+      useMt5.setState({ status: "error", error: message(err) });
+    }
+    return;
+  }
+
   const [account, positions, orders, deals] = await Promise.all([
     paperEngine.getAccount(),
     paperEngine.getPositions(),
@@ -143,19 +200,21 @@ paperEngine.onUpdate = () => {
 void refreshInto(useTrading.setState as SetState);
 
 /**
- * Feed ticks from the demo adapter into the engine.
+ * Keep both accounts honest while the terminal is open.
  *
  * `symbolsKey` is the `|`-joined list rather than the array itself: the caller
  * rebuilds that array on every store refresh, and restarting the timer on each
  * one would turn a 1.5s poll into a self-sustaining loop.
  *
- * Polling rather than push keeps the paper account working against any feed
- * that answers `getQuote`, which is how every adapter here behaves.
+ * Demo quotes always feed the paper engine (so it stays current even while the
+ * broker feed is on). On the broker feed, a second timer re-reads account,
+ * positions, orders and deals from the bridge.
  */
-export function usePaperTicks(symbolsKey: string): void {
+export function useTradingTicks(symbolsKey: string): void {
+  const source = useMt5((s) => s.source);
+
   useEffect(() => {
-    if (!symbolsKey) return;
-    const symbols = symbolsKey.split("|");
+    const symbols = symbolsKey ? symbolsKey.split("|") : [];
     let cancelled = false;
 
     const tick = () => {
@@ -166,11 +225,19 @@ export function usePaperTicks(symbolsKey: string): void {
       }
     };
 
+    const pollBroker = () => {
+      if (source === "mt5" && !cancelled) void refreshInto(useTrading.setState as SetState);
+    };
+
     tick();
-    const timer = setInterval(tick, 1500);
+    pollBroker();
+    const paperTimer = setInterval(tick, 1500);
+    const brokerTimer = source === "mt5" ? setInterval(pollBroker, 2000) : null;
+
     return () => {
       cancelled = true;
-      clearInterval(timer);
+      clearInterval(paperTimer);
+      if (brokerTimer) clearInterval(brokerTimer);
     };
-  }, [symbolsKey]);
+  }, [symbolsKey, source]);
 }

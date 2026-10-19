@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { precisionFor } from "./data";
 import { OrderTicket } from "./OrderTicket";
+import { useMt5 } from "./mt5";
 import { useTrading } from "./trading";
 
 interface Props {
@@ -41,6 +42,7 @@ export function TradingPanel({ symbol }: Props) {
   const closeAll = useTrading((s) => s.closeAll);
   const cancel = useTrading((s) => s.cancel);
   const reset = useTrading((s) => s.reset);
+  const source = useMt5((s) => s.source);
 
   const realized = deals.reduce((sum, d) => sum + d.pnl, 0);
   const openPositions = positions.length;
@@ -80,14 +82,19 @@ export function TradingPanel({ symbol }: Props) {
           >
             Close all
           </button>
-          <button
-            type="button"
-            title="Reset the paper account to its starting balance"
-            onClick={() => void reset()}
-            className="rounded px-2 py-0.5 text-[11px] text-[#787b86] hover:bg-[#1e222d] hover:text-white"
-          >
-            Reset
-          </button>
+          {source === "ezyview" && (
+            <button
+              type="button"
+              title="Reset the paper account to its starting balance"
+              onClick={() => void reset()}
+              className="rounded px-2 py-0.5 text-[11px] text-[#787b86] hover:bg-[#1e222d] hover:text-white"
+            >
+              Reset
+            </button>
+          )}
+          {source === "mt5" && (
+            <span className="rounded bg-[#2962ff]/15 px-1.5 py-0.5 text-[10px] text-[#2962ff]">broker</span>
+          )}
         </div>
       </header>
 
@@ -124,7 +131,7 @@ export function TradingPanel({ symbol }: Props) {
                 head={["Symbol", "Side", "Qty", "Entry", "Mark", "P&L", "Margin", ""]}
                 empty="No open positions. Send an order from the ticket."
                 rows={positions.map((p) => ({
-                  key: p.symbol,
+                  key: `${p.symbol}:${p.side}`,
                   cells: [
                     <span className="font-medium text-white">{p.symbol}</span>,
                     <span className={p.side === "long" ? "text-[#26a69a]" : "text-[#ef5350]"}>
@@ -134,7 +141,9 @@ export function TradingPanel({ symbol }: Props) {
                     <span className="tabular-nums">{p.entryPrice.toFixed(precision)}</span>,
                     <span className="tabular-nums">{p.markPrice.toFixed(precision)}</span>,
                     <span className={`tabular-nums ${pnlClass(p.unrealizedPnl)}`}>{signed(p.unrealizedPnl)}</span>,
-                    <span className="tabular-nums text-[#787b86]">{money(p.margin)}</span>,
+                    <span className="tabular-nums text-[#787b86]">
+                      {p.margin === undefined ? "—" : money(p.margin)}
+                    </span>,
                     <div className="flex justify-end gap-1">
                       <button
                         type="button"

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { OrderRequest, OrderSide, OrderType } from "@ezyview/data-adapters";
-import { market, precisionFor, tickerOf } from "./data";
+import { precisionFor, quoteOf, tickerOf } from "./data";
+import { useMt5 } from "./mt5";
 import { useTrading } from "./trading";
 
 interface Props {
@@ -25,6 +26,8 @@ const LABEL = "block text-[10px] uppercase tracking-wider text-[#787b86]";
  */
 export function OrderTicket({ symbol }: Props) {
   const submit = useTrading((s) => s.submit);
+  const source = useMt5((s) => s.source);
+  const tradeMode = useTrading((s) => s.account?.tradeMode);
   const error = useTrading((s) => s.error);
   const clearError = useTrading((s) => s.clearError);
   const maxLeverage = useTrading((s) => s.account?.leverage ?? 100);
@@ -43,7 +46,7 @@ export function OrderTicket({ symbol }: Props) {
   useEffect(() => {
     let cancelled = false;
     const tick = () => {
-      void market.getQuote(symbol).then((quote) => {
+      void quoteOf(symbol).then((quote) => {
         if (cancelled || !quote) return;
         setLast(quote.last);
         setLimitPrice((current) => (current === "" ? quote.last.toFixed(precisionFor(quote.last)) : current));
@@ -223,7 +226,9 @@ export function OrderTicket({ symbol }: Props) {
       </button>
 
       <p className="text-[10px] leading-relaxed text-[#434651]">
-        Paper account — virtual funds, no real order reaches a venue.
+        {source === "mt5"
+          ? `Broker order — sent straight to MT5 (${tradeMode === "real" ? "REAL money" : "demo account"}).`
+          : "Paper account — virtual funds, no real order reaches a venue."}
       </p>
     </div>
   );

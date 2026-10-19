@@ -23,6 +23,7 @@ export default defineConfig({
       "@ezyview/journal": pkg("journal"),
       "@ezyview/pine-transpiler": pkg("pine-transpiler"),
       "@ezyview/paper-trading": pkg("paper-trading"),
+      "@ezyview/mt5-adapter": pkg("mt5-adapter"),
     },
   },
 });

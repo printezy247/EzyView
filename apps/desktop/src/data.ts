@@ -1,7 +1,8 @@
 import { DemoMarketAdapter } from "@ezyview/data-adapters";
-import type { Candle, Resolution, SymbolInfo } from "@ezyview/data-adapters";
+import type { Candle, Quote, Resolution, SymbolInfo } from "@ezyview/data-adapters";
+import { getMt5, useMt5 } from "./mt5";
 
-/** Single shared adapter. P2 swaps this for a registry with live providers. */
+/** Single shared demo adapter. The broker feed is reached via `quoteOf`/`loadHistory`. */
 export const market = new DemoMarketAdapter();
 
 /** Bar interval in epoch seconds, used to pick the history window. */
@@ -49,8 +50,18 @@ export function precisionFor(price: number | null): number {
   return 8;
 }
 
+/** True while the chart/ticket are reading the broker's feed. */
+export const brokerFeed = (): boolean => useMt5.getState().source === "mt5";
+
 export async function searchSymbols(query: string): Promise<SymbolInfo[]> {
+  if (brokerFeed()) return getMt5().data.searchSymbols(query);
   return market.searchSymbols(query);
+}
+
+/** One quote, from whichever feed the chart is on. */
+export async function quoteOf(symbol: string): Promise<Quote | null> {
+  if (brokerFeed()) return getMt5().data.getQuote(symbol);
+  return market.getQuote(symbol);
 }
 
 export async function loadHistory(symbol: string, resolution: Resolution, limit = 500): Promise<Candle[]> {
@@ -58,5 +69,7 @@ export async function loadHistory(symbol: string, resolution: Resolution, limit 
   const now = Math.floor(Date.now() / 1000);
   // Snap the window to the bar grid so the newest candle is always complete.
   const to = Math.floor(now / step) * step;
-  return market.getHistory({ symbol, resolution, from: to - step * limit, to, limit });
+  const request = { symbol, resolution, from: to - step * limit, to, limit };
+  if (brokerFeed()) return getMt5().data.getHistory(request);
+  return market.getHistory(request);
 }
