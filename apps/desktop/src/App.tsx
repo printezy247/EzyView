@@ -8,6 +8,7 @@ import { PineEditor } from "./PineEditor";
 import { ReplayBar } from "./ReplayBar";
 import { TabBar } from "./TabBar";
 import { Toolbar } from "./Toolbar";
+import type { PanelId } from "./Toolbar";
 import { AlertDialog } from "./AlertDialog";
 import { DepthOfMarket } from "./DepthOfMarket";
 import { TradingPanel } from "./TradingPanel";
@@ -37,6 +38,8 @@ export default function App() {
   const [pineOpen, setPineOpen] = useState(false);
   const [tradingOpen, setTradingOpen] = useState(true);
   const [journalOpen, setJournalOpen] = useState(false);
+  const [watchlistOpen, setWatchlistOpen] = useState(true);
+  const [domOpen, setDomOpen] = useState(true);
   const [pineBars, setPineBars] = useState<Candle[]>([]);
   const [historyBars, setHistoryBars] = useState(0);
   const [crosshairTime, setCrosshairTime] = useState<number | null>(null);
@@ -123,6 +126,28 @@ export default function App() {
     return lines;
   }, [positions, state.symbol]);
 
+  // The View menu drives every panel: two independent side rails, one shared
+  // bottom slot (trade and journal never overlap).
+  const togglePanel = (id: PanelId) => {
+    if (id === "watchlist") {
+      setWatchlistOpen((v) => !v);
+      return;
+    }
+    if (id === "depth") {
+      setDomOpen((v) => !v);
+      return;
+    }
+    if (id === "trading") {
+      const next = !tradingOpen;
+      setTradingOpen(next);
+      if (next) setJournalOpen(false);
+      return;
+    }
+    const next = !journalOpen;
+    setJournalOpen(next);
+    if (next) setTradingOpen(false);
+  };
+
   return (
     <div className="flex h-full flex-col bg-[#0e1117] text-[#d1d4dc]">
       <TabBar />
@@ -146,19 +171,8 @@ export default function App() {
         pineActive={pineOpen}
         onToggleReplay={() => setReplay(replayBar === null ? 0 : null)}
         replayActive={replayBar !== null}
-        onToggleTrading={() => {
-          const next = !tradingOpen;
-          setTradingOpen(next);
-          // The bottom slot shows one panel at a time.
-          if (next) setJournalOpen(false);
-        }}
-        tradingActive={tradingOpen}
-        onToggleJournal={() => {
-          const next = !journalOpen;
-          setJournalOpen(next);
-          if (next) setTradingOpen(false);
-        }}
-        journalActive={journalOpen}
+        panels={{ watchlist: watchlistOpen, depth: domOpen, trading: tradingOpen, journal: journalOpen }}
+        onTogglePanel={togglePanel}
       />
 
       <div className="relative flex min-h-0 flex-1">
@@ -183,8 +197,8 @@ export default function App() {
           {activeTool && <ToolHint tool={activeTool} />}
         </div>
 
-        <Watchlist onOpenAlerts={() => setAlertOpen(true)} />
-        <DepthOfMarket symbol={state.symbol} precision={2} />
+        {watchlistOpen && <Watchlist onOpenAlerts={() => setAlertOpen(true)} />}
+        {domOpen && <DepthOfMarket symbol={state.symbol} precision={2} />}
       </div>
 
       {journalOpen ? (

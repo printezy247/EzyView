@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
 import type { Resolution } from "@ezyview/data-adapters";
 import type { ChartType } from "@ezyview/chart-engine";
+import { Eye, FlaskConical } from "lucide-react";
 import { PICKER_RESOLUTIONS } from "./data";
+import { Menu } from "./Menu";
+import type { MenuEntry } from "./Menu";
 import { SymbolSearch } from "./SymbolSearch";
 
 export const CHART_TYPES: { id: ChartType; label: string }[] = [
@@ -14,12 +15,20 @@ export const CHART_TYPES: { id: ChartType; label: string }[] = [
   { id: "baseline", label: "Baseline" },
 ];
 
+/** Panels the View menu shows or hides. Trade and Journal share one slot. */
+export type PanelId = "watchlist" | "depth" | "trading" | "journal";
+
 interface Props {
   symbol: string;
   resolution: Resolution;
   chartType: ChartType;
   showVolume: boolean;
   showGrid: boolean;
+  theme: "dark" | "light";
+  indicatorCount: number;
+  pineActive: boolean;
+  replayActive: boolean;
+  panels: Record<PanelId, boolean>;
   onSymbol: (s: string) => void;
   onResolution: (r: Resolution) => void;
   onChartType: (t: ChartType) => void;
@@ -28,71 +37,135 @@ interface Props {
   onToggleTheme: () => void;
   onOpenIndicators: () => void;
   onTogglePine: () => void;
-  pineActive: boolean;
   onToggleReplay: () => void;
-  replayActive: boolean;
-  onToggleTrading: () => void;
-  tradingActive: boolean;
-  onToggleJournal: () => void;
-  journalActive: boolean;
-  indicatorCount: number;
-  theme: "dark" | "light";
+  onTogglePanel: (id: PanelId) => void;
 }
 
+/**
+ * Chart controls, then two category menus instead of a wall of buttons:
+ *   Studies → indicators + Pine editor
+ *   View    → panels, chart overlays, appearance
+ * Frequent one-click things (symbol, interval, chart type, replay, trade) stay
+ * on the bar; everything else lives one level down, grouped by what it does.
+ */
 export function Toolbar(props: Props) {
+  const typeEntries: MenuEntry[] = CHART_TYPES.map(
+    (t): MenuEntry => ({
+      kind: "radio",
+      id: t.id,
+      label: t.label,
+      selected: t.id === props.chartType,
+      onSelect: () => props.onChartType(t.id),
+    }),
+  );
+
+  const studyEntries: MenuEntry[] = [
+    { kind: "action", id: "indicators", label: "Indicators…", onSelect: props.onOpenIndicators },
+    { kind: "toggle", id: "pine", label: "Pine editor", checked: props.pineActive, onSelect: props.onTogglePine },
+  ];
+
+  const viewEntries: MenuEntry[] = [
+    { kind: "label", id: "panels", label: "Panels" },
+    {
+      kind: "toggle",
+      id: "watchlist",
+      label: "Watchlist",
+      checked: props.panels.watchlist,
+      onSelect: () => props.onTogglePanel("watchlist"),
+    },
+    {
+      kind: "toggle",
+      id: "depth",
+      label: "Depth of market",
+      checked: props.panels.depth,
+      onSelect: () => props.onTogglePanel("depth"),
+    },
+    {
+      kind: "toggle",
+      id: "trading",
+      label: "Trade panel",
+      checked: props.panels.trading,
+      onSelect: () => props.onTogglePanel("trading"),
+    },
+    {
+      kind: "toggle",
+      id: "journal",
+      label: "Journal",
+      checked: props.panels.journal,
+      onSelect: () => props.onTogglePanel("journal"),
+    },
+    { kind: "separator", id: "s-chart" },
+    { kind: "label", id: "chart", label: "Chart" },
+    { kind: "toggle", id: "volume", label: "Volume", checked: props.showVolume, onSelect: props.onToggleVolume },
+    { kind: "toggle", id: "grid", label: "Grid", checked: props.showGrid, onSelect: props.onToggleGrid },
+    { kind: "separator", id: "s-theme" },
+    { kind: "label", id: "appearance", label: "Appearance" },
+    {
+      kind: "radio",
+      id: "dark",
+      label: "Dark theme",
+      selected: props.theme === "dark",
+      onSelect: () => {
+        if (props.theme !== "dark") props.onToggleTheme();
+      },
+    },
+    {
+      kind: "radio",
+      id: "light",
+      label: "Light theme",
+      selected: props.theme === "light",
+      onSelect: () => {
+        if (props.theme !== "light") props.onToggleTheme();
+      },
+    },
+  ];
+
   return (
     <div className="flex h-9 shrink-0 items-center gap-1 border-b border-[#1e222d] px-2">
       <SymbolSearch symbol={props.symbol} onSelect={props.onSymbol} />
 
       <div className="mx-1 h-4 w-px bg-[#1e222d]" />
 
-      {PICKER_RESOLUTIONS.map((r) => (
-        <button
-          key={r}
-          type="button"
-          onClick={() => props.onResolution(r)}
-          className={
-            r === props.resolution
-              ? "rounded bg-[#1e222d] px-2 py-1 text-xs font-medium text-white"
-              : "rounded px-2 py-1 text-xs text-[#787b86] hover:bg-[#1e222d] hover:text-white"
-          }
-        >
-          {r}
-        </button>
-      ))}
+      {/* Intervals read as one segmented control, not seven loose buttons. */}
+      <div role="group" aria-label="Interval" className="flex items-center rounded border border-[#2a2e39]">
+        {PICKER_RESOLUTIONS.map((r, index) => (
+          <button
+            key={r}
+            type="button"
+            aria-pressed={r === props.resolution}
+            onClick={() => props.onResolution(r)}
+            className={
+              (index > 0 ? "border-l border-[#2a2e39] " : "") +
+              (r === props.resolution
+                ? "bg-[#1e222d] px-2 py-1 text-xs font-medium text-white"
+                : "px-2 py-1 text-xs text-[#787b86] hover:bg-[#1e222d] hover:text-white")
+            }
+          >
+            {r}
+          </button>
+        ))}
+      </div>
 
       <div className="mx-1 h-4 w-px bg-[#1e222d]" />
 
       <Menu
         label={CHART_TYPES.find((t) => t.id === props.chartType)?.label ?? "Candles"}
-        options={CHART_TYPES.map((t) => ({ id: t.id, label: t.label }))}
-        value={props.chartType}
-        onSelect={(id) => props.onChartType(id as ChartType)}
+        caption="Chart type"
+        entries={typeEntries}
       />
 
-      <button
-        type="button"
-        onClick={props.onOpenIndicators}
-        className="rounded px-2 py-1 text-xs text-[#787b86] hover:bg-[#1e222d] hover:text-white"
-      >
-        Indicators
-        {props.indicatorCount > 0 && (
-          <span className="ml-1 rounded bg-[#2962ff] px-1 text-[10px] text-white">{props.indicatorCount}</span>
-        )}
-      </button>
+      <Menu
+        label="Studies"
+        caption="Studies"
+        icon={<FlaskConical size={13} aria-hidden />}
+        badge={props.indicatorCount}
+        triggerActive={props.pineActive}
+        entries={studyEntries}
+      />
 
-      <button
-        type="button"
-        onClick={props.onTogglePine}
-        aria-pressed={props.pineActive}
-        className={
-          props.pineActive
-            ? "rounded bg-[#1e222d] px-2 py-1 text-xs font-medium text-white"
-            : "rounded px-2 py-1 text-xs text-[#787b86] hover:bg-[#1e222d] hover:text-white"
-        }
-      >
-        Pine Editor
-      </button>
+      <Menu label="View" caption="View" icon={<Eye size={13} aria-hidden />} entries={viewEntries} />
+
+      <div className="mx-1 h-4 w-px bg-[#1e222d]" />
 
       <button
         type="button"
@@ -107,133 +180,20 @@ export function Toolbar(props: Props) {
         Replay
       </button>
 
-      <div className="mx-1 h-4 w-px bg-[#1e222d]" />
-
-      <button
-        type="button"
-        onClick={props.onToggleTrading}
-        aria-pressed={props.tradingActive}
-        className={
-          props.tradingActive
-            ? "rounded bg-[#2962ff] px-2 py-1 text-xs font-medium text-white"
-            : "rounded px-2 py-1 text-xs text-[#787b86] hover:bg-[#1e222d] hover:text-white"
-        }
-      >
-        Trade
-      </button>
-
-      <Toggle label="Volume" on={props.showVolume} onClick={props.onToggleVolume} />
-      <Toggle label="Grid" on={props.showGrid} onClick={props.onToggleGrid} />
-
-      <div className="ml-auto flex items-center gap-1">
+      <div className="ml-auto">
         <button
           type="button"
-          onClick={props.onToggleJournal}
-          aria-pressed={props.journalActive}
+          onClick={() => props.onTogglePanel("trading")}
+          aria-pressed={props.panels.trading}
           className={
-            props.journalActive
+            props.panels.trading
               ? "rounded bg-[#2962ff] px-2 py-1 text-xs font-medium text-white"
               : "rounded px-2 py-1 text-xs text-[#787b86] hover:bg-[#1e222d] hover:text-white"
           }
         >
-          Journal
+          Trade
         </button>
-        <Toggle label={props.theme === "dark" ? "Dark" : "Light"} on onClick={props.onToggleTheme} />
       </div>
-    </div>
-  );
-}
-
-function Toggle({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={on}
-      className={
-        on
-          ? "rounded px-2 py-1 text-xs text-white hover:bg-[#1e222d]"
-          : "rounded px-2 py-1 text-xs text-[#434651] hover:bg-[#1e222d] hover:text-[#787b86]"
-      }
-    >
-      {label}
-    </button>
-  );
-}
-
-function Menu({
-  label,
-  options,
-  value,
-  onSelect,
-}: {
-  label: string;
-  options: { id: string; label: string }[];
-  value: string;
-  onSelect: (id: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        setOpen(false);
-        ref.current?.querySelector<HTMLButtonElement>("button")?.focus();
-      }
-    };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        className="flex items-center gap-1 rounded px-2 py-1 text-xs text-[#787b86] hover:bg-[#1e222d] hover:text-white"
-      >
-        {label}
-        <ChevronDown size={12} aria-hidden />
-      </button>
-      {open && (
-        <div
-          role="listbox"
-          aria-label="Chart type"
-          className="absolute left-0 top-full z-30 mt-1 w-44 rounded border border-[#2a2e39] bg-[#131722] py-1 shadow-xl"
-        >
-          {options.map((o) => (
-            <button
-              key={o.id}
-              type="button"
-              role="option"
-              aria-selected={o.id === value}
-              onClick={() => {
-                onSelect(o.id);
-                setOpen(false);
-              }}
-              className={
-                o.id === value
-                  ? "block w-full px-3 py-1.5 text-left text-xs text-white hover:bg-[#1e222d]"
-                  : "block w-full px-3 py-1.5 text-left text-xs text-[#787b86] hover:bg-[#1e222d] hover:text-white"
-              }
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

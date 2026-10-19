@@ -55,3 +55,45 @@ button[aria-disabled="true"] {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Scrollbars: no grey90s bars. Thin dark thumb over a transparent track,
+ * invisible until the panel under the pointer is scrolled or hovered. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+*:hover {
+  scrollbar-color: #2a2e39 transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Transparent border + padding-box clip keeps the visible thumb ~6px. */
+::-webkit-scrollbar-thumb {
+  background: transparent;
+  background-clip: padding-box;
+  border: 2px solid transparent;
+  border-radius: 999px;
+}
+
+*:hover::-webkit-scrollbar-thumb {
+  background: #2a2e39;
+  background-clip: padding-box;
+}
+
+*:hover::-webkit-scrollbar-thumb:hover {
+  background: #434651;
+  background-clip: padding-box;
+}

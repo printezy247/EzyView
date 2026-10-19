@@ -1,4 +1,6 @@
-import { Copy, Plus, X } from "lucide-react";
+import { Layers, X } from "lucide-react";
+import { Menu } from "./Menu";
+import type { MenuEntry } from "./Menu";
 import { useWorkspace } from "./store";
 
 /** Layout tabs. One tab per layout; each carries its own symbol, panes and drawings. */
@@ -53,24 +55,26 @@ export function TabBar() {
         );
       })}
 
-      <button
-        type="button"
-        title="New layout"
-        aria-label="New layout"
-        onClick={addLayout}
-        className="flex size-6 items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] hover:text-white"
-      >
-        <Plus size={14} aria-hidden />
-      </button>
-      <button
-        type="button"
-        title="Duplicate active layout"
-        aria-label="Duplicate active layout"
-        onClick={() => copyLayout(activeId)}
-        className="flex size-6 items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] hover:text-white"
-      >
-        <Copy size={13} aria-hidden />
-      </button>
+      {/* Layout actions grouped behind one menu: tabs stay the switcher. */}
+      <Menu
+        label="Layouts"
+        caption="Layout actions"
+        icon={<Layers size={13} aria-hidden />}
+        entries={
+          [
+            { kind: "action", id: "new", label: "New layout", onSelect: addLayout },
+            { kind: "action", id: "duplicate", label: "Duplicate active layout", onSelect: () => copyLayout(activeId) },
+            { kind: "separator", id: "s" },
+            {
+              kind: "action",
+              id: "close",
+              label: "Close active layout",
+              disabled: layouts.length <= 1,
+              onSelect: () => deleteLayout(activeId),
+            },
+          ] satisfies MenuEntry[]
+        }
+      />
     </div>
   );
 }
