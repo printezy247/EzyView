@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://127.0.0.1:1420",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "npm run build && npm run build -w @ezyview/mcp-server",
     "frontendDist": "../dist"
   },
   "app": {
@@ -29,7 +29,10 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": [
+      "deb",
+      "appimage"
+    ],
     "category": "Finance",
     "shortDescription": "Open-source trading terminal",
     "icon": [
@@ -38,6 +41,19 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "publisher": "printezy247",
+    "homepage": "https://github.com/printezy247/EzyView",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2026 printezy247",
+    "longDescription": "EzyView is an open-source, TradingView-class trading terminal: charts, 50+ indicators, drawing tools, a Pine Script editor, paper trading, MetaTrader 5 integration, a trading journal, fundamentals, a screener, options analytics and an MCP server for AI assistants.",
+    "resources": {
+      "../../../packages/mcp-server/dist/ezyview-mcp.mjs": "mcp/ezyview-mcp.mjs"
+    },
+    "linux": {
+      "deb": {
+        "section": "utils"
+      }
+    }
   }
 }

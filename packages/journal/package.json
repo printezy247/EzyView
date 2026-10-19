@@ -10,6 +10,6 @@
     "./*": "./src/*.ts"
   },
   "dependencies": {
-    "@ezyview/data-adapters": "workspace:*"
+    "@ezyview/data-adapters": "*"
   }
 }

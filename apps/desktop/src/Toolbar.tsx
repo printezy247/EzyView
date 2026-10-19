@@ -15,8 +15,8 @@ export const CHART_TYPES: { id: ChartType; label: string }[] = [
   { id: "baseline", label: "Baseline" },
 ];
 
-/** Panels the View menu shows or hides. Trade and Journal share one slot. */
-export type PanelId = "watchlist" | "depth" | "trading" | "journal";
+/** Panels the View menu shows or hides. Trade, Journal, Fundamentals and Options share one slot. */
+export type PanelId = "watchlist" | "depth" | "trading" | "journal" | "fundamentals" | "options";
 
 interface Props {
   symbol: string;
@@ -39,6 +39,7 @@ interface Props {
   onTogglePine: () => void;
   onToggleReplay: () => void;
   onTogglePanel: (id: PanelId) => void;
+  onOpenWindow: () => void;
 }
 
 /**
@@ -94,6 +95,22 @@ export function Toolbar(props: Props) {
       checked: props.panels.journal,
       onSelect: () => props.onTogglePanel("journal"),
     },
+    {
+      kind: "toggle",
+      id: "fundamentals",
+      label: "Fundamentals & screener",
+      checked: props.panels.fundamentals,
+      onSelect: () => props.onTogglePanel("fundamentals"),
+    },
+    {
+      kind: "toggle",
+      id: "options",
+      label: "Options",
+      checked: props.panels.options,
+      onSelect: () => props.onTogglePanel("options"),
+    },
+    { kind: "separator", id: "s-window" },
+    { kind: "action", id: "new-window", label: "Open chart in new window", onSelect: props.onOpenWindow },
     { kind: "separator", id: "s-chart" },
     { kind: "label", id: "chart", label: "Chart" },
     { kind: "toggle", id: "volume", label: "Volume", checked: props.showVolume, onSelect: props.onToggleVolume },

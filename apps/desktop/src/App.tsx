@@ -14,6 +14,9 @@ import { DepthOfMarket } from "./DepthOfMarket";
 import { TradingPanel } from "./TradingPanel";
 import { Watchlist } from "./Watchlist";
 import { JournalPanel } from "./JournalPanel";
+import { FundamentalsPanel } from "./FundamentalsPanel";
+import { OptionsPanel } from "./OptionsPanel";
+import { openChartWindow } from "./windows";
 import { Mt5Setup } from "./Mt5Setup";
 import { useWorkspace } from "./store";
 import { loadHistory } from "./data";
@@ -38,6 +41,8 @@ export default function App() {
   const [pineOpen, setPineOpen] = useState(false);
   const [tradingOpen, setTradingOpen] = useState(true);
   const [journalOpen, setJournalOpen] = useState(false);
+  const [fundamentalsOpen, setFundamentalsOpen] = useState(false);
+  const [optionsOpen, setOptionsOpen] = useState(false);
   const [watchlistOpen, setWatchlistOpen] = useState(true);
   const [domOpen, setDomOpen] = useState(true);
   const [pineBars, setPineBars] = useState<Candle[]>([]);
@@ -127,7 +132,7 @@ export default function App() {
   }, [positions, state.symbol]);
 
   // The View menu drives every panel: two independent side rails, one shared
-  // bottom slot (trade and journal never overlap).
+  // bottom slot (trade, journal, fundamentals and options never overlap).
   const togglePanel = (id: PanelId) => {
     if (id === "watchlist") {
       setWatchlistOpen((v) => !v);
@@ -137,15 +142,17 @@ export default function App() {
       setDomOpen((v) => !v);
       return;
     }
-    if (id === "trading") {
-      const next = !tradingOpen;
-      setTradingOpen(next);
-      if (next) setJournalOpen(false);
-      return;
-    }
-    const next = !journalOpen;
-    setJournalOpen(next);
-    if (next) setTradingOpen(false);
+    const open: Record<"trading" | "journal" | "fundamentals" | "options", boolean> = {
+      trading: tradingOpen,
+      journal: journalOpen,
+      fundamentals: fundamentalsOpen,
+      options: optionsOpen,
+    };
+    const next = !open[id];
+    setTradingOpen(id === "trading" && next);
+    setJournalOpen(id === "journal" && next);
+    setFundamentalsOpen(id === "fundamentals" && next);
+    setOptionsOpen(id === "options" && next);
   };
 
   return (
@@ -171,7 +178,15 @@ export default function App() {
         pineActive={pineOpen}
         onToggleReplay={() => setReplay(replayBar === null ? 0 : null)}
         replayActive={replayBar !== null}
-        panels={{ watchlist: watchlistOpen, depth: domOpen, trading: tradingOpen, journal: journalOpen }}
+        panels={{
+          watchlist: watchlistOpen,
+          depth: domOpen,
+          trading: tradingOpen,
+          journal: journalOpen,
+          fundamentals: fundamentalsOpen,
+          options: optionsOpen,
+        }}
+        onOpenWindow={() => void openChartWindow(state.symbol, state.resolution)}
         onTogglePanel={togglePanel}
       />
 
@@ -201,11 +216,16 @@ export default function App() {
         {domOpen && <DepthOfMarket symbol={state.symbol} precision={2} />}
       </div>
 
-      {journalOpen ? (
-        <JournalPanel onClose={() => setJournalOpen(false)} />
-      ) : (
-        tradingOpen && <TradingPanel symbol={state.symbol} />
+      {journalOpen && <JournalPanel onClose={() => setJournalOpen(false)} />}
+      {fundamentalsOpen && (
+        <FundamentalsPanel
+          symbol={state.symbol}
+          onClose={() => setFundamentalsOpen(false)}
+          onPickSymbol={(symbol) => updateActive({ symbol })}
+        />
       )}
+      {optionsOpen && <OptionsPanel symbol={state.symbol} onClose={() => setOptionsOpen(false)} />}
+      {tradingOpen && <TradingPanel symbol={state.symbol} />}
 
       <ReplayBar totalBars={historyBars} />
 
