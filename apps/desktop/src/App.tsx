@@ -4,14 +4,21 @@ import { DrawingToolbar } from "./DrawingToolbar";
 import { IndicatorDialog } from "./IndicatorDialog";
 import { TabBar } from "./TabBar";
 import { Toolbar } from "./Toolbar";
+import { AlertDialog } from "./AlertDialog";
+import { DepthOfMarket } from "./DepthOfMarket";
+import { Watchlist } from "./Watchlist";
 import { useWorkspace } from "./store";
 
 export default function App() {
   const layout = useWorkspace((s) => s.activeLayout());
   const updateActive = useWorkspace((s) => s.updateActive);
   const activeTool = useWorkspace((s) => s.activeTool);
+  const alerts = useWorkspace((s) => s.alerts);
+  const addAlert = useWorkspace((s) => s.addAlert);
+  const removeAlert = useWorkspace((s) => s.removeAlert);
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [alertOpen, setAlertOpen] = useState(false);
   const [crosshairTime, setCrosshairTime] = useState<number | null>(null);
 
   const onCrosshairTime = useCallback((t: number | null) => setCrosshairTime(t), []);
@@ -67,9 +74,21 @@ export default function App() {
           <Readout symbol={state.symbol} time={crosshairTime} />
           {activeTool && <ToolHint tool={activeTool} />}
         </div>
+
+        <Watchlist onOpenAlerts={() => setAlertOpen(true)} />
+        <DepthOfMarket symbol={state.symbol} precision={2} />
       </div>
 
       <IndicatorDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
+      <AlertDialog
+        open={alertOpen}
+        onClose={() => setAlertOpen(false)}
+        alerts={alerts.filter((a) => a.symbol === state.symbol)}
+        onAdd={addAlert}
+        onRemove={removeAlert}
+        symbol={state.symbol}
+        lastPrice={null}
+      />
 
       <footer className="flex h-6 shrink-0 items-center gap-4 border-t border-[#1e222d] px-3 text-[11px] text-[#787b86]">
         <span className="flex items-center gap-1.5">
