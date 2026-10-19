@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
+import type { Candle } from "@ezyview/data-adapters";
 import { ChartHost } from "./ChartHost";
 import { DrawingToolbar } from "./DrawingToolbar";
 import { IndicatorDialog } from "./IndicatorDialog";
+import { PineEditor } from "./PineEditor";
+import { ReplayBar } from "./ReplayBar";
 import { TabBar } from "./TabBar";
 import { Toolbar } from "./Toolbar";
 import { AlertDialog } from "./AlertDialog";
 import { DepthOfMarket } from "./DepthOfMarket";
 import { Watchlist } from "./Watchlist";
 import { useWorkspace } from "./store";
+import { loadHistory } from "./data";
 
 export default function App() {
   const layout = useWorkspace((s) => s.activeLayout());
@@ -16,12 +20,41 @@ export default function App() {
   const alerts = useWorkspace((s) => s.alerts);
   const addAlert = useWorkspace((s) => s.addAlert);
   const removeAlert = useWorkspace((s) => s.removeAlert);
+  const replayBar = useWorkspace((s) => s.replayBar);
+  const setReplay = useWorkspace((s) => s.setReplay);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
+  const [pineOpen, setPineOpen] = useState(false);
+  const [pineBars, setPineBars] = useState<Candle[]>([]);
+  const [historyBars, setHistoryBars] = useState(0);
   const [crosshairTime, setCrosshairTime] = useState<number | null>(null);
 
   const onCrosshairTime = useCallback((t: number | null) => setCrosshairTime(t), []);
+
+  // Load bars for the Pine editor on demand — not on every chart tick.
+  useEffect(() => {
+    if (!pineOpen) return;
+    let cancelled = false;
+    void loadHistory(layout.state.symbol, layout.state.resolution).then((candles) => {
+      if (!cancelled) setPineBars(candles);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [pineOpen, layout.state.symbol, layout.state.resolution]);
+
+  // The replay transport needs the bar count for its slider range.
+  useEffect(() => {
+    let cancelled = false;
+    setReplay(null);
+    void loadHistory(layout.state.symbol, layout.state.resolution).then((candles) => {
+      if (!cancelled) setHistoryBars(candles.length);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [layout.state.symbol, layout.state.resolution, setReplay]);
 
   // Escape clears the armed drawing tool, like TradingView.
   useEffect(() => {
@@ -53,6 +86,9 @@ export default function App() {
         onToggleTheme={() => updateActive({ theme: state.theme === "dark" ? "light" : "dark" })}
         theme={state.theme}
         onOpenIndicators={() => setDialogOpen(true)}
+        onOpenPine={() => setPineOpen(true)}
+        onToggleReplay={() => setReplay(replayBar === null ? 0 : null)}
+        replayActive={replayBar !== null}
       />
 
       <div className="relative flex min-h-0 flex-1">
@@ -69,6 +105,7 @@ export default function App() {
             theme={state.theme}
             indicators={state.indicators}
             drawings={state.drawings}
+            replayBar={replayBar}
             onCrosshairTime={onCrosshairTime}
           />
           <Readout symbol={state.symbol} time={crosshairTime} />
@@ -79,7 +116,15 @@ export default function App() {
         <DepthOfMarket symbol={state.symbol} precision={2} />
       </div>
 
+      <ReplayBar totalBars={historyBars} />
+
       <IndicatorDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
+      <PineEditor
+        open={pineOpen}
+        onClose={() => setPineOpen(false)}
+        bars={pineBars}
+        symbol={state.symbol}
+      />
       <AlertDialog
         open={alertOpen}
         onClose={() => setAlertOpen(false)}

@@ -1,12 +1,13 @@
 import { useEffect, useRef } from "react";
 import type { Candle, Resolution } from "@ezyview/data-adapters";
 import { EzyChart } from "@ezyview/chart-engine";
-import type { ChartType, IndicatorInstance } from "@ezyview/chart-engine";
+import type { ChartType, IndicatorInstance, ScriptPlotSpec } from "@ezyview/chart-engine";
 import type { Drawing, DrawingToolId } from "@ezyview/drawing-tools";
 import { isComplete } from "@ezyview/drawing-tools";
 import { DEFAULT_DRAWING_STYLE } from "@ezyview/drawing-tools";
+import type { PinePlot } from "@ezyview/pine-transpiler";
 import { THEME_OF, uid as newId, useWorkspace } from "./store";
-import type { ActiveIndicator } from "./store";
+import type { ActiveIndicator, PineScriptRecord } from "./store";
 import { loadHistory } from "./data";
 
 interface Props {
@@ -18,6 +19,8 @@ interface Props {
   theme: "dark" | "light";
   indicators: ActiveIndicator[];
   drawings: Drawing[];
+  /** Replay cursor: show bars up to and including this index, or null for all. */
+  replayBar?: number | null;
   onCrosshairTime?: (time: number | null) => void;
 }
 
@@ -38,6 +41,8 @@ export function ChartHost(props: Props) {
   // In-progress drawing anchors, kept off the store so each pointer move does
   // not trigger a React render.
   const pendingRef = useRef<{ tool: DrawingToolId; points: { time: number; price: number }[] } | null>(null);
+  // Full loaded history, so replay can reveal a prefix without a refetch.
+  const historyRef = useRef<Candle[]>([]);
 
   const activeTool = useWorkspace((s) => s.activeTool);
   const setDrawings = useWorkspace((s) => s.setDrawings);
@@ -80,12 +85,22 @@ export function ChartHost(props: Props) {
   useEffect(() => {
     let cancelled = false;
     void loadHistory(props.symbol, props.resolution).then((candles: Candle[]) => {
-      if (!cancelled) chartRef.current?.setData(candles);
+      if (cancelled) return;
+      historyRef.current = candles;
+      // A stale replay cursor from another symbol would index past the end.
+      const cursor = useWorkspace.getState().replayBar;
+      chartRef.current?.setData(sliceForReplay(candles, cursor));
     });
     return () => {
       cancelled = true;
     };
   }, [props.symbol, props.resolution]);
+
+  // Revealing bars one at a time re-slices the cached history; no refetch.
+  useEffect(() => {
+    if (historyRef.current.length === 0) return;
+    chartRef.current?.setData(sliceForReplay(historyRef.current, props.replayBar ?? null));
+  }, [props.replayBar]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -95,6 +110,13 @@ export function ChartHost(props: Props) {
     chart.setShowGrid(props.showGrid);
     chart.setIndicators(toInstances(props.indicators));
   }, [props.theme, props.showVolume, props.showGrid, props.indicators]);
+
+  // Every run replaces its script's output wholesale; the chart reconciles both
+  // layers in one pass so they cannot fight over pane indices.
+  const scripts = useWorkspace((s) => s.pineScripts);
+  useEffect(() => {
+    chartRef.current?.setScriptPlots(toPlotSpecs(scripts), toBands(scripts));
+  }, [scripts]);
 
   useEffect(() => {
     chartRef.current?.setChartType(props.chartType);
@@ -112,6 +134,55 @@ export function ChartHost(props: Props) {
   return <div ref={containerRef} className="absolute inset-0" data-testid="chart-host" />;
 }
 
+/** Bars up to and including the cursor; the full history when not replaying. */
+function sliceForReplay(candles: Candle[], cursor: number | null): Candle[] {
+  if (cursor === null) return candles;
+  const end = Math.max(1, Math.min(cursor + 1, candles.length));
+  return candles.slice(0, end);
+}
+
 function toInstances(indicators: ActiveIndicator[]): IndicatorInstance[] {
   return indicators.map((i) => ({ uid: i.uid, def: i.def, params: i.params, colorIndex: i.colorIndex }));
+}
+
+/** `bgcolor()` is a region, not a value — it has no line width to draw. */
+function isBand(plot: PinePlot): boolean {
+  return plot.linewidth === 0;
+}
+
+/** `na`, booleans and off-scale pins all become "no point here". */
+function toValue(value: PinePlot["values"][number]): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function toPlotSpecs(scripts: Record<string, PineScriptRecord>): ScriptPlotSpec[] {
+  const out: ScriptPlotSpec[] = [];
+  for (const [scriptId, record] of Object.entries(scripts)) {
+    if (record.error) continue;
+    record.plots.forEach((plot, site) => {
+      if (isBand(plot)) return;
+      out.push({
+        uid: `${scriptId}:${site}`,
+        title: plot.title,
+        values: plot.values.map(toValue),
+        color: plot.color,
+        linewidth: plot.linewidth,
+        style: plot.style,
+        overlay: plot.overlay,
+      });
+    });
+  }
+  return out;
+}
+
+function toBands(scripts: Record<string, PineScriptRecord>): { color: string; values: (number | null)[] }[] {
+  const out: { color: string; values: (number | null)[] }[] = [];
+  for (const record of Object.values(scripts)) {
+    if (record.error) continue;
+    for (const plot of record.plots) {
+      if (!isBand(plot)) continue;
+      out.push({ color: plot.color, values: plot.values.map(toValue) });
+    }
+  }
+  return out;
 }

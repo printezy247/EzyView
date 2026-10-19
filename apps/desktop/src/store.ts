@@ -7,7 +7,20 @@ import { DARK_THEME, LIGHT_THEME } from "@ezyview/chart-engine";
 import type { Drawing, DrawingToolId } from "@ezyview/drawing-tools";
 import { catalog, getIndicator } from "@ezyview/indicators";
 import type { IndicatorDef } from "@ezyview/indicators";
+import type { PinePlot, PineOrder, ScriptOptions } from "@ezyview/pine-transpiler";
 import { DEFAULT_SYMBOL } from "./data";
+
+/** A saved Pine script plus the outcome of the most recent run. */
+export interface PineScriptRecord {
+  id: string;
+  name: string;
+  source: string;
+  options: ScriptOptions | null;
+  plots: PinePlot[];
+  orders: PineOrder[];
+  /** Transpile or runtime error message, if the last run failed. */
+  error: string | null;
+}
 
 /** A live indicator on the chart, with its resolved parameters. */
 export interface ActiveIndicator {
@@ -89,6 +102,10 @@ interface WorkspaceStore {
   alertHistory: AlertHistory;
   /** Symbols tracked in the watchlist panel. */
   watchlist: WatchEntry[];
+  /** Saved Pine scripts, keyed by id. */
+  pineScripts: Record<string, PineScriptRecord>;
+  /** Replay cursor into the loaded history, or null when off. */
+  replayBar: number | null;
 
   activeLayout(): Layout;
   setActiveLayout(id: string): void;
@@ -115,6 +132,14 @@ interface WorkspaceStore {
   removeFromWatchlist(symbol: string): void;
   updateWatchPrice(symbol: string, price: number, changePct: number | null): void;
 
+  /** Save a Pine script's source under its name. */
+  savePineScript(id: string, name: string, source: string): void;
+  deletePineScript(id: string): void;
+  /** Result of the last script run, for the tester panel. */
+  setPineResult(id: string, result: PineScriptRecord | null): void;
+  /** Bar-by-bar replay cursor, or null when not replaying. */
+  setReplay(barIndex: number | null): void;
+
   markSaved(id: string): void;
 }
 
@@ -128,6 +153,8 @@ export const useWorkspace = create<WorkspaceStore>((set, get) => ({
   alerts: [],
   alertHistory: {},
   watchlist: [],
+  pineScripts: {},
+  replayBar: null,
 
   activeLayout: () => {
     const { layouts, activeLayoutId } = get();
@@ -277,6 +304,34 @@ export const useWorkspace = create<WorkspaceStore>((set, get) => ({
     set((s) => ({
       watchlist: s.watchlist.map((w) => (w.symbol === symbol ? { ...w, price, changePct } : w)),
     })),
+
+  savePineScript: (id, name, source) =>
+    set((s) => {
+      const existing = s.pineScripts[id];
+      return {
+        pineScripts: {
+          ...s.pineScripts,
+          // Keep the last run's output when only the source changed.
+          [id]: { id, name, source, options: existing?.options ?? null, plots: existing?.plots ?? [], orders: existing?.orders ?? [], error: existing?.error ?? null },
+        },
+      };
+    }),
+
+  deletePineScript: (id) =>
+    set((s) => {
+      const next = { ...s.pineScripts };
+      delete next[id];
+      return { pineScripts: next };
+    }),
+
+  setPineResult: (id, result) =>
+    set((s) => {
+      if (!result) return {};
+      const existing = s.pineScripts[id];
+      return { pineScripts: { ...s.pineScripts, [id]: { ...existing, ...result, id } } };
+    }),
+
+  setReplay: (barIndex) => set({ replayBar: barIndex }),
 
   markSaved: (id) => set((s) => ({ dirty: { ...s.dirty, [id]: false } })),
 }));
