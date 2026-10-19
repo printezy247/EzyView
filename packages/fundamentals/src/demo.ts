@@ -1,13 +1,17 @@
 import type {
   CalendarAdapter,
+  CorporateCalendarAdapter,
+  DividendEvent,
   EarningsReport,
   EconomicEvent,
   EpochSeconds,
   FundamentalsAdapter,
   Impact,
+  IpoEvent,
   NewsAdapter,
   NewsItem,
 } from "@ezyview/data-adapters";
+import { classify } from "./http.js";
 import { hashSeed, mulberry32 } from "./rng.js";
 
 const DAY = 86400;
@@ -186,5 +190,48 @@ export class DemoFundamentalsAdapter implements FundamentalsAdapter {
       "Debt / equity": Number((rand() * 2).toFixed(2)),
       Sector: ["Technology", "Financials", "Energy", "Healthcare", "Consumer", "Industrials"][Math.floor(rand() * 6)]!,
     };
+  }
+}
+
+const IPO_NAMES = ["Northwind Robotics", "Bluefin Payments", "Cobalt Bio", "Harbor Energy", "Lumen Cloud", "Quarry Foods", "Vertex Mobility"];
+
+/** Offline IPO and dividend calendars. */
+export class DemoCorporateCalendarAdapter implements CorporateCalendarAdapter {
+  readonly id = "demo-corporate";
+  readonly label = "Demo corporate calendar (offline)";
+
+  async getIpos(from: EpochSeconds, to: EpochSeconds): Promise<IpoEvent[]> {
+    const out: IpoEvent[] = [];
+    for (let day = Math.floor(from / DAY); day <= Math.floor(to / DAY); day++) {
+      const rand = mulberry32(hashSeed(`ipo:${day}`));
+      if (rand() < 0.6) continue;
+      const name = IPO_NAMES[Math.floor(rand() * IPO_NAMES.length)]!;
+      const low = 8 + Math.floor(rand() * 20);
+      const time = day * DAY;
+      out.push({
+        time,
+        symbol: name.replace(/[^A-Z]/g, "").slice(0, 4),
+        name,
+        exchange: rand() < 0.5 ? "NASDAQ" : "NYSE",
+        price: `${low.toFixed(2)}-${(low + 2).toFixed(2)}`,
+        shares: Math.round(5 + rand() * 40) * 1e6,
+        status: time * 1000 < Date.now() ? "priced" : "expected",
+        source: "demo",
+      });
+    }
+    return out;
+  }
+
+  async getDividends(symbol: string, from: EpochSeconds, to: EpochSeconds): Promise<DividendEvent[]> {
+    if (classify(symbol).kind !== "stock") return [];
+    const rand = mulberry32(hashSeed(`div:${symbol}`));
+    const amount = Number((0.1 + rand() * 1.5).toFixed(2));
+    const offset = Math.floor(rand() * 91) * DAY;
+    const out: DividendEvent[] = [];
+    // Quarterly cadence anchored to a fixed epoch so results are stable across calls.
+    for (let exDate = offset; exDate <= to; exDate += 91 * DAY) {
+      if (exDate >= from) out.push({ symbol, exDate, payDate: exDate + 21 * DAY, amount, currency: "USD", source: "demo" });
+    }
+    return out.toSorted((a, b) => b.exDate - a.exDate);
   }
 }

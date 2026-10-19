@@ -62,6 +62,38 @@ From a source checkout: `npm run build:mcp`, then point `node` at `packages/mcp-
 
 View → **Open chart in new window** opens the current chart in its own window; drag it to any monitor.
 
+## Live fundamentals (free API keys)
+
+Without keys, the Fundamentals panel shows offline **demo data**, marked by a yellow `DEMO DATA` badge.
+With keys it shows live data, marked by a green `LIVE · <provider>` badge.
+
+| Provider | What it powers | Free plan |
+| --- | --- | --- |
+| Finnhub | News, earnings, IPO calendar, dividends* | 60 requests / minute |
+| Alpha Vantage | Company profile, dividends, earnings (if no Finnhub key) | 25 requests / day |
+
+\* Finnhub's dividend endpoint is paid on some plans. When it refuses, EzyView uses Alpha Vantage
+for dividends (if that key is set) instead.
+
+1. **Finnhub key**: go to <https://finnhub.io/register>, sign up with your email and confirm it.
+   Your key appears on the dashboard (<https://finnhub.io/dashboard>) as "API key". Copy it.
+2. **Alpha Vantage key**: go to <https://www.alphavantage.co/support/#api-key>, fill in the short
+   form (choose "Individual" / "Investor"), click **GET FREE API KEY** and copy the key it shows.
+3. Open EzyView, open the **Fundamentals** panel, and click **API keys** (key icon, top right of the panel).
+4. Paste each key into its box and click **Save**. "Key saved · live" means it worked.
+5. Close the dialog. The tabs reload with live data. Pick a stock symbol (for example `AAPL`) for
+   earnings, profile and dividends; crypto and forex symbols get crypto/forex news only.
+
+Where the keys go: your system keyring (GNOME Keyring / KWallet on Linux, Keychain on macOS,
+Credential Manager on Windows), under the service name `EzyView`. They are never written to a file,
+to `localStorage`, or to the repo. To remove a key, click **Remove** in the same dialog. Keys can only
+be saved in the desktop app; the browser preview (`npm run dev` in a plain browser) always uses demo data.
+
+The economic calendar stays demo for now: Finnhub's is a paid endpoint and Alpha Vantage has none.
+
+If a tab says "Could not load: … API key rejected", re-copy the key. "request limit reached" means the
+free plan's limit was hit; wait a minute (Finnhub) or until tomorrow (Alpha Vantage).
+
 ## MT5 bridge (Linux)
 
 MetaTrader 5 runs in Wine (`~/.mt5`). The MT5 bridge is a Python service that runs **inside the
