@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
-import { ArrowLeftRight, BarChart3, BookOpen, List, Newspaper, Sigma } from "lucide-react";
+import { ArrowLeftRight, BarChart3, BookOpen, List, ListTree, Newspaper, Sigma } from "lucide-react";
 import type { PanelId } from "./Toolbar";
 
 const ITEMS: { id: PanelId; label: string; icon: ReactNode }[] = [
   { id: "watchlist", label: "Watchlist", icon: <List size={16} aria-hidden /> },
   { id: "depth", label: "Depth of market", icon: <BarChart3 size={16} aria-hidden /> },
+  { id: "objects", label: "Object tree", icon: <ListTree size={16} aria-hidden /> },
   { id: "trading", label: "Order ticket & positions", icon: <ArrowLeftRight size={16} aria-hidden /> },
   { id: "fundamentals", label: "Fundamentals & screener", icon: <Newspaper size={16} aria-hidden /> },
   { id: "options", label: "Options chain", icon: <Sigma size={16} aria-hidden /> },
@@ -23,7 +24,7 @@ export function RightRail({ panels, onToggle }: Props) {
       {ITEMS.map((item, index) => (
         <div key={item.id} className="contents">
           {/* Side panels above the line, bottom-slot panels below it. */}
-          {index === 2 && <div className="my-1 h-px w-5 bg-[#1e222d]" aria-hidden />}
+          {index === 3 && <div className="my-1 h-px w-5 bg-[#1e222d]" aria-hidden />}
           <button
             type="button"
             aria-label={item.label}

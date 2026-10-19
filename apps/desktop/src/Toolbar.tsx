@@ -8,6 +8,10 @@ import { RESOLUTION_GROUPS, resolutionName } from "./data";
 import { Menu } from "./Menu";
 import type { MenuEntry } from "./Menu";
 import { SymbolSearch } from "./SymbolSearch";
+import { GRID_MODES } from "./layout";
+import type { GridMode } from "./layout";
+import { useWorkspace } from "./store";
+import type { MagnetMode } from "@ezyview/drawing-tools";
 
 export const CHART_TYPES: { id: ChartType; label: string }[] = [
   { id: "candles", label: "Candles" },
@@ -19,7 +23,13 @@ export const CHART_TYPES: { id: ChartType; label: string }[] = [
 ];
 
 /** Toggleable panels. Trade, Journal, Fundamentals and Options share the bottom slot. */
-export type PanelId = "watchlist" | "depth" | "trading" | "journal" | "fundamentals" | "options";
+export type PanelId = "watchlist" | "depth" | "objects" | "trading" | "journal" | "fundamentals" | "options";
+
+const MAGNET_MODES: { id: MagnetMode; label: string }[] = [
+  { id: "off", label: "Magnet off" },
+  { id: "weak", label: "Weak magnet" },
+  { id: "strong", label: "Strong magnet" },
+];
 
 interface Props {
   symbol: string;
@@ -44,6 +54,8 @@ interface Props {
   onTogglePanel: (id: PanelId) => void;
   onOpenWindow: () => void;
   onOpenAlerts: () => void;
+  grid: GridMode;
+  onGrid: (grid: GridMode) => void;
 }
 
 const PALETTE_KEY = "Ctrl+K";
@@ -79,6 +91,9 @@ export function Toolbar(props: Props) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  const magnet = useWorkspace((s) => s.magnet);
+  const setMagnet = useWorkspace((s) => s.setMagnet);
 
   const panel = (id: PanelId, label: string) => toggle(id, label, props.panels[id], () => props.onTogglePanel(id));
 
@@ -129,8 +144,31 @@ export function Toolbar(props: Props) {
   ];
 
   const viewEntries: MenuEntry[] = [
+    { kind: "label", id: "layout", label: "Layout" },
+    ...GRID_MODES.map(
+      (g): MenuEntry => ({
+        kind: "radio",
+        id: `grid-${g.id}`,
+        label: g.label,
+        selected: props.grid === g.id,
+        onSelect: () => props.onGrid(g.id),
+      }),
+    ),
+    { kind: "separator", id: "s-panels" },
     { kind: "label", id: "panels", label: "Panels" },
     panel("watchlist", "Watchlist"),
+    panel("objects", "Object tree"),
+    { kind: "separator", id: "s-drawing" },
+    { kind: "label", id: "drawing", label: "Drawing" },
+    ...MAGNET_MODES.map(
+      (m): MenuEntry => ({
+        kind: "radio",
+        id: `magnet-${m.id}`,
+        label: m.label,
+        selected: magnet === m.id,
+        onSelect: () => setMagnet(m.id),
+      }),
+    ),
     { kind: "separator", id: "s-chart" },
     { kind: "label", id: "chart", label: "Chart" },
     toggle("volume", "Volume", props.showVolume, props.onToggleVolume),
