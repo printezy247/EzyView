@@ -22,6 +22,10 @@ import { openChartWindow } from "./windows";
 import { Mt5Setup } from "./Mt5Setup";
 import { RightRail } from "./RightRail";
 import { useWorkspace } from "./store";
+import type { ChartState, Layout } from "./store";
+import { activeChartOf, cellCount } from "./layout";
+import type { GridMode } from "./layout";
+import { ObjectTree } from "./ObjectTree";
 import { loadHistory } from "./data";
 import { bootstrapMt5, getMt5, useMt5 } from "./mt5";
 import type { ChartSource } from "./mt5";
@@ -29,6 +33,9 @@ import { useTrading, useTradingTicks } from "./trading";
 
 export default function App() {
   const layout = useWorkspace((s) => s.activeLayout());
+  const state = activeChartOf(layout);
+  const setGrid = useWorkspace((s) => s.setGrid);
+  const setActiveChart = useWorkspace((s) => s.setActiveChart);
   const updateActive = useWorkspace((s) => s.updateActive);
   const activeTool = useWorkspace((s) => s.activeTool);
   const alerts = useWorkspace((s) => s.alerts);
@@ -53,6 +60,7 @@ export default function App() {
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [watchlistOpen, setWatchlistOpen] = useState(true);
   const [domOpen, setDomOpen] = useState(true);
+  const [objectsOpen, setObjectsOpen] = useState(false);
   const [pineBars, setPineBars] = useState<Candle[]>([]);
   const [historyBars, setHistoryBars] = useState(0);
   const [crosshairTime, setCrosshairTime] = useState<number | null>(null);
@@ -68,7 +76,7 @@ export default function App() {
   // to a symbol the terminal actually knows rather than leaving a blank chart.
   const source = useMt5((s) => s.source);
   useEffect(() => {
-    if (source !== "mt5" || !layout.state.symbol.includes(":")) return;
+    if (source !== "mt5" || !state.symbol.includes(":")) return;
     let cancelled = false;
     void getMt5()
       .data.searchSymbols("")
@@ -78,31 +86,31 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [source, layout.state.symbol, updateActive]);
+  }, [source, state.symbol, updateActive]);
 
   // Load bars for the Pine editor on demand — not on every chart tick.
   useEffect(() => {
     if (!pineOpen) return;
     let cancelled = false;
-    void loadHistory(layout.state.symbol, layout.state.resolution).then((candles) => {
+    void loadHistory(state.symbol, state.resolution).then((candles) => {
       if (!cancelled) setPineBars(candles);
     });
     return () => {
       cancelled = true;
     };
-  }, [pineOpen, layout.state.symbol, layout.state.resolution]);
+  }, [pineOpen, state.symbol, state.resolution]);
 
   // The replay transport needs the bar count for its slider range.
   useEffect(() => {
     let cancelled = false;
     setReplay(null);
-    void loadHistory(layout.state.symbol, layout.state.resolution).then((candles) => {
+    void loadHistory(state.symbol, state.resolution).then((candles) => {
       if (!cancelled) setHistoryBars(candles.length);
     });
     return () => {
       cancelled = true;
     };
-  }, [layout.state.symbol, layout.state.resolution, setReplay]);
+  }, [state.symbol, state.resolution, setReplay]);
 
   // Escape clears the armed drawing tool, like TradingView.
   useEffect(() => {
@@ -113,8 +121,6 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const { state } = layout;
-
   // The engine only needs ticks where it has something at stake: an open
   // position or a resting order, plus the chart's symbol while the ticket can
   // be used to open one.
@@ -124,20 +130,25 @@ export default function App() {
   useTradingTicks([...exposure].join("|"));
 
   // Entry/stop/target for the position on this chart, as constant price lines.
-  const tradingLines = useMemo(() => {
-    const position = positions.find((p) => p.symbol === state.symbol);
-    if (!position) return [];
-    const lines: TradingLine[] = [
-      { price: position.entryPrice, color: "#2962ff", title: position.side === "long" ? "LONG" : "SHORT" },
-    ];
-    if (position.stopLoss !== undefined) {
-      lines.push({ price: position.stopLoss, color: "#ef5350", title: "SL", dashed: true });
+  // Built once per positions change, so each cell gets a stable array and the
+  // chart only redraws its lines when a fill actually changes them.
+  const linesBySymbol = useMemo(() => {
+    const out = new Map<string, TradingLine[]>();
+    for (const position of positions) {
+      const lines: TradingLine[] = [
+        { price: position.entryPrice, color: "#2962ff", title: position.side === "long" ? "LONG" : "SHORT" },
+      ];
+      if (position.stopLoss !== undefined) {
+        lines.push({ price: position.stopLoss, color: "#ef5350", title: "SL", dashed: true });
+      }
+      if (position.takeProfit !== undefined) {
+        lines.push({ price: position.takeProfit, color: "#26a69a", title: "TP", dashed: true });
+      }
+      if (!out.has(position.symbol)) out.set(position.symbol, lines);
     }
-    if (position.takeProfit !== undefined) {
-      lines.push({ price: position.takeProfit, color: "#26a69a", title: "TP", dashed: true });
-    }
-    return lines;
-  }, [positions, state.symbol]);
+    return out;
+  }, [positions]);
+  const linesFor = useCallback((symbol: string) => linesBySymbol.get(symbol) ?? NO_LINES, [linesBySymbol]);
 
   // The View menu drives every panel: two independent side rails, one shared
   // bottom slot (trade, journal, fundamentals and options never overlap).
@@ -148,6 +159,10 @@ export default function App() {
     }
     if (id === "depth") {
       setDomOpen((v) => !v);
+      return;
+    }
+    if (id === "objects") {
+      setObjectsOpen((v) => !v);
       return;
     }
     const open: Record<"trading" | "journal" | "fundamentals" | "options", boolean> = {
@@ -166,6 +181,7 @@ export default function App() {
   const panels = {
     watchlist: watchlistOpen,
     depth: domOpen,
+    objects: objectsOpen,
     trading: tradingOpen,
     journal: journalOpen,
     fundamentals: fundamentalsOpen,
@@ -181,12 +197,14 @@ export default function App() {
         resolution={state.resolution}
         chartType={state.chartType}
         showVolume={state.showVolume}
+        showVolumeProfile={state.showVolumeProfile ?? false}
         showGrid={state.showGrid}
         indicatorCount={state.indicators.length}
         onSymbol={(symbol) => updateActive({ symbol })}
         onResolution={(resolution) => updateActive({ resolution })}
         onChartType={(chartType) => updateActive({ chartType })}
         onToggleVolume={() => updateActive({ showVolume: !state.showVolume })}
+        onToggleVolumeProfile={() => updateActive({ showVolumeProfile: !state.showVolumeProfile })}
         onToggleGrid={() => updateActive({ showGrid: !state.showGrid })}
         onToggleTheme={() => updateActive({ theme: state.theme === "dark" ? "light" : "dark" })}
         theme={state.theme}
@@ -200,30 +218,26 @@ export default function App() {
         onOpenAlerts={() => setAlertOpen(true)}
         onOpenApiKeys={openApiKeys}
         onTogglePanel={togglePanel}
+        grid={layout.grid}
+        onGrid={setGrid}
       />
 
       <div className="relative flex min-h-0 flex-1">
         <DrawingToolbar />
 
         <div className="relative min-w-0 flex-1">
-          <ChartHost
-            key={layout.id}
-            symbol={state.symbol}
-            resolution={state.resolution}
-            chartType={state.chartType}
-            showVolume={state.showVolume}
-            showGrid={state.showGrid}
-            theme={state.theme}
-            indicators={state.indicators}
-            drawings={state.drawings}
+          <ChartGrid
+            layout={layout}
             replayBar={replayBar}
-            tradingLines={tradingLines}
+            linesFor={linesFor}
             onCrosshairTime={onCrosshairTime}
+            crosshairTime={crosshairTime}
+            onFocus={setActiveChart}
           />
-          <Readout symbol={state.symbol} time={crosshairTime} />
           {activeTool && <ToolHint tool={activeTool} />}
         </div>
 
+        {objectsOpen && <ObjectTree onClose={() => setObjectsOpen(false)} />}
         {watchlistOpen && <Watchlist onOpenAlerts={() => setAlertOpen(true)} />}
         {domOpen && <DepthOfMarket symbol={state.symbol} precision={2} />}
         <RightRail panels={panels} onToggle={togglePanel} />
@@ -351,9 +365,74 @@ function FeedStatus() {
   );
 }
 
+const NO_LINES: TradingLine[] = [];
+
+const GRID_CLASS: Record<GridMode, string> = {
+  "1": "grid-cols-1 grid-rows-1",
+  "2h": "grid-cols-2 grid-rows-1",
+  "2v": "grid-cols-1 grid-rows-2",
+  "4": "grid-cols-2 grid-rows-2",
+};
+
+interface ChartGridProps {
+  layout: Layout;
+  replayBar: number | null;
+  linesFor: (symbol: string) => TradingLine[];
+  onCrosshairTime: (t: number | null) => void;
+  crosshairTime: number | null;
+  onFocus: (index: number) => void;
+}
+
+/**
+ * The layout's chart cells. Each cell keeps its own symbol and interval; the
+ * focused one (blue outline) is what the toolbar, studies and drawings act on.
+ */
+function ChartGrid({ layout, replayBar, linesFor, onCrosshairTime, crosshairTime, onFocus }: ChartGridProps) {
+  const cells: ChartState[] = layout.charts.slice(0, cellCount(layout.grid));
+  const multi = cells.length > 1;
+  return (
+    <div className={`absolute inset-0 grid gap-px bg-[#1e222d] ${GRID_CLASS[layout.grid]}`}>
+      {cells.map((chart, index) => {
+        const focused = index === layout.activeChart;
+        return (
+          <section
+            key={index}
+            aria-label={`Chart ${index + 1}: ${chart.symbol} ${chart.resolution}`}
+            aria-current={multi && focused ? "true" : undefined}
+            // Capture so focus moves before the chart handles the click.
+            onPointerDownCapture={() => onFocus(index)}
+            className="relative min-h-0 min-w-0 bg-[#0e1117]"
+          >
+            <ChartHost
+              key={`${layout.id}:${index}`}
+              chartIndex={index}
+              symbol={chart.symbol}
+              resolution={chart.resolution}
+              chartType={chart.chartType}
+              showVolume={chart.showVolume}
+              showVolumeProfile={chart.showVolumeProfile ?? false}
+              showGrid={chart.showGrid}
+              theme={chart.theme}
+              indicators={chart.indicators}
+              drawings={chart.drawings}
+              replayBar={focused ? replayBar : null}
+              tradingLines={linesFor(chart.symbol)}
+              onCrosshairTime={focused ? onCrosshairTime : undefined}
+            />
+            <Readout symbol={multi ? `${chart.symbol} · ${chart.resolution}` : chart.symbol} time={focused ? crosshairTime : null} />
+            {multi && focused && (
+              <div className="pointer-events-none absolute inset-0 z-10 ring-1 ring-inset ring-[#2962ff]" aria-hidden />
+            )}
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
 function Readout({ symbol, time }: { symbol: string; time: number | null }) {
   return (
-    <div className="pointer-events-none absolute left-2 top-2 text-[11px] text-[#787b86]">
+    <div className="pointer-events-none absolute left-2 top-2 z-10 text-[11px] text-[#787b86]">
       <span className="font-medium text-white">{symbol}</span>
       {time !== null && <span className="ml-2">{new Date(time * 1000).toLocaleString()}</span>}
     </div>

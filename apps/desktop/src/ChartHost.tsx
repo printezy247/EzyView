@@ -3,7 +3,7 @@ import type { Candle, Resolution } from "@ezyview/data-adapters";
 import { EzyChart } from "@ezyview/chart-engine";
 import type { ChartType, IndicatorInstance, ScriptPlotSpec, TradingLine } from "@ezyview/chart-engine";
 import type { Drawing, DrawingToolId } from "@ezyview/drawing-tools";
-import { isComplete } from "@ezyview/drawing-tools";
+import { isComplete, snapToOhlc } from "@ezyview/drawing-tools";
 import { DEFAULT_DRAWING_STYLE } from "@ezyview/drawing-tools";
 import type { PinePlot } from "@ezyview/pine-transpiler";
 import { THEME_OF, uid as newId, useWorkspace } from "./store";
@@ -15,6 +15,7 @@ interface Props {
   resolution: Resolution;
   chartType: ChartType;
   showVolume: boolean;
+  showVolumeProfile?: boolean;
   showGrid: boolean;
   theme: "dark" | "light";
   indicators: ActiveIndicator[];
@@ -24,6 +25,11 @@ interface Props {
   /** Entry/stop/target levels for the open position on this symbol. */
   tradingLines?: TradingLine[];
   onCrosshairTime?: (time: number | null) => void;
+  /**
+   * Which cell of the active layout this chart is. Placed drawings are saved
+   * there; without it (detached windows) drawing tools are inert.
+   */
+  chartIndex?: number;
 }
 
 /**
@@ -39,6 +45,8 @@ export function ChartHost(props: Props) {
   // without re-subscribing the chart.
   const crosshairRef = useRef(props.onCrosshairTime);
   crosshairRef.current = props.onCrosshairTime;
+  const chartIndexRef = useRef(props.chartIndex);
+  chartIndexRef.current = props.chartIndex;
 
   // In-progress drawing anchors, kept off the store so each pointer move does
   // not trigger a React render.
@@ -57,20 +65,22 @@ export function ChartHost(props: Props) {
       theme: THEME_OF[props.theme],
       onCrosshairTime: (t) => crosshairRef.current?.(t),
       onClick: (info) => {
-        const tool = useWorkspace.getState().activeTool;
-        if (!tool || info.time === null || info.price === null) return;
+        const { activeTool: tool, magnet } = useWorkspace.getState();
+        const chartIndex = chartIndexRef.current;
+        if (!tool || chartIndex === undefined || info.time === null || info.price === null) return;
+        const point = snapToOhlc({ time: info.time, price: info.price }, historyRef.current, magnet);
         const pending = pendingRef.current;
         if (!pending || pending.tool !== tool) {
-          pendingRef.current = { tool, points: [{ time: info.time, price: info.price }] };
+          pendingRef.current = { tool, points: [point] };
           return;
         }
-        pending.points.push({ time: info.time, price: info.price });
+        pending.points.push(point);
         if (isComplete(tool, pending.points)) {
-          const drawings = useWorkspace.getState().activeLayout().state.drawings;
-          setDrawings([
-            ...drawings,
-            { id: newId(), tool, points: pending.points, style: { ...DEFAULT_DRAWING_STYLE } },
-          ]);
+          const drawings = useWorkspace.getState().activeLayout().charts[chartIndex]?.drawings ?? [];
+          setDrawings(
+            [...drawings, { id: newId(), tool, points: pending.points, style: { ...DEFAULT_DRAWING_STYLE } }],
+            chartIndex,
+          );
           pendingRef.current = null;
           useWorkspace.getState().setActiveTool(null);
         }
@@ -109,9 +119,10 @@ export function ChartHost(props: Props) {
     if (!chart) return;
     chart.setTheme(THEME_OF[props.theme]);
     chart.setShowVolume(props.showVolume);
+    chart.setShowVolumeProfile(props.showVolumeProfile ?? false);
     chart.setShowGrid(props.showGrid);
     chart.setIndicators(toInstances(props.indicators));
-  }, [props.theme, props.showVolume, props.showGrid, props.indicators]);
+  }, [props.theme, props.showVolume, props.showVolumeProfile, props.showGrid, props.indicators]);
 
   // Every run replaces its script's output wholesale; the chart reconciles both
   // layers in one pass so they cannot fight over pane indices.
@@ -149,7 +160,9 @@ function sliceForReplay(candles: Candle[], cursor: number | null): Candle[] {
 }
 
 function toInstances(indicators: ActiveIndicator[]): IndicatorInstance[] {
-  return indicators.map((i) => ({ uid: i.uid, def: i.def, params: i.params, colorIndex: i.colorIndex }));
+  return indicators
+    .filter((i) => !i.hidden)
+    .map((i) => ({ uid: i.uid, def: i.def, params: i.params, colorIndex: i.colorIndex }));
 }
 
 /** `bgcolor()` is a region, not a value — it has no line width to draw. */

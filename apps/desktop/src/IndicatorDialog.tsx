@@ -13,7 +13,7 @@ interface Props {
 export function IndicatorDialog({ open, onClose }: Props) {
   const [query, setQuery] = useState("");
   const addIndicator = useWorkspace((s) => s.addIndicator);
-  const active = useWorkspace((s) => s.activeLayout().state.indicators);
+  const active = useWorkspace((s) => s.activeChart().indicators);
 
   if (!open) return null;
 

@@ -8,24 +8,39 @@ import { RESOLUTION_GROUPS, resolutionName } from "./data";
 import { Menu } from "./Menu";
 import type { MenuEntry } from "./Menu";
 import { SymbolSearch } from "./SymbolSearch";
+import { GRID_MODES } from "./layout";
+import type { GridMode } from "./layout";
+import { useWorkspace } from "./store";
+import type { MagnetMode } from "@ezyview/drawing-tools";
 
 export const CHART_TYPES: { id: ChartType; label: string }[] = [
   { id: "candles", label: "Candles" },
   { id: "bars", label: "Bars" },
   { id: "hollow", label: "Hollow candles" },
+  { id: "heikin", label: "Heikin Ashi" },
   { id: "line", label: "Line" },
   { id: "area", label: "Area" },
   { id: "baseline", label: "Baseline" },
+  { id: "renko", label: "Renko" },
+  { id: "kagi", label: "Kagi" },
+  { id: "pnf", label: "Point & Figure" },
 ];
 
 /** Toggleable panels. Trade, Journal, Fundamentals and Options share the bottom slot. */
-export type PanelId = "watchlist" | "depth" | "trading" | "journal" | "fundamentals" | "options";
+export type PanelId = "watchlist" | "depth" | "objects" | "trading" | "journal" | "fundamentals" | "options";
+
+const MAGNET_MODES: { id: MagnetMode; label: string }[] = [
+  { id: "off", label: "Magnet off" },
+  { id: "weak", label: "Weak magnet" },
+  { id: "strong", label: "Strong magnet" },
+];
 
 interface Props {
   symbol: string;
   resolution: Resolution;
   chartType: ChartType;
   showVolume: boolean;
+  showVolumeProfile: boolean;
   showGrid: boolean;
   theme: "dark" | "light";
   indicatorCount: number;
@@ -36,6 +51,7 @@ interface Props {
   onResolution: (r: Resolution) => void;
   onChartType: (t: ChartType) => void;
   onToggleVolume: () => void;
+  onToggleVolumeProfile: () => void;
   onToggleGrid: () => void;
   onToggleTheme: () => void;
   onOpenIndicators: () => void;
@@ -45,6 +61,8 @@ interface Props {
   onOpenWindow: () => void;
   onOpenAlerts: () => void;
   onOpenApiKeys: () => void;
+  grid: GridMode;
+  onGrid: (grid: GridMode) => void;
 }
 
 const PALETTE_KEY = "Ctrl+K";
@@ -80,6 +98,9 @@ export function Toolbar(props: Props) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  const magnet = useWorkspace((s) => s.magnet);
+  const setMagnet = useWorkspace((s) => s.setMagnet);
 
   const panel = (id: PanelId, label: string) => toggle(id, label, props.panels[id], () => props.onTogglePanel(id));
 
@@ -133,11 +154,35 @@ export function Toolbar(props: Props) {
   ];
 
   const viewEntries: MenuEntry[] = [
+    { kind: "label", id: "layout", label: "Layout" },
+    ...GRID_MODES.map(
+      (g): MenuEntry => ({
+        kind: "radio",
+        id: `grid-${g.id}`,
+        label: g.label,
+        selected: props.grid === g.id,
+        onSelect: () => props.onGrid(g.id),
+      }),
+    ),
+    { kind: "separator", id: "s-panels" },
     { kind: "label", id: "panels", label: "Panels" },
     panel("watchlist", "Watchlist"),
+    panel("objects", "Object tree"),
+    { kind: "separator", id: "s-drawing" },
+    { kind: "label", id: "drawing", label: "Drawing" },
+    ...MAGNET_MODES.map(
+      (m): MenuEntry => ({
+        kind: "radio",
+        id: `magnet-${m.id}`,
+        label: m.label,
+        selected: magnet === m.id,
+        onSelect: () => setMagnet(m.id),
+      }),
+    ),
     { kind: "separator", id: "s-chart" },
     { kind: "label", id: "chart", label: "Chart" },
     toggle("volume", "Volume", props.showVolume, props.onToggleVolume),
+    toggle("volume-profile", "Volume profile", props.showVolumeProfile, props.onToggleVolumeProfile),
     toggle("grid", "Grid", props.showGrid, props.onToggleGrid),
     { kind: "separator", id: "s-theme" },
     { kind: "label", id: "appearance", label: "Appearance" },

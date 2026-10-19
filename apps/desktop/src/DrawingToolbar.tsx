@@ -4,6 +4,7 @@ import {
   Brush,
   Circle,
   Frame,
+  Magnet,
   MousePointer2,
   MoveHorizontal,
   MoveUpRight,
@@ -18,7 +19,7 @@ import {
   Type,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import type { DrawingToolId } from "@ezyview/drawing-tools";
+import type { DrawingToolId, MagnetMode } from "@ezyview/drawing-tools";
 import { useWorkspace } from "./store";
 
 interface ToolEntry {
@@ -78,6 +79,14 @@ const SECTIONS: { title: string; tools: ToolEntry[] }[] = [
 
 const FLAT = SECTIONS.flatMap((s) => s.tools);
 
+/** The rail button cycles off → weak → strong. */
+const NEXT_MAGNET: Record<MagnetMode, MagnetMode> = { off: "weak", weak: "strong", strong: "off" };
+const MAGNET_TITLE: Record<MagnetMode, string> = {
+  off: "Magnet off: anchors go where you click",
+  weak: "Weak magnet: snaps to a candle's OHLC when you click close to it",
+  strong: "Strong magnet: always snaps to the nearest candle's OHLC",
+};
+
 /**
  * Vertical drawing rail.
  *
@@ -87,8 +96,10 @@ const FLAT = SECTIONS.flatMap((s) => s.tools);
 export function DrawingToolbar() {
   const activeTool = useWorkspace((s) => s.activeTool);
   const setActiveTool = useWorkspace((s) => s.setActiveTool);
-  const drawings = useWorkspace((s) => s.activeLayout().state.drawings);
+  const drawings = useWorkspace((s) => s.activeChart().drawings);
   const setDrawings = useWorkspace((s) => s.setDrawings);
+  const magnet = useWorkspace((s) => s.magnet);
+  const setMagnet = useWorkspace((s) => s.setMagnet);
 
   return (
     <div
@@ -126,6 +137,21 @@ export function DrawingToolbar() {
           ))}
         </div>
       ))}
+
+      <div className="my-1 h-px w-5 bg-[#1e222d]" />
+      <button
+        type="button"
+        title={`${MAGNET_TITLE[magnet]} (click to change)`}
+        aria-label={`Magnet mode: ${magnet}`}
+        aria-pressed={magnet !== "off"}
+        onClick={() => setMagnet(NEXT_MAGNET[magnet])}
+        className={`relative ${iconClass(magnet !== "off")}`}
+      >
+        <Magnet size={16} aria-hidden />
+        {magnet === "strong" && (
+          <span className="absolute bottom-1 right-1 size-1.5 rounded-full bg-[#2962ff]" aria-hidden />
+        )}
+      </button>
 
       {drawings.length > 0 && (
         <>
