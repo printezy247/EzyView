@@ -33,6 +33,8 @@ interface Props {
   replayActive: boolean;
   onToggleTrading: () => void;
   tradingActive: boolean;
+  onToggleJournal: () => void;
+  journalActive: boolean;
   indicatorCount: number;
   theme: "dark" | "light";
 }
@@ -124,6 +126,18 @@ export function Toolbar(props: Props) {
       <Toggle label="Grid" on={props.showGrid} onClick={props.onToggleGrid} />
 
       <div className="ml-auto flex items-center gap-1">
+        <button
+          type="button"
+          onClick={props.onToggleJournal}
+          aria-pressed={props.journalActive}
+          className={
+            props.journalActive
+              ? "rounded bg-[#2962ff] px-2 py-1 text-xs font-medium text-white"
+              : "rounded px-2 py-1 text-xs text-[#787b86] hover:bg-[#1e222d] hover:text-white"
+          }
+        >
+          Journal
+        </button>
         <Toggle label={props.theme === "dark" ? "Dark" : "Light"} on onClick={props.onToggleTheme} />
       </div>
     </div>

@@ -1,6 +1,6 @@
 # EzyView — Master Plan
 
-> Status: **In build.** P0–P5 merged to `main`; P6–P9 remaining, P10 optional.
+> Status: **In build.** P0–P6 merged to `main`; P7–P9 remaining, P10 optional.
 > Owner: printezy247 · Date: 2026-10-19
 
 ---
@@ -205,8 +205,8 @@ EzyView/
 | P3 | Pine editor + transpiler + strategy tester + replay | custom indicator runs on chart | done |
 | P4 | Paper trading engine + order ticket + positions | full paper trading loop | done |
 | P5 | MT5 bridge + live trading (demo-first) + broker/EzyView chart source toggle | place/close order via MT5; switch chart feed between broker and EzyView | done |
-| P6 | Trading journal + stats + screenshots | journal usable daily | next |
-| P7 | Fundamentals (calendar/news/earnings) + screeners/heatmaps | fundamentals panel live |
+| P6 | Trading journal + stats + screenshots | journal usable daily | done |
+| P7 | Fundamentals (calendar/news/earnings) + screeners/heatmaps | fundamentals panel live | next |
 | P8 | Options chain + volatility | options view |
 | P9 | Desktop (Tauri) + multi-monitor + MCP server | desktop app shipped |
 | P10| Collaboration + cloud sync + SaaS tiers | (optional) |
