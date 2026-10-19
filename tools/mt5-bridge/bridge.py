@@ -119,6 +119,19 @@ def seq(value):
     return [] if value is None else list(value)
 
 
+def ensure_connected() -> bool:
+    """Reattach when the terminal was restarted underneath us.
+
+    The terminal comes and goes (crash, update, user restart) while the bridge
+    stays up, so every request checks liveness once and reconnects on a miss
+    instead of failing until someone restarts the bridge too.
+    """
+    with LOCK:
+        if mt5.terminal_info() is not None:
+            return True
+    return connect()
+
+
 def _name(info) -> str:
     """Build 6244 names the field `name`; older builds use `symbol`."""
     return getattr(info, "symbol", None) or getattr(info, "name", None) or ""
@@ -216,6 +229,8 @@ class Handler(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         query = {k: v[0] for k, v in parse_qs(url.query).items()}
         try:
+            if url.path != "/health" and not ensure_connected():
+                return self._fail("MetaTrader 5 terminal is not running", 503)
             if url.path == "/health":
                 return self._health()
             if url.path == "/symbols":
@@ -240,6 +255,8 @@ class Handler(BaseHTTPRequestHandler):
         if "_bad_json" in body:
             return self._fail("invalid JSON body", 400)
         try:
+            if not ensure_connected():
+                return self._fail("MetaTrader 5 terminal is not running", 503)
             if url.path == "/order":
                 return self._order(body)
             if url.path == "/close":
@@ -254,6 +271,8 @@ class Handler(BaseHTTPRequestHandler):
 
     # --- reads ----------------------------------------------------------
     def _health(self):
+        # Reattaches here too, so a restarted terminal turns green on its own.
+        ensure_connected()
         with LOCK:
             info = mt5.terminal_info()
             account = mt5.account_info()

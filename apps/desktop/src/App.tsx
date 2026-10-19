@@ -12,10 +12,11 @@ import { AlertDialog } from "./AlertDialog";
 import { DepthOfMarket } from "./DepthOfMarket";
 import { TradingPanel } from "./TradingPanel";
 import { Watchlist } from "./Watchlist";
+import { JournalPanel } from "./JournalPanel";
 import { Mt5Setup } from "./Mt5Setup";
 import { useWorkspace } from "./store";
 import { loadHistory } from "./data";
-import { bootstrapMt5, useMt5 } from "./mt5";
+import { bootstrapMt5, getMt5, useMt5 } from "./mt5";
 import type { ChartSource } from "./mt5";
 import { useTrading, useTradingTicks } from "./trading";
 
@@ -35,6 +36,7 @@ export default function App() {
   const [alertOpen, setAlertOpen] = useState(false);
   const [pineOpen, setPineOpen] = useState(false);
   const [tradingOpen, setTradingOpen] = useState(true);
+  const [journalOpen, setJournalOpen] = useState(false);
   const [pineBars, setPineBars] = useState<Candle[]>([]);
   const [historyBars, setHistoryBars] = useState(0);
   const [crosshairTime, setCrosshairTime] = useState<number | null>(null);
@@ -45,6 +47,22 @@ export default function App() {
   useEffect(() => {
     void bootstrapMt5();
   }, []);
+
+  // On the broker feed a demo ticker (BINANCE:…) resolves to nothing, so swap
+  // to a symbol the terminal actually knows rather than leaving a blank chart.
+  const source = useMt5((s) => s.source);
+  useEffect(() => {
+    if (source !== "mt5" || !layout.state.symbol.includes(":")) return;
+    let cancelled = false;
+    void getMt5()
+      .data.searchSymbols("")
+      .then(([first]) => {
+        if (!cancelled && first) updateActive({ symbol: first.symbol });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [source, layout.state.symbol, updateActive]);
 
   // Load bars for the Pine editor on demand — not on every chart tick.
   useEffect(() => {
@@ -128,8 +146,19 @@ export default function App() {
         pineActive={pineOpen}
         onToggleReplay={() => setReplay(replayBar === null ? 0 : null)}
         replayActive={replayBar !== null}
-        onToggleTrading={() => setTradingOpen((v) => !v)}
+        onToggleTrading={() => {
+          const next = !tradingOpen;
+          setTradingOpen(next);
+          // The bottom slot shows one panel at a time.
+          if (next) setJournalOpen(false);
+        }}
         tradingActive={tradingOpen}
+        onToggleJournal={() => {
+          const next = !journalOpen;
+          setJournalOpen(next);
+          if (next) setTradingOpen(false);
+        }}
+        journalActive={journalOpen}
       />
 
       <div className="relative flex min-h-0 flex-1">
@@ -158,7 +187,11 @@ export default function App() {
         <DepthOfMarket symbol={state.symbol} precision={2} />
       </div>
 
-      {tradingOpen && <TradingPanel symbol={state.symbol} />}
+      {journalOpen ? (
+        <JournalPanel onClose={() => setJournalOpen(false)} />
+      ) : (
+        tradingOpen && <TradingPanel symbol={state.symbol} />
+      )}
 
       <ReplayBar totalBars={historyBars} />
 
