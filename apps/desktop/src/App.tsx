@@ -116,7 +116,8 @@ export default function App() {
         onToggleTheme={() => updateActive({ theme: state.theme === "dark" ? "light" : "dark" })}
         theme={state.theme}
         onOpenIndicators={() => setDialogOpen(true)}
-        onOpenPine={() => setPineOpen(true)}
+        onTogglePine={() => setPineOpen((v) => !v)}
+        pineActive={pineOpen}
         onToggleReplay={() => setReplay(replayBar === null ? 0 : null)}
         replayActive={replayBar !== null}
         onToggleTrading={() => setTradingOpen((v) => !v)}

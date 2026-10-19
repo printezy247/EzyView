@@ -91,10 +91,17 @@ export function DrawingToolbar() {
   const setDrawings = useWorkspace((s) => s.setDrawings);
 
   return (
-    <div className="flex w-10 shrink-0 flex-col items-center gap-0.5 overflow-y-auto border-r border-[#1e222d] py-2">
+    <div
+      role="toolbar"
+      aria-orientation="vertical"
+      aria-label="Drawing tools"
+      className="flex w-10 shrink-0 flex-col items-center gap-0.5 overflow-y-auto border-r border-[#1e222d] py-2"
+    >
       <button
         type="button"
         title="Cursor"
+        aria-label="Cursor"
+        aria-pressed={activeTool === null}
         onClick={() => setActiveTool(null)}
         className={iconClass(activeTool === null)}
       >
@@ -109,6 +116,8 @@ export function DrawingToolbar() {
               key={tool.id}
               type="button"
               title={tool.label}
+              aria-label={tool.label}
+              aria-pressed={activeTool === tool.id}
               onClick={() => setActiveTool(activeTool === tool.id ? null : tool.id)}
               className={iconClass(activeTool === tool.id)}
             >
@@ -124,6 +133,7 @@ export function DrawingToolbar() {
           <button
             type="button"
             title="Remove last drawing"
+            aria-label="Remove last drawing"
             onClick={() => setDrawings(drawings.slice(0, -1))}
             className="flex size-8 items-center justify-center rounded text-[10px] font-medium text-[#787b86] hover:bg-[#1e222d] hover:text-white"
           >

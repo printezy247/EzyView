@@ -20,25 +20,31 @@ export function TabBar() {
             key={layout.id}
             className={
               active
-                ? "flex items-center gap-1.5 rounded-t border-b-2 bg-[#131722] px-2.5 py-1"
-                : "flex items-center gap-1.5 rounded px-2.5 py-1 hover:bg-[#131722]"
+                ? "flex items-center gap-0.5 rounded-t border-b-2 bg-[#131722]"
+                : "flex items-center gap-0.5 rounded hover:bg-[#131722]"
             }
             style={active ? { borderColor: layout.color } : undefined}
           >
             <button
               type="button"
               onClick={() => setActive(layout.id)}
-              className={active ? "text-xs font-medium text-white" : "text-xs text-[#787b86] hover:text-white"}
+              aria-current={active ? "true" : undefined}
+              className={
+                active
+                  ? "flex items-center gap-1.5 rounded-t px-2.5 py-1 text-xs font-medium text-white"
+                  : "flex items-center gap-1.5 rounded px-2.5 py-1 text-xs text-[#787b86] hover:text-white"
+              }
             >
               {layout.name}
-              {dirty[layout.id] && <span className="ml-1 text-[#787b86]">•</span>}
+              {dirty[layout.id] && <span className="text-[#787b86]">•</span>}
             </button>
             {active && layouts.length > 1 && (
               <button
                 type="button"
                 title={`Close ${layout.name}`}
+                aria-label={`Close layout ${layout.name}`}
                 onClick={() => deleteLayout(layout.id)}
-                className="text-[#434651] hover:text-white"
+                className="mr-1 flex size-5 items-center justify-center rounded text-[#434651] hover:bg-[#2a2e39] hover:text-white"
               >
                 <X size={12} aria-hidden />
               </button>
@@ -50,6 +56,7 @@ export function TabBar() {
       <button
         type="button"
         title="New layout"
+        aria-label="New layout"
         onClick={addLayout}
         className="flex size-6 items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] hover:text-white"
       >
@@ -58,6 +65,7 @@ export function TabBar() {
       <button
         type="button"
         title="Duplicate active layout"
+        aria-label="Duplicate active layout"
         onClick={() => copyLayout(activeId)}
         className="flex size-6 items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] hover:text-white"
       >

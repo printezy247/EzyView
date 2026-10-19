@@ -27,7 +27,8 @@ interface Props {
   onToggleGrid: () => void;
   onToggleTheme: () => void;
   onOpenIndicators: () => void;
-  onOpenPine: () => void;
+  onTogglePine: () => void;
+  pineActive: boolean;
   onToggleReplay: () => void;
   replayActive: boolean;
   onToggleTrading: () => void;
@@ -80,8 +81,13 @@ export function Toolbar(props: Props) {
 
       <button
         type="button"
-        onClick={props.onOpenPine}
-        className="rounded px-2 py-1 text-xs text-[#787b86] hover:bg-[#1e222d] hover:text-white"
+        onClick={props.onTogglePine}
+        aria-pressed={props.pineActive}
+        className={
+          props.pineActive
+            ? "rounded bg-[#1e222d] px-2 py-1 text-xs font-medium text-white"
+            : "rounded px-2 py-1 text-xs text-[#787b86] hover:bg-[#1e222d] hover:text-white"
+        }
       >
         Pine Editor
       </button>
@@ -89,6 +95,7 @@ export function Toolbar(props: Props) {
       <button
         type="button"
         onClick={props.onToggleReplay}
+        aria-pressed={props.replayActive}
         className={
           props.replayActive
             ? "rounded bg-[#2962ff] px-2 py-1 text-xs font-medium text-white"
@@ -103,6 +110,7 @@ export function Toolbar(props: Props) {
       <button
         type="button"
         onClick={props.onToggleTrading}
+        aria-pressed={props.tradingActive}
         className={
           props.tradingActive
             ? "rounded bg-[#2962ff] px-2 py-1 text-xs font-medium text-white"
@@ -127,6 +135,7 @@ function Toggle({ label, on, onClick }: { label: string; on: boolean; onClick: (
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={on}
       className={
         on
           ? "rounded px-2 py-1 text-xs text-white hover:bg-[#1e222d]"
@@ -157,8 +166,19 @@ function Menu({
     const onDown = (e: MouseEvent) => {
       if (!ref.current?.contains(e.target as Node)) setOpen(false);
     };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setOpen(false);
+        ref.current?.querySelector<HTMLButtonElement>("button")?.focus();
+      }
+    };
     document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
   }, [open]);
 
   return (
@@ -166,17 +186,25 @@ function Menu({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
         className="flex items-center gap-1 rounded px-2 py-1 text-xs text-[#787b86] hover:bg-[#1e222d] hover:text-white"
       >
         {label}
         <ChevronDown size={12} aria-hidden />
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-30 mt-1 w-44 rounded border border-[#2a2e39] bg-[#131722] py-1 shadow-xl">
+        <div
+          role="listbox"
+          aria-label="Chart type"
+          className="absolute left-0 top-full z-30 mt-1 w-44 rounded border border-[#2a2e39] bg-[#131722] py-1 shadow-xl"
+        >
           {options.map((o) => (
             <button
               key={o.id}
               type="button"
+              role="option"
+              aria-selected={o.id === value}
               onClick={() => {
                 onSelect(o.id);
                 setOpen(false);
