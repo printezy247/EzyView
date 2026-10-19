@@ -40,6 +40,28 @@ npm install
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run test` | vitest unit tests |
 
+## Install the .deb (Linux Mint / Ubuntu / Debian)
+
+```bash
+npm run tauri -- build --bundles deb
+sudo apt install ./apps/desktop/src-tauri/target/release/bundle/deb/EzyView_0.1.0_amd64.deb
+```
+
+## MCP server (for Claude and other AI clients)
+
+EzyView ships a stdio MCP server exposing candles, indicators, option pricing, a screener,
+the economic calendar and earnings. It needs Node 22+. After installing the `.deb`:
+
+```bash
+claude mcp add ezyview -- node /usr/lib/EzyView/mcp/ezyview-mcp.mjs
+```
+
+From a source checkout: `npm run build:mcp`, then point `node` at `packages/mcp-server/dist/ezyview-mcp.mjs`.
+
+## Multi-monitor
+
+View → **Open chart in new window** opens the current chart in its own window; drag it to any monitor.
+
 ## MT5 bridge (Linux)
 
 MetaTrader 5 runs in Wine (`~/.mt5`). The MT5 bridge is a Python service that runs **inside the

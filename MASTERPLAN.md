@@ -1,6 +1,6 @@
 # EzyView — Master Plan
 
-> Status: **In build.** P0–P6 merged to `main`; P7–P9 remaining, P10 optional.
+> Status: **In build.** P0–P9 merged to `main`; P10 optional.
 > Owner: printezy247 · Date: 2026-10-19
 
 ---
@@ -206,9 +206,9 @@ EzyView/
 | P4 | Paper trading engine + order ticket + positions | full paper trading loop | done |
 | P5 | MT5 bridge + live trading (demo-first) + broker/EzyView chart source toggle | place/close order via MT5; switch chart feed between broker and EzyView | done |
 | P6 | Trading journal + stats + screenshots | journal usable daily | done |
-| P7 | Fundamentals (calendar/news/earnings) + screeners/heatmaps | fundamentals panel live | next |
-| P8 | Options chain + volatility | options view |
-| P9 | Desktop (Tauri) + multi-monitor + MCP server | desktop app shipped |
+| P7 | Fundamentals (calendar/news/earnings) + screeners/heatmaps | fundamentals panel live | done |
+| P8 | Options chain + volatility | options view | done |
+| P9 | Desktop (Tauri) + multi-monitor + MCP server | desktop app shipped | done |
 | P10| Collaboration + cloud sync + SaaS tiers | (optional) |
 
 Estimated: P0–P2 = 6–8 weeks; P3–P5 = 6–8 weeks; P6–P9 = 8–12 weeks. Solo dev with AI assistance.

@@ -24,6 +24,8 @@ export default defineConfig({
       "@ezyview/pine-transpiler": pkg("pine-transpiler"),
       "@ezyview/paper-trading": pkg("paper-trading"),
       "@ezyview/mt5-adapter": pkg("mt5-adapter"),
+      "@ezyview/fundamentals": pkg("fundamentals"),
+      "@ezyview/options": pkg("options"),
     },
   },
 });

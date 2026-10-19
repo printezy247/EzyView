@@ -25,7 +25,8 @@
     "format": "oxfmt .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "build:mcp": "npm run build -w @ezyview/mcp-server"
   },
   "devDependencies": {
     "oxlint": "^1.68.0",

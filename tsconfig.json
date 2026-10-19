@@ -12,7 +12,9 @@
       "@ezyview/journal": ["packages/journal/src/index.ts"],
       "@ezyview/pine-transpiler": ["packages/pine-transpiler/src/index.ts"],
       "@ezyview/paper-trading": ["packages/paper-trading/src/index.ts"],
-      "@ezyview/mt5-adapter": ["packages/mt5-adapter/src/index.ts"]
+      "@ezyview/mt5-adapter": ["packages/mt5-adapter/src/index.ts"],
+      "@ezyview/fundamentals": ["packages/fundamentals/src/index.ts"],
+      "@ezyview/options": ["packages/options/src/index.ts"]
     }
   },
   "include": [

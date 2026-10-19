@@ -1,0 +1,21 @@
+{
+  "name": "@ezyview/mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "EzyView MCP server: market data, indicators, options and fundamentals for AI clients over stdio.",
+  "main": "./src/server.ts",
+  "types": "./src/server.ts",
+  "scripts": {
+    "build": "esbuild src/stdio.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/ezyview-mcp.mjs"
+  },
+  "dependencies": {
+    "@ezyview/data-adapters": "*",
+    "@ezyview/fundamentals": "*",
+    "@ezyview/indicators": "*",
+    "@ezyview/options": "*"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}
