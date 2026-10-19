@@ -15,6 +15,8 @@ import { TradingPanel } from "./TradingPanel";
 import { Watchlist } from "./Watchlist";
 import { JournalPanel } from "./JournalPanel";
 import { FundamentalsPanel } from "./FundamentalsPanel";
+import { ApiKeysDialog } from "./ApiKeysDialog";
+import { useApiKeys } from "./apiKeys";
 import { OptionsPanel } from "./OptionsPanel";
 import { openChartWindow } from "./windows";
 import { Mt5Setup } from "./Mt5Setup";
@@ -46,6 +48,11 @@ export default function App() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
+  const apiKeysOpen = useApiKeys((s) => s.dialogOpen);
+  const openApiKeys = useApiKeys((s) => s.openDialog);
+  useEffect(() => {
+    void useApiKeys.getState().reload();
+  }, []);
   const [pineOpen, setPineOpen] = useState(false);
   const [tradingOpen, setTradingOpen] = useState(true);
   const [journalOpen, setJournalOpen] = useState(false);
@@ -209,6 +216,7 @@ export default function App() {
         panels={panels}
         onOpenWindow={() => void openChartWindow(state.symbol, state.resolution)}
         onOpenAlerts={() => setAlertOpen(true)}
+        onOpenApiKeys={openApiKeys}
         onTogglePanel={togglePanel}
         grid={layout.grid}
         onGrid={setGrid}
@@ -255,6 +263,7 @@ export default function App() {
         bars={pineBars}
         symbol={state.symbol}
       />
+      {apiKeysOpen && <ApiKeysDialog />}
       <AlertDialog
         open={alertOpen}
         onClose={() => setAlertOpen(false)}

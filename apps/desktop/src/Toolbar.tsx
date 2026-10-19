@@ -60,6 +60,7 @@ interface Props {
   onTogglePanel: (id: PanelId) => void;
   onOpenWindow: () => void;
   onOpenAlerts: () => void;
+  onOpenApiKeys: () => void;
   grid: GridMode;
   onGrid: (grid: GridMode) => void;
 }
@@ -140,6 +141,9 @@ export function Toolbar(props: Props) {
     { kind: "label", id: "tools", label: "Tools" },
     toggle("replay", "Bar replay", props.replayActive, props.onToggleReplay),
     { kind: "action", id: "alerts", label: "Price alerts…", onSelect: props.onOpenAlerts },
+    { kind: "separator", id: "s-data" },
+    { kind: "label", id: "data", label: "Data" },
+    { kind: "action", id: "api-keys", label: "Data provider API keys…", onSelect: props.onOpenApiKeys },
   ];
 
   const tradeEntries: MenuEntry[] = [

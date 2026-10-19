@@ -302,6 +302,38 @@ export interface FundamentalsAdapter {
   getProfile(symbol: string): Promise<Record<string, number | string | null>>;
 }
 
+export interface IpoEvent {
+  /** Expected or actual listing day, epoch seconds (UTC midnight). */
+  time: EpochSeconds;
+  symbol: string;
+  name: string;
+  exchange?: string | null;
+  /** Price or range as published, e.g. "10.00-12.00". */
+  price?: string | null;
+  shares?: number | null;
+  /** "expected" | "priced" | "filed" | "withdrawn" as published. */
+  status?: string | null;
+  source: string;
+}
+
+export interface DividendEvent {
+  symbol: string;
+  /** Ex-dividend day, epoch seconds (UTC midnight). */
+  exDate: EpochSeconds;
+  payDate?: EpochSeconds | null;
+  amount: number;
+  currency?: string | null;
+  source: string;
+}
+
+/** IPO and dividend calendars. */
+export interface CorporateCalendarAdapter {
+  readonly id: string;
+  readonly label: string;
+  getIpos(from: EpochSeconds, to: EpochSeconds): Promise<IpoEvent[]>;
+  getDividends(symbol: string, from: EpochSeconds, to: EpochSeconds): Promise<DividendEvent[]>;
+}
+
 // ---------------------------------------------------------------------------
 // Registry
 // ---------------------------------------------------------------------------
