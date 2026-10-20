@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router";
+import { Link, Navigate, Route, Routes, useLocation } from "react-router";
 import { ChartPage } from "./ChartPage";
 import { IndicatorDialog } from "./IndicatorDialog";
 import { TabBar } from "./TabBar";
@@ -9,7 +9,6 @@ import { AlertDialog } from "./AlertDialog";
 import { ApiKeysDialog } from "./ApiKeysDialog";
 import { useApiKeys } from "./apiKeys";
 import { openChartWindow } from "./windows";
-import { Mt5Setup } from "./Mt5Setup";
 import { NavRail } from "./NavRail";
 import { TradeConfirmDialog } from "./TradeConfirmDialog";
 import { JournalPage } from "./JournalPage";
@@ -60,6 +59,12 @@ export default function App() {
   useEffect(() => {
     rememberRoute(location.pathname);
   }, [location.pathname]);
+
+  // Footer badge: broker status + whether an account session is live.
+  const mt5Status = useMt5((s) => s.status);
+  const session = useMt5Accounts((s) => s.session);
+  const mt5Badge =
+    mt5Status === "online" ? (session ? "bg-ev-up" : "bg-ev-accent") : mt5Status === "error" ? "bg-ev-down" : "";
 
   // The shell's colour tokens follow the active chart's theme.
   useEffect(() => {
@@ -188,7 +193,14 @@ export default function App() {
             {state.drawings.length} drawing{state.drawings.length === 1 ? "" : "s"}
           </span>
           <span className="ml-auto flex items-center gap-3">
-            <Mt5Setup />
+            <Link
+              to="/settings"
+              title="Settings — MT5 connection, broker logins, safety rails"
+              className="rounded px-1.5 py-0.5 hover:bg-ev-raised hover:text-ev-strong"
+            >
+              Settings
+              {mt5Badge && <span className={`ml-1 inline-block size-1.5 rounded-full ${mt5Badge}`} aria-hidden />}
+            </Link>
             <span className="uppercase">{state.theme}</span>
           </span>
         </footer>
