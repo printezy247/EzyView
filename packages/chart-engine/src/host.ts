@@ -9,12 +9,15 @@ import {
   LineSeries,
   LineStyle,
   LineType,
+  PriceScaleMode,
   createChart,
   createSeriesMarkers,
+  createTextWatermark,
   type IChartApi,
   type IPriceLine,
   type ISeriesApi,
   type ISeriesMarkersPluginApi,
+  type ITextWatermarkPluginApi,
   type SeriesMarker,
   type SeriesType,
   type Time,
@@ -26,6 +29,7 @@ import type { Drawing, ScreenPoint } from "@ezyview/drawing-tools";
 import { BgBandsPrimitive } from "./bands.js";
 import { DrawingsPrimitive } from "./drawings.js";
 import { DARK_THEME, colorAt, type ChartTheme } from "./theme.js";
+import { crosshairModeOf, priceScaleModeOf, timezoneFormatters, type CrosshairModeName, type PriceScaleModeName } from "./settings.js";
 import { autoBoxSize, heikinAshi, kagi, pointAndFigure, renko, sequentialTimes, type PriceBox } from "./transforms.js";
 import { VolumeProfilePrimitive } from "./volumeProfile.js";
 
@@ -99,6 +103,8 @@ export interface EzyChartOptions {
   boxSize?: number | null;
   showGrid?: boolean;
   onCrosshairTime?: (time: number | null) => void;
+  /** Crosshair move with both coordinates — feeds crosshair sync across cells. */
+  onCrosshairMove?: (time: number | null, price: number | null) => void;
   onClick?: (info: ClickInfo) => void;
 }
 
@@ -122,6 +128,14 @@ function toLineWidth(width: number): 1 | 2 | 3 | 4 {
   if (n === 2) return 2;
   if (n === 3) return 3;
   return 4;
+}
+
+/** `#rrggbb` at reduced opacity for the watermark; other formats pass through. */
+function translucent(hex: string, alpha: number): string {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return hex;
+  const v = Number.parseInt(m[1]!, 16);
+  return `rgba(${(v >> 16) & 255}, ${(v >> 8) & 255}, ${v & 255}, ${alpha})`;
 }
 
 /**
@@ -151,6 +165,10 @@ export class EzyChart {
   /** Entry/stop/target levels for the open position, drawn as price lines. */
   private tradingLines: TradingLine[] = [];
   private priceLineApi: IPriceLine[] = [];
+  /** Attached symbol watermark, or null while the watermark is off. */
+  private watermark: ITextWatermarkPluginApi<Time> | null = null;
+  /** Current watermark text, kept so a theme change can recolour it. */
+  private watermarkText: string | null = null;
   private type: ChartType;
   private theme: ChartTheme;
   private showVolume: boolean;
@@ -206,7 +224,13 @@ export class EzyChart {
     if (this.showVolume) this.ensureVolume();
 
     this.chart.subscribeCrosshairMove((param) => {
-      this.opts.onCrosshairTime?.(param.time === undefined ? null : Number(param.time));
+      const time = param.time === undefined ? null : Number(param.time);
+      this.opts.onCrosshairTime?.(time);
+      if (this.opts.onCrosshairMove) {
+        const y = param.point?.y;
+        const price = y === undefined || !this.mainSeries ? null : this.mainSeries.coordinateToPrice(y);
+        this.opts.onCrosshairMove(time, price === null ? null : Number(price));
+      }
     });
 
     this.chart.subscribeClick((param) => {
@@ -315,6 +339,12 @@ export class EzyChart {
     });
     this.applyCandleColors();
     this.volumeProfile.setColors(theme.upColor, theme.downColor);
+    // The watermark tints with the theme's text colour.
+    if (this.watermark && this.watermarkText) {
+      this.watermark.applyOptions({
+        lines: [{ text: this.watermarkText, color: translucent(theme.textColor, 0.12) }],
+      });
+    }
     // Kagi colors its line per point, so the data carries the theme.
     if (this.type === "kagi") this.mainSeries?.setData(this.seriesData());
     for (const line of this.levelLines) line.applyOptions({ color: theme.paneSeparator });
@@ -333,6 +363,78 @@ export class EzyChart {
   setShowGrid(show: boolean): void {
     const color = show ? this.theme.grid : "transparent";
     this.chart.applyOptions({ grid: { vertLines: { color }, horzLines: { color } } });
+  }
+
+  /** Crosshair interaction style: free, snapped to bar OHLC, or hidden. */
+  setCrosshairMode(mode: CrosshairModeName): void {
+    this.chart.applyOptions({ crosshair: { mode: crosshairModeOf(mode) } });
+  }
+
+  /**
+   * Right price-scale rendering: linear, log or percentage.
+   *
+   * Log/percentage on data that never goes positive can make LWC's autoscale
+   * non-finite; if the chart refuses the option, fall back to linear rather
+   * than leave the axis broken.
+   */
+  setPriceScaleMode(mode: PriceScaleModeName): void {
+    try {
+      this.chart.priceScale("right").applyOptions({ mode: priceScaleModeOf(mode) });
+    } catch {
+      this.chart.priceScale("right").applyOptions({ mode: PriceScaleMode.Normal });
+    }
+  }
+
+  /** Flip the right price scale upside-down. */
+  setInvertScale(invert: boolean): void {
+    this.chart.priceScale("right").applyOptions({ invertScale: invert });
+  }
+
+  /**
+   * Pin the time axis and crosshair label to an IANA zone; null restores the
+   * Lightweight Charts defaults. `applyOptions` ignores `undefined`, so the
+   * helper always returns explicit formatters (see `timezoneFormatters`).
+   */
+  setTimezone(tz: string | null): void {
+    const fmt = timezoneFormatters(tz);
+    this.chart.applyOptions({
+      localization: { timeFormatter: fmt.timeFormatter },
+      timeScale: { tickMarkFormatter: fmt.tickMarkFormatter },
+    });
+  }
+
+  /**
+   * Draw (or replace) the symbol watermark behind the candles; null removes it.
+   * The text rides a pane primitive, so it never intercepts pointer events.
+   */
+  setWatermark(text: string | null): void {
+    const pane = this.chart.panes()[0];
+    if (!pane) return;
+    this.watermarkText = text;
+    if (!text) {
+      if (this.watermark) {
+        this.watermark.detach();
+        this.watermark = null;
+      }
+      return;
+    }
+    const lines = [{ text, color: translucent(this.theme.textColor, 0.12) }];
+    if (this.watermark) this.watermark.applyOptions({ lines });
+    else this.watermark = createTextWatermark(pane, { lines, horzAlign: "center", vertAlign: "center" });
+  }
+
+  /**
+   * Move the crosshair to a time/price on this chart — the read side of
+   * crosshair sync. LWC's own API; no-op until a main series exists.
+   */
+  showCrosshairAt(price: number, time: number): void {
+    if (!this.mainSeries) return;
+    this.chart.setCrosshairPosition(price, time as UTCTimestamp, this.mainSeries);
+  }
+
+  /** Clear a sync-imposed crosshair position (pointer left the source chart). */
+  clearCrosshairPosition(): void {
+    this.chart.clearCrosshairPosition();
   }
 
   /**

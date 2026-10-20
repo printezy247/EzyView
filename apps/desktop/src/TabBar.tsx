@@ -12,6 +12,7 @@ export function TabBar() {
   const addLayout = useWorkspace((s) => s.addLayout);
   const copyLayout = useWorkspace((s) => s.copyLayout);
   const deleteLayout = useWorkspace((s) => s.deleteLayout);
+  const sortLayouts = useWorkspace((s) => s.sortLayouts);
 
   return (
     <div className="flex h-8 shrink-0 items-center gap-1 border-b border-ev-raised px-2">
@@ -64,6 +65,9 @@ export function TabBar() {
           [
             { kind: "action", id: "new", label: "New layout", onSelect: addLayout },
             { kind: "action", id: "duplicate", label: "Duplicate active layout", onSelect: () => copyLayout(activeId) },
+            { kind: "separator", id: "s-sort" },
+            { kind: "action", id: "sort-name", label: "Sort by name", onSelect: () => sortLayouts("name") },
+            { kind: "action", id: "sort-date", label: "Sort by date created", onSelect: () => sortLayouts("date") },
             { kind: "separator", id: "s" },
             {
               kind: "action",

@@ -82,7 +82,7 @@ export function SettingsPage() {
           <>
             <p className="mb-3 text-[11px] text-ev-muted">Colour theme for the shell and the active chart.</p>
             <div className="flex gap-2" role="radiogroup" aria-label="Theme">
-              {(["dark", "light"] as const).map((t) => (
+              {(["dark", "light", "tokyo"] as const).map((t) => (
                 <button
                   key={t}
                   type="button"

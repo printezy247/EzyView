@@ -8,6 +8,7 @@ import { DEFAULT_DRAWING_STYLE } from "@ezyview/drawing-tools";
 import type { PinePlot } from "@ezyview/pine-transpiler";
 import { THEME_OF, uid as newId, useWorkspace } from "./store";
 import type { ActiveIndicator, PineScriptRecord } from "./store";
+import type { ChartThemeName, CrosshairModeName, PriceScaleModeName } from "./layout";
 import { loadHistory, tickerOf } from "./data";
 import { summarizeChart } from "./chartSummary";
 
@@ -19,14 +20,28 @@ interface Props {
   showVolumeProfile?: boolean;
   boxSize?: number | null;
   showGrid: boolean;
-  theme: "dark" | "light";
+  theme: ChartThemeName;
   indicators: ActiveIndicator[];
   drawings: Drawing[];
   /** Replay cursor: show bars up to and including this index, or null for all. */
   replayBar?: number | null;
   /** Entry/stop/target levels for the open position on this symbol. */
   tradingLines?: TradingLine[];
+  /** Crosshair interaction style; absent = normal. */
+  crosshairMode?: CrosshairModeName;
+  /** Right price-scale rendering; absent = linear. */
+  priceScale?: PriceScaleModeName;
+  /** Flip the right price scale; absent = off. */
+  invertScale?: boolean;
+  /** IANA zone for the time axis; absent = exchange/UTC default. */
+  timezone?: string;
+  /** Draw the symbol/interval watermark; absent = off. */
+  watermark?: boolean;
+  /** Crosshair position mirrored from another cell while sync is on. */
+  syncCrosshair?: { time: number; price: number } | null;
   onCrosshairTime?: (time: number | null) => void;
+  /** Crosshair source hook: time + price of the pointer, for sync broadcast. */
+  onCrosshairMove?: (time: number | null, price: number | null) => void;
   /**
    * Which cell of the active layout this chart is. Placed drawings are saved
    * there; without it (detached windows) drawing tools are inert.
@@ -47,6 +62,8 @@ export function ChartHost(props: Props) {
   // without re-subscribing the chart.
   const crosshairRef = useRef(props.onCrosshairTime);
   crosshairRef.current = props.onCrosshairTime;
+  const crosshairMoveRef = useRef(props.onCrosshairMove);
+  crosshairMoveRef.current = props.onCrosshairMove;
   const chartIndexRef = useRef(props.chartIndex);
   chartIndexRef.current = props.chartIndex;
 
@@ -72,6 +89,7 @@ export function ChartHost(props: Props) {
       boxSize: props.boxSize ?? null,
       theme: THEME_OF[props.theme],
       onCrosshairTime: (t) => crosshairRef.current?.(t),
+      onCrosshairMove: (t, p) => crosshairMoveRef.current?.(t, p),
       onClick: (info) => {
         const now = Date.now();
         if (now - lastClickAtRef.current < 150) return;
@@ -271,6 +289,27 @@ export function ChartHost(props: Props) {
     chart.setShowGrid(props.showGrid);
     chart.setIndicators(toInstances(props.indicators));
   }, [props.theme, props.showVolume, props.showVolumeProfile, props.showGrid, props.indicators]);
+
+  // Crosshair style, price scale, timezone and watermark — the Phase 4 controls.
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    chart.setCrosshairMode(props.crosshairMode ?? "normal");
+    chart.setPriceScaleMode(props.priceScale ?? "normal");
+    chart.setInvertScale(props.invertScale ?? false);
+    chart.setTimezone(props.timezone ?? null);
+    chart.setWatermark(props.watermark ? `${props.symbol} · ${props.resolution}` : null);
+  }, [props.crosshairMode, props.priceScale, props.invertScale, props.timezone, props.watermark, props.symbol, props.resolution]);
+
+  // Crosshair sync: another cell's pointer moves this chart's crosshair.
+  // A null target clears a sync-imposed position so the local pointer wins.
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    const sync = props.syncCrosshair;
+    if (sync) chart.showCrosshairAt(sync.price, sync.time);
+    else chart.clearCrosshairPosition();
+  }, [props.syncCrosshair]);
 
   // Every run replaces its script's output wholesale; the chart reconciles both
   // layers in one pass so they cannot fight over pane indices.

@@ -10,9 +10,21 @@ import { Menu } from "./Menu";
 import type { MenuEntry } from "./Menu";
 import { SymbolSearch } from "./SymbolSearch";
 import { GRID_MODES } from "./layout";
-import type { GridMode } from "./layout";
+import type { ChartThemeName, CrosshairModeName, GridMode, PriceScaleModeName } from "./layout";
 import { useWorkspace } from "./store";
 import type { MagnetMode } from "@ezyview/drawing-tools";
+
+/** Timezones offered in the View menu; empty = exchange/UTC default. */
+const TIMEZONES: { id: string; label: string }[] = [
+  { id: "", label: "Default (UTC)" },
+  { id: "America/New_York", label: "New York" },
+  { id: "Europe/London", label: "London" },
+  { id: "Europe/Berlin", label: "Berlin" },
+  { id: "Asia/Tokyo", label: "Tokyo" },
+  { id: "Asia/Hong_Kong", label: "Hong Kong" },
+  { id: "Asia/Kolkata", label: "Kolkata" },
+  { id: "Australia/Sydney", label: "Sydney" },
+];
 
 export const CHART_TYPES: { id: ChartType; label: string }[] = [
   { id: "candles", label: "Candles" },
@@ -45,7 +57,13 @@ interface Props {
   /** Renko/P&F box or Kagi reversal; null = automatic. */
   boxSize: number | null;
   showGrid: boolean;
-  theme: "dark" | "light";
+  theme: ChartThemeName;
+  /** Per-cell chart controls (focused cell). */
+  crosshairMode: CrosshairModeName;
+  priceScale: PriceScaleModeName;
+  invertScale: boolean;
+  timezone: string | undefined;
+  watermark: boolean;
   indicatorCount: number;
   replayActive: boolean;
   panels: Record<PanelId, boolean>;
@@ -56,7 +74,12 @@ interface Props {
   onToggleVolumeProfile: () => void;
   onBoxSize: (size: number | null) => void;
   onToggleGrid: () => void;
-  onToggleTheme: () => void;
+  onSetTheme: (theme: ChartThemeName) => void;
+  onCrosshairMode: (mode: CrosshairModeName) => void;
+  onPriceScale: (mode: PriceScaleModeName) => void;
+  onInvertScale: () => void;
+  onTimezone: (tz: string | undefined) => void;
+  onWatermark: () => void;
   onOpenIndicators: () => void;
   onToggleReplay: () => void;
   onTogglePanel: (id: PanelId) => void;
@@ -107,6 +130,8 @@ export function Toolbar(props: Props) {
 
   const magnet = useWorkspace((s) => s.magnet);
   const setMagnet = useWorkspace((s) => s.setMagnet);
+  const crosshairSync = useWorkspace((s) => s.crosshairSync);
+  const setCrosshairSync = useWorkspace((s) => s.setCrosshairSync);
 
   const panel = (id: PanelId, label: string) => toggle(id, label, props.panels[id], () => props.onTogglePanel(id));
 
@@ -190,26 +215,71 @@ export function Toolbar(props: Props) {
     toggle("volume", "Volume", props.showVolume, props.onToggleVolume),
     toggle("volume-profile", "Volume profile", props.showVolumeProfile, props.onToggleVolumeProfile),
     toggle("grid", "Grid", props.showGrid, props.onToggleGrid),
+    { kind: "separator", id: "s-crosshair" },
+    { kind: "label", id: "crosshair", label: "Crosshair" },
+    ...(
+      [
+        { id: "normal", label: "Normal" },
+        { id: "magnet", label: "Magnet (snap to OHLC)" },
+        { id: "hidden", label: "Hidden" },
+      ] as const
+    ).map(
+      (m): MenuEntry => ({
+        kind: "radio",
+        id: `crosshair-${m.id}`,
+        label: m.label,
+        selected: props.crosshairMode === m.id,
+        onSelect: () => props.onCrosshairMode(m.id),
+      }),
+    ),
+    toggle("crosshair-sync", "Sync across charts", crosshairSync, () => setCrosshairSync(!crosshairSync)),
+    { kind: "separator", id: "s-scale" },
+    { kind: "label", id: "scale", label: "Price scale" },
+    ...(
+      [
+        { id: "normal", label: "Normal" },
+        { id: "log", label: "Logarithmic" },
+        { id: "percentage", label: "Percentage" },
+      ] as const
+    ).map(
+      (m): MenuEntry => ({
+        kind: "radio",
+        id: `scale-${m.id}`,
+        label: m.label,
+        selected: props.priceScale === m.id,
+        onSelect: () => props.onPriceScale(m.id),
+      }),
+    ),
+    toggle("invert-scale", "Invert scale", props.invertScale, props.onInvertScale),
+    { kind: "separator", id: "s-time" },
+    { kind: "label", id: "time-axis", label: "Time axis" },
+    ...TIMEZONES.map(
+      (tz): MenuEntry => ({
+        kind: "radio",
+        id: `tz-${tz.id}`,
+        label: tz.label,
+        selected: (props.timezone ?? "") === tz.id,
+        onSelect: () => props.onTimezone(tz.id === "" ? undefined : tz.id),
+      }),
+    ),
+    toggle("watermark", "Watermark", props.watermark, props.onWatermark),
     { kind: "separator", id: "s-theme" },
     { kind: "label", id: "appearance", label: "Appearance" },
-    {
-      kind: "radio",
-      id: "dark",
-      label: "Dark theme",
-      selected: props.theme === "dark",
-      onSelect: () => {
-        if (props.theme !== "dark") props.onToggleTheme();
-      },
-    },
-    {
-      kind: "radio",
-      id: "light",
-      label: "Light theme",
-      selected: props.theme === "light",
-      onSelect: () => {
-        if (props.theme !== "light") props.onToggleTheme();
-      },
-    },
+    ...(
+      [
+        { id: "dark", label: "Dark theme" },
+        { id: "light", label: "Light theme" },
+        { id: "tokyo", label: "Tokyo Night" },
+      ] as const
+    ).map(
+      (t): MenuEntry => ({
+        kind: "radio",
+        id: t.id,
+        label: t.label,
+        selected: props.theme === t.id,
+        onSelect: () => props.onSetTheme(t.id),
+      }),
+    ),
     { kind: "separator", id: "s-window" },
     { kind: "label", id: "window", label: "Window" },
     { kind: "action", id: "new-window", label: "Open chart in new window", onSelect: props.onOpenWindow },
