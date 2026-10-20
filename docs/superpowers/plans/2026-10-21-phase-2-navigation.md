@@ -69,11 +69,11 @@
   - `rememberRoute(path: string): void` — writes localStorage key `ezyview:lastRoute` only when path is known; no-op without localStorage
   - `readLastRoute(): string` — stored-and-known → it; else `"/chart"`; guarded `typeof localStorage === "undefined"` (pattern from `mt5.ts:38`)
 
-- [ ] **Step 1: Write failing tests** — cases listed in Review Focus items 1–2 plus: `normalizePath` passthrough for each of the 6 routes; `readLastRoute` default `/chart` with empty storage and with no localStorage global (stub like `mt5Accounts.test.ts:51` `g.localStorage = {...}`).
-- [ ] **Step 2: Run** `npm test -- nav.test.ts` → FAIL (module not found).
-- [ ] **Step 3: Implement `nav.ts`** to the signatures above.
-- [ ] **Step 4: Run** → PASS.
-- [ ] **Step 5: Commit** `feat: Phase 2 route helpers with last-route persistence`.
+- [x] **Step 1: Write failing tests** — cases listed in Review Focus items 1–2 plus: `normalizePath` passthrough for each of the 6 routes; `readLastRoute` default `/chart` with empty storage and with no localStorage global (stub like `mt5Accounts.test.ts:51` `g.localStorage = {...}`).
+- [x] **Step 2: Run** `npm test -- nav.test.ts` → FAIL (module not found).
+- [x] **Step 3: Implement `nav.ts`** to the signatures above.
+- [x] **Step 4: Run** → PASS.
+- [x] **Step 5: Commit** `feat: Phase 2 route helpers with last-route persistence`.
 
 ### Task 2: Router mount, shell, ChartPage extraction
 
@@ -92,11 +92,11 @@
 - Consumes: Task 1 (`ROUTE_PATHS`, `NAV_ITEMS`, `normalizePath`, `rememberRoute`)
 - Produces: `ChartPage` props `{ watchlistOpen, domOpen, objectsOpen, tradingOpen, onToggle: (id: PanelId) => void, onOpenAlerts: () => void }` (alert dialog stays shell-owned; ChartPage calls back)
 
-- [ ] **Step 1:** `npm install react-router -w apps/desktop` (network: registry.npmjs.org).
-- [ ] **Step 2:** Extract ChartPage + NavRail + shell rewire + Toolbar/RightRail narrowing + placeholder pages.
-- [ ] **Step 3: Gates** — `npm run typecheck` (fix stale `journalOpen`/`pineActive` refs), `npm test`, `npm run lint`.
-- [ ] **Step 4: Manual smoke** — dev server: all 6 rail links switch pages; chart page still draws/undo/redo; side panels toggle; footer intact.
-- [ ] **Step 5: Commit** `feat: Phase 2 router shell with route-driven pages`.
+- [x] **Step 1:** `npm install react-router -w apps/desktop` (network: registry.npmjs.org).
+- [x] **Step 2:** Extract ChartPage + NavRail + shell rewire + Toolbar/RightRail narrowing + placeholder pages.
+- [x] **Step 3: Gates** — `npm run typecheck` (fix stale `journalOpen`/`pineActive` refs), `npm test`, `npm run lint`.
+- [x] **Step 4: Manual smoke** — dev server: all 6 rail links switch pages; chart page still draws/undo/redo; side panels toggle; footer intact.
+- [x] **Step 5: Commit** `feat: Phase 2 router shell with route-driven pages`.
 
 ### Task 3: Journal / Fundamentals / Options pages
 
@@ -110,10 +110,10 @@
 - Consumes: shell side-panel state; `useWorkspace` store (global — pages read it directly)
 - Produces: unchanged panel component APIs (props signatures identical)
 
-- [ ] **Step 1:** Replace placeholder bodies; adjust panel root classNames.
-- [ ] **Step 2: Gates** — typecheck, tests.
-- [ ] **Step 3: Manual smoke** — journal close button returns to `/chart`; fundamentals symbol pick updates chart state.
-- [ ] **Step 4: Commit** `feat: dedicated journal/fundamentals/options pages`.
+- [x] **Step 1:** Replace placeholder bodies; adjust panel root classNames.
+- [x] **Step 2: Gates** — typecheck, tests.
+- [x] **Step 3: Manual smoke** — journal close button returns to `/chart`; fundamentals symbol pick updates chart state.
+- [x] **Step 4: Commit** `feat: dedicated journal/fundamentals/options pages`.
 
 ### Task 4: Pine page
 
@@ -126,10 +126,10 @@
 - Consumes: `loadHistory` from `./data`, `useWorkspace`
 - Produces: `PineEditor` props `{ onClose, bars, symbol }` (note: `open` removed)
 
-- [ ] **Step 1:** Refactor + wire `/pine`.
-- [ ] **Step 2: Gates** — typecheck, tests.
-- [ ] **Step 3: Manual smoke** — `/pine` loads Monaco, run starter script, save script, close returns to chart.
-- [ ] **Step 4: Commit** `feat: Pine editor as /pine page`.
+- [x] **Step 1:** Refactor + wire `/pine`.
+- [x] **Step 2: Gates** — typecheck, tests.
+- [x] **Step 3: Manual smoke** — `/pine` loads Monaco, run starter script, save script, close returns to chart.
+- [x] **Step 4: Commit** `feat: Pine editor as /pine page`.
 
 ### Task 5: Settings page + Mt5Setup relocation
 
@@ -142,19 +142,19 @@
 - Consumes: `useMt5`, `useMt5Accounts`, `useApiKeys` (all global stores — unchanged)
 - Produces: SettingsPage with zero new state stores
 
-- [ ] **Step 1:** Relocate tabs; footer link; delete popover.
-- [ ] **Step 2: Gates** — typecheck, tests (safety suites must be green), lint.
-- [ ] **Step 3: Manual smoke** — footer gear → `/settings`; all 4 MT5 tabs render; bridge URL save works; audit loads; API keys dialog opens from Data tab.
-- [ ] **Step 4: Commit** `feat: /settings route hosts MT5 setup tabs`.
+- [x] **Step 1:** Relocate tabs; footer link; delete popover.
+- [x] **Step 2: Gates** — typecheck, tests (safety suites must be green), lint.
+- [x] **Step 3: Manual smoke** — footer gear → `/settings`; all 4 MT5 tabs render; bridge URL save works; audit loads; API keys dialog opens from Data tab.
+- [x] **Step 4: Commit** `feat: /settings route hosts MT5 setup tabs`.
 
 ### Task 6: MASTERPLAN status + final verification
 
 **Files:**
 - Modify: `MASTERPLAN.md` — §7 table: Phase 2 → `**done** (PR #12)` (adjust to actual PR number); §8 snapshot: navigation bullet → closed, note Mt5Setup now on `/settings`; §11 heading → "Delivered (PR #N). Deviations: journal second-monitor window deferred to Phase 9; panel sizes fixed — only last route persisted."; §21 approval gate update; §14 checkbox already ticked from Task 0
 
-- [ ] **Step 1:** Edit MASTERPLAN status sections.
-- [ ] **Step 2: Full gates** — `npm run lint && npm run typecheck && npm test && npm run build:web`.
-- [ ] **Step 3: Commit** `docs: Phase 2 delivered — status, deviations`.
+- [x] **Step 1:** Edit MASTERPLAN status sections.
+- [x] **Step 2: Full gates** — `npm run lint && npm run typecheck && npm test && npm run build:web`.
+- [x] **Step 3: Commit** `docs: Phase 2 delivered — status, deviations`.
 
 ### Task 7: Git ops (user pre-approved: merge without asking)
 
