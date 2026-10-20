@@ -99,18 +99,14 @@ export function ChartHost(props: Props) {
         try {
           const point = snapToOhlc({ time: info.time, price: info.price }, historyRef.current, magnet);
           const pending = pendingRef.current;
-          if (!pending || pending.tool !== tool) {
-            pendingRef.current = { tool, points: [point] };
-            setGhost({ x: info.x, y: info.y });
-            return;
-          }
-          pending.points.push(point);
+          const points =
+            !pending || pending.tool !== tool ? [point] : [...pending.points, point];
+          pendingRef.current = { tool, points };
           setGhost({ x: info.x, y: info.y });
-          if (isComplete(tool, pending.points)) {
+          if (isComplete(tool, points)) {
             const drawings = useWorkspace.getState().activeLayout().charts[chartIndex]?.drawings ?? [];
-            const newPoints = [...pending.points];
             setDrawings(
-              [...drawings, { id: newId(), tool, points: newPoints, style: { ...DEFAULT_DRAWING_STYLE } }],
+              [...drawings, { id: newId(), tool, points, style: { ...DEFAULT_DRAWING_STYLE } }],
               chartIndex,
             );
             pendingRef.current = null;
