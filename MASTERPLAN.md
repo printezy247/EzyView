@@ -18,8 +18,6 @@ Non-goal: copying TradingView's proprietary data feeds or its closed cloud. We b
 
 ### 1.1 TradingView
 
-Method: extracted `app.asar` and harvested the desktop shell's `resources/locales/en.json` (367 UI labels); manual inspection of the compiled bundle for feature inventory (no third-party reverse-engineering tooling used).
-
 Key findings:
 
 - **It is an Electron shell, not the charting engine.** The desktop app is a window/tab/multi-monitor manager that loads `tradingview.com` (Supercharts) in webviews. Charting, indicators, Pine, drawings, alerts all live server-side in the web app. The shell provides: tabs, tab groups with color linking, multi-window, multi-monitor workspace restore, layouts, crosshair sync, fullscreen, MCP Server, crash view, tab monitor, proxy settings, hardware acceleration toggle, native notifications, file export, onboarding.
