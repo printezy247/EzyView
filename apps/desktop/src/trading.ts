@@ -4,7 +4,10 @@ import type { AccountInfo, Deal, Order, OrderRequest, Position } from "@ezyview/
 import { PaperTradingEngine, PaperTradingError } from "@ezyview/paper-trading";
 import type { PaperSnapshot } from "@ezyview/paper-trading";
 import { market } from "./data";
+import { accountKindOf, useMt5Accounts } from "./mt5Accounts";
 import { getMt5, useMt5 } from "./mt5";
+import { approvalTokens, gateAction } from "./tradingSafety";
+import type { GateInput, GateResult } from "./tradingSafety";
 
 const STORAGE_KEY = "ezyview.paper-account.v1";
 
@@ -60,6 +63,16 @@ function message(err: unknown): string {
  */
 export type PanelPosition = Position & { margin?: number };
 
+/**
+ * An MT5 action parked by the safety gate, waiting on the confirm dialog.
+ * The token is consumed exactly once by `approve`.
+ */
+export type PendingAction =
+  | { kind: "place"; request: OrderRequest; gate: GateResult; token: string }
+  | { kind: "close"; symbol: string; qty?: number; gate: GateResult; token: string }
+  | { kind: "cancel"; id: string; gate: GateResult; token: string }
+  | { kind: "close-all"; rows: { symbol: string; qty: number }[]; gate: GateResult; token: string };
+
 export interface TradingState {
   account: AccountInfo | null;
   positions: PanelPosition[];
@@ -67,30 +80,163 @@ export interface TradingState {
   deals: Deal[];
   /** Rejection from the last submit, cleared on the next successful one. */
   error: string | null;
+  /** MT5 action awaiting the confirm dialog; null on paper and when idle. */
+  pending: PendingAction | null;
+  /** Informational result line, e.g. a dry-run validation. */
+  note: string | null;
 }
 
 export interface TradingActions {
+  /** Paper sends straight away; MT5 parks at the gate and returns false. */
   submit(request: OrderRequest): Promise<boolean>;
   cancel(id: string): Promise<boolean>;
   close(symbol: string, qty?: number): Promise<void>;
   closeAll(): Promise<void>;
+  /** Send the parked action once, after the user confirms. */
+  approve(): Promise<boolean>;
+  /** Drop the parked action and its token. */
+  decline(): void;
   reset(): Promise<void>;
   clearError(): void;
 }
 
-export const useTrading = create<TradingState & TradingActions>((set) => ({
+function mt5Gate(action: Omit<GateInput, "accountKind">): GateResult {
+  return gateAction(
+    { ...action, accountKind: accountKindOf(useMt5Accounts.getState().session) },
+    useMt5Accounts.getState().safety,
+  );
+}
+
+function park(set: (patch: Partial<TradingState>) => void, gate: GateResult, pending: PendingAction): boolean {
+  if (gate.decision === "block") {
+    approvalTokens.consume(pending.token);
+    set({ error: gate.reasons.join("; ") || "blocked by the safety rails", pending: null, note: null });
+    return false;
+  }
+  set({ pending, error: null, note: null });
+  return false;
+}
+
+/** The write path: raw transport so session + dry-run ride the body. */
+async function sendMt5(action: PendingAction): Promise<string | null> {
+  const transport = getMt5().transport;
+  const options = { dryRun: useMt5Accounts.getState().safety.dryRun };
+  switch (action.kind) {
+    case "place":
+      await transport.placeOrder(action.request, options);
+      break;
+    case "close":
+      await transport.close(action.symbol, action.qty, options);
+      break;
+    case "cancel":
+      await transport.cancel(action.id, options);
+      break;
+    case "close-all":
+      // Serial on purpose: the bridge holds one MT5 lock, and two closes of
+      // the same symbol racing would double-send.
+      for (const row of action.rows) {
+        // eslint-disable-next-line no-await-in-loop -- serial: one bridge lock, no same-symbol races
+        await transport.close(row.symbol, row.qty, options);
+      }
+      break;
+  }
+  return options.dryRun ? "Validated at the bridge — dry-run, nothing was sent." : null;
+}
+
+export const useTrading = create<TradingState & TradingActions>((set, get) => ({
   account: null,
   positions: [],
   orders: [],
   deals: [],
   error: null,
+  pending: null,
+  note: null,
 
   async submit(request) {
+    // Same ticket, two venues: paper keeps its engine, MT5 passes the gate.
+    if (useMt5.getState().source !== "mt5") {
+      try {
+        await paperEngine.placeOrder(request);
+        set({ error: null, note: null });
+        await refreshInto(set);
+        return true;
+      } catch (err) {
+        set({ error: message(err) });
+        return false;
+      }
+    }
+    const gate = mt5Gate({ action: "place", symbol: request.symbol, volume: request.qty });
+    return park(set, gate, { kind: "place", request, gate, token: approvalTokens.mint() });
+  },
+
+  async cancel(id) {
+    if (useMt5.getState().source !== "mt5") {
+      try {
+        const cancelled = await paperEngine.cancelOrder(id);
+        await refreshInto(set);
+        return cancelled;
+      } catch (err) {
+        set({ error: message(err) });
+        return false;
+      }
+    }
+    const gate = mt5Gate({ action: "cancel" });
+    return park(set, gate, { kind: "cancel", id, gate, token: approvalTokens.mint() });
+  },
+
+  async close(symbol, qty) {
+    if (useMt5.getState().source !== "mt5") {
+      try {
+        await paperEngine.closePosition(symbol, qty);
+        set({ error: null });
+      } catch (err) {
+        set({ error: message(err) });
+      }
+      await refreshInto(set);
+      return;
+    }
+    const gate = mt5Gate({ action: "close", symbol, volume: qty });
+    park(set, gate, { kind: "close", symbol, qty, gate, token: approvalTokens.mint() });
+  },
+
+  async closeAll() {
+    if (useMt5.getState().source !== "mt5") {
+      try {
+        await paperEngine.closeAll();
+        set({ error: null });
+      } catch (err) {
+        set({ error: message(err) });
+      }
+      await refreshInto(set);
+      return;
+    }
+    let rows: { symbol: string; qty: number }[] = [];
     try {
-      // Same ticket, two venues: paper keeps its engine, MT5 hits the bridge.
-      if (useMt5.getState().source === "mt5") await getMt5().trading.placeOrder(request);
-      else await paperEngine.placeOrder(request);
-      set({ error: null });
+      const open = await getMt5().trading.getPositions();
+      rows = open.map((position) => ({ symbol: position.symbol, qty: position.qty }));
+    } catch (err) {
+      set({ error: message(err) });
+      return;
+    }
+    if (rows.length === 0) {
+      set({ note: "Nothing to close.", error: null });
+      return;
+    }
+    const gate = mt5Gate({ action: "close" });
+    park(set, gate, { kind: "close-all", rows, gate, token: approvalTokens.mint() });
+  },
+
+  async approve() {
+    const pending = get().pending;
+    if (!pending) return false;
+    if (!approvalTokens.consume(pending.token)) {
+      set({ pending: null, error: "This confirmation has expired." });
+      return false;
+    }
+    set({ pending: null });
+    try {
+      const note = await sendMt5(pending);
+      set({ error: null, note });
       await refreshInto(set);
       return true;
     } catch (err) {
@@ -99,47 +245,10 @@ export const useTrading = create<TradingState & TradingActions>((set) => ({
     }
   },
 
-  async cancel(id) {
-    try {
-      if (useMt5.getState().source === "mt5") {
-        await getMt5().trading.cancelOrder(id);
-        await refreshInto(set);
-        return true;
-      }
-      const cancelled = await paperEngine.cancelOrder(id);
-      await refreshInto(set);
-      return cancelled;
-    } catch (err) {
-      set({ error: message(err) });
-      return false;
-    }
-  },
-
-  async close(symbol, qty) {
-    try {
-      if (useMt5.getState().source === "mt5") await getMt5().trading.closePosition(symbol, qty);
-      else await paperEngine.closePosition(symbol, qty);
-      set({ error: null });
-    } catch (err) {
-      set({ error: message(err) });
-    }
-    await refreshInto(set);
-  },
-
-  async closeAll() {
-    try {
-      if (useMt5.getState().source === "mt5") {
-        const broker = getMt5().trading;
-        const open = await broker.getPositions();
-        await Promise.all(open.map((position) => broker.closePosition(position.symbol, position.qty)));
-      } else {
-        await paperEngine.closeAll();
-      }
-      set({ error: null });
-    } catch (err) {
-      set({ error: message(err) });
-    }
-    await refreshInto(set);
+  decline() {
+    const pending = get().pending;
+    if (pending) approvalTokens.consume(pending.token);
+    set({ pending: null });
   },
 
   async reset() {

@@ -24,9 +24,30 @@ async fn open_chart_window(app: AppHandle, query: String) -> Result<(), String> 
 const KEYRING_SERVICE: &str = "EzyView";
 /// The only secrets the webview may read or write: data-provider keys and the MT5 MCP key.
 const API_KEY_NAMES: [&str; 3] = ["finnhub", "alphavantage", "mt5"];
+/// Per-account broker passwords live under `mt5:<login>@<server>` (Phase 1).
+const MT5_ACCOUNT_PREFIX: &str = "mt5:";
+/// Charset guard for the dynamic account suffix: no spaces, no path chars, no `@`/`:` games beyond the single separator.
+const MT5_ACCOUNT_CHARS: &[char] = &['.', '_', '-', '+'];
+
+fn is_mt5_account_name(name: &str) -> bool {
+    let Some(rest) = name.strip_prefix(MT5_ACCOUNT_PREFIX) else {
+        return false;
+    };
+    // `LOGIN@SERVER`: both sides non-empty, bounded, and from a strict charset.
+    let Some((login, server)) = rest.split_once('@') else {
+        return false;
+    };
+    let ok = |s: &str| {
+        !s.is_empty()
+            && s.len() <= 128
+            && s.chars()
+                .all(|c| c.is_ascii_alphanumeric() || MT5_ACCOUNT_CHARS.contains(&c))
+    };
+    ok(login) && ok(server)
+}
 
 fn key_entry(name: &str) -> Result<keyring::Entry, String> {
-    if !API_KEY_NAMES.contains(&name) {
+    if !API_KEY_NAMES.contains(&name) && !is_mt5_account_name(name) {
         return Err(format!("unknown API key name: {name}"));
     }
     keyring::Entry::new(KEYRING_SERVICE, name).map_err(|e| e.to_string())
@@ -76,6 +97,31 @@ mod tests {
     fn rejects_unknown_key_names() {
         assert!(api_key_get("../etc".into()).is_err());
         assert!(api_key_set("github".into(), "x".into()).is_err());
+    }
+
+    #[test]
+    fn accepts_mt5_account_names() {
+        assert!(is_mt5_account_name("mt5:4123@MetaQuotes-Demo"));
+        assert!(is_mt5_account_name("mt5:12345678@Broker.Server_1"));
+    }
+
+    #[test]
+    fn rejects_malicious_mt5_names() {
+        for bad in [
+            "mt5:", // no suffix
+            "mt5:@server",   // empty login
+            "mt5:4123@",     // empty server
+            "mt5:4123",      // no separator
+            "mt5:4123@two@servers",
+            "mt5:../etc@host",
+            "mt5:41 23@host", // space
+            "mt5:4123@hos:t", // colon games
+            "mt5:&long=123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890@host",
+            "other:4123@host",
+        ] {
+            assert!(!is_mt5_account_name(bad), "should reject {bad}");
+            assert!(api_key_get(bad.into()).is_err(), "should reject {bad}");
+        }
     }
 
     /// Touches the real OS keyring, so it only runs on demand:

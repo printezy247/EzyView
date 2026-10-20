@@ -9,16 +9,25 @@ Run:
     wine C:\\ezyview-py\\python.exe Z:\\path\\to\\bridge.py
 Env:
     EZYVIEW_MT5_PORT   listen port (default 8765)
+    EZYVIEW_MT5_AUDIT  audit SQLite path (default: audit.db next to this file)
     MT5_PATH           terminal64.exe path (auto-detected when unset)
-    MT5_LOGIN/SERVER/PASSWORD   optional re-login
+    MT5_LOGIN/SERVER/PASSWORD   optional re-login (legacy attach; the app's
+                       in-account login uses POST /connect instead)
+
+Endpoints: /health /symbols /history /quote /account /positions /deals /audit
+GET, and /connect /disconnect /order /close /cancel /modify POST. Writes accept
+`dry_run: true` to validate without touching the terminal; while a /connect
+session is live, writes must carry its `session` id.
 """
 from __future__ import annotations
 
 import json
 import math
 import os
+import sqlite3
 import sys
 import threading
+import uuid
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
@@ -27,6 +36,15 @@ import MetaTrader5 as mt5
 
 PORT = int(os.environ.get("EZYVIEW_MT5_PORT", "8765"))
 HOST = "127.0.0.1"
+AUDIT_DB = os.environ.get(
+    "EZYVIEW_MT5_AUDIT", os.path.join(os.path.dirname(os.path.abspath(__file__)), "audit.db")
+)
+
+# In-app login session (Phase 1): minted by /connect, dropped by /disconnect.
+# While it is None the bridge keeps its legacy attach-to-terminal behaviour;
+# while set, trade writes must carry the matching session id.
+SESSION: str | None = None
+SESSION_ACCOUNT: dict | None = None
 DEFAULT_PATHS = [
     r"Z:\home\jack\.mt5\drive_c\Program Files\MetaTrader 5\terminal64.exe",
     r"C:\Program Files\MetaTrader 5\terminal64.exe",
@@ -92,10 +110,15 @@ def ser(value):
         return str(value)
 
 
+def terminal_path():
+    """Terminal executable, from env or the usual install spots (Wine drive first)."""
+    return os.environ.get("MT5_PATH") or next((p for p in DEFAULT_PATHS if os.path.exists(p)), None)
+
+
 def connect() -> bool:
     global _last_error
     with LOCK:
-        path = os.environ.get("MT5_PATH") or next((p for p in DEFAULT_PATHS if os.path.exists(p)), None)
+        path = terminal_path()
         kwargs = {"timeout": 15000}
         if path:
             kwargs["path"] = path
@@ -117,6 +140,83 @@ def connect() -> bool:
 def seq(value):
     """None → []. Never use `or []`: numpy arrays raise on truth-testing."""
     return [] if value is None else list(value)
+
+
+# --- audit log (Phase 1: one row per action attempt, no credentials) --------
+AUDIT_LOCK = threading.Lock()
+AUDIT_SCHEMA = """
+CREATE TABLE IF NOT EXISTS audit (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts TEXT NOT NULL,
+  event TEXT NOT NULL,
+  login TEXT,
+  server TEXT,
+  symbol TEXT,
+  volume REAL,
+  price REAL,
+  result TEXT,
+  error TEXT,
+  detail TEXT
+)
+"""
+
+
+def _open_audit():
+    db = sqlite3.connect(AUDIT_DB)
+    try:
+        db.execute(AUDIT_SCHEMA)
+    except Exception:
+        db.close()
+        raise
+    return db
+
+
+def audit(event, login=None, server=None, symbol=None, volume=None, price=None, result=None, error=None, detail=None):
+    """Append one action row. The password never appears here by construction:
+    only the account number, server, symbol, size, price and outcome do."""
+    ts = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    try:
+        with AUDIT_LOCK:
+            db = _open_audit()
+            try:
+                db.execute(
+                    "INSERT INTO audit (ts, event, login, server, symbol, volume, price, result, error, detail)"
+                    " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (ts, event, str(login) if login is not None else None, server, symbol, volume, price, result, error, detail),
+                )
+                db.commit()
+            finally:
+                db.close()
+    except Exception as err:  # auditing must never take down a trade path
+        sys.stderr.write(f"audit write failed: {err}\n")
+
+
+def audit_rows(limit=50):
+    limit = max(1, min(int(limit), 500))
+    with AUDIT_LOCK:
+        db = _open_audit()
+        try:
+            db.row_factory = sqlite3.Row
+            rows = db.execute("SELECT * FROM audit ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+        finally:
+            db.close()
+    return [dict(r) for r in rows]
+
+
+def redact(message, *secrets):
+    """Scrub any secret that leaked into an error string before it leaves the bridge."""
+    text = str(message)
+    for secret in secrets:
+        if secret:
+            text = text.replace(str(secret), "***")
+    return text
+
+
+def _account_ref():
+    """(login, server) of the attached account, for audit rows."""
+    with LOCK:
+        account = mt5.account_info()
+    return (account.login if account else None, account.server if account else None)
 
 
 def ensure_connected() -> bool:
@@ -229,7 +329,8 @@ class Handler(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         query = {k: v[0] for k, v in parse_qs(url.query).items()}
         try:
-            if url.path != "/health" and not ensure_connected():
+            # Health and the audit log answer even with no terminal attached.
+            if url.path not in ("/health", "/audit") and not ensure_connected():
                 return self._fail("MetaTrader 5 terminal is not running", 503)
             if url.path == "/health":
                 return self._health()
@@ -245,6 +346,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._positions()
             if url.path == "/deals":
                 return self._deals(query)
+            if url.path == "/audit":
+                return self._send({"rows": audit_rows(int(query.get("limit", "50")))})
             self._fail("not found: " + url.path, 404)
         except Exception as err:  # never take the server down
             self._fail(err, 500)
@@ -255,8 +358,17 @@ class Handler(BaseHTTPRequestHandler):
         if "_bad_json" in body:
             return self._fail("invalid JSON body", 400)
         try:
+            # /connect opens the terminal; /disconnect works regardless of state.
+            if url.path == "/connect":
+                return self._connect(body)
+            if url.path == "/disconnect":
+                return self._disconnect()
             if not ensure_connected():
                 return self._fail("MetaTrader 5 terminal is not running", 503)
+            # Once /connect has minted a session, trade writes must carry it:
+            # nobody trades on a terminal the app did not log into.
+            if SESSION is not None and body.get("session") != SESSION:
+                return self._fail("stale or missing session — reconnect from EzyView", 401)
             if url.path == "/order":
                 return self._order(body)
             if url.path == "/close":
@@ -268,6 +380,65 @@ class Handler(BaseHTTPRequestHandler):
             self._fail("not found: " + url.path, 404)
         except Exception as err:
             self._fail(err, 500)
+
+    # --- session (Phase 1) ------------------------------------------------
+    def _connect(self, body: dict):
+        """Log the terminal into an account and mint a one-app session.
+
+        The password lives only in this scope: it is passed straight to
+        `mt5.initialize`, scrubbed from any error text, and never written
+        anywhere — including the audit log.
+        """
+        global SESSION, SESSION_ACCOUNT
+        server = str(body.get("server") or "").strip()
+        login = str(body.get("login") or "").strip()
+        password = str(body.get("password") or "")
+        if not server or not login.isdigit() or not password:
+            audit("connect", login=login or None, server=server or None, result="rejected", error="bad credentials")
+            return self._fail("server, a numeric login and a password are required", 400)
+        kwargs = {"timeout": 15000, "login": int(login), "password": password, "server": server}
+        path = terminal_path()
+        if path:
+            kwargs["path"] = path
+        with LOCK:
+            ok = bool(mt5.initialize(**kwargs))
+            account = mt5.account_info() if ok else None
+            err = redact(mt5.last_error(), password) if not ok else None
+        if not ok or account is None:
+            audit("connect", login=login, server=server, result="rejected", error=err)
+            return self._fail(err or "login failed", 401)
+        if str(account.login) != login:
+            with LOCK:
+                mt5.shutdown()
+            audit("connect", login=login, server=server, result="rejected", error="account mismatch")
+            return self._fail("terminal ended up on a different account", 409)
+        SESSION = uuid.uuid4().hex
+        SESSION_ACCOUNT = {"login": login, "server": account.server or server, "demo": account.trade_mode == 0}
+        audit("connect", login=login, server=server, result="ok")
+        self._send({
+            "ok": True,
+            "session": SESSION,
+            "login": login,
+            "server": SESSION_ACCOUNT["server"],
+            "demo": SESSION_ACCOUNT["demo"],
+            "balance": account.balance,
+            "equity": account.equity,
+            "margin": account.margin,
+            "free_margin": account.margin_free,
+            "profit": account.profit,
+            "currency": account.currency,
+            "leverage": account.leverage,
+        })
+
+    def _disconnect(self):
+        global SESSION, SESSION_ACCOUNT
+        login = SESSION_ACCOUNT.get("login") if SESSION_ACCOUNT else None
+        server = SESSION_ACCOUNT.get("server") if SESSION_ACCOUNT else None
+        with LOCK:
+            mt5.shutdown()
+        SESSION = SESSION_ACCOUNT = None
+        audit("disconnect", login=login, server=server, result="ok")
+        self._send({"ok": True})
 
     # --- reads ----------------------------------------------------------
     def _health(self):
@@ -286,6 +457,10 @@ class Handler(BaseHTTPRequestHandler):
             if account:
                 payload["login"] = account.login
                 payload["server"] = account.server
+        payload["app_session"] = SESSION is not None
+        if SESSION_ACCOUNT:
+            payload["session_login"] = SESSION_ACCOUNT.get("login")
+            payload["session_demo"] = SESSION_ACCOUNT.get("demo")
         self._send(payload, 200 if connected else 503)
 
     def _symbols(self, query: str):
@@ -390,6 +565,9 @@ class Handler(BaseHTTPRequestHandler):
         if not symbol or volume <= 0:
             return self._fail("symbol and a positive volume are required", 400)
 
+        # Read the account ref before taking LOCK: `_account_ref` locks too, and
+        # this is a non-reentrant lock.
+        login, server = _account_ref()
         with LOCK:
             if not ensure_symbol(symbol):
                 return self._fail(f"unknown symbol: {symbol}", 404)
@@ -435,12 +613,26 @@ class Handler(BaseHTTPRequestHandler):
             if body.get("tp"):
                 request["tp"] = float(body["tp"])
 
+            if body.get("dry_run"):
+                # Every check above ran; the terminal is deliberately untouched.
+                audit("order", login=login, server=server, symbol=symbol,
+                      volume=volume, price=request.get("price"), result="dry_run")
+                return self._send({"ok": True, "dry_run": True, "symbol": symbol, "volume": volume})
+
             result = send_with_fill(request, fill)
 
         if result is None:
-            return self._fail(f"order_send failed: {mt5.last_error()}", 502)
+            err = str(mt5.last_error())
+            audit("order", login=login, server=server, symbol=symbol, volume=volume,
+                  price=request.get("price"), result="error", error=err)
+            return self._fail(f"order_send failed: {err}", 502)
         if result.retcode != mt5.TRADE_RETCODE_DONE:
-            return self._fail(f"rejected ({result.retcode}): {result.comment}", 409)
+            err = f"rejected ({result.retcode}): {result.comment}"
+            audit("order", login=login, server=server, symbol=symbol, volume=volume,
+                  price=request.get("price"), result="rejected", error=err)
+            return self._fail(err, 409)
+        audit("order", login=login, server=server, symbol=symbol, volume=volume,
+              price=request.get("price"), result=f"done:{result.order}")
         self._send(ser(result._asdict()))
 
     def _close(self, body: dict):
@@ -448,8 +640,15 @@ class Handler(BaseHTTPRequestHandler):
         if not symbol:
             return self._fail("symbol required", 400)
         volume = body.get("volume")
+        login, server = _account_ref()
         closed = []
         with LOCK:
+            if body.get("dry_run"):
+                if not positions_for(symbol):
+                    return self._fail(f"no open position on {symbol}", 404)
+                audit("close", login=login, server=server, symbol=symbol,
+                      volume=float(volume) if volume else None, result="dry_run")
+                return self._send({"ok": True, "dry_run": True, "symbol": symbol})
             for pos in positions_for(symbol):
                 if volume and pos.volume > float(volume):
                     # Partial close: send the requested part only.
@@ -479,12 +678,18 @@ class Handler(BaseHTTPRequestHandler):
                 result = send_with_fill(request, filling_mode(mt5.symbol_info(symbol)))
                 if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
                     reason = result.comment if result else str(mt5.last_error())
+                    audit("close", login=login, server=server, symbol=symbol, volume=part,
+                          price=request["price"], result="rejected", error=reason)
                     return self._fail(f"close rejected: {reason}", 409)
+                audit("close", login=login, server=server, symbol=symbol, volume=part,
+                      price=request["price"], result=f"done:{result.order}")
                 closed.append(ser(result._asdict()))
                 if volume:
                     continue
                 break
         if not closed:
+            audit("close", login=login, server=server, symbol=symbol, result="rejected",
+                  error="no open position")
             return self._fail(f"no open position on {symbol}", 404)
         self._send({"closed": closed})
 
@@ -492,17 +697,24 @@ class Handler(BaseHTTPRequestHandler):
         ticket = body.get("ticket")
         if ticket in (None, ""):
             return self._fail("ticket required", 400)
+        login, server = _account_ref()
+        if body.get("dry_run"):
+            audit("cancel", login=login, server=server, result="dry_run", detail=f"ticket {ticket}")
+            return self._send({"ok": True, "dry_run": True, "ticket": str(ticket)})
         with LOCK:
             result = mt5.order_send({"action": mt5.TRADE_ACTION_REMOVE, "order": int(ticket)})
         if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
             reason = result.comment if result else str(mt5.last_error())
+            audit("cancel", login=login, server=server, result="rejected", error=reason, detail=f"ticket {ticket}")
             return self._fail(f"delete rejected: {reason}", 409)
+        audit("cancel", login=login, server=server, result="done", detail=f"ticket {ticket}")
         self._send(ser(result._asdict()))
 
     def _modify(self, body: dict):
         ticket = body.get("ticket")
         if ticket in (None, ""):
             return self._fail("ticket required", 400)
+        login, server = _account_ref()
         with LOCK:
             position = next((p for p in seq(mt5.positions_get()) if str(p.ticket) == str(ticket)), None)
             if position is None:
@@ -524,10 +736,17 @@ class Handler(BaseHTTPRequestHandler):
                     "sl": float(body.get("sl") or 0.0),
                     "tp": float(body.get("tp") or 0.0),
                 }
+            detail = f"ticket {ticket} sl {request['sl']} tp {request['tp']}"
+            if body.get("dry_run"):
+                audit("modify", login=login, server=server, symbol=request["symbol"],
+                      result="dry_run", detail=detail)
+                return self._send({"ok": True, "dry_run": True, "ticket": str(ticket)})
             result = mt5.order_send(request)
         if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
             reason = result.comment if result else str(mt5.last_error())
+            audit("modify", login=login, server=server, result="rejected", error=reason, detail=detail)
             return self._fail(f"modify rejected: {reason}", 409)
+        audit("modify", login=login, server=server, result="done", detail=detail)
         self._send(ser(result._asdict()))
 
 
