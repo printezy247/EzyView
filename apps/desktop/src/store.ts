@@ -109,6 +109,14 @@ interface WorkspaceStore {
 
   /** Replace the drawings of the focused cell, or of cell `chartIndex`. */
   setDrawings(drawings: Drawing[], chartIndex?: number): void;
+  /** Undo the last drawing change on the focused cell. */
+  undoDrawing(): void;
+  /** Redo the last undone drawing change on the focused cell. */
+  redoDrawing(): void;
+  /** Undo stack for the focused cell's drawings (not persisted). */
+  drawingUndo: Drawing[][];
+  /** Redo stack for the focused cell's drawings (not persisted). */
+  drawingRedo: Drawing[][];
   updateDrawing(id: string, patch: Partial<Drawing>): void;
   updateIndicator(uid: string, patch: Partial<Pick<ActiveIndicator, "hidden" | "name">>): void;
   setActiveTool(tool: DrawingToolId | null): void;
@@ -181,6 +189,8 @@ export const useWorkspace = create<WorkspaceStore>()(
       pineScripts: {},
       replayBar: null,
       magnet: "off",
+      drawingUndo: [],
+      drawingRedo: [],
 
       activeLayout: () => {
         const { layouts, activeLayoutId } = get();
@@ -269,9 +279,35 @@ export const useWorkspace = create<WorkspaceStore>()(
         ),
 
       setDrawings: (drawings, chartIndex) =>
-        set((s) =>
-          editActive(s, (l) => updateChart(l, chartIndex ?? l.activeChart, (c) => ({ ...c, drawings }))),
-        ),
+        set((s) => {
+          const layout = s.activeLayout();
+          const idx = chartIndex ?? layout.activeChart;
+          const prev = layout.charts[idx]?.drawings ?? [];
+          const next = editActive(s, (l) => updateChart(l, idx, (c) => ({ ...c, drawings })));
+          return { ...next, drawingUndo: [...s.drawingUndo, structuredClone(prev)], drawingRedo: [] };
+        }),
+
+      undoDrawing: () =>
+        set((s) => {
+          if (s.drawingUndo.length === 0) return s;
+          const layout = s.activeLayout();
+          const idx = layout.activeChart;
+          const current = layout.charts[idx]?.drawings ?? [];
+          const previous = s.drawingUndo[s.drawingUndo.length - 1]!;
+          const next = editActive(s, (l) => updateChart(l, idx, (c) => ({ ...c, drawings: structuredClone(previous) })));
+          return { ...next, drawingUndo: s.drawingUndo.slice(0, -1), drawingRedo: [...s.drawingRedo, structuredClone(current)] };
+        }),
+
+      redoDrawing: () =>
+        set((s) => {
+          if (s.drawingRedo.length === 0) return s;
+          const layout = s.activeLayout();
+          const idx = layout.activeChart;
+          const current = layout.charts[idx]?.drawings ?? [];
+          const nextArr = s.drawingRedo[s.drawingRedo.length - 1]!;
+          const next = editActive(s, (l) => updateChart(l, idx, (c) => ({ ...c, drawings: structuredClone(nextArr) })));
+          return { ...next, drawingRedo: s.drawingRedo.slice(0, -1), drawingUndo: [...s.drawingUndo, structuredClone(current)] };
+        }),
 
       updateDrawing: (id, patch) =>
         set((s) =>

@@ -90,10 +90,11 @@ const toggle = (id: string, label: string, checked: boolean, onSelect: () => voi
 export function Toolbar(props: Props) {
   const [paletteOpen, setPaletteOpen] = useState(false);
 
-  // Ctrl+K (Cmd+K on macOS) opens the feature search from anywhere.
+  // Ctrl+Shift+K (Cmd+Shift+K on macOS) opens the feature search from anywhere.
+  // Ctrl+K is reserved for the quick chart command input.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setPaletteOpen((v) => !v);
       }
