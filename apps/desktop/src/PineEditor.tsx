@@ -100,6 +100,10 @@ export function PineEditor({ onClose, bars, symbol }: Props) {
       });
       editor.current = created;
       monacoApi.current = monaco;
+      // First paint: mark the initial buffer immediately instead of staying
+      // marker-silent until the first edit or run attempt.
+      const initialModel = created.getModel();
+      if (initialModel) applyMarkers(monaco, initialModel, lintPine(initialModel.getValue()), null);
       sub = created.onDidChangeModelContent(() => {
         setSource(created.getValue());
         // Lint is cheap but not free — debounce so fast typing does not run
@@ -444,12 +448,23 @@ function registerPineLanguage(monaco: typeof Monaco): void {
         startColumn: word.startColumn,
         endColumn: word.endColumn,
       };
+      // Right after a namespace dot the word range is empty (or holds the
+      // member being typed), so inserting the full dotted label would yield
+      // "ta.ta.sma". There, insert only the label's last segment; the full
+      // label stays the visible/filtered text either way.
+      const before = model.getValueInRange({
+        startLineNumber: position.lineNumber,
+        startColumn: Math.max(1, word.startColumn - 1),
+        endLineNumber: position.lineNumber,
+        endColumn: word.startColumn,
+      });
+      const afterDot = before === ".";
       return {
         suggestions: completions.map((c) => ({
           label: c.label,
           kind: kinds[c.kind],
           detail: c.detail,
-          insertText: c.insertText ?? c.label,
+          insertText: afterDot ? c.label.slice(c.label.lastIndexOf(".") + 1) : (c.insertText ?? c.label),
           range,
         })),
       };
