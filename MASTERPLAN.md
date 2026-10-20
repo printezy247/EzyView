@@ -256,7 +256,7 @@ Status legend: **done** = merged to `main`; **next** = first build target once a
 | 2 | Navigation / information architecture (React Router + persistent shell) | dedicated pages, no boolean panel flags | **done** (PR #12) |
 | 3 | Drawing parity (full tool suite, selection/editing, properties, magnet, alerts) | edit/select/delete drawings | **done** (PR #13) |
 | 4 | Charting controls & layouts (crosshair sync, multi-chart, replay, scales, themes) | layouts/timeframes/themes | **done** (PR #14) |
-| 5 | Trading journal (manual + MT5 import, stats, screenshots, reviews, prop-firm) | journal usable daily | planned |
+| 5 | Trading journal (manual + MT5 import, stats, screenshots, reviews, prop-firm) | journal usable daily | **done** (PR #15) |
 | 6 | Fundamentals (calendar, news, earnings, screener, heatmaps, macro) | fundamentals panel live | planned |
 | 7 | Pine editor & strategy testing (Monaco, lint, compile, backtest, optimize) | custom indicator runs | planned |
 | 8 | Sharing / export / collaboration | export + share links | planned |
@@ -284,10 +284,11 @@ Known gaps driving Phase 1–3:
 
 - Phase 0 (closed, PR #10): placement is guarded — `EzyChart.screenToTimePrice` validity helper with reason codes, ghost anchor, `finally` cleanup, duplicate-click guard, invalid-click flash; redo stack + `Ctrl+Z`/`Ctrl+Y`/`Ctrl+Shift+Z`; `ChartCommandInput` owns `Ctrl+K`/`/` (feature palette moved to `Ctrl+Shift+K`).
 - Phase 4 (closed, PR #14): crosshair modes + full time/price sync across panes, price scales (normal/log/percentage, invert), timezone axis + watermark, Tokyo Night theme, grids 6/8/9, replay speed 0.5–4× (500ms/bar base), layout sort by name/date, drawing style templates. Deferred: sessions/extended hours, chart templates (layout duplicate covers the common case).
+- Phase 5 (closed, PR #15): manual entry dialog (emotion, rule checklist, SL/TP, planned risk, tags, rating, screenshot), view tabs Feed/Calendar/Stats/Reviews, month heatmap with per-day net, stats depth (equity curve SVG, R-multiple distribution, by setup/tag/time-of-day), daily/weekly review composer with save/load, prop-firm daily-loss/drawdown bar with breach colours, CSV export (RFC-4180), store actions with backward-compatible `ezyview.journal.v1` restore. Deferred: AI review summary (needs MCP/LLM pass in Phase 9), MT5 auto-import depth beyond existing `importDeals`.
 - Phase 3 (closed, PR #13): drawings select/drag/delete with handles, undoable style edits, properties panel, object tree with Export/Import JSON, bound alerts on horizontal lines, single-anchor tools (horizontal line/vertical line/text) complete on first click. Deferred: multi-select, trend-line-angle alerts.
 - Phase 2 (closed, PR #12): React Router routes (`/chart`, `/journal`, `/fundamentals`, `/options`, `/pine`, `/settings`) behind a persistent shell (left rail, toolbar, status bar); last route remembered. Boolean flags remain only for `/chart`'s docked side panels (watchlist/depth/objects/trading).
 - Phase 1 (closed, PR #11): in-app broker login via bridge `POST /connect`/`/disconnect`, per-account passwords in the OS keyring (`mt5:<login>@<server>`), bridge-minted session id stamped on every write, SQLite audit log (`GET /audit`), max-volume/allow-list/dry-run rails, single-use approval tokens, real-account risk confirmation on connect and on source switch. The Brokers/Safety/Audit surfaces moved onto the `/settings` route in Phase 2 (PR #12); the footer `Mt5Setup` popover is gone.
-- Journal and fundamentals exist but lack depth (screenshots, tags, emotions, rule checklist, stats breadth, news/screener/heatmaps). → Phases 5–6.
+- Journal depth shipped in Phase 5 (PR #15). Fundamentals lack depth (news/screener/heatmaps). → Phase 6.
 
 ---
 
@@ -403,7 +404,7 @@ Detailed specs live in `docs/MEGA-PLAN.md` §§3–8; summary:
 
 - **Phase 3 — Drawing parity**: full tool suite, selection model, properties panel, magnet modes, alerts on price levels, import/export, object tree integration. **Done (PR #13)** — deviations: multi-select deferred, trend-line-angle alerts deferred; included single-anchor completion fix.
 - **Phase 4 — Charting controls & layouts**: crosshair modes + sync, multi-chart layouts, replay, price scales, sessions/extended hours/timezone/watermark/grid/themes, drawing/chart templates, unlimited layouts. **Done (PR #14)** — deviations: sessions/extended hours deferred, chart templates deferred (layout duplicate covers it), theme stayed per-cell, grids shipped 6/8/9.
-- **Phase 5 — Trading journal**: manual + MT5 auto-import, fields, views (list/calendar heatmap/stats/equity/drawdown), daily/weekly reviews, AI summary, prop-firm tracking.
+- **Phase 5 — Trading journal**: manual + MT5 auto-import, fields, views (list/calendar heatmap/stats/equity/drawdown), daily/weekly reviews, AI summary, prop-firm tracking. **Done (PR #15)** — deviations: AI summary deferred to Phase 9 (MCP/LLM), MT5 auto-import depth unchanged (existing `importDeals` covers closed deals), calendar/reviews use local-time `dateKey`, prop-firm draws peak-to-trough equity from session start.
 - **Phase 6 — Fundamentals**: economic calendar with filters, news feed, earnings/dividends, screener, heatmaps, macro map overlays, fundamental overlays on chart.
 - **Phase 7 — Pine editor & strategy testing**: Monaco autocomplete/lint/compile/run sandbox, backtest engine, parameter optimization, script library versioning/sharing.
 - **Phase 8 — Sharing / export / collaboration**: PNG/PDF/SVG/CSV/JSON export, share link/image, embed snippet; later co-editing + cloud sync.
