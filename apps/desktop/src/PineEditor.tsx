@@ -3,8 +3,8 @@ import { Play, Save, Trash2, X, TrendingUp } from "lucide-react";
 // Type-only: Monaco itself is dynamically imported so it stays out of the
 // initial bundle. Types are erased by the compiler, so this costs nothing.
 import type * as Monaco from "monaco-editor";
-import { backtest, runPine } from "@ezyview/pine-transpiler";
-import type { BacktestResult, Context } from "@ezyview/pine-transpiler";
+import { backtest, runPine, pineCompletions, lintPine } from "@ezyview/pine-transpiler";
+import type { BacktestResult, Context, PineCompletion, PineLintIssue } from "@ezyview/pine-transpiler";
 import { useWorkspace, uid } from "./store";
 import type { PineScriptRecord } from "./store";
 
@@ -22,6 +22,33 @@ ma = ta.sma(close, len)
 plot(ma, "SMA", color.blue)
 `;
 
+/** Debounce before recomputing lint markers while the user is typing. */
+const LINT_DEBOUNCE_MS = 400;
+
+/** A transpile failure that carries a usable 1-based source position. */
+interface SyntaxLocation {
+  line: number;
+  col: number;
+  message: string;
+}
+
+/**
+ * Pull a source position off a thrown error, if it has one. `PineSyntaxError`
+ * and `PineUnsupportedError` both carry 1-based `line`/`col`; anything else
+ * (a runtime failure) has no position, and callers keep the message-only
+ * error bar rather than inventing a marker on line 1.
+ */
+function errorLocation(e: unknown): SyntaxLocation | null {
+  if (typeof e !== "object" || e === null) return null;
+  const cand = e as { line?: unknown; col?: unknown; message?: unknown };
+  if (typeof cand.line !== "number" || typeof cand.col !== "number") return null;
+  return {
+    line: cand.line,
+    col: cand.col,
+    message: typeof cand.message === "string" ? cand.message : String(e),
+  };
+}
+
 /**
  * Pine script editor, filling its page.
  *
@@ -31,6 +58,13 @@ plot(ma, "SMA", color.blue)
 export function PineEditor({ onClose, bars, symbol }: Props) {
   const host = useRef<HTMLDivElement | null>(null);
   const editor = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
+  // Marker updates need the Monaco API outside the mount effect (run button),
+  // so it is stashed here alongside the editor it created.
+  const monacoApi = useRef<typeof Monaco | null>(null);
+  // Position of the last failed run; cleared by the next successful one so
+  // debounced marker refreshes keep showing it until a clean run replaces it.
+  const syntaxError = useRef<SyntaxLocation | null>(null);
+  const lintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [scriptId, setScriptId] = useState<string>(() => uid());
   const [name, setName] = useState("My Script");
   const [source, setSource] = useState(STARTER);
@@ -65,24 +99,52 @@ export function PineEditor({ onClose, bars, symbol }: Props) {
         scrollBeyondLastLine: false,
       });
       editor.current = created;
+      monacoApi.current = monaco;
       sub = created.onDidChangeModelContent(() => {
         setSource(created.getValue());
+        // Lint is cheap but not free — debounce so fast typing does not run
+        // it on every keystroke.
+        if (lintTimer.current !== null) clearTimeout(lintTimer.current);
+        lintTimer.current = setTimeout(() => {
+          lintTimer.current = null;
+          const model = created.getModel();
+          if (model) applyMarkers(monaco, model, lintPine(model.getValue()), syntaxError.current);
+        }, LINT_DEBOUNCE_MS);
       });
     });
 
     return () => {
       disposed = true;
+      if (lintTimer.current !== null) {
+        clearTimeout(lintTimer.current);
+        lintTimer.current = null;
+      }
       sub?.dispose();
       editor.current?.dispose();
       editor.current = null;
+      monacoApi.current = null;
     };
     // Mount-only: the editor owns its buffer after this.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /**
+   * Recompute markers from the live buffer: lint findings always, plus the
+   * syntax error of the last failed run when there was one. Monaco may still
+   * be loading (the route was only just opened), in which case there is
+   * nothing to mark yet.
+   */
+  const refreshMarkers = useCallback(() => {
+    const api = monacoApi.current;
+    const model = editor.current?.getModel();
+    if (!api || !model) return;
+    applyMarkers(api, model, lintPine(model.getValue()), syntaxError.current);
+  }, []);
+
   const run = useCallback(() => {
     if (bars.length === 0) {
       setError("No data loaded for this symbol yet.");
+      refreshMarkers();
       return;
     }
     try {
@@ -96,7 +158,10 @@ export function PineEditor({ onClose, bars, symbol }: Props) {
         inputs: {},
       };
       const scriptRun = runPine(source, ctx);
+      // A clean run retires the previous syntax marker; lint findings remain.
+      syntaxError.current = null;
       setError(null);
+      refreshMarkers();
       // A strategy's orders become fills; an indicator simply has none.
       const tested = backtest(scriptRun.orders, { close: ctx.close });
       setResult(tested);
@@ -111,11 +176,13 @@ export function PineEditor({ onClose, bars, symbol }: Props) {
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
+      syntaxError.current = errorLocation(e);
       setError(msg);
+      refreshMarkers();
       setResult(null);
       setPineResult(scriptId, { id: scriptId, name, source, options: null, plots: [], orders: [], error: msg });
     }
-  }, [bars, name, scriptId, source, setPineResult]);
+  }, [bars, name, scriptId, source, setPineResult, refreshMarkers]);
 
   return (
     <section
@@ -277,6 +344,46 @@ function Metric({ label, value, tone }: { label: string; value: string; tone?: "
   );
 }
 
+/**
+ * Single-line range for a 1-based position, clamped to the model so a stale
+ * run-time error cannot point past the end of the buffer.
+ */
+function markerRange(model: Monaco.editor.ITextModel, line: number, column: number): Monaco.IRange {
+  const lineNumber = Math.min(Math.max(1, Math.trunc(line)), model.getLineCount());
+  const startColumn = Math.min(Math.max(1, Math.trunc(column)), model.getLineMaxColumn(lineNumber));
+  return {
+    startLineNumber: lineNumber,
+    startColumn,
+    endLineNumber: lineNumber,
+    endColumn: startColumn + 1,
+  };
+}
+
+/**
+ * Publish lint findings plus the last transpile failure under the `pine`
+ * marker owner; an empty list clears every marker we own on the model.
+ */
+function applyMarkers(
+  monaco: typeof Monaco,
+  model: Monaco.editor.ITextModel,
+  issues: PineLintIssue[],
+  syntax: SyntaxLocation | null,
+): void {
+  const markers: Monaco.editor.IMarkerData[] = issues.map((issue) => ({
+    severity: issue.severity === "error" ? monaco.MarkerSeverity.Error : monaco.MarkerSeverity.Warning,
+    message: issue.message,
+    ...markerRange(model, issue.line, issue.column),
+  }));
+  if (syntax) {
+    markers.push({
+      severity: monaco.MarkerSeverity.Error,
+      message: syntax.message,
+      ...markerRange(model, syntax.line, syntax.col),
+    });
+  }
+  monaco.editor.setModelMarkers(model, "pine", markers);
+}
+
 /** Register Pine's Monaco language once, with TradingView-like coloring. */
 let registered = false;
 /**
@@ -315,6 +422,38 @@ function registerPineLanguage(monaco: typeof Monaco): void {
       { open: "{", close: "}" },
       { open: '"', close: '"', notIn: ["string"] },
     ],
+  });
+
+  // Suggestions come from the transpiler's frozen catalog; this map only
+  // translates its four kinds into Monaco's icon vocabulary. Plain insertText
+  // only — no snippets.
+  const completions = pineCompletions();
+  const kinds: Record<PineCompletion["kind"], Monaco.languages.CompletionItemKind> = {
+    keyword: monaco.languages.CompletionItemKind.Keyword,
+    builtin: monaco.languages.CompletionItemKind.Constant,
+    namespace: monaco.languages.CompletionItemKind.Module,
+    function: monaco.languages.CompletionItemKind.Function,
+  };
+  monaco.languages.registerCompletionItemProvider("pine", {
+    triggerCharacters: [".", ":"],
+    provideCompletionItems(model, position) {
+      const word = model.getWordUntilPosition(position);
+      const range: Monaco.IRange = {
+        startLineNumber: position.lineNumber,
+        endLineNumber: position.lineNumber,
+        startColumn: word.startColumn,
+        endColumn: word.endColumn,
+      };
+      return {
+        suggestions: completions.map((c) => ({
+          label: c.label,
+          kind: kinds[c.kind],
+          detail: c.detail,
+          insertText: c.insertText ?? c.label,
+          range,
+        })),
+      };
+    },
   });
 
   monaco.languages.setMonarchTokensProvider("pine", {
