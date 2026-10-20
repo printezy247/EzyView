@@ -25,6 +25,10 @@ export interface Context {
   low: number[];
   close: number[];
   volume: number[];
+  /** Mid-price series (`hl2`/`hlc3`/`ohlc4`); `runPine` derives them from OHLC. */
+  hl2?: number[];
+  hlc3?: number[];
+  ohlc4?: number[];
   /** Bar index of the bar currently being evaluated. */
   barIndex: number;
   /** User inputs declared with `input.*`, keyed by call site id. */

@@ -348,3 +348,60 @@ describe("color.new", () => {
     expect(color.new("#2962ff", 100)).toBe("rgba(41, 98, 255, 0.000)");
   });
 });
+
+/** Three bars with distinct OHLC so the mid-price series are all different. */
+function midCtx(): Context {
+  return {
+    open: [10, 20, 30],
+    high: [12, 24, 36],
+    low: [8, 16, 24],
+    close: [11, 22, 33],
+    volume: [100, 200, 300],
+    barIndex: 2,
+    inputs: {},
+  };
+}
+
+describe("derived series and bare cross helpers", () => {
+  it("plots hl2, hlc3 and ohlc4 as mid-price series", () => {
+    const out = runPine('indicator("T")\nplot(hl2)\nplot(hlc3)\nplot(ohlc4)', midCtx());
+    const [hl2, hlc3, ohlc4] = [out.plots[0]!, out.plots[1]!, out.plots[2]!];
+    expect(values(hl2.values)).toEqual([10, 20, 30]);
+    expect(values(hlc3.values)).toEqual([31 / 3, 62 / 3, 31]);
+    expect(values(ohlc4.values)).toEqual([41 / 4, 20.5, 123 / 4]);
+  });
+
+  it("matches bare crossover to ta.crossover", () => {
+    const ctx: Context = {
+      open: [10, 10, 10, 10],
+      high: [11, 11, 12, 12],
+      low: [8, 8, 9, 9],
+      close: [9, 9, 11, 11],
+      volume: [1, 1, 1, 1],
+      barIndex: 3,
+      inputs: {},
+    };
+    // close dips below open, then crosses back up on bar 2.
+    const bare = runPine("plot(crossover(close, open) ? 1 : 0)", ctx);
+    const namespaced = runPine("plot(ta.crossover(close, open) ? 1 : 0)", ctx);
+    expect(values(bare.plots[0]!.values)).toEqual([0, 0, 1, 0]);
+    expect(values(bare.plots[0]!.values)).toEqual(values(namespaced.plots[0]!.values));
+  });
+
+  it("matches bare crossunder to ta.crossunder", () => {
+    const ctx: Context = {
+      open: [10, 10, 10, 10],
+      high: [11, 12, 12, 12],
+      low: [8, 9, 8, 8],
+      close: [11, 11, 9, 9],
+      volume: [1, 1, 1, 1],
+      barIndex: 3,
+      inputs: {},
+    };
+    // close sits above open, then crosses below on bar 2.
+    const bare = runPine("plot(crossunder(close, open) ? 1 : 0)", ctx);
+    const namespaced = runPine("plot(ta.crossunder(close, open) ? 1 : 0)", ctx);
+    expect(values(bare.plots[0]!.values)).toEqual([0, 0, 1, 0]);
+    expect(values(bare.plots[0]!.values)).toEqual(values(namespaced.plots[0]!.values));
+  });
+});
