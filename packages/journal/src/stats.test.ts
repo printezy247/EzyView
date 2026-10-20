@@ -15,10 +15,39 @@ const trade = (over: Partial<JournalEntry> = {}): JournalEntry => ({
   ...over,
 });
 
+/** Epoch seconds for a given UTC hour on a fixed day (session bucketing). */
+const atHour = (hour: number) => Date.UTC(2026, 0, 15, hour) / 1000;
+
 describe("computeStats", () => {
   it("returns zeros for an empty journal", () => {
     const stats = computeStats([]);
-    expect(stats).toMatchObject({ trades: 0, winRate: 0, netPnl: 0, bySymbol: [] });
+    expect(stats).toMatchObject({
+      trades: 0,
+      winRate: 0,
+      netPnl: 0,
+      bySymbol: [],
+      equitySeries: [],
+      rMultiples: [],
+      rDistribution: [],
+      bySetup: [],
+      byTag: [],
+      byTimeOfDay: [],
+    });
+  });
+
+  it("leaves every new aggregator empty when nothing is closed", () => {
+    const stats = computeStats([
+      trade({ pnl: undefined, exitTime: undefined, exitPrice: undefined, plannedRisk: 25, setup: "breakout", tags: ["trend"] }),
+    ]);
+    expect(stats).toMatchObject({
+      trades: 0,
+      equitySeries: [],
+      rMultiples: [],
+      rDistribution: [],
+      bySetup: [],
+      byTag: [],
+      byTimeOfDay: [],
+    });
   });
 
   it("ignores open trades when counting", () => {
@@ -70,5 +99,101 @@ describe("computeStats", () => {
     expect(stats.bySymbol.map((row) => row.symbol)).toEqual(["XAUUSD", "EURUSD"]);
     expect(stats.bySymbol[0]).toMatchObject({ trades: 2, netPnl: 20, winRate: 0.5 });
     expect(stats.bySymbol[1]).toMatchObject({ trades: 1, netPnl: -50, winRate: 0 });
+  });
+
+  it("computes R-multiples chronologically, skipping trades without positive risk", () => {
+    const stats = computeStats([
+      trade({ pnl: 30, plannedRisk: 10, entryTime: 5, exitTime: 6 }),
+      trade({ pnl: -5, plannedRisk: 10, entryTime: 1, exitTime: 2 }),
+      trade({ pnl: 15, plannedRisk: 0, entryTime: 3, exitTime: 4 }),
+      trade({ pnl: 15, entryTime: 7, exitTime: 8 }),
+    ]);
+    expect(stats.rMultiples).toEqual([-0.5, 3]);
+  });
+
+  it("buckets R-multiples into the six fixed buckets, boundaries included", () => {
+    const stats = computeStats([
+      trade({ pnl: -30, plannedRisk: 10 }),
+      trade({ pnl: -20, plannedRisk: 10 }),
+      trade({ pnl: -15, plannedRisk: 10 }),
+      trade({ pnl: -10, plannedRisk: 10 }),
+      trade({ pnl: -5, plannedRisk: 10 }),
+      trade({ pnl: 0, plannedRisk: 10 }),
+      trade({ pnl: 5, plannedRisk: 10 }),
+      trade({ pnl: 10, plannedRisk: 10 }),
+      trade({ pnl: 15, plannedRisk: 10 }),
+      trade({ pnl: 20, plannedRisk: 10 }),
+      trade({ pnl: 30, plannedRisk: 10 }),
+    ]);
+    expect(stats.rDistribution.map((bucket) => bucket.label)).toEqual(["≤-2", "-2..-1", "-1..0", "0..1", "1..2", "≥2"]);
+    expect(stats.rDistribution.map((bucket) => bucket.count)).toEqual([1, 2, 2, 2, 2, 2]);
+  });
+
+  it("keeps all six R buckets when closed trades carry no planned risk", () => {
+    const stats = computeStats([trade({ pnl: 10 })]);
+    expect(stats.rMultiples).toEqual([]);
+    expect(stats.rDistribution.map((bucket) => bucket.count)).toEqual([0, 0, 0, 0, 0, 0]);
+  });
+
+  it("builds the equity curve chronologically from every closed trade", () => {
+    const stats = computeStats([
+      trade({ pnl: 40, entryTime: 5, exitTime: 6 }),
+      trade({ pnl: 100, entryTime: 1, exitTime: 2 }),
+      trade({ pnl: -60, entryTime: 3, exitTime: 4 }),
+    ]);
+    expect(stats.equitySeries).toEqual([
+      { time: 2, equity: 100 },
+      { time: 4, equity: 40 },
+      { time: 6, equity: 80 },
+    ]);
+  });
+
+  it("groups by setup with the untagged fallback, ordered by net P&L", () => {
+    const stats = computeStats([
+      trade({ setup: "breakout", pnl: 40 }),
+      trade({ setup: "breakout", pnl: -10 }),
+      trade({ setup: "range", pnl: -5 }),
+      trade({ pnl: 5 }),
+    ]);
+    expect(stats.bySetup.map((row) => row.setup)).toEqual(["breakout", "untagged", "range"]);
+    expect(stats.bySetup[0]).toMatchObject({ trades: 2, netPnl: 30, winRate: 0.5 });
+    expect(stats.bySetup[1]).toMatchObject({ trades: 1, netPnl: 5, winRate: 1 });
+    expect(stats.bySetup[2]).toMatchObject({ trades: 1, netPnl: -5, winRate: 0 });
+  });
+
+  it("counts one row per tag and skips entries with no tags", () => {
+    const stats = computeStats([
+      trade({ tags: ["trend", "london"], pnl: 30 }),
+      trade({ tags: ["trend"], pnl: -10 }),
+      trade({ tags: ["news"], pnl: -20 }),
+      trade({ pnl: 5 }),
+    ]);
+    expect(stats.byTag.map((row) => row.tag)).toEqual(["london", "trend", "news"]);
+    expect(stats.byTag[0]).toMatchObject({ trades: 1, netPnl: 30, winRate: 1 });
+    expect(stats.byTag[1]).toMatchObject({ trades: 2, netPnl: 20, winRate: 0.5 });
+    expect(stats.byTag[2]).toMatchObject({ trades: 1, netPnl: -20, winRate: 0 });
+  });
+
+  it("buckets entries by the UTC session of entryTime", () => {
+    const stats = computeStats([
+      trade({ entryTime: atHour(0), pnl: 5 }),
+      trade({ entryTime: atHour(6), pnl: 5 }),
+      trade({ entryTime: atHour(7), pnl: -10 }),
+      trade({ entryTime: atHour(11), pnl: 0 }),
+      trade({ entryTime: atHour(12), pnl: 20 }),
+      trade({ entryTime: atHour(16), pnl: 0 }),
+      trade({ entryTime: atHour(17), pnl: -30 }),
+      trade({ entryTime: atHour(23), pnl: 0 }),
+    ]);
+    expect(stats.byTimeOfDay.map((row) => row.period)).toEqual(["Overlap", "Asia", "London", "US"]);
+    expect(stats.byTimeOfDay[0]).toMatchObject({ trades: 2, netPnl: 20, winRate: 0.5 });
+    expect(stats.byTimeOfDay[1]).toMatchObject({ trades: 2, netPnl: 10, winRate: 1 });
+    expect(stats.byTimeOfDay[2]).toMatchObject({ trades: 2, netPnl: -10, winRate: 0 });
+    expect(stats.byTimeOfDay[3]).toMatchObject({ trades: 2, netPnl: -30, winRate: 0 });
+  });
+
+  it("omits sessions that had no trades", () => {
+    const stats = computeStats([trade({ entryTime: atHour(3), pnl: 10 })]);
+    expect(stats.byTimeOfDay).toEqual([{ period: "Asia", trades: 1, netPnl: 10, winRate: 1 }]);
   });
 });
