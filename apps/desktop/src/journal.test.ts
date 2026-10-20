@@ -177,6 +177,39 @@ describe("saveReview / removeReview", () => {
     expect(daily?.id).toBe(dailyId);
   });
 
+  it("caps new prepends at 200 on write so a reload keeps every saved review", async () => {
+    const { useJournal } = await loadStore();
+    for (let i = 0; i < 205; i++) {
+      useJournal.getState().saveReview({ key: `k${i}`, period: "daily", text: `t${i}` });
+    }
+    const live = useJournal.getState().savedReviews;
+    expect(live).toHaveLength(200);
+    expect(live[0]?.key).toBe("k204"); // newest first
+    expect(live[199]?.key).toBe("k5"); // oldest kept
+    expect((persisted().savedReviews as unknown[]).length).toBe(200);
+
+    const reloaded = await loadStore();
+    const restored = reloaded.useJournal.getState().savedReviews;
+    expect(restored).toHaveLength(200);
+    expect(restored[0]?.key).toBe("k204");
+  });
+
+  it("a replace at the cap updates in place and is never dropped", async () => {
+    const { useJournal } = await loadStore();
+    for (let i = 0; i < 200; i++) {
+      useJournal.getState().saveReview({ key: `k${i}`, period: "daily", text: `t${i}` });
+    }
+    const target = useJournal.getState().savedReviews.find((r) => r.key === "k199");
+    expect(target).toBeDefined();
+
+    useJournal.getState().saveReview({ key: "k199", period: "daily", text: "replaced" });
+    const after = useJournal.getState().savedReviews;
+    expect(after).toHaveLength(200);
+    const updated = after.find((r) => r.key === "k199");
+    expect(updated).toMatchObject({ id: target?.id, text: "replaced" });
+    expect((persisted().savedReviews as Array<{ text: string }>).find((r) => r.text === "replaced")).toBeDefined();
+  });
+
   it("removeReview drops only the matching id", async () => {
     const { useJournal } = await loadStore();
     useJournal.getState().saveReview({ key: "2026-10-20", period: "daily", text: "a" });

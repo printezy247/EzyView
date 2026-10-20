@@ -215,7 +215,10 @@ export const useJournal = create<JournalState>((set, get) => {
         const next = existing.map((r, i) => (i === at ? { ...input, id: prev.id, savedAt } : r));
         set({ savedReviews: next });
       } else {
-        set({ savedReviews: [{ ...input, id: uid(), savedAt }, ...existing] });
+        // Cap only when growing: a replacement above is in-place, so the match
+        // can never be the row the cap drops. The write cap mirrors readReviews,
+        // so a reload can never trim what this session just saved.
+        set({ savedReviews: [{ ...input, id: uid(), savedAt }, ...existing].slice(0, MAX_REVIEWS) });
       }
       persist();
     },

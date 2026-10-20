@@ -40,7 +40,7 @@ export function JournalStatsView({ entries }: Props) {
 
       <section>
         <h3 className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-ev-faint">R distribution</h3>
-        <RHistogram buckets={stats.rDistribution} />
+        <RHistogram buckets={stats.rDistribution} closed={stats.trades} />
       </section>
 
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -98,24 +98,30 @@ function EquityPolyline({ points }: { points: readonly { time: number; equity: n
 }
 
 /** Six fixed buckets from computeStats; losses red, wins green. */
-function RHistogram({ buckets }: { buckets: readonly { label: string; count: number }[] }) {
-  if (buckets.length === 0) {
-    return <p className="rounded border border-ev-line bg-ev-panel px-3 py-4 text-xs text-ev-faint">No planned-risk trades yet — set planned risk on a closed trade to see R multiples.</p>;
-  }
+function RHistogram({ buckets, closed }: { buckets: readonly { label: string; count: number }[]; closed: number }) {
+  const hint = (
+    <p className="rounded border border-ev-line bg-ev-panel px-3 py-4 text-xs text-ev-faint">No planned-risk trades yet — set planned risk on a closed trade to see R multiples.</p>
+  );
+  // [] = nothing closed yet; six zero bars = closed trades without planned risk.
+  if (buckets.length === 0) return hint;
+  const allZero = buckets.every((b) => b.count === 0);
   const maxCount = Math.max(1, ...buckets.map((b) => b.count));
 
   return (
-    <div className="flex h-32 items-end gap-2 rounded border border-ev-line bg-ev-panel px-3 pt-2 pb-1">
-      {buckets.map((bucket, i) => (
-        <div key={bucket.label} className="flex h-full flex-1 flex-col items-center gap-1">
-          <span className="text-[10px] tabular-nums text-ev-muted">{bucket.count}</span>
-          <div
-            className={`w-full max-w-16 rounded-t ${i < 3 ? "bg-ev-down" : "bg-ev-up"} ${bucket.count === 0 ? "opacity-25" : "opacity-80"}`}
-            style={{ height: `${Math.round((bucket.count / maxCount) * 100)}%`, minHeight: bucket.count === 0 ? 2 : 4 }}
-          />
-          <span className="text-[10px] tabular-nums text-ev-faint">{bucket.label}</span>
-        </div>
-      ))}
+    <div className="space-y-2">
+      {closed > 0 && allZero && hint}
+      <div className="flex h-32 items-end gap-2 rounded border border-ev-line bg-ev-panel px-3 pt-2 pb-1">
+        {buckets.map((bucket, i) => (
+          <div key={bucket.label} className="flex h-full flex-1 flex-col items-center gap-1">
+            <span className="text-[10px] tabular-nums text-ev-muted">{bucket.count}</span>
+            <div
+              className={`w-full max-w-16 rounded-t ${i < 3 ? "bg-ev-down" : "bg-ev-up"} ${bucket.count === 0 ? "opacity-25" : "opacity-80"}`}
+              style={{ height: `${Math.round((bucket.count / maxCount) * 100)}%`, minHeight: bucket.count === 0 ? 2 : 4 }}
+            />
+            <span className="text-[10px] tabular-nums text-ev-faint">{bucket.label}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
