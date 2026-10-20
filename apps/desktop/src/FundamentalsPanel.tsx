@@ -59,7 +59,7 @@ export function FundamentalsPanel({ symbol, onClose, onPickSymbol }: Props) {
   const active = TABS.find((t) => t.id === tab)!;
 
   return (
-    <section aria-label="Fundamentals" className="flex h-64 shrink-0 flex-col border-t border-ev-raised bg-ev-bg">
+    <section aria-label="Fundamentals" className="flex min-h-0 flex-1 flex-col border-t border-ev-raised bg-ev-bg">
       <header className="flex h-8 shrink-0 items-center gap-1 border-b border-ev-raised px-3 text-[11px]">
         <div role="tablist" aria-label="Fundamentals" className="flex gap-1">
           {TABS.map((t) => (

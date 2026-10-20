@@ -1,6 +1,7 @@
 import type { Resolution } from "@ezyview/data-adapters";
 import type { ChartType } from "@ezyview/chart-engine";
 import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router";
 import { ArrowLeftRight, CandlestickChart, Clock, Eye, FlaskConical, Search, Telescope } from "lucide-react";
 import { CommandPalette } from "./CommandPalette";
 import type { CommandGroup } from "./CommandPalette";
@@ -26,8 +27,8 @@ export const CHART_TYPES: { id: ChartType; label: string }[] = [
   { id: "pnf", label: "Point & Figure" },
 ];
 
-/** Toggleable panels. Trade, Journal, Fundamentals and Options share the bottom slot. */
-export type PanelId = "watchlist" | "depth" | "objects" | "trading" | "journal" | "fundamentals" | "options";
+/** Chart side panels. Journal/Fundamentals/Options/Pine are routes now, not panels. */
+export type PanelId = "watchlist" | "depth" | "objects" | "trading";
 
 const MAGNET_MODES: { id: MagnetMode; label: string }[] = [
   { id: "off", label: "Magnet off" },
@@ -46,7 +47,6 @@ interface Props {
   showGrid: boolean;
   theme: "dark" | "light";
   indicatorCount: number;
-  pineActive: boolean;
   replayActive: boolean;
   panels: Record<PanelId, boolean>;
   onSymbol: (s: string) => void;
@@ -58,7 +58,6 @@ interface Props {
   onToggleGrid: () => void;
   onToggleTheme: () => void;
   onOpenIndicators: () => void;
-  onTogglePine: () => void;
   onToggleReplay: () => void;
   onTogglePanel: (id: PanelId) => void;
   onOpenWindow: () => void;
@@ -89,6 +88,9 @@ const toggle = (id: string, label: string, checked: boolean, onSelect: () => voi
  */
 export function Toolbar(props: Props) {
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const pineActive = location.pathname === "/pine";
 
   // Ctrl+Shift+K (Cmd+Shift+K on macOS) opens the feature search from anywhere.
   // Ctrl+K is reserved for the quick chart command input.
@@ -134,13 +136,13 @@ export function Toolbar(props: Props) {
 
   const studyEntries: MenuEntry[] = [
     { kind: "action", id: "indicators", label: "Indicators…", onSelect: props.onOpenIndicators },
-    toggle("pine", "Pine editor", props.pineActive, props.onTogglePine),
+    { kind: "action", id: "pine", label: "Pine editor", onSelect: () => navigate("/pine") },
   ];
 
   const analysisEntries: MenuEntry[] = [
     { kind: "label", id: "research", label: "Research" },
-    panel("fundamentals", "Fundamentals & screener"),
-    panel("options", "Options chain"),
+    { kind: "action", id: "fundamentals", label: "Fundamentals & screener", onSelect: () => navigate("/fundamentals") },
+    { kind: "action", id: "options", label: "Options chain", onSelect: () => navigate("/options") },
     { kind: "separator", id: "s-tools" },
     { kind: "label", id: "tools", label: "Tools" },
     toggle("replay", "Bar replay", props.replayActive, props.onToggleReplay),
@@ -154,7 +156,7 @@ export function Toolbar(props: Props) {
     panel("trading", "Order ticket & positions"),
     panel("depth", "Depth of market"),
     { kind: "separator", id: "s-review" },
-    panel("journal", "Trading journal"),
+    { kind: "action", id: "journal", label: "Trading journal", onSelect: () => navigate("/journal") },
   ];
 
   const viewEntries: MenuEntry[] = [
@@ -223,8 +225,8 @@ export function Toolbar(props: Props) {
     { title: "View", entries: viewEntries.filter((e) => e.id !== "palette") },
   ];
 
-  const tradeOpen = props.panels.trading || props.panels.depth || props.panels.journal;
-  const analysisOpen = props.panels.fundamentals || props.panels.options || props.replayActive;
+  const tradeOpen = props.panels.trading || props.panels.depth;
+  const analysisOpen = props.replayActive;
 
   return (
     <div className="flex h-9 shrink-0 items-center gap-0.5 border-b border-ev-raised px-2">
@@ -268,7 +270,7 @@ export function Toolbar(props: Props) {
           label="Studies"
           icon={<FlaskConical size={13} aria-hidden />}
           badge={props.indicatorCount}
-          triggerActive={props.pineActive}
+          triggerActive={pineActive}
           entries={studyEntries}
         />
         <Menu label="Analysis" icon={<Telescope size={13} aria-hidden />} triggerActive={analysisOpen} entries={analysisEntries} />

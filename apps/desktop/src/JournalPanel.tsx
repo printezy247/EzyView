@@ -92,7 +92,7 @@ export function JournalPanel({ onClose }: Props) {
   const chip = "rounded border border-ev-line px-2 py-0.5 tabular-nums";
 
   return (
-    <section aria-label="Trading journal" className="flex h-56 shrink-0 flex-col border-t border-ev-raised bg-ev-bg">
+    <section aria-label="Trading journal" className="flex min-h-0 flex-1 flex-col border-t border-ev-raised bg-ev-bg">
       <header className="flex h-8 shrink-0 items-center gap-3 border-b border-ev-raised px-3 text-[11px]">
         <span className="font-semibold uppercase tracking-wider text-ev-muted">Journal</span>
 

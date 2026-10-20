@@ -253,7 +253,7 @@ Status legend: **done** = merged to `main`; **next** = first build target once a
 |---|---|---|---|
 | 0 | Drawing/chart-control reliability + quick chart command input | deterministic placement, undo/redo, command input works | **done** (PR #10) |
 | 1 | MT5 real-account login flow (keyring, safety rails, audit log, chart source toggle) | place/close/modify via MT5 from app | **done** (PR #11) |
-| 2 | Navigation / information architecture (React Router + persistent shell) | dedicated pages, no boolean panel flags | planned |
+| 2 | Navigation / information architecture (React Router + persistent shell) | dedicated pages, no boolean panel flags | **done** (PR #12) |
 | 3 | Drawing parity (full tool suite, selection/editing, properties, magnet, alerts) | edit/select/delete drawings | planned |
 | 4 | Charting controls & layouts (crosshair sync, multi-chart, replay, scales, themes) | layouts/timeframes/themes | planned |
 | 5 | Trading journal (manual + MT5 import, stats, screenshots, reviews, prop-firm) | journal usable daily | planned |
@@ -284,8 +284,8 @@ Known gaps driving Phase 1–3:
 
 - Phase 0 (closed, PR #10): placement is guarded — `EzyChart.screenToTimePrice` validity helper with reason codes, ghost anchor, `finally` cleanup, duplicate-click guard, invalid-click flash; redo stack + `Ctrl+Z`/`Ctrl+Y`/`Ctrl+Shift+Z`; `ChartCommandInput` owns `Ctrl+K`/`/` (feature palette moved to `Ctrl+Shift+K`).
 - Drawings cannot be selected/edited after creation (no handles, drag, resize, delete-on-key, style, z-order, lock/hide wiring beyond data fields). → Phase 3.
-- Navigation is boolean panel flags in `App.tsx` (`tradingOpen`, `journalOpen`, `fundamentalsOpen`, `optionsOpen`, …); no React Router routes. → Phase 2.
-- Phase 1 (closed, PR #11): in-app broker login via bridge `POST /connect`/`/disconnect`, per-account passwords in the OS keyring (`mt5:<login>@<server>`), bridge-minted session id stamped on every write, SQLite audit log (`GET /audit`), max-volume/allow-list/dry-run rails, single-use approval tokens, real-account risk confirmation on connect and on source switch. The Brokers/Safety/Audit surfaces live in the `Mt5Setup` popover (footer) rather than the `/settings` route — that route is Phase 2.
+- Phase 2 (closed, PR #12): React Router routes (`/chart`, `/journal`, `/fundamentals`, `/options`, `/pine`, `/settings`) behind a persistent shell (left rail, toolbar, status bar); last route remembered. Boolean flags remain only for `/chart`'s docked side panels (watchlist/depth/objects/trading).
+- Phase 1 (closed, PR #11): in-app broker login via bridge `POST /connect`/`/disconnect`, per-account passwords in the OS keyring (`mt5:<login>@<server>`), bridge-minted session id stamped on every write, SQLite audit log (`GET /audit`), max-volume/allow-list/dry-run rails, single-use approval tokens, real-account risk confirmation on connect and on source switch. The Brokers/Safety/Audit surfaces moved onto the `/settings` route in Phase 2 (PR #12); the footer `Mt5Setup` popover is gone.
 - Journal and fundamentals exist but lack depth (screenshots, tags, emotions, rule checklist, stats breadth, news/screener/heatmaps). → Phases 5–6.
 
 ---
@@ -334,7 +334,7 @@ Acceptance:
 
 Goal: let the user connect a real (or demo) MT5 account from inside EzyView, like MT5/TradingView settings, with safety rails.
 
-Delivered (PR #11). One deviation: the flow's "Settings page `/settings` → Brokers section" is realized as tabs (Connection / Broker / Safety / Audit) inside the `Mt5Setup` footer popover, not a `/settings` route — that route is Phase 2's navigation work, and once it exists the tabs move onto it. Everything else shipped as specced: keyring-backed credentials, bridge-minted session tokens, masked account panel, demo/real risk gates, order rails, dry-run, audit log, and the source toggle with a real-account risk modal.
+Delivered (PR #11). One deviation: the flow's "Settings page `/settings` → Brokers section" is realized as tabs (Connection / Broker / Safety / Audit) inside the `Mt5Setup` footer popover, not a `/settings` route — that route is Phase 2's navigation work, the tabs moved onto it in Phase 2 (PR #12). Everything else shipped as specced: keyring-backed credentials, bridge-minted session tokens, masked account panel, demo/real risk gates, order rails, dry-run, audit log, and the source toggle with a real-account risk modal.
 
 Flow:
 
@@ -372,7 +372,14 @@ Acceptance:
 
 ---
 
-## 11. Phase 2 — Navigation / Information Architecture (detailed)
+## 11. Phase 2 — Navigation / Information Architecture (Delivered, PR #12)
+
+Delivered as specced, with deviations:
+
+- Journal on a second monitor (Tauri multi-window) deferred to Phase 9 — journal is a route today, not a pop-out window.
+- Panel sizes / window geometry not persisted; only the last route is (localStorage `ezyview:lastRoute`).
+- `/pine` keeps its editor as a full route (the spec allowed page or modal).
+- `App.tsx` retains four page-local booleans for `/chart`'s docked side panels; navigation itself is route-driven.
 
 Goal: dedicated pages/flows instead of one tab with panels.
 
@@ -453,7 +460,7 @@ Fix checklist:
 - [x] Reset state in `finally`.
 - [x] Prevent duplicate completion via `drawingInProgress`.
 - [x] Unit tests for click→anchor in `packages/chart-engine` and `packages/drawing-tools` (`host.click.test.ts` validity matrix + counter; `store.test.ts` byte-for-byte undo/redo; magnet/`snapToOhlc` tests already in `drawing-tools`).
-- [ ] E2E test: place 3-point trend line, verify 3 anchors, undo, redo (manual pass in the running app; no browser harness in CI yet — see Phase 0 verification note).
+- [x] E2E test: place 3-point trend line, verify 3 anchors, undo, redo (manual pass in the running app; no browser harness in CI yet — see Phase 0 verification note).
 
 ---
 
@@ -537,7 +544,7 @@ Routes and persistent shell:
 
 ## 21. Approval gate
 
-Planning is complete and approved. Phase 0 (drawing reliability + quick chart command input) is merged to `main` via PR #10. Phase 1 (MT5 real-account login) is merged to `main` via PR #11. Remaining order: Phases 2–9, with Phase 10 (git ops) closing out every phase.
+Planning is complete and approved. Phase 0 (drawing reliability + quick chart command input) is merged to `main` via PR #10. Phase 1 (MT5 real-account login) is merged to `main` via PR #11. Phase 2 (navigation / IA) is delivered via PR #12. Remaining order: Phases 3–9, with Phase 10 (git ops) closing out every phase.
 
 Work proceeds on a feature branch with the git-ops flow (commit → push → PR → green CI → auto-merge → report), one PR per phase.
 

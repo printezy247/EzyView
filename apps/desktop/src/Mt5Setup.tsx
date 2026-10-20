@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { keyringAvailable } from "./apiKeys";
 import { RiskRequiredError, useMt5Accounts } from "./mt5Accounts";
-import { useMt5 } from "./mt5";
 import type { Mt5Settings } from "./mt5";
 import { maskLogin } from "./tradingSafety";
 import type { TransportKind } from "@ezyview/mt5-adapter";
@@ -16,8 +15,6 @@ import type { TransportKind } from "@ezyview/mt5-adapter";
  * bridge audit log.
  */
 
-type Tab = "connection" | "broker" | "safety" | "audit";
-
 const field = "w-full rounded border border-ev-line bg-ev-bg px-2 py-1 text-[11px] text-ev-text focus:border-ev-accent";
 
 function money(value: number | undefined, currency: string | undefined): string {
@@ -25,7 +22,7 @@ function money(value: number | undefined, currency: string | undefined): string 
   return `${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${currency ? ` ${currency}` : ""}`;
 }
 
-function ConnectionTab({ settings, save, busy, setBusy }: { settings: Mt5Settings; save: (patch: Partial<Mt5Settings>) => Promise<void>; busy: boolean; setBusy: (b: boolean) => void }) {
+export function ConnectionTab({ settings, save, busy, setBusy }: { settings: Mt5Settings; save: (patch: Partial<Mt5Settings>) => Promise<void>; busy: boolean; setBusy: (b: boolean) => void }) {
   const [draft, setDraft] = useState<Mt5Settings>(settings);
   const submit = async () => {
     setBusy(true);
@@ -89,7 +86,7 @@ function ConnectionTab({ settings, save, busy, setBusy }: { settings: Mt5Setting
   );
 }
 
-function BrokerTab() {
+export function BrokerTab() {
   const accounts = useMt5Accounts((s) => s.accounts);
   const session = useMt5Accounts((s) => s.session);
   const busy = useMt5Accounts((s) => s.busy);
@@ -234,7 +231,7 @@ function BrokerTab() {
   );
 }
 
-function SafetyTab() {
+export function SafetyTab() {
   const safety = useMt5Accounts((s) => s.safety);
   const saveSafety = useMt5Accounts((s) => s.saveSafety);
   return (
@@ -287,7 +284,7 @@ interface AuditRow {
   detail?: string;
 }
 
-function AuditTab() {
+export function AuditTab() {
   const fetchAudit = useMt5Accounts((s) => s.fetchAudit);
   const [rows, setRows] = useState<AuditRow[] | null>(null);
   const load = () => void fetchAudit(50).then((r) => setRows(r as AuditRow[]));
@@ -312,63 +309,6 @@ function AuditTab() {
           </li>
         ))}
       </ul>
-    </div>
-  );
-}
-
-export function Mt5Setup() {
-  const settings = useMt5((s) => s.settings);
-  const save = useMt5((s) => s.save);
-  const status = useMt5((s) => s.status);
-  const session = useMt5Accounts((s) => s.session);
-  const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<Tab>("connection");
-  const [busy, setBusy] = useState(false);
-
-  const badge = status === "online" ? (session ? "bg-ev-up" : "bg-ev-accent") : status === "error" ? "bg-ev-down" : "";
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        title="MT5 connection, broker logins and safety rails"
-        className={`rounded px-1.5 py-0.5 hover:bg-ev-raised ${open ? "text-ev-strong" : ""}`}
-      >
-        MT5 setup
-        {badge && <span className={`ml-1 inline-block size-1.5 rounded-full ${badge}`} aria-hidden />}
-      </button>
-
-      {open && (
-        <div
-          role="dialog"
-          aria-label="MT5 connection settings"
-          className="absolute bottom-6 right-0 z-50 max-h-[70vh] w-72 overflow-y-auto rounded border border-ev-line bg-ev-panel p-3 shadow-2xl"
-        >
-          <div className="mb-2 flex gap-1">
-            {(["connection", "broker", "safety", "audit"] as Tab[]).map((t) => (
-              <button
-                key={t}
-                type="button"
-                aria-pressed={tab === t}
-                onClick={() => setTab(t)}
-                className={
-                  tab === t
-                    ? "flex-1 rounded bg-ev-raised px-1 py-1 text-[10px] font-medium capitalize text-ev-strong"
-                    : "flex-1 rounded px-1 py-1 text-[10px] capitalize text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-                }
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-          {tab === "connection" && <ConnectionTab settings={settings} save={save} busy={busy} setBusy={setBusy} />}
-          {tab === "broker" && <BrokerTab />}
-          {tab === "safety" && <SafetyTab />}
-          {tab === "audit" && <AuditTab />}
-        </div>
-      )}
     </div>
   );
 }
