@@ -1,11 +1,17 @@
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Camera, Trash2, X } from "lucide-react";
-import { computeStats } from "@ezyview/journal";
+import { computeStats, dateKey } from "@ezyview/journal";
 import type { JournalEntry, JournalNote } from "@ezyview/journal";
 import { captureChart, useJournal } from "./journal";
+import { entriesToCsv } from "./journalCsv";
 import { useMt5 } from "./mt5";
 import { useTrading } from "./trading";
+import { JournalCalendar } from "./JournalCalendar";
+import { JournalEntryDialog } from "./JournalEntryDialog";
+import { JournalPropFirmBar } from "./JournalPropFirmBar";
+import { JournalReviews } from "./JournalReviews";
+import { JournalStatsView } from "./JournalStatsView";
 
 interface Props {
   onClose: () => void;
@@ -17,6 +23,15 @@ interface Row {
   node: ReactNode;
 }
 
+type Tab = "feed" | "calendar" | "stats" | "reviews";
+
+const TABS: readonly { id: Tab; label: string }[] = [
+  { id: "feed", label: "Feed" },
+  { id: "calendar", label: "Calendar" },
+  { id: "stats", label: "Stats" },
+  { id: "reviews", label: "Reviews" },
+];
+
 const clock = (epoch: number): string => new Date(epoch * 1000).toLocaleString(undefined, {
   month: "short",
   day: "numeric",
@@ -27,12 +42,22 @@ const clock = (epoch: number): string => new Date(epoch * 1000).toLocaleString(u
 const money = (value: number): string =>
   value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+/** Download every entry as a CSV blob; revoke the object URL right after the click. */
+function exportCsv(): void {
+  const blob = new Blob([entriesToCsv(useJournal.getState().entries)], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "journal-export.csv";
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 /**
  * The daily driver: what you traded, what you thought, what it scored.
  *
- * Trade rows come from deal history (paper or broker), notes from the user,
- * and both live in the same time-ordered feed so a note can sit next to the
- * trade it was written for.
+ * Feed rows mix deal history and notes; the other tabs (calendar heatmap,
+ * stats, review composer) read the same entries so every number agrees.
  */
 export function JournalPanel({ onClose }: Props) {
   const entries = useJournal((s) => s.entries);
@@ -45,6 +70,10 @@ export function JournalPanel({ onClose }: Props) {
   const importDeals = useJournal((s) => s.importDeals);
   const deals = useTrading((s) => s.deals);
   const source = useMt5((s) => s.source);
+
+  const [tab, setTab] = useState<Tab>("feed");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedDay, setSelectedDay] = useState(() => dateKey(Math.floor(Date.now() / 1000)));
 
   const [text, setText] = useState("");
   const [shot, setShot] = useState<string | null>(null);
@@ -90,37 +119,56 @@ export function JournalPanel({ onClose }: Props) {
   };
 
   const chip = "rounded border border-ev-line px-2 py-0.5 tabular-nums";
+  const headerBtn =
+    "rounded px-2 py-0.5 text-[11px] text-ev-muted hover:bg-ev-raised hover:text-ev-strong";
 
   return (
     <section aria-label="Trading journal" className="flex min-h-0 flex-1 flex-col border-t border-ev-raised bg-ev-bg">
       <header className="flex h-8 shrink-0 items-center gap-3 border-b border-ev-raised px-3 text-[11px]">
         <span className="font-semibold uppercase tracking-wider text-ev-muted">Journal</span>
 
+        <nav aria-label="Journal views" className="flex items-center gap-0.5">
+          {TABS.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={tab === id}
+              onClick={() => setTab(id)}
+              className={`rounded px-2 py-0.5 ${
+                tab === id ? "bg-ev-raised font-medium text-ev-strong" : "text-ev-muted hover:text-ev-strong"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
+
         <dl className="flex items-center gap-3 tabular-nums">
           <Fact label="Net" value={money(stats.netPnl)} tone={stats.netPnl >= 0 ? "text-ev-up" : "text-ev-down"} />
           <Fact label="Trades" value={String(stats.trades)} />
           <Fact label="Win rate" value={stats.trades === 0 ? "—" : `${Math.round(stats.winRate * 100)}%`} />
-          <Fact
-            label="Profit factor"
-            value={stats.trades === 0 ? "—" : Number.isFinite(stats.profitFactor) ? stats.profitFactor.toFixed(2) : "∞"}
-          />
-          <Fact label="Expectancy" value={stats.trades === 0 ? "—" : money(stats.expectancy)} />
           <Fact label="Max DD" value={money(stats.maxDrawdown)} tone="text-ev-down" />
         </dl>
 
         <div className="ml-auto flex items-center gap-2">
-          <button
-            type="button"
-            onClick={importNow}
-            title="Turn closed deals into journal trades"
-            className="rounded px-2 py-0.5 text-[11px] text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-          >
+          <button type="button" onClick={importNow} title="Turn closed deals into journal trades" className={headerBtn}>
             Import history
           </button>
           {lastImport !== null && (
             <span className="text-[11px] text-ev-up">
               {lastImport === 0 ? "nothing new" : `+${lastImport}`}
             </span>
+          )}
+          {tab === "feed" && (
+            <>
+              <button type="button" onClick={() => setDialogOpen(true)} className={headerBtn}>
+                + Manual entry
+              </button>
+              <button type="button" onClick={exportCsv} title="Download all entries as CSV" className={headerBtn}>
+                Export CSV
+              </button>
+            </>
           )}
           <button
             type="button"
@@ -133,69 +181,81 @@ export function JournalPanel({ onClose }: Props) {
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1">
-        <div className="flex w-72 shrink-0 flex-col gap-2 border-r border-ev-raised p-3">
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit();
-            }}
-            placeholder="What did you see? Plan, execution, feeling…"
-            aria-label="Journal note"
-            className="min-h-0 flex-1 resize-none rounded border border-ev-line bg-ev-panel p-2 text-xs text-ev-text focus:border-ev-accent"
-          />
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShot(captureChart())}
-              className={`flex items-center gap-1 rounded border px-2 py-1 text-[11px] hover:text-ev-strong ${
-                shot ? "border-ev-accent text-ev-strong" : "border-ev-line text-ev-muted"
-              }`}
-            >
-              <Camera size={13} aria-hidden />
-              {shot ? "Chart attached" : "Chart"}
-            </button>
-            <button
-              type="button"
-              onClick={submit}
-              disabled={!text.trim() && !shot}
-              className="ml-auto rounded bg-ev-accent px-3 py-1 text-[11px] font-medium text-white hover:bg-ev-accent-hover disabled:opacity-40"
-            >
-              Add note
-            </button>
-          </div>
-        </div>
+      {tab === "feed" && <JournalPropFirmBar drawdown={stats.maxDrawdown} />}
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          <nav className="flex h-7 shrink-0 items-center gap-2 border-b border-ev-raised px-3">
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Filter by symbol, tag or text"
-              aria-label="Filter journal"
-              className="w-64 rounded border border-ev-line bg-ev-panel px-2 py-0.5 text-[11px] text-ev-text focus:border-ev-accent"
+      {tab === "feed" && (
+        <div className="flex min-h-0 flex-1">
+          <div className="flex w-72 shrink-0 flex-col gap-2 border-r border-ev-raised p-3">
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit();
+              }}
+              placeholder="What did you see? Plan, execution, feeling…"
+              aria-label="Journal note"
+              className="min-h-0 flex-1 resize-none rounded border border-ev-line bg-ev-panel p-2 text-xs text-ev-text focus:border-ev-accent"
             />
-            <span className={`${chip} text-ev-muted`}>{rows.length} items</span>
-          </nav>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShot(captureChart())}
+                className={`flex items-center gap-1 rounded border px-2 py-1 text-[11px] hover:text-ev-strong ${
+                  shot ? "border-ev-accent text-ev-strong" : "border-ev-line text-ev-muted"
+                }`}
+              >
+                <Camera size={13} aria-hidden />
+                {shot ? "Chart attached" : "Chart"}
+              </button>
+              <button
+                type="button"
+                onClick={submit}
+                disabled={!text.trim() && !shot}
+                className="ml-auto rounded bg-ev-accent px-3 py-1 text-[11px] font-medium text-white hover:bg-ev-accent-hover disabled:opacity-40"
+              >
+                Add note
+              </button>
+            </div>
+          </div>
 
-          <div className="min-h-0 flex-1 overflow-auto">
-            {rows.length === 0 ? (
-              <p className="px-4 py-6 text-xs text-ev-faint">
-                Nothing here yet — take a note, or import your closed trades from history.
-              </p>
-            ) : (
-              <ul>
-                {rows.map((row) => (
-                  <li key={row.key} className="border-b border-ev-panel px-3 py-1.5 hover:bg-ev-panel/60">
-                    {row.node}
-                  </li>
-                ))}
-              </ul>
-            )}
+          <div className="flex min-w-0 flex-1 flex-col">
+            <nav className="flex h-7 shrink-0 items-center gap-2 border-b border-ev-raised px-3">
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Filter by symbol, tag or text"
+                aria-label="Filter journal"
+                className="w-64 rounded border border-ev-line bg-ev-panel px-2 py-0.5 text-[11px] text-ev-text focus:border-ev-accent"
+              />
+              <span className={`${chip} text-ev-muted`}>{rows.length} items</span>
+            </nav>
+
+            <div className="min-h-0 flex-1 overflow-auto">
+              {rows.length === 0 ? (
+                <p className="px-4 py-6 text-xs text-ev-faint">
+                  Nothing here yet — take a note, import your closed trades, or add a manual entry.
+                </p>
+              ) : (
+                <ul>
+                  {rows.map((row) => (
+                    <li key={row.key} className="border-b border-ev-panel px-3 py-1.5 hover:bg-ev-panel/60">
+                      {row.node}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {tab === "calendar" && <JournalCalendar entries={entries} selectedDay={selectedDay} onSelectDay={setSelectedDay} />}
+      {tab === "stats" && <JournalStatsView entries={entries} />}
+      {tab === "reviews" && (
+        <JournalReviews entries={entries} notes={notes} selectedDay={selectedDay} onSelectDay={setSelectedDay} />
+      )}
+
+      {dialogOpen && <JournalEntryDialog onClose={() => setDialogOpen(false)} />}
 
       {preview && (
         <button
@@ -244,6 +304,7 @@ function TradeRow({ entry, onDelete }: { entry: JournalEntry; onDelete: () => vo
           {money(pnl)}
         </span>
       )}
+      {entry.emotion && <span className="rounded bg-ev-raised px-1.5 py-0.5 text-[11px] text-ev-muted">{entry.emotion}</span>}
       {entry.source && <span className="rounded bg-ev-raised px-1.5 py-0.5 text-[11px] text-ev-muted">{entry.source}</span>}
       <button
         type="button"
