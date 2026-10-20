@@ -45,14 +45,14 @@ export function DepthOfMarket({ symbol, precision }: Props) {
   const maxCum = Math.max(1, ...asks.map((a) => a.cum), ...bids.map((b) => b.cum));
 
   return (
-    <div className="flex w-44 shrink-0 flex-col border-l border-[#1e222d] bg-[#0e1117]">
-      <div className="border-b border-[#1e222d] px-3 py-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-[#787b86]">Depth</h2>
-        <p className="mt-0.5 text-[10px] text-[#434651]">{symbol}</p>
+    <aside aria-label="Depth of market" className="flex w-44 shrink-0 flex-col border-l border-ev-raised bg-ev-bg">
+      <div className="border-b border-ev-raised px-3 py-2">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-ev-muted">Depth</h2>
+        <p className="mt-0.5 text-[11px] text-ev-faint">{symbol}</p>
       </div>
 
       {mid === null ? (
-        <p className="px-3 py-6 text-xs text-[#434651]">Waiting for a quote…</p>
+        <p className="px-3 py-6 text-xs text-ev-faint">Waiting for a quote…</p>
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto text-[11px] tabular-nums">
           <ul>
@@ -61,7 +61,7 @@ export function DepthOfMarket({ symbol, precision }: Props) {
               ))}
           </ul>
 
-          <div className="border-y border-[#1e222d] bg-[#131722] px-2 py-1 text-center text-xs font-semibold text-white">
+          <div className="border-y border-ev-raised bg-ev-panel px-2 py-1 text-center text-xs font-semibold text-ev-strong">
             {mid.toFixed(precision)}
           </div>
 
@@ -72,7 +72,7 @@ export function DepthOfMarket({ symbol, precision }: Props) {
           </ul>
         </div>
       )}
-    </div>
+    </aside>
   );
 }
 
@@ -98,10 +98,10 @@ function Row({
         }}
         aria-hidden
       />
-      <span className={`relative ${side === "ask" ? "text-[#ef5350]" : "text-[#26a69a]"}`}>
+      <span className={`relative ${side === "ask" ? "text-ev-down" : "text-ev-up"}`}>
         {level.price.toFixed(precision)}
       </span>
-      <span className="relative text-[#787b86]">{level.size.toFixed(3)}</span>
+      <span className="relative text-ev-muted">{level.size.toFixed(3)}</span>
     </li>
   );
 }

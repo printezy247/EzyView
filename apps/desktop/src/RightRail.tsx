@@ -20,11 +20,11 @@ interface Props {
 /** Icon rail on the right edge: one click shows or hides any panel, with a lit icon for each open one. */
 export function RightRail({ panels, onToggle }: Props) {
   return (
-    <nav aria-label="Panels" className="flex w-10 shrink-0 flex-col items-center gap-1 border-l border-[#1e222d] py-2">
+    <nav aria-label="Panels" className="flex w-10 shrink-0 flex-col items-center gap-1 border-l border-ev-raised py-2">
       {ITEMS.map((item, index) => (
         <div key={item.id} className="contents">
           {/* Side panels above the line, bottom-slot panels below it. */}
-          {index === 3 && <div className="my-1 h-px w-5 bg-[#1e222d]" aria-hidden />}
+          {index === 3 && <div className="my-1 h-px w-5 bg-ev-raised" aria-hidden />}
           <button
             type="button"
             aria-label={item.label}
@@ -32,10 +32,10 @@ export function RightRail({ panels, onToggle }: Props) {
             title={item.label}
             onClick={() => onToggle(item.id)}
             className={`relative flex size-8 items-center justify-center rounded ${
-              panels[item.id] ? "bg-[#1e222d] text-white" : "text-[#787b86] hover:bg-[#1e222d] hover:text-white"
+              panels[item.id] ? "bg-ev-raised text-ev-strong" : "text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
             }`}
           >
-            {panels[item.id] && <span className="absolute left-0 top-1.5 h-5 w-0.5 rounded bg-[#2962ff]" aria-hidden />}
+            {panels[item.id] && <span className="absolute left-0 top-1.5 h-5 w-0.5 rounded bg-ev-accent" aria-hidden />}
             {item.icon}
           </button>
         </div>

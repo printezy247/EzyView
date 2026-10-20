@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Bell, BellRing, Trash2 } from "lucide-react";
 import type { AlertCondition, AlertFrequency, PriceAlert } from "@ezyview/data-adapters";
+import { Modal } from "./Modal";
 
 /** One controlled field in the alert form. */
 function useAlertField<T>(initial: T): [T, (next: T) => void] {
@@ -46,61 +47,60 @@ export function AlertDialog({
   if (!open) return null;
 
   return (
-    <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div
-        className="flex h-[28rem] w-[32rem] flex-col rounded-md border border-[#2a2e39] bg-[#131722] shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-[#1e222d] px-4 py-2.5">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
-            <Bell size={14} aria-hidden />
-            Alerts on {symbol}
-          </h2>
-          <button type="button" onClick={onClose} className="text-[#787b86] hover:text-white">
-            Close
-          </button>
-        </div>
-
-        <AlertForm symbol={symbol} lastPrice={lastPrice} onAdd={onAdd} />
-
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-2">
-          {alerts.length === 0 ? (
-            <p className="py-6 text-center text-sm text-[#787b86]">
-              No alerts yet. Set a condition above to get notified when price reaches it.
-            </p>
-          ) : (
-            <ul className="space-y-1">
-              {alerts.map((a) => (
-                <li
-                  key={a.id}
-                  className="flex items-center gap-2 rounded border border-[#1e222d] px-2.5 py-1.5"
-                >
-                  {a.state === "triggered" ? (
-                    <BellRing size={13} aria-hidden className="shrink-0 text-[#ff9800]" />
-                  ) : (
-                    <Bell size={13} aria-hidden className="shrink-0 text-[#787b86]" />
-                  )}
-                  <span className="text-xs text-white">{describeCondition(a.condition)}</span>
-                  <span className="text-[11px] text-[#787b86]">{FREQ_LABELS[a.frequency]}</span>
-                  {a.state === "triggered" && (
-                    <span className="rounded bg-[#2a2e39] px-1.5 text-[10px] text-[#ff9800]">triggered</span>
-                  )}
-                  {a.message && <span className="truncate text-[11px] text-[#787b86]">{a.message}</span>}
-                  <button
-                    type="button"
-                    onClick={() => onRemove(a.id)}
-                    className="ml-auto text-[#434651] hover:text-[#ef5350]"
-                    aria-label="Delete alert"
-                  >
-                    <Trash2 size={13} aria-hidden />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+    <Modal
+      onClose={onClose}
+      labelledBy="alert-dialog-title"
+      className="flex h-[28rem] w-[32rem] flex-col rounded-md border border-ev-line bg-ev-panel shadow-2xl"
+    >
+      <div className="flex items-center justify-between border-b border-ev-raised px-4 py-2.5">
+        <h2 id="alert-dialog-title" className="flex items-center gap-2 text-sm font-semibold text-ev-strong">
+          <Bell size={14} aria-hidden />
+          Alerts on {symbol}
+        </h2>
+        <button type="button" onClick={onClose} className="text-ev-muted hover:text-ev-strong">
+          Close
+        </button>
       </div>
-    </div>
+
+      <AlertForm symbol={symbol} lastPrice={lastPrice} onAdd={onAdd} />
+
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-2">
+        {alerts.length === 0 ? (
+          <p className="py-6 text-center text-sm text-ev-muted">
+            No alerts yet. Set a condition above to get notified when price reaches it.
+          </p>
+        ) : (
+          <ul className="space-y-1">
+            {alerts.map((a) => (
+              <li
+                key={a.id}
+                className="flex items-center gap-2 rounded border border-ev-raised px-2.5 py-1.5"
+              >
+                {a.state === "triggered" ? (
+                  <BellRing size={13} aria-hidden className="shrink-0 text-ev-orange" />
+                ) : (
+                  <Bell size={13} aria-hidden className="shrink-0 text-ev-muted" />
+                )}
+                <span className="text-xs text-ev-strong">{describeCondition(a.condition)}</span>
+                <span className="text-[11px] text-ev-muted">{FREQ_LABELS[a.frequency]}</span>
+                {a.state === "triggered" && (
+                  <span className="rounded bg-ev-line px-1.5 text-[11px] text-ev-orange">triggered</span>
+                )}
+                {a.message && <span className="truncate text-[11px] text-ev-muted">{a.message}</span>}
+                <button
+                  type="button"
+                  onClick={() => onRemove(a.id)}
+                  className="ml-auto text-ev-faint hover:text-ev-down"
+                  aria-label="Delete alert"
+                >
+                  <Trash2 size={13} aria-hidden />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Modal>
   );
 }
 
@@ -137,12 +137,12 @@ function AlertForm({
   const disabled = (needsValue && !Number.isFinite(Number(value))) || (needsBars && Number(bars) < 1);
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-[#1e222d] px-4 py-3">
+    <div className="flex flex-wrap items-center gap-2 border-b border-ev-raised px-4 py-3">
       <select
         aria-label="Alert condition"
         value={kind}
         onChange={(e) => setKind(e.target.value as AlertCondition["kind"])}
-        className="rounded border border-[#2a2e39] bg-[#0e1117] px-2 py-1 text-xs text-white"
+        className="rounded border border-ev-line bg-ev-bg px-2 py-1 text-xs text-ev-strong"
       >
         {Object.entries(CONDITION_LABELS).map(([k, label]) => (
           <option key={k} value={k}>
@@ -158,7 +158,7 @@ function AlertForm({
           onChange={(e) => setValue(e.target.value)}
           placeholder="Price"
           inputMode="decimal"
-          className="w-24 rounded border border-[#2a2e39] bg-[#0e1117] px-2 py-1 text-xs text-white"
+          className="w-24 rounded border border-ev-line bg-ev-bg px-2 py-1 text-xs text-ev-strong"
         />
       )}
       {needsBars && (
@@ -168,7 +168,7 @@ function AlertForm({
           onChange={(e) => setBars(e.target.value)}
           placeholder="Bars"
           inputMode="numeric"
-          className="w-16 rounded border border-[#2a2e39] bg-[#0e1117] px-2 py-1 text-xs text-white"
+          className="w-16 rounded border border-ev-line bg-ev-bg px-2 py-1 text-xs text-ev-strong"
         />
       )}
       {needsMult && (
@@ -178,7 +178,7 @@ function AlertForm({
           onChange={(e) => setMult(e.target.value)}
           placeholder="σ mult"
           inputMode="decimal"
-          className="w-16 rounded border border-[#2a2e39] bg-[#0e1117] px-2 py-1 text-xs text-white"
+          className="w-16 rounded border border-ev-line bg-ev-bg px-2 py-1 text-xs text-ev-strong"
         />
       )}
 
@@ -186,7 +186,7 @@ function AlertForm({
         aria-label="Alert frequency"
         value={frequency}
         onChange={(e) => setFrequency(e.target.value as AlertFrequency)}
-        className="rounded border border-[#2a2e39] bg-[#0e1117] px-2 py-1 text-xs text-white"
+        className="rounded border border-ev-line bg-ev-bg px-2 py-1 text-xs text-ev-strong"
       >
         {Object.entries(FREQ_LABELS).map(([k, label]) => (
           <option key={k} value={k}>
@@ -200,14 +200,14 @@ function AlertForm({
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         placeholder="Message (optional)"
-        className="min-w-32 flex-1 rounded border border-[#2a2e39] bg-[#0e1117] px-2 py-1 text-xs text-white"
+        className="min-w-32 flex-1 rounded border border-ev-line bg-ev-bg px-2 py-1 text-xs text-ev-strong"
       />
 
       <button
         type="button"
         onClick={submit}
         disabled={disabled}
-        className="rounded bg-[#2962ff] px-3 py-1 text-xs font-medium text-white disabled:opacity-40"
+        className="rounded bg-ev-accent px-3 py-1 text-xs font-medium text-white disabled:opacity-40"
       >
         Create
       </button>

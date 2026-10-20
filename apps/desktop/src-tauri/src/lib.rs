@@ -22,8 +22,8 @@ async fn open_chart_window(app: AppHandle, query: String) -> Result<(), String> 
 
 /// Keyring service name; each provider key is stored under its own account.
 const KEYRING_SERVICE: &str = "EzyView";
-/// The only secrets the webview may read or write.
-const API_KEY_NAMES: [&str; 2] = ["finnhub", "alphavantage"];
+/// The only secrets the webview may read or write: data-provider keys and the MT5 MCP key.
+const API_KEY_NAMES: [&str; 3] = ["finnhub", "alphavantage", "mt5"];
 
 fn key_entry(name: &str) -> Result<keyring::Entry, String> {
     if !API_KEY_NAMES.contains(&name) {

@@ -95,6 +95,8 @@ export interface EzyChartOptions {
   chartType?: ChartType;
   showVolume?: boolean;
   showVolumeProfile?: boolean;
+  /** Renko/P&F box and Kagi reversal size; `null` or absent sizes it from the ATR. */
+  boxSize?: number | null;
   showGrid?: boolean;
   onCrosshairTime?: (time: number | null) => void;
   onClick?: (info: ClickInfo) => void;
@@ -155,12 +157,17 @@ export class EzyChart {
   private opts: EzyChartOptions;
   private data: Candle[] = [];
   private drawingsLayer: Drawing[] = [];
+  private boxSize: number | null;
+  /** Last main-series points and what they were built from, so a theme or type round-trip reuses them. */
+  private seriesCache: { data: Candle[]; type: ChartType; theme: ChartTheme; box: number | null; points: never[] } | null =
+    null;
 
   constructor(private readonly container: HTMLElement, options: EzyChartOptions = {}) {
     this.opts = options;
     this.type = options.chartType ?? "candles";
     this.theme = options.theme ?? DARK_THEME;
     this.showVolume = options.showVolume ?? true;
+    this.boxSize = options.boxSize ?? null;
 
     this.chart = createChart(container, {
       autoSize: true,
@@ -189,6 +196,7 @@ export class EzyChart {
     this.chart.panes()[0]!.attachPrimitive(this.bgBands);
     this.chart.panes()[0]!.attachPrimitive(this.volumeProfile);
     this.volumeProfile.setEnabled(options.showVolumeProfile ?? false);
+    this.volumeProfile.setColors(this.theme.upColor, this.theme.downColor);
     this.createMainSeries();
     if (this.showVolume) this.ensureVolume();
 
@@ -267,6 +275,22 @@ export class EzyChart {
     this.volumeProfile.setEnabled(show);
   }
 
+  /** Box (Renko, P&F) or reversal (Kagi) size; `null` or a non-positive value means automatic. */
+  setBoxSize(size: number | null): void {
+    const next = size !== null && size > 0 ? size : null;
+    if (next === this.boxSize) return;
+    this.boxSize = next;
+    if (!isTimeBased(this.type)) {
+      this.mainSeries?.setData(this.seriesData());
+      this.frameBars();
+    }
+  }
+
+  /** The box size in use: the user's, or the ATR-based default for the loaded candles. */
+  effectiveBoxSize(): number {
+    return this.boxSize ?? autoBoxSize(this.data);
+  }
+
   setTheme(theme: ChartTheme): void {
     this.theme = theme;
     this.chart.applyOptions({
@@ -281,6 +305,7 @@ export class EzyChart {
       timeScale: { borderColor: theme.grid },
     });
     this.applyCandleColors();
+    this.volumeProfile.setColors(theme.upColor, theme.downColor);
     // Kagi colors its line per point, so the data carries the theme.
     if (this.type === "kagi") this.mainSeries?.setData(this.seriesData());
     for (const line of this.levelLines) line.applyOptions({ color: theme.paneSeparator });
@@ -675,7 +700,6 @@ export class EzyChart {
           ...base,
           lineWidth: 2,
           lineType: LineType.WithSteps,
-          crosshairMarkerVisible: false,
         }) as ISeriesApi<never>;
         break;
       default:
@@ -720,17 +744,27 @@ export class EzyChart {
 
   /** Main-series points for the current type, theme and candles. */
   private seriesData(): never[] {
+    const c = this.seriesCache;
+    if (c && c.data === this.data && c.type === this.type && c.theme === this.theme && c.box === this.boxSize) {
+      return c.points;
+    }
+    const points = this.buildSeriesData();
+    this.seriesCache = { data: this.data, type: this.type, theme: this.theme, box: this.boxSize, points };
+    return points;
+  }
+
+  private buildSeriesData(): never[] {
     const candles = this.data;
     switch (this.type) {
       case "heikin":
         return toSeriesData("candles", heikinAshi(candles));
       case "renko":
-        return toBoxData(renko(candles, autoBoxSize(candles)));
+        return toBoxData(renko(candles, this.effectiveBoxSize()));
       case "pnf":
-        return toBoxData(pointAndFigure(candles, autoBoxSize(candles)));
+        return toBoxData(pointAndFigure(candles, this.effectiveBoxSize()));
       case "kagi": {
-        // Reverse on one average true range, as Renko and P&F box on it.
-        const lines = kagi(candles, autoBoxSize(candles));
+        // Reverse on one box (by default one average true range), as Renko and P&F box on it.
+        const lines = kagi(candles, this.effectiveBoxSize());
         const first = lines[0];
         if (!first) return [];
         const times = sequentialTimes([first.time, ...lines.map((l) => l.time)]);

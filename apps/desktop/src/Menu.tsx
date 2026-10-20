@@ -111,7 +111,7 @@ export function Menu({ label, caption, entries, icon, badge, triggerActive, alig
     }
   };
 
-  const triggerTone = open || triggerActive ? "bg-[#1e222d] text-white" : "text-[#787b86] hover:bg-[#1e222d] hover:text-white";
+  const triggerTone = open || triggerActive ? "bg-ev-raised text-ev-strong" : "text-ev-muted hover:bg-ev-raised hover:text-ev-strong";
 
   return (
     <div className="relative" ref={rootRef}>
@@ -134,7 +134,7 @@ export function Menu({ label, caption, entries, icon, badge, triggerActive, alig
         {icon}
         {label}
         {badge !== undefined && badge > 0 && (
-          <span className="rounded bg-[#2962ff] px-1 text-[10px] leading-4 text-white">{badge}</span>
+          <span className="rounded bg-ev-accent px-1 text-[11px] leading-4 text-white">{badge}</span>
         )}
         <ChevronDown size={12} aria-hidden />
       </button>
@@ -146,17 +146,17 @@ export function Menu({ label, caption, entries, icon, badge, triggerActive, alig
           role="menu"
           aria-label={caption ?? label}
           onKeyDown={onListKey}
-          className={`absolute top-full z-30 mt-1 min-w-44 whitespace-nowrap rounded border border-[#2a2e39] bg-[#131722] py-1 shadow-xl ${
+          className={`absolute top-full z-30 mt-1 min-w-44 whitespace-nowrap rounded border border-ev-line bg-ev-panel py-1 shadow-xl ${
             align === "right" ? "right-0" : "left-0"
           }`}
         >
           {entries.map((entry) => {
             if (entry.kind === "separator") {
-              return <div key={entry.id} role="separator" className="my-1 h-px bg-[#1e222d]" />;
+              return <div key={entry.id} role="separator" className="my-1 h-px bg-ev-raised" />;
             }
             if (entry.kind === "label") {
               return (
-                <div key={entry.id} className="px-3 pb-1 pt-2 text-[10px] font-medium uppercase tracking-wider text-[#434651]">
+                <div key={entry.id} className="px-3 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wider text-ev-faint">
                   {entry.label}
                 </div>
               );
@@ -176,15 +176,15 @@ export function Menu({ label, caption, entries, icon, badge, triggerActive, alig
                 disabled={disabled}
                 onClick={() => pick(entry)}
                 className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs ${
-                  on ? "text-white" : "text-[#787b86]"
-                } hover:bg-[#1e222d] hover:text-white disabled:pointer-events-none disabled:opacity-40`}
+                  on ? "text-ev-strong" : "text-ev-muted"
+                } hover:bg-ev-raised hover:text-ev-strong disabled:pointer-events-none disabled:opacity-40`}
               >
                 <span className="flex w-3 shrink-0 justify-center" aria-hidden>
                   {on && <Check size={12} />}
                 </span>
                 <span className="flex-1">{entry.label}</span>
                 {entry.kind === "action" && entry.hint !== undefined && (
-                  <span className="text-[10px] text-[#434651]">{entry.hint}</span>
+                  <span className="text-[11px] text-ev-faint">{entry.hint}</span>
                 )}
               </button>
             );

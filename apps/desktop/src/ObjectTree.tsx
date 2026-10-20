@@ -32,26 +32,26 @@ export function ObjectTree({ onClose }: Props) {
   const empty = chart.indicators.length === 0 && chart.drawings.length === 0;
 
   return (
-    <aside aria-label="Object tree" className="flex w-56 shrink-0 flex-col border-l border-[#1e222d] bg-[#0e1117]">
-      <div className="flex items-center justify-between border-b border-[#1e222d] px-3 py-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-[#787b86]">Object tree</h2>
+    <aside aria-label="Object tree" className="flex w-56 shrink-0 flex-col border-l border-ev-raised bg-ev-bg">
+      <div className="flex items-center justify-between border-b border-ev-raised px-3 py-2">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-ev-muted">Object tree</h2>
         <button
           type="button"
           aria-label="Close object tree"
           title="Close"
           onClick={onClose}
-          className="flex size-5 items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] hover:text-white"
+          className="flex size-5 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
         >
           <X size={13} aria-hidden />
         </button>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto py-1 text-xs">
-        <p className="truncate px-3 pb-1 text-[11px] text-[#787b86]">
+        <p className="truncate px-3 pb-1 text-[11px] text-ev-muted">
           {chart.symbol} · {chart.resolution}
         </p>
         {empty && (
-          <p className="px-3 py-4 text-[11px] leading-relaxed text-[#787b86]">
+          <p className="px-3 py-4 text-[11px] leading-relaxed text-ev-muted">
             Nothing on this chart yet. Add an indicator from Studies, or pick a tool on the left rail.
           </p>
         )}
@@ -94,7 +94,7 @@ export function ObjectTree({ onClose }: Props) {
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="mt-1">
-      <h3 className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#434651]">{title}</h3>
+      <h3 className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-ev-faint">{title}</h3>
       <ul>{children}</ul>
     </section>
   );
@@ -120,10 +120,10 @@ function Row({ label, swatch, hidden, onToggle, onRename, onDelete }: RowProps) 
   };
 
   const iconBtn =
-    "flex size-5 shrink-0 items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] hover:text-white";
+    "flex size-5 shrink-0 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong";
 
   return (
-    <li className="flex h-7 items-center gap-1.5 px-3 hover:bg-[#131722]">
+    <li className="flex h-7 items-center gap-1.5 px-3 hover:bg-ev-panel">
       {swatch && <span className="size-2 shrink-0 rounded-full" style={{ background: swatch }} aria-hidden />}
       {editing ? (
         <input
@@ -141,11 +141,11 @@ function Row({ label, swatch, hidden, onToggle, onRename, onDelete }: RowProps) 
             // Keep Escape from also disarming the drawing tool.
             e.stopPropagation();
           }}
-          className="min-w-0 flex-1 rounded bg-[#131722] px-1 py-0.5 text-xs text-white outline-none ring-1 ring-[#2962ff]"
+          className="min-w-0 flex-1 rounded bg-ev-panel px-1 py-0.5 text-xs text-ev-strong outline-none ring-1 ring-ev-accent"
         />
       ) : (
         <span
-          className={`min-w-0 flex-1 truncate ${hidden ? "text-[#434651] line-through" : "text-[#d1d4dc]"}`}
+          className={`min-w-0 flex-1 truncate ${hidden ? "text-ev-faint line-through" : "text-ev-text"}`}
           onDoubleClick={() => {
             setDraft(label);
             setEditing(true);

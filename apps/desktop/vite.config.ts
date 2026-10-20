@@ -33,9 +33,21 @@ export default defineConfig({
   },
   build: {
     target: "es2022",
-    sourcemap: true,
+    // Source maps are ~16 MB and would ship inside the desktop bundle; opt in
+    // with SOURCEMAP=1 when debugging a production build.
+    sourcemap: process.env.SOURCEMAP === "1",
     rollupOptions: {
       input: src("./index.html"),
+      output: {
+        // Libraries change far less often than app code, so they get their own
+        // long-lived chunks. Monaco is already split off by its dynamic import.
+        codeSplitting: {
+          groups: [
+            { name: "react", test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/ },
+            { name: "charts", test: /node_modules[\\/](lightweight-charts|fancy-canvas)[\\/]/ },
+          ],
+        },
+      },
     },
   },
 });

@@ -1,0 +1,80 @@
+import { useEffect, useRef } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
+
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/** Index to focus after Tab (or Shift+Tab) from `current`, wrapping at both ends. */
+export function nextFocusIndex(count: number, current: number, backwards: boolean): number {
+  if (count === 0) return -1;
+  if (current < 0) return backwards ? count - 1 : 0;
+  return (current + (backwards ? count - 1 : 1)) % count;
+}
+
+interface Props {
+  onClose: () => void;
+  /** id of the dialog's visible title. */
+  labelledBy: string;
+  /** Classes for the dialog box itself. */
+  className: string;
+  /** Classes for the dimmed backdrop; clicking it closes the dialog. */
+  backdropClassName?: string;
+  children: ReactNode;
+}
+
+/**
+ * A modal dialog: announced as a dialog, Escape closes it, Tab stays inside
+ * it, and focus returns to whatever opened it.
+ */
+export function Modal({
+  onClose,
+  labelledBy,
+  className,
+  backdropClassName = "absolute inset-0 z-40 flex items-center justify-center bg-black/40",
+  children,
+}: Props) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    const box = ref.current;
+    if (box && !box.contains(document.activeElement)) {
+      (box.querySelector<HTMLElement>("[autofocus]") ?? box.querySelector<HTMLElement>(FOCUSABLE) ?? box).focus();
+    }
+    return () => opener?.focus?.();
+  }, []);
+
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    // Editors (Monaco) consume their own Escape/Tab and mark them handled.
+    if (e.defaultPrevented) return;
+    if (e.key === "Escape") {
+      e.stopPropagation();
+      onClose();
+      return;
+    }
+    if (e.key !== "Tab" || !ref.current) return;
+    const items = [...ref.current.querySelectorAll<HTMLElement>(FOCUSABLE)];
+    const current = items.indexOf(document.activeElement as HTMLElement);
+    const atEdge = current === -1 || (e.shiftKey ? current === 0 : current === items.length - 1);
+    if (!atEdge) return;
+    e.preventDefault();
+    items[nextFocusIndex(items.length, current, e.shiftKey)]?.focus();
+  };
+
+  return (
+    <div className={backdropClassName} onClick={onClose}>
+      <div
+        ref={ref}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={labelledBy}
+        tabIndex={-1}
+        className={className}
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={onKeyDown}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}

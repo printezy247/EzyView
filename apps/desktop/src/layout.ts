@@ -23,6 +23,8 @@ export interface ChartState {
   showVolume: boolean;
   /** Optional so layouts saved before it existed still load. */
   showVolumeProfile?: boolean;
+  /** Renko/P&F box and Kagi reversal size; absent or null sizes it from the ATR. */
+  boxSize?: number | null;
   showGrid: boolean;
   theme: "dark" | "light";
   indicators: ActiveIndicator[];

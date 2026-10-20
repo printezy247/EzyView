@@ -106,7 +106,7 @@ export function DrawingToolbar() {
       role="toolbar"
       aria-orientation="vertical"
       aria-label="Drawing tools"
-      className="flex w-10 shrink-0 flex-col items-center gap-0.5 overflow-y-auto border-r border-[#1e222d] py-2"
+      className="flex w-10 shrink-0 flex-col items-center gap-0.5 overflow-y-auto border-r border-ev-raised py-2"
     >
       <button
         type="button"
@@ -121,7 +121,7 @@ export function DrawingToolbar() {
 
       {SECTIONS.map((section) => (
         <div key={section.title} className="contents">
-          <div className="my-1 h-px w-5 bg-[#1e222d]" />
+          <div className="my-1 h-px w-5 bg-ev-raised" />
           {section.tools.map((tool) => (
             <button
               key={tool.id}
@@ -138,7 +138,7 @@ export function DrawingToolbar() {
         </div>
       ))}
 
-      <div className="my-1 h-px w-5 bg-[#1e222d]" />
+      <div className="my-1 h-px w-5 bg-ev-raised" />
       <button
         type="button"
         title={`${MAGNET_TITLE[magnet]} (click to change)`}
@@ -149,19 +149,19 @@ export function DrawingToolbar() {
       >
         <Magnet size={16} aria-hidden />
         {magnet === "strong" && (
-          <span className="absolute bottom-1 right-1 size-1.5 rounded-full bg-[#2962ff]" aria-hidden />
+          <span className="absolute bottom-1 right-1 size-1.5 rounded-full bg-ev-accent" aria-hidden />
         )}
       </button>
 
       {drawings.length > 0 && (
         <>
-          <div className="my-1 h-px w-5 bg-[#1e222d]" />
+          <div className="my-1 h-px w-5 bg-ev-raised" />
           <button
             type="button"
             title="Remove last drawing"
             aria-label="Remove last drawing"
             onClick={() => setDrawings(drawings.slice(0, -1))}
-            className="flex size-8 items-center justify-center rounded text-[10px] font-medium text-[#787b86] hover:bg-[#1e222d] hover:text-white"
+            className="flex size-8 items-center justify-center rounded text-[11px] font-medium text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
           >
             Undo
           </button>
@@ -173,8 +173,8 @@ export function DrawingToolbar() {
 
 function iconClass(active: boolean): string {
   return active
-    ? "flex size-8 shrink-0 items-center justify-center rounded bg-[#1e222d] text-[#2962ff]"
-    : "flex size-8 shrink-0 items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] hover:text-white";
+    ? "flex size-8 shrink-0 items-center justify-center rounded bg-ev-raised text-ev-accent-text"
+    : "flex size-8 shrink-0 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong";
 }
 
 /** Every tool the rail exposes, for hint text and tests. */

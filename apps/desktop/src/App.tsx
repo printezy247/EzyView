@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import type { Candle } from "@ezyview/data-adapters";
 import type { TradingLine } from "@ezyview/chart-engine";
 import { ChartHost } from "./ChartHost";
@@ -13,11 +13,8 @@ import { AlertDialog } from "./AlertDialog";
 import { DepthOfMarket } from "./DepthOfMarket";
 import { TradingPanel } from "./TradingPanel";
 import { Watchlist } from "./Watchlist";
-import { JournalPanel } from "./JournalPanel";
-import { FundamentalsPanel } from "./FundamentalsPanel";
 import { ApiKeysDialog } from "./ApiKeysDialog";
 import { useApiKeys } from "./apiKeys";
-import { OptionsPanel } from "./OptionsPanel";
 import { openChartWindow } from "./windows";
 import { Mt5Setup } from "./Mt5Setup";
 import { RightRail } from "./RightRail";
@@ -30,6 +27,11 @@ import { loadHistory } from "./data";
 import { bootstrapMt5, getMt5, useMt5 } from "./mt5";
 import type { ChartSource } from "./mt5";
 import { useTrading, useTradingTicks } from "./trading";
+
+// Bottom panels load on first open so they stay out of the startup bundle.
+const JournalPanel = lazy(() => import("./JournalPanel").then((m) => ({ default: m.JournalPanel })));
+const FundamentalsPanel = lazy(() => import("./FundamentalsPanel").then((m) => ({ default: m.FundamentalsPanel })));
+const OptionsPanel = lazy(() => import("./OptionsPanel").then((m) => ({ default: m.OptionsPanel })));
 
 export default function App() {
   const layout = useWorkspace((s) => s.activeLayout());
@@ -66,6 +68,12 @@ export default function App() {
   const [crosshairTime, setCrosshairTime] = useState<number | null>(null);
 
   const onCrosshairTime = useCallback((t: number | null) => setCrosshairTime(t), []);
+
+  // The shell's colour tokens follow the active chart's theme.
+  useEffect(() => {
+    document.documentElement.dataset.theme = state.theme;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", state.theme === "light" ? "#ffffff" : "#0e1117");
+  }, [state.theme]);
 
   // Honour a remembered broker feed once, if MT5 answers on first load.
   useEffect(() => {
@@ -189,43 +197,48 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-full flex-col bg-[#0e1117] text-[#d1d4dc]">
-      <TabBar />
+    <div className="flex h-full flex-col bg-ev-bg text-ev-text">
+      <h1 className="sr-only">EzyView</h1>
+      <header className="contents">
+        <TabBar />
 
-      <Toolbar
-        symbol={state.symbol}
-        resolution={state.resolution}
-        chartType={state.chartType}
-        showVolume={state.showVolume}
-        showVolumeProfile={state.showVolumeProfile ?? false}
-        showGrid={state.showGrid}
-        indicatorCount={state.indicators.length}
-        onSymbol={(symbol) => updateActive({ symbol })}
-        onResolution={(resolution) => updateActive({ resolution })}
-        onChartType={(chartType) => updateActive({ chartType })}
-        onToggleVolume={() => updateActive({ showVolume: !state.showVolume })}
-        onToggleVolumeProfile={() => updateActive({ showVolumeProfile: !state.showVolumeProfile })}
-        onToggleGrid={() => updateActive({ showGrid: !state.showGrid })}
-        onToggleTheme={() => updateActive({ theme: state.theme === "dark" ? "light" : "dark" })}
-        theme={state.theme}
-        onOpenIndicators={() => setDialogOpen(true)}
-        onTogglePine={() => setPineOpen((v) => !v)}
-        pineActive={pineOpen}
-        onToggleReplay={() => setReplay(replayBar === null ? 0 : null)}
-        replayActive={replayBar !== null}
-        panels={panels}
-        onOpenWindow={() => void openChartWindow(state.symbol, state.resolution)}
-        onOpenAlerts={() => setAlertOpen(true)}
-        onOpenApiKeys={openApiKeys}
-        onTogglePanel={togglePanel}
-        grid={layout.grid}
-        onGrid={setGrid}
-      />
+        <Toolbar
+          symbol={state.symbol}
+          resolution={state.resolution}
+          chartType={state.chartType}
+          showVolume={state.showVolume}
+          showVolumeProfile={state.showVolumeProfile ?? false}
+          showGrid={state.showGrid}
+          indicatorCount={state.indicators.length}
+          onSymbol={(symbol) => updateActive({ symbol })}
+          onResolution={(resolution) => updateActive({ resolution })}
+          onChartType={(chartType) => updateActive({ chartType })}
+          onToggleVolume={() => updateActive({ showVolume: !state.showVolume })}
+          onToggleVolumeProfile={() => updateActive({ showVolumeProfile: !state.showVolumeProfile })}
+          boxSize={state.boxSize ?? null}
+          onBoxSize={(boxSize) => updateActive({ boxSize })}
+          onToggleGrid={() => updateActive({ showGrid: !state.showGrid })}
+          onToggleTheme={() => updateActive({ theme: state.theme === "dark" ? "light" : "dark" })}
+          theme={state.theme}
+          onOpenIndicators={() => setDialogOpen(true)}
+          onTogglePine={() => setPineOpen((v) => !v)}
+          pineActive={pineOpen}
+          onToggleReplay={() => setReplay(replayBar === null ? 0 : null)}
+          replayActive={replayBar !== null}
+          panels={panels}
+          onOpenWindow={() => void openChartWindow(state.symbol, state.resolution)}
+          onOpenAlerts={() => setAlertOpen(true)}
+          onOpenApiKeys={openApiKeys}
+          onTogglePanel={togglePanel}
+          grid={layout.grid}
+          onGrid={setGrid}
+        />
+      </header>
 
       <div className="relative flex min-h-0 flex-1">
         <DrawingToolbar />
 
-        <div className="relative min-w-0 flex-1">
+        <main aria-label="Charts" className="relative min-w-0 flex-1">
           <ChartGrid
             layout={layout}
             replayBar={replayBar}
@@ -235,7 +248,7 @@ export default function App() {
             onFocus={setActiveChart}
           />
           {activeTool && <ToolHint tool={activeTool} />}
-        </div>
+        </main>
 
         {objectsOpen && <ObjectTree onClose={() => setObjectsOpen(false)} />}
         {watchlistOpen && <Watchlist onOpenAlerts={() => setAlertOpen(true)} />}
@@ -243,15 +256,17 @@ export default function App() {
         <RightRail panels={panels} onToggle={togglePanel} />
       </div>
 
-      {journalOpen && <JournalPanel onClose={() => setJournalOpen(false)} />}
-      {fundamentalsOpen && (
-        <FundamentalsPanel
-          symbol={state.symbol}
-          onClose={() => setFundamentalsOpen(false)}
-          onPickSymbol={(symbol) => updateActive({ symbol })}
-        />
-      )}
-      {optionsOpen && <OptionsPanel symbol={state.symbol} onClose={() => setOptionsOpen(false)} />}
+      <Suspense fallback={null}>
+        {journalOpen && <JournalPanel onClose={() => setJournalOpen(false)} />}
+        {fundamentalsOpen && (
+          <FundamentalsPanel
+            symbol={state.symbol}
+            onClose={() => setFundamentalsOpen(false)}
+            onPickSymbol={(symbol) => updateActive({ symbol })}
+          />
+        )}
+        {optionsOpen && <OptionsPanel symbol={state.symbol} onClose={() => setOptionsOpen(false)} />}
+      </Suspense>
       {tradingOpen && <TradingPanel symbol={state.symbol} />}
 
       <ReplayBar totalBars={historyBars} />
@@ -274,7 +289,7 @@ export default function App() {
         lastPrice={null}
       />
 
-      <footer className="flex h-6 shrink-0 items-center gap-4 border-t border-[#1e222d] px-3 text-[11px] text-[#787b86]">
+      <footer className="flex h-6 shrink-0 items-center gap-4 border-t border-ev-raised px-3 text-[11px] text-ev-muted">
         <SourceToggle />
         <FeedStatus />
         <span>
@@ -310,7 +325,7 @@ function SourceToggle() {
     <div
       role="group"
       aria-label="Chart price source"
-      className="flex items-center rounded border border-[#2a2e39] p-px"
+      className="flex items-center rounded border border-ev-line p-px"
     >
       {(Object.keys(SOURCE_LABEL) as ChartSource[]).map((id) => (
         <button
@@ -326,8 +341,8 @@ function SourceToggle() {
           }
           className={
             source === id
-              ? `rounded px-2 py-px font-medium text-white ${id === "mt5" ? "bg-[#2962ff]" : "bg-[#1e222d]"}`
-              : "rounded px-2 py-px text-[#787b86] hover:text-white"
+              ? `rounded px-2 py-px font-medium ${id === "mt5" ? "bg-ev-accent text-white" : "bg-ev-raised text-ev-strong"}`
+              : "rounded px-2 py-px text-ev-muted hover:text-ev-strong"
           }
         >
           {SOURCE_LABEL[id]}
@@ -346,19 +361,25 @@ function FeedStatus() {
   if (source !== "mt5") {
     return (
       <span className="flex items-center gap-1.5">
-        <span className="size-1.5 rounded-full bg-[#26a69a]" aria-hidden />
+        <span className="size-1.5 rounded-full bg-ev-up" aria-hidden />
         demo feed
       </span>
     );
   }
 
   const dot =
-    status === "online" ? "#26a69a" : status === "connecting" ? "#f0b90b" : status === "error" ? "#ef5350" : "#434651";
+    status === "online"
+      ? "var(--ev-up)"
+      : status === "connecting"
+        ? "var(--ev-warn)"
+        : status === "error"
+          ? "var(--ev-down)"
+          : "var(--ev-dim)";
   const label =
     status === "online" ? "MT5 live" : status === "connecting" ? "MT5 connecting…" : status === "error" ? "MT5 offline" : "MT5";
 
   return (
-    <span className="flex items-center gap-1.5" title={error ?? undefined}>
+    <span role="status" className="flex items-center gap-1.5" title={error ?? undefined}>
       <span className="size-1.5 rounded-full" style={{ background: dot }} aria-hidden />
       {label}
     </span>
@@ -391,7 +412,7 @@ function ChartGrid({ layout, replayBar, linesFor, onCrosshairTime, crosshairTime
   const cells: ChartState[] = layout.charts.slice(0, cellCount(layout.grid));
   const multi = cells.length > 1;
   return (
-    <div className={`absolute inset-0 grid gap-px bg-[#1e222d] ${GRID_CLASS[layout.grid]}`}>
+    <div className={`absolute inset-0 grid gap-px bg-ev-raised ${GRID_CLASS[layout.grid]}`}>
       {cells.map((chart, index) => {
         const focused = index === layout.activeChart;
         return (
@@ -401,7 +422,7 @@ function ChartGrid({ layout, replayBar, linesFor, onCrosshairTime, crosshairTime
             aria-current={multi && focused ? "true" : undefined}
             // Capture so focus moves before the chart handles the click.
             onPointerDownCapture={() => onFocus(index)}
-            className="relative min-h-0 min-w-0 bg-[#0e1117]"
+            className="relative min-h-0 min-w-0 bg-ev-bg"
           >
             <ChartHost
               key={`${layout.id}:${index}`}
@@ -411,6 +432,7 @@ function ChartGrid({ layout, replayBar, linesFor, onCrosshairTime, crosshairTime
               chartType={chart.chartType}
               showVolume={chart.showVolume}
               showVolumeProfile={chart.showVolumeProfile ?? false}
+              boxSize={chart.boxSize ?? null}
               showGrid={chart.showGrid}
               theme={chart.theme}
               indicators={chart.indicators}
@@ -421,7 +443,7 @@ function ChartGrid({ layout, replayBar, linesFor, onCrosshairTime, crosshairTime
             />
             <Readout symbol={multi ? `${chart.symbol} · ${chart.resolution}` : chart.symbol} time={focused ? crosshairTime : null} />
             {multi && focused && (
-              <div className="pointer-events-none absolute inset-0 z-10 ring-1 ring-inset ring-[#2962ff]" aria-hidden />
+              <div className="pointer-events-none absolute inset-0 z-10 ring-1 ring-inset ring-ev-accent" aria-hidden />
             )}
           </section>
         );
@@ -432,8 +454,8 @@ function ChartGrid({ layout, replayBar, linesFor, onCrosshairTime, crosshairTime
 
 function Readout({ symbol, time }: { symbol: string; time: number | null }) {
   return (
-    <div className="pointer-events-none absolute left-2 top-2 z-10 text-[11px] text-[#787b86]">
-      <span className="font-medium text-white">{symbol}</span>
+    <div className="pointer-events-none absolute left-2 top-2 z-10 text-[11px] text-ev-muted">
+      <span className="font-medium text-ev-strong">{symbol}</span>
       {time !== null && <span className="ml-2">{new Date(time * 1000).toLocaleString()}</span>}
     </div>
   );
@@ -461,7 +483,7 @@ const TOOL_HINTS: Record<string, string> = {
 
 function ToolHint({ tool }: { tool: string }) {
   return (
-    <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded border border-[#2a2e39] bg-[#131722] px-2.5 py-1 text-[11px] text-[#d1d4dc] shadow-lg">
+    <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded border border-ev-line bg-ev-panel px-2.5 py-1 text-[11px] text-ev-text shadow-lg">
       {TOOL_HINTS[tool] ?? "Click to place"} · Esc to cancel
     </div>
   );

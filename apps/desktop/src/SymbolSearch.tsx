@@ -52,28 +52,28 @@ export function SymbolSearch({ symbol, onSelect }: Props) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 rounded px-2 py-1 text-sm font-semibold text-white hover:bg-[#1e222d]"
+        className="flex items-center gap-1.5 rounded px-2 py-1 text-sm font-semibold text-ev-strong hover:bg-ev-raised"
       >
         {symbol}
-        <ChevronDown size={13} aria-hidden className="text-[#787b86]" />
+        <ChevronDown size={13} aria-hidden className="text-ev-muted" />
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-30 mt-1 w-80 rounded border border-[#2a2e39] bg-[#131722] shadow-xl">
-          <div className="flex items-center gap-2 border-b border-[#1e222d] px-3 py-2">
-            <Search size={14} aria-hidden className="text-[#787b86]" />
+        <div className="absolute left-0 top-full z-30 mt-1 w-80 rounded border border-ev-line bg-ev-panel shadow-xl">
+          <div className="flex items-center gap-2 border-b border-ev-raised px-3 py-2">
+            <Search size={14} aria-hidden className="text-ev-muted" />
             <input
               aria-label="Search symbol"
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search symbol"
-              className="w-full bg-transparent text-sm text-white outline-none placeholder:text-[#787b86]"
+              className="w-full bg-transparent text-sm text-ev-strong outline-none placeholder:text-ev-muted"
             />
           </div>
           <ul className="max-h-72 overflow-y-auto py-1">
-            {busy && <li className="px-3 py-2 text-xs text-[#787b86]">Searching…</li>}
-            {!busy && results.length === 0 && <li className="px-3 py-2 text-xs text-[#787b86]">No matches</li>}
+            {busy && <li className="px-3 py-2 text-xs text-ev-muted">Searching…</li>}
+            {!busy && results.length === 0 && <li className="px-3 py-2 text-xs text-ev-muted">No matches</li>}
             {!busy &&
               results.map((s) => (
                 <li key={s.symbol}>
@@ -83,11 +83,11 @@ export function SymbolSearch({ symbol, onSelect }: Props) {
                       onSelect(s.symbol);
                       setOpen(false);
                     }}
-                    className="flex w-full items-baseline gap-2 px-3 py-1.5 text-left hover:bg-[#1e222d]"
+                    className="flex w-full items-baseline gap-2 px-3 py-1.5 text-left hover:bg-ev-raised"
                   >
-                    <span className="text-sm font-medium text-white">{s.ticker}</span>
-                    <span className="truncate text-xs text-[#787b86]">{s.description}</span>
-                    <span className="ml-auto shrink-0 text-[10px] uppercase text-[#434651]">{s.assetClass}</span>
+                    <span className="text-sm font-medium text-ev-strong">{s.ticker}</span>
+                    <span className="truncate text-xs text-ev-muted">{s.description}</span>
+                    <span className="ml-auto shrink-0 text-[11px] uppercase text-ev-faint">{s.assetClass}</span>
                   </button>
                 </li>
               ))}
