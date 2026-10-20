@@ -91,6 +91,8 @@ interface WorkspaceStore {
   magnet: MagnetMode;
   /** Mirror the crosshair time across every cell of the active layout. */
   crosshairSync: boolean;
+  /** Earnings markers + macro event lines on the chart. */
+  showEvents: boolean;
   /** Replay play speed (× 500 ms/bar). */
   replaySpeed: ReplaySpeed;
 
@@ -139,6 +141,7 @@ interface WorkspaceStore {
   setActiveTool(tool: DrawingToolId | null): void;
   setMagnet(mode: MagnetMode): void;
   setCrosshairSync(on: boolean): void;
+  setShowEvents(on: boolean): void;
   setReplaySpeed(speed: ReplaySpeed): void;
   /** Reorder the layout tabs alphabetically, or oldest-first. */
   sortLayouts(by: "name" | "date"): void;
@@ -234,6 +237,7 @@ export const useWorkspace = create<WorkspaceStore>()(
       replayBar: null,
       magnet: "off",
       crosshairSync: false,
+      showEvents: true,
       replaySpeed: 1,
       drawingUndo: [],
       drawingRedo: [],
@@ -517,6 +521,7 @@ export const useWorkspace = create<WorkspaceStore>()(
       setReplay: (barIndex) => set({ replayBar: barIndex }),
 
       setCrosshairSync: (on) => set({ crosshairSync: on }),
+      setShowEvents: (on) => set({ showEvents: on }),
       setReplaySpeed: (speed) => set({ replaySpeed: speed }),
 
       sortLayouts: (by) =>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { TradingLine } from "@ezyview/chart-engine";
+import type { FundamentalEventOverlay, TradingLine } from "@ezyview/chart-engine";
+import { buildSources } from "@ezyview/fundamentals";
 import { ChartHost } from "./ChartHost";
 import { ChartCommandInput } from "./ChartCommandInput";
 import { DrawingToolbar } from "./DrawingToolbar";
@@ -17,6 +18,8 @@ import { loadHistory } from "./data";
 import { useWorkspace } from "./store";
 import type { ChartState } from "./store";
 import { useTrading, useTradingTicks } from "./trading";
+import { useApiKeys } from "./apiKeys";
+import { EMPTY_FUNDAMENTAL_EVENTS, fetchFundamentalEvents } from "./fundamentalEvents";
 
 interface ChartPageProps {
   watchlistOpen: boolean;
@@ -45,7 +48,10 @@ export function ChartPage({ watchlistOpen, domOpen, objectsOpen, tradingOpen, on
 
   const watchlist = useWorkspace((s) => s.watchlist);
   const symbols = watchlist.map((w) => w.symbol);
+  const showEvents = useWorkspace((s) => s.showEvents);
+  const apiKeys = useApiKeys((s) => s.keys);
   const [commandOpen, setCommandOpen] = useState(false);
+  const [fundamentalEvents, setFundamentalEvents] = useState<FundamentalEventOverlay>(EMPTY_FUNDAMENTAL_EVENTS);
   const [historyBars, setHistoryBars] = useState(0);
   const [crosshairTime, setCrosshairTime] = useState<number | null>(null);
   const crosshairSync = useWorkspace((s) => s.crosshairSync);
@@ -82,6 +88,24 @@ export function ChartPage({ watchlistOpen, domOpen, objectsOpen, tradingOpen, on
       cancelled = true;
     };
   }, [state.symbol, state.resolution, setReplay]);
+
+  // Earnings markers + macro lines for the active symbol. The sources factory
+  // resolves live providers from saved API keys and falls back to demo data;
+  // any fetch failure degrades to an empty overlay (no toast).
+  useEffect(() => {
+    if (!showEvents) {
+      setFundamentalEvents(EMPTY_FUNDAMENTAL_EVENTS);
+      return;
+    }
+    let cancelled = false;
+    const sources = buildSources(apiKeys);
+    void fetchFundamentalEvents(sources, state.symbol, Date.now() / 1000).then((overlay) => {
+      if (!cancelled) setFundamentalEvents(overlay);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [showEvents, state.symbol, apiKeys]);
 
   // Escape clears the armed drawing tool, like TradingView.
   // Undo/redo: Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z. "/" or Ctrl+K opens commands.
@@ -167,6 +191,8 @@ export function ChartPage({ watchlistOpen, domOpen, objectsOpen, tradingOpen, on
             layout={layout}
             replayBar={replayBar}
             linesFor={linesFor}
+            activeSymbol={state.symbol}
+            fundamentalEvents={fundamentalEvents}
             onCrosshairTime={onCrosshairTime}
             crosshairTime={crosshairTime}
             syncCrosshair={syncCross}
@@ -216,6 +242,9 @@ interface ChartGridProps {
   layout: Layout;
   replayBar: number | null;
   linesFor: (symbol: string) => TradingLine[];
+  /** Focused cell's symbol — its overlays apply to matching cells only. */
+  activeSymbol: string;
+  fundamentalEvents: FundamentalEventOverlay;
   onCrosshairTime: (t: number | null) => void;
   crosshairTime: number | null;
   /** Focused cell's pointer position, mirrored into the other cells. */
@@ -233,6 +262,8 @@ function ChartGrid({
   layout,
   replayBar,
   linesFor,
+  activeSymbol,
+  fundamentalEvents,
   onCrosshairTime,
   crosshairTime,
   syncCrosshair,
@@ -270,6 +301,7 @@ function ChartGrid({
               drawings={chart.drawings}
               replayBar={focused ? replayBar : null}
               tradingLines={linesFor(chart.symbol)}
+              fundamentalEvents={chart.symbol === activeSymbol ? fundamentalEvents : undefined}
               crosshairMode={chart.crosshairMode}
               priceScale={chart.priceScale}
               invertScale={chart.invertScale}
