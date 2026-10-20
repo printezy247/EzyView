@@ -15,8 +15,8 @@ const ORDER_TYPES: { id: OrderType; label: string }[] = [
 ];
 
 const INPUT =
-  "w-full rounded bg-[#131722] px-2 py-1 text-xs text-white outline-none placeholder:text-[#434651] focus:ring-1 focus:ring-[#2962ff]";
-const LABEL = "block text-[10px] uppercase tracking-wider text-[#787b86]";
+  "w-full rounded bg-ev-panel px-2 py-1 text-xs text-ev-strong outline-none placeholder:text-ev-faint focus:ring-1 focus:ring-ev-accent";
+const LABEL = "block text-[11px] uppercase tracking-wider text-ev-muted";
 
 /**
  * Order ticket for the active symbol.
@@ -40,6 +40,8 @@ export function OrderTicket({ symbol }: Props) {
   const [takeProfit, setTakeProfit] = useState("");
   const [last, setLast] = useState<number | null>(null);
   const [sending, setSending] = useState(false);
+  /** Screen-reader confirmation of the last order sent. */
+  const [notice, setNotice] = useState("");
 
   // Poll for the reference price. Market orders fill at the engine's own last
   // tick, so this is display and sizing only — never the fill price itself.
@@ -82,15 +84,16 @@ export function OrderTicket({ symbol }: Props) {
       ...(stopLoss.trim() ? { stopLoss: Number(stopLoss) } : {}),
       ...(takeProfit.trim() ? { takeProfit: Number(takeProfit) } : {}),
     };
-    await submit(request);
+    const ok = await submit(request);
     setSending(false);
+    if (ok) setNotice(`${side === "buy" ? "Buy" : "Sell"} ${type} order for ${quantity} ${ticker} sent.`);
   };
 
   return (
-    <div className="flex min-h-0 w-64 shrink-0 flex-col gap-3 overflow-y-auto border-r border-[#1e222d] px-3 py-3">
+    <div className="flex min-h-0 w-64 shrink-0 flex-col gap-3 overflow-y-auto border-r border-ev-raised px-3 py-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-[#787b86]">Order</h2>
-        <span className="text-[10px] text-[#434651]">{ticker}</span>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-ev-muted">Order</h2>
+        <span className="text-[11px] text-ev-faint">{ticker}</span>
       </div>
 
       <div className="grid grid-cols-2 gap-1">
@@ -99,8 +102,8 @@ export function OrderTicket({ symbol }: Props) {
           onClick={() => setSide("buy")}
           className={
             side === "buy"
-              ? "rounded bg-[#26a69a] py-1.5 text-xs font-semibold text-white"
-              : "rounded bg-[#131722] py-1.5 text-xs font-medium text-[#787b86] hover:text-white"
+              ? "rounded bg-ev-up-solid py-1.5 text-xs font-semibold text-white"
+              : "rounded bg-ev-panel py-1.5 text-xs font-medium text-ev-muted hover:text-ev-strong"
           }
         >
           Buy
@@ -110,8 +113,8 @@ export function OrderTicket({ symbol }: Props) {
           onClick={() => setSide("sell")}
           className={
             side === "sell"
-              ? "rounded bg-[#ef5350] py-1.5 text-xs font-semibold text-white"
-              : "rounded bg-[#131722] py-1.5 text-xs font-medium text-[#787b86] hover:text-white"
+              ? "rounded bg-ev-down-solid py-1.5 text-xs font-semibold text-white"
+              : "rounded bg-ev-panel py-1.5 text-xs font-medium text-ev-muted hover:text-ev-strong"
           }
         >
           Sell
@@ -128,8 +131,8 @@ export function OrderTicket({ symbol }: Props) {
               onClick={() => setType(o.id)}
               className={
                 type === o.id
-                  ? "flex-1 rounded bg-[#1e222d] px-1 py-1 text-xs font-medium text-white"
-                  : "flex-1 rounded px-1 py-1 text-xs text-[#787b86] hover:text-white"
+                  ? "flex-1 rounded bg-ev-raised px-1 py-1 text-xs font-medium text-ev-strong"
+                  : "flex-1 rounded px-1 py-1 text-xs text-ev-muted hover:text-ev-strong"
               }
             >
               {o.label}
@@ -196,7 +199,7 @@ export function OrderTicket({ symbol }: Props) {
         </div>
       </div>
 
-      <dl className="space-y-1 border-t border-[#1e222d] pt-2 text-[11px]">
+      <dl className="space-y-1 border-t border-ev-raised pt-2 text-[11px]">
         <Row label="Reference" value={last === null ? "—" : last.toFixed(precision)} />
         <Row label="Value" value={value === null ? "—" : value.toLocaleString(undefined, { maximumFractionDigits: 2 })} />
         <Row
@@ -205,8 +208,14 @@ export function OrderTicket({ symbol }: Props) {
         />
       </dl>
 
+      <p role="status" className="sr-only">
+        {notice}
+      </p>
       {error && (
-        <p className="rounded border border-[#ef5350]/40 bg-[#ef5350]/10 px-2 py-1.5 text-[11px] leading-snug text-[#ef5350]">
+        <p
+          role="alert"
+          className="rounded border border-ev-down/40 bg-ev-down/10 px-2 py-1.5 text-[11px] leading-snug text-ev-down"
+        >
           {error}
         </p>
       )}
@@ -219,13 +228,13 @@ export function OrderTicket({ symbol }: Props) {
         }}
         disabled={!ready}
         className={`rounded py-2 text-xs font-semibold text-white transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-          side === "buy" ? "bg-[#26a69a] hover:bg-[#2bab9d]" : "bg-[#ef5350] hover:bg-[#f06060]"
+          side === "buy" ? "bg-ev-up-solid hover:bg-ev-up" : "bg-ev-down-solid hover:bg-ev-down"
         }`}
       >
         {side === "buy" ? "Buy" : "Sell"} {type === "market" ? "at market" : type}
       </button>
 
-      <p className="text-[10px] leading-relaxed text-[#434651]">
+      <p className="text-[11px] leading-relaxed text-ev-faint">
         {source === "mt5"
           ? `Broker order — sent straight to MT5 (${tradeMode === "real" ? "REAL money" : "demo account"}).`
           : "Paper account — virtual funds, no real order reaches a venue."}
@@ -237,8 +246,8 @@ export function OrderTicket({ symbol }: Props) {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-2">
-      <dt className="text-[#787b86]">{label}</dt>
-      <dd className="tabular-nums text-[#d1d4dc]">{value}</dd>
+      <dt className="text-ev-muted">{label}</dt>
+      <dd className="tabular-nums text-ev-text">{value}</dd>
     </div>
   );
 }

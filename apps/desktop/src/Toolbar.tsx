@@ -41,6 +41,8 @@ interface Props {
   chartType: ChartType;
   showVolume: boolean;
   showVolumeProfile: boolean;
+  /** Renko/P&F box or Kagi reversal; null = automatic. */
+  boxSize: number | null;
   showGrid: boolean;
   theme: "dark" | "light";
   indicatorCount: number;
@@ -52,6 +54,7 @@ interface Props {
   onChartType: (t: ChartType) => void;
   onToggleVolume: () => void;
   onToggleVolumeProfile: () => void;
+  onBoxSize: (size: number | null) => void;
   onToggleGrid: () => void;
   onToggleTheme: () => void;
   onOpenIndicators: () => void;
@@ -223,10 +226,10 @@ export function Toolbar(props: Props) {
   const analysisOpen = props.panels.fundamentals || props.panels.options || props.replayActive;
 
   return (
-    <div className="flex h-9 shrink-0 items-center gap-0.5 border-b border-[#1e222d] px-2">
+    <div className="flex h-9 shrink-0 items-center gap-0.5 border-b border-ev-raised px-2">
       <SymbolSearch symbol={props.symbol} onSelect={props.onSymbol} />
 
-      <div className="mx-1 h-4 w-px bg-[#1e222d]" />
+      <div className="mx-1 h-4 w-px bg-ev-raised" />
 
       <Menu label={props.resolution} caption="Interval" icon={<Clock size={13} aria-hidden />} entries={intervalEntries} />
       <Menu
@@ -235,8 +238,29 @@ export function Toolbar(props: Props) {
         icon={<CandlestickChart size={13} aria-hidden />}
         entries={typeEntries}
       />
+      {(props.chartType === "renko" || props.chartType === "kagi" || props.chartType === "pnf") && (
+        <label
+          className="ml-1 flex items-center gap-1 text-[11px] text-ev-muted"
+          title={`${props.chartType === "kagi" ? "Reversal amount" : "Box size"}; leave empty to size it from the average true range`}
+        >
+          {props.chartType === "kagi" ? "Reversal" : "Box"}
+          <input
+            type="number"
+            min={0}
+            step="any"
+            inputMode="decimal"
+            placeholder="auto"
+            value={props.boxSize ?? ""}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              props.onBoxSize(e.target.value === "" || !(v > 0) ? null : v);
+            }}
+            className="w-16 rounded border border-ev-line bg-ev-panel px-1.5 py-0.5 text-[11px] text-ev-text placeholder:text-ev-faint"
+          />
+        </label>
+      )}
 
-      <div className="mx-1 h-4 w-px bg-[#1e222d]" />
+      <div className="mx-1 h-4 w-px bg-ev-raised" />
 
       <nav aria-label="Main menu" className="flex items-center gap-0.5">
         <Menu
@@ -252,18 +276,18 @@ export function Toolbar(props: Props) {
       </nav>
 
       {props.replayActive && (
-        <span className="ml-2 rounded bg-[#2962ff]/15 px-1.5 py-0.5 text-[10px] font-medium text-[#5b8cff]">Replay on</span>
+        <span className="ml-2 rounded bg-ev-accent/15 px-1.5 py-0.5 text-[11px] font-medium text-ev-accent-text">Replay on</span>
       )}
 
       <button
         type="button"
         onClick={() => setPaletteOpen(true)}
         aria-keyshortcuts="Control+K"
-        className="ml-auto flex h-6 w-56 items-center gap-2 rounded border border-[#2a2e39] px-2 text-[11px] text-[#787b86] hover:border-[#434651] hover:text-white"
+        className="ml-auto flex h-6 w-56 items-center gap-2 rounded border border-ev-line px-2 text-[11px] text-ev-muted hover:border-ev-dim hover:text-ev-strong"
       >
         <Search size={12} aria-hidden />
         <span className="flex-1 text-left">Search features</span>
-        <kbd className="text-[10px] text-[#434651]">{PALETTE_KEY}</kbd>
+        <kbd className="text-[11px] text-ev-faint">{PALETTE_KEY}</kbd>
       </button>
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} groups={groups} />

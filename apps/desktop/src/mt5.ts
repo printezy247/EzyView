@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { DEFAULT_BRIDGE_URL, DEFAULT_MCP_URL, createMt5 } from "@ezyview/mt5-adapter";
 import type { Mt5Adapter, TransportKind } from "@ezyview/mt5-adapter";
+import { keyringAvailable } from "./apiKeys";
 
 /**
  * Chart price source and the MT5 connection behind it.
@@ -50,8 +51,10 @@ function readSettings(): { settings: Mt5Settings; source: ChartSource } {
 
 function persist(settings: Mt5Settings, source: ChartSource): void {
   if (typeof localStorage === "undefined") return;
+  // The MCP key is a secret: it lives in the OS keyring, never in localStorage.
+  const { mcpKey: _secret, ...rest } = settings;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...settings, source }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...rest, source }));
   } catch {
     // Private mode: the choice lives for this session only.
   }
@@ -133,6 +136,7 @@ export const useMt5 = create<Mt5State>((set, get) => ({
 
   async save(patch) {
     const settings = { ...get().settings, ...patch };
+    if (patch.mcpKey !== undefined) await storeKey(settings.mcpKey);
     instance = build(settings);
     persist(settings, get().source);
     set({ settings, status: "idle", error: null });
@@ -144,8 +148,43 @@ export const useMt5 = create<Mt5State>((set, get) => ({
   },
 }));
 
+/** Keyring account for the MT5 MCP key (allow-listed in src-tauri/src/lib.rs). */
+const KEYRING_NAME = "mt5";
+
+/** Save the MCP key to the OS keyring; outside the desktop app it stays in memory only. */
+async function storeKey(value: string): Promise<void> {
+  if (!keyringAvailable()) return;
+  const { invoke } = await import("@tauri-apps/api/core");
+  await invoke("api_key_set", { name: KEYRING_NAME, value });
+}
+
+/**
+ * Load the MCP key from the keyring. A key left in localStorage by an older
+ * build is moved into the keyring and scrubbed from storage.
+ */
+async function restoreKey(): Promise<void> {
+  if (!keyringAvailable()) return;
+  const legacy = boot.settings.mcpKey;
+  try {
+    if (legacy) {
+      await storeKey(legacy);
+      persist(useMt5.getState().settings, useMt5.getState().source);
+      return;
+    }
+    const { invoke } = await import("@tauri-apps/api/core");
+    const key = (await invoke<string | null>("api_key_get", { name: KEYRING_NAME })) ?? "";
+    if (!key) return;
+    const settings = { ...useMt5.getState().settings, mcpKey: key };
+    instance = build(settings);
+    useMt5.setState({ settings });
+  } catch {
+    // No Secret Service: MCP calls go out without a key until one is saved.
+  }
+}
+
 /** Called once on boot: honour a remembered broker feed if MT5 answers. */
 export async function bootstrapMt5(): Promise<void> {
+  await restoreKey();
   if (useMt5.getState().source !== "mt5") return;
   const ok = await useMt5.getState().probe();
   if (!ok) useMt5.setState({ source: "ezyview" });

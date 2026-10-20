@@ -65,13 +65,13 @@ export function ReplayBar({ totalBars }: Props) {
   );
 
   return (
-    <div className="flex items-center gap-2 border-t border-[#1e222d] bg-[#131722] px-3 py-1.5 text-xs">
-      <span className="font-semibold uppercase tracking-wider text-[#434651]">Replay</span>
+    <div className="flex items-center gap-2 border-t border-ev-raised bg-ev-panel px-3 py-1.5 text-xs">
+      <span className="font-semibold uppercase tracking-wider text-ev-faint">Replay</span>
 
       <button
         type="button"
         onClick={() => setReplay(0)}
-        className="rounded p-1 text-[#787b86] hover:bg-[#1e222d] hover:text-white"
+        className="rounded p-1 text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
         aria-label="Rewind to start"
       >
         <Rewind size={13} aria-hidden />
@@ -79,7 +79,7 @@ export function ReplayBar({ totalBars }: Props) {
       <button
         type="button"
         onClick={() => step(-1)}
-        className="rounded px-1.5 py-0.5 text-[#787b86] hover:bg-[#1e222d] hover:text-white"
+        className="rounded px-1.5 py-0.5 text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
         aria-label="Step back one bar"
       >
         ‹
@@ -87,7 +87,7 @@ export function ReplayBar({ totalBars }: Props) {
       <button
         type="button"
         onClick={toggle}
-        className="rounded bg-[#2962ff] p-1 text-white hover:bg-[#1e53e5]"
+        className="rounded bg-ev-accent p-1 text-white hover:bg-ev-accent-hover"
         aria-label={playing ? "Pause replay" : "Play replay"}
       >
         {playing ? <Pause size={13} aria-hidden /> : <Play size={13} aria-hidden />}
@@ -95,7 +95,7 @@ export function ReplayBar({ totalBars }: Props) {
       <button
         type="button"
         onClick={() => step(1)}
-        className="rounded px-1.5 py-0.5 text-[#787b86] hover:bg-[#1e222d] hover:text-white"
+        className="rounded px-1.5 py-0.5 text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
         aria-label="Step forward one bar"
       >
         ›
@@ -110,11 +110,11 @@ export function ReplayBar({ totalBars }: Props) {
           stop();
           setReplay(Number(e.target.value));
         }}
-        className="mx-2 h-1 flex-1 accent-[#2962ff]"
+        className="mx-2 h-1 flex-1 accent-ev-accent"
         aria-label="Replay position"
       />
 
-      <span className="w-24 text-right tabular-nums text-[#b2b5be]">
+      <span className="w-24 text-right tabular-nums text-ev-text-2">
         {replayBar + 1} / {totalBars}
       </span>
 
@@ -124,7 +124,7 @@ export function ReplayBar({ totalBars }: Props) {
           stop();
           setReplay(null);
         }}
-        className="flex items-center gap-1 rounded px-2 py-0.5 text-[#787b86] hover:bg-[#1e222d] hover:text-white"
+        className="flex items-center gap-1 rounded px-2 py-0.5 text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
       >
         <Square size={11} aria-hidden /> Exit
       </button>

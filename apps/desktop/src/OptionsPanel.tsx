@@ -55,12 +55,12 @@ export function OptionsPanel({ symbol, onClose }: Props) {
 
   const expiry = useMemo(() => (spot === null ? null : buildChain({ spot, baseVol, expiries: [days] })[0]!), [spot, baseVol, days]);
 
-  const input = "rounded border border-[#2a2e39] bg-[#131722] px-1.5 py-0.5";
+  const input = "rounded border border-ev-line bg-ev-panel px-1.5 py-0.5";
   return (
-    <section className="flex h-64 shrink-0 flex-col border-t border-[#1e222d] bg-[#0e1117] text-[11px]">
-      <header className="flex h-8 shrink-0 items-center gap-2 border-b border-[#1e222d] px-3">
-        <span className="font-medium text-white">
-          {tickerOf(symbol)} options{spot !== null && <span className="ml-1 font-normal text-[#787b86]">spot {f(spot)}</span>}
+    <section aria-label="Options" className="flex h-64 shrink-0 flex-col border-t border-ev-raised bg-ev-bg text-[11px]">
+      <header className="flex h-8 shrink-0 items-center gap-2 border-b border-ev-raised px-3">
+        <span className="font-medium text-ev-strong">
+          {tickerOf(symbol)} options{spot !== null && <span className="ml-1 font-normal text-ev-muted">spot {f(spot)}</span>}
         </span>
         <div role="tablist" aria-label="Options view" className="ml-2 flex gap-1">
           {(["chain", "smile", "payoff"] as View[]).map((v) => (
@@ -70,13 +70,13 @@ export function OptionsPanel({ symbol, onClose }: Props) {
               type="button"
               aria-selected={view === v}
               onClick={() => setView(v)}
-              className={view === v ? "rounded bg-[#1e222d] px-2 py-1 font-medium capitalize text-white" : "rounded px-2 py-1 capitalize text-[#787b86] hover:text-white"}
+              className={view === v ? "rounded bg-ev-raised px-2 py-1 font-medium capitalize text-ev-strong" : "rounded px-2 py-1 capitalize text-ev-muted hover:text-ev-strong"}
             >
               {v}
             </button>
           ))}
         </div>
-        <label htmlFor="expiry" className="ml-2 text-[#787b86]">
+        <label htmlFor="expiry" className="ml-2 text-ev-muted">
           Expiry
         </label>
         <select id="expiry" value={days} onChange={(e) => setDays(Number(e.target.value))} className={input}>
@@ -86,19 +86,19 @@ export function OptionsPanel({ symbol, onClose }: Props) {
             </option>
           ))}
         </select>
-        <label htmlFor="basevol" className="text-[#787b86]">
+        <label htmlFor="basevol" className="text-ev-muted">
           ATM vol
         </label>
         <input id="basevol" type="range" min={0.1} max={1.2} step={0.05} value={baseVol} onChange={(e) => setBaseVol(Number(e.target.value))} />
         <span className="w-8">{Math.round(baseVol * 100)}%</span>
-        <span className="text-[#787b86]">Model prices — no live options feed</span>
-        <button type="button" onClick={onClose} aria-label="Close options" className="ml-auto rounded p-1 text-[#787b86] hover:bg-[#1e222d] hover:text-white">
+        <span className="text-ev-muted">Model prices — no live options feed</span>
+        <button type="button" onClick={onClose} aria-label="Close options" className="ml-auto rounded p-1 text-ev-muted hover:bg-ev-raised hover:text-ev-strong">
           <X size={13} aria-hidden />
         </button>
       </header>
       <div className="min-h-0 flex-1 overflow-auto">
         {expiry === null ? (
-          <p className="p-3 text-[#787b86]">Loading…</p>
+          <p className="p-3 text-ev-muted">Loading…</p>
         ) : view === "chain" ? (
           <Chain rows={expiry.rows} spot={spot!} />
         ) : view === "smile" ? (
@@ -114,39 +114,39 @@ export function OptionsPanel({ symbol, onClose }: Props) {
 function Chain({ rows, spot }: { rows: ChainRow[]; spot: number }) {
   return (
     <table className="w-full text-right">
-      <thead className="sticky top-0 bg-[#0e1117] text-[#787b86]">
+      <thead className="sticky top-0 bg-ev-bg text-ev-muted">
         <tr>
-          <th className="px-2 py-1 font-normal">Δ</th>
-          <th className="font-normal">IV</th>
-          <th className="font-normal">Bid</th>
-          <th className="font-normal">Ask</th>
-          <th className="bg-[#131722] px-3 font-medium text-white">Strike</th>
-          <th className="font-normal">Bid</th>
-          <th className="font-normal">Ask</th>
-          <th className="font-normal">IV</th>
-          <th className="font-normal">Δ</th>
-          <th className="px-2 font-normal">Γ</th>
-          <th className="font-normal">Θ/day</th>
-          <th className="pr-3 font-normal">Vega</th>
+          <th scope="col" className="px-2 py-1 font-normal">Δ</th>
+          <th scope="col" className="font-normal">IV</th>
+          <th scope="col" className="font-normal">Bid</th>
+          <th scope="col" className="font-normal">Ask</th>
+          <th scope="col" className="bg-ev-panel px-3 font-medium text-ev-strong">Strike</th>
+          <th scope="col" className="font-normal">Bid</th>
+          <th scope="col" className="font-normal">Ask</th>
+          <th scope="col" className="font-normal">IV</th>
+          <th scope="col" className="font-normal">Δ</th>
+          <th scope="col" className="px-2 font-normal">Γ</th>
+          <th scope="col" className="font-normal">Θ/day</th>
+          <th scope="col" className="pr-3 font-normal">Vega</th>
         </tr>
       </thead>
       <tbody>
         {rows.map((r) => {
           const itmCall = r.strike < spot;
           return (
-            <tr key={r.strike} className="border-t border-[#1e222d]">
-              <td className={`px-2 py-0.5 ${itmCall ? "bg-[#26a69a]/10" : ""}`}>{f(r.call.delta)}</td>
-              <td className={itmCall ? "bg-[#26a69a]/10" : ""}>{f(r.call.iv * 100, 1)}%</td>
-              <td className={itmCall ? "bg-[#26a69a]/10" : ""}>{f(r.call.bid)}</td>
-              <td className={itmCall ? "bg-[#26a69a]/10" : ""}>{f(r.call.ask)}</td>
-              <td className="bg-[#131722] px-3 font-medium text-white">{r.strike}</td>
-              <td className={!itmCall ? "bg-[#ef5350]/10" : ""}>{f(r.put.bid)}</td>
-              <td className={!itmCall ? "bg-[#ef5350]/10" : ""}>{f(r.put.ask)}</td>
-              <td className={!itmCall ? "bg-[#ef5350]/10" : ""}>{f(r.put.iv * 100, 1)}%</td>
-              <td className={!itmCall ? "bg-[#ef5350]/10" : ""}>{f(r.put.delta)}</td>
-              <td className="px-2 text-[#787b86]">{f(r.call.gamma, 4)}</td>
-              <td className="text-[#787b86]">{f(r.call.theta, 3)}</td>
-              <td className="pr-3 text-[#787b86]">{f(r.call.vega, 3)}</td>
+            <tr key={r.strike} className="border-t border-ev-raised">
+              <td className={`px-2 py-0.5 ${itmCall ? "bg-ev-up/10" : ""}`}>{f(r.call.delta)}</td>
+              <td className={itmCall ? "bg-ev-up/10" : ""}>{f(r.call.iv * 100, 1)}%</td>
+              <td className={itmCall ? "bg-ev-up/10" : ""}>{f(r.call.bid)}</td>
+              <td className={itmCall ? "bg-ev-up/10" : ""}>{f(r.call.ask)}</td>
+              <td className="bg-ev-panel px-3 font-medium text-ev-strong">{r.strike}</td>
+              <td className={!itmCall ? "bg-ev-down/10" : ""}>{f(r.put.bid)}</td>
+              <td className={!itmCall ? "bg-ev-down/10" : ""}>{f(r.put.ask)}</td>
+              <td className={!itmCall ? "bg-ev-down/10" : ""}>{f(r.put.iv * 100, 1)}%</td>
+              <td className={!itmCall ? "bg-ev-down/10" : ""}>{f(r.put.delta)}</td>
+              <td className="px-2 text-ev-muted">{f(r.call.gamma, 4)}</td>
+              <td className="text-ev-muted">{f(r.call.theta, 3)}</td>
+              <td className="pr-3 text-ev-muted">{f(r.call.vega, 3)}</td>
             </tr>
           );
         })}
@@ -169,20 +169,20 @@ function Plot({ points, markers, label, zero }: { points: [number, number][]; ma
   const d = points.map(([x, y], i) => `${i ? "L" : "M"}${sx(x).toFixed(1)},${sy(y).toFixed(1)}`).join(" ");
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full" role="img" aria-label={label}>
-      {zero && <line x1={pad} x2={W - pad} y1={sy(0)} y2={sy(0)} stroke="#434651" strokeDasharray="4 3" />}
-      <path d={d} fill="none" stroke="#2962ff" strokeWidth={2} />
+      {zero && <line x1={pad} x2={W - pad} y1={sy(0)} y2={sy(0)} className="stroke-ev-dim" strokeDasharray="4 3" />}
+      <path d={d} fill="none" className="stroke-ev-accent" strokeWidth={2} />
       {markers?.map((m) => (
         <g key={m}>
-          <line x1={sx(m)} x2={sx(m)} y1={pad / 2} y2={H - pad} stroke="#f0b90b" strokeDasharray="3 3" />
-          <text x={sx(m)} y={H - 8} textAnchor="middle" fill="#f0b90b" fontSize={10}>
+          <line x1={sx(m)} x2={sx(m)} y1={pad / 2} y2={H - pad} className="stroke-ev-warn" strokeDasharray="3 3" />
+          <text x={sx(m)} y={H - 8} textAnchor="middle" className="fill-ev-warn" fontSize={11}>
             {m.toFixed(2)}
           </text>
         </g>
       ))}
-      <text x={pad} y={H - 8} fill="#787b86" fontSize={10}>
+      <text x={pad} y={H - 8} className="fill-ev-muted" fontSize={11}>
         {x0.toFixed(2)}
       </text>
-      <text x={W - pad} y={H - 8} textAnchor="end" fill="#787b86" fontSize={10}>
+      <text x={W - pad} y={H - 8} textAnchor="end" className="fill-ev-muted" fontSize={11}>
         {x1.toFixed(2)}
       </text>
     </svg>
@@ -214,15 +214,15 @@ function Payoff({ rows, spot, strategy, onStrategy }: { rows: ChainRow[]; spot: 
         <Plot points={points} markers={be} zero label={`${strategy} profit and loss at expiry`} />
       </div>
       <div className="w-48 shrink-0 space-y-1.5">
-        <select aria-label="Strategy" value={strategy} onChange={(e) => onStrategy(e.target.value)} className="w-full rounded border border-[#2a2e39] bg-[#131722] px-1.5 py-0.5">
+        <select aria-label="Strategy" value={strategy} onChange={(e) => onStrategy(e.target.value)} className="w-full rounded border border-ev-line bg-ev-panel px-1.5 py-0.5">
           {Object.keys(STRATEGIES).map((s) => (
             <option key={s}>{s}</option>
           ))}
         </select>
-        <p className="text-[#787b86]">Max profit in range: <span className="text-[#26a69a]">{f(Math.max(...pnls))}</span></p>
-        <p className="text-[#787b86]">Max loss in range: <span className="text-[#ef5350]">{f(Math.min(...pnls))}</span></p>
-        <p className="text-[#787b86]">Break-even: {be.length ? be.map((b) => f(b)).join(" / ") : "none in range"}</p>
-        <p className="text-[#787b86]">Per 1 unit of underlying, premiums from the model.</p>
+        <p className="text-ev-muted">Max profit in range: <span className="text-ev-up">{f(Math.max(...pnls))}</span></p>
+        <p className="text-ev-muted">Max loss in range: <span className="text-ev-down">{f(Math.min(...pnls))}</span></p>
+        <p className="text-ev-muted">Break-even: {be.length ? be.map((b) => f(b)).join(" / ") : "none in range"}</p>
+        <p className="text-ev-muted">Per 1 unit of underlying, premiums from the model.</p>
       </div>
     </div>
   );

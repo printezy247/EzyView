@@ -113,10 +113,10 @@ export function CommandPalette({ open, onClose, groups }: Props) {
         aria-label="Command palette"
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={onKey}
-        className="w-[min(560px,92vw)] overflow-hidden rounded-lg border border-[#2a2e39] bg-[#131722] shadow-2xl"
+        className="w-[min(560px,92vw)] overflow-hidden rounded-lg border border-ev-line bg-ev-panel shadow-2xl"
       >
-        <div className="flex items-center gap-2 border-b border-[#1e222d] px-3">
-          <Search size={14} aria-hidden className="text-[#787b86]" />
+        <div className="flex items-center gap-2 border-b border-ev-raised px-3">
+          <Search size={14} aria-hidden className="text-ev-muted" />
           <input
             ref={inputRef}
             role="combobox"
@@ -127,12 +127,12 @@ export function CommandPalette({ open, onClose, groups }: Props) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search features — e.g. options, rsi, dark theme"
-            className="h-11 flex-1 bg-transparent text-sm text-white placeholder:text-[#434651] focus:outline-none"
+            className="h-11 flex-1 bg-transparent text-sm text-ev-strong placeholder:text-ev-faint focus:outline-none"
           />
-          <kbd className="rounded border border-[#2a2e39] px-1.5 text-[10px] text-[#787b86]">Esc</kbd>
+          <kbd className="rounded border border-ev-line px-1.5 text-[11px] text-ev-muted">Esc</kbd>
         </div>
         <ul id={listId} role="listbox" aria-label="Features" className="max-h-[50vh] overflow-y-auto py-1">
-          {results.length === 0 && <li className="px-4 py-3 text-xs text-[#787b86]">No feature matches “{query}”.</li>}
+          {results.length === 0 && <li className="px-4 py-3 text-xs text-ev-muted">No feature matches “{query}”.</li>}
           {results.map((c, i) => (
             <li
               key={c.key}
@@ -142,13 +142,13 @@ export function CommandPalette({ open, onClose, groups }: Props) {
               onMouseEnter={() => setActive(i)}
               onClick={() => run(c)}
               className={`flex cursor-pointer items-center gap-3 px-4 py-2 text-xs ${
-                i === active ? "bg-[#1e222d] text-white" : "text-[#b2b5be]"
+                i === active ? "bg-ev-raised text-ev-strong" : "text-ev-text-2"
               }`}
             >
-              <span className="w-20 shrink-0 text-[10px] uppercase tracking-wider text-[#434651]">{c.group}</span>
+              <span className="w-20 shrink-0 text-[11px] uppercase tracking-wider text-ev-faint">{c.group}</span>
               <span className="flex-1">{c.label}</span>
-              {c.on && <Check size={12} aria-label="on" className="text-[#2962ff]" />}
-              {c.hint && <kbd className="text-[10px] text-[#434651]">{c.hint}</kbd>}
+              {c.on && <Check size={12} aria-label="on" className="text-ev-accent-text" />}
+              {c.hint && <kbd className="text-[11px] text-ev-faint">{c.hint}</kbd>}
             </li>
           ))}
         </ul>

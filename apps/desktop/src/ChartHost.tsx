@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Candle, Resolution } from "@ezyview/data-adapters";
 import { EzyChart } from "@ezyview/chart-engine";
 import type { ChartType, IndicatorInstance, ScriptPlotSpec, TradingLine } from "@ezyview/chart-engine";
@@ -8,7 +8,8 @@ import { DEFAULT_DRAWING_STYLE } from "@ezyview/drawing-tools";
 import type { PinePlot } from "@ezyview/pine-transpiler";
 import { THEME_OF, uid as newId, useWorkspace } from "./store";
 import type { ActiveIndicator, PineScriptRecord } from "./store";
-import { loadHistory } from "./data";
+import { loadHistory, tickerOf } from "./data";
+import { summarizeChart } from "./chartSummary";
 
 interface Props {
   symbol: string;
@@ -16,6 +17,7 @@ interface Props {
   chartType: ChartType;
   showVolume: boolean;
   showVolumeProfile?: boolean;
+  boxSize?: number | null;
   showGrid: boolean;
   theme: "dark" | "light";
   indicators: ActiveIndicator[];
@@ -62,6 +64,7 @@ export function ChartHost(props: Props) {
     if (!el) return;
     const chart = new EzyChart(el, {
       chartType: props.chartType,
+      boxSize: props.boxSize ?? null,
       theme: THEME_OF[props.theme],
       onCrosshairTime: (t) => crosshairRef.current?.(t),
       onClick: (info) => {
@@ -94,6 +97,9 @@ export function ChartHost(props: Props) {
     // Mount-only: prop changes are applied by the effects below.
   }, []);
 
+  // Screen readers get a text summary in place of the canvas.
+  const [shown, setShown] = useState<Candle[]>([]);
+
   useEffect(() => {
     let cancelled = false;
     void loadHistory(props.symbol, props.resolution).then((candles: Candle[]) => {
@@ -101,7 +107,9 @@ export function ChartHost(props: Props) {
       historyRef.current = candles;
       // A stale replay cursor from another symbol would index past the end.
       const cursor = useWorkspace.getState().replayBar;
-      chartRef.current?.setData(sliceForReplay(candles, cursor));
+      const bars = sliceForReplay(candles, cursor);
+      chartRef.current?.setData(bars);
+      setShown(bars);
     });
     return () => {
       cancelled = true;
@@ -111,7 +119,9 @@ export function ChartHost(props: Props) {
   // Revealing bars one at a time re-slices the cached history; no refetch.
   useEffect(() => {
     if (historyRef.current.length === 0) return;
-    chartRef.current?.setData(sliceForReplay(historyRef.current, props.replayBar ?? null));
+    const bars = sliceForReplay(historyRef.current, props.replayBar ?? null);
+    chartRef.current?.setData(bars);
+    setShown(bars);
   }, [props.replayBar]);
 
   useEffect(() => {
@@ -136,6 +146,10 @@ export function ChartHost(props: Props) {
   }, [props.chartType]);
 
   useEffect(() => {
+    chartRef.current?.setBoxSize(props.boxSize ?? null);
+  }, [props.boxSize]);
+
+  useEffect(() => {
     chartRef.current?.setDrawings(props.drawings);
   }, [props.drawings]);
 
@@ -149,8 +163,27 @@ export function ChartHost(props: Props) {
     if (!activeTool) pendingRef.current = null;
   }, [activeTool]);
 
-  return <div ref={containerRef} className="absolute inset-0" data-testid="chart-host" />;
+  const withProfile = props.showVolumeProfile ?? false;
+  const summary = useMemo(
+    () => summarizeChart(tickerOf(props.symbol), props.resolution, shown, withProfile),
+    [props.symbol, props.resolution, shown, withProfile],
+  );
+  // Price-only types drop the time axis, so time-aligned layers cannot be drawn on them.
+  const typeLabel = PRICE_ONLY_LABEL[props.chartType];
+  const hidesLayers = typeLabel !== undefined && (props.showVolume || props.indicators.length > 0 || Object.keys(scripts).length > 0);
+  return (
+    <>
+      <div ref={containerRef} role="img" aria-label={summary} className="absolute inset-0" data-testid="chart-host" />
+      {hidesLayers && (
+        <p className="pointer-events-none absolute bottom-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-ev-panel/90 px-2 py-1 text-[11px] text-ev-muted">
+          {typeLabel} plots price only, so volume, indicators and Pine plots are hidden.
+        </p>
+      )}
+    </>
+  );
 }
+
+const PRICE_ONLY_LABEL: Partial<Record<ChartType, string>> = { renko: "Renko", kagi: "Kagi", pnf: "Point & Figure" };
 
 /** Bars up to and including the cursor; the full history when not replaying. */
 function sliceForReplay(candles: Candle[], cursor: number | null): Candle[] {

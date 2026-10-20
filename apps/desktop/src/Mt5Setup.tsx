@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMt5 } from "./mt5";
+import { keyringAvailable } from "./apiKeys";
 import type { Mt5Settings } from "./mt5";
 import type { TransportKind } from "@ezyview/mt5-adapter";
 
@@ -31,7 +32,7 @@ export function Mt5Setup() {
   };
 
   const field =
-    "w-full rounded border border-[#2a2e39] bg-[#0e1117] px-2 py-1 text-[11px] text-[#d1d4dc] focus:border-[#2962ff]";
+    "w-full rounded border border-ev-line bg-ev-bg px-2 py-1 text-[11px] text-ev-text focus:border-ev-accent";
 
   return (
     <div className="relative">
@@ -40,20 +41,23 @@ export function Mt5Setup() {
         onClick={() => (open ? setOpen(false) : show())}
         aria-expanded={open}
         title="MT5 connection settings"
-        className={`rounded px-1.5 py-0.5 hover:bg-[#1e222d] ${open ? "text-white" : ""}`}
+        className={`rounded px-1.5 py-0.5 hover:bg-ev-raised ${open ? "text-ev-strong" : ""}`}
       >
         MT5 setup
-        {status === "online" && <span className="ml-1 inline-block size-1.5 rounded-full bg-[#26a69a]" aria-hidden />}
-        {status === "error" && <span className="ml-1 inline-block size-1.5 rounded-full bg-[#ef5350]" aria-hidden />}
+        {status === "online" && <span className="ml-1 inline-block size-1.5 rounded-full bg-ev-up" aria-hidden />}
+        {status === "error" && <span className="ml-1 inline-block size-1.5 rounded-full bg-ev-down" aria-hidden />}
       </button>
 
       {open && (
         <div
           role="dialog"
           aria-label="MT5 connection settings"
-          className="absolute bottom-6 right-0 z-50 w-72 rounded border border-[#2a2e39] bg-[#131722] p-3 shadow-2xl"
+          className="absolute bottom-6 right-0 z-50 w-72 rounded border border-ev-line bg-ev-panel p-3 shadow-2xl"
         >
-          <p className="mb-2 text-[11px] text-[#787b86]">Where MetaTrader 5 answers from</p>
+          <p className="mb-2 text-[11px] text-ev-muted">
+            Where MetaTrader 5 answers from. The app only connects to this computer (127.0.0.1 or localhost); reach a
+            terminal on another machine through an SSH tunnel.
+          </p>
 
           <div className="mb-2 flex gap-1">
             {(["bridge", "mcp"] as TransportKind[]).map((kind) => (
@@ -64,8 +68,8 @@ export function Mt5Setup() {
                 onClick={() => setDraft({ ...draft, kind })}
                 className={
                   draft.kind === kind
-                    ? "flex-1 rounded bg-[#1e222d] px-2 py-1 text-[11px] font-medium text-white"
-                    : "flex-1 rounded px-2 py-1 text-[11px] text-[#787b86] hover:bg-[#1e222d] hover:text-white"
+                    ? "flex-1 rounded bg-ev-raised px-2 py-1 text-[11px] font-medium text-ev-strong"
+                    : "flex-1 rounded px-2 py-1 text-[11px] text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
                 }
               >
                 {kind === "bridge" ? "Local bridge" : "Built-in MCP"}
@@ -74,7 +78,7 @@ export function Mt5Setup() {
           </div>
 
           {draft.kind === "bridge" ? (
-            <label className="mb-2 block text-[11px] text-[#787b86]">
+            <label className="mb-2 block text-[11px] text-ev-muted">
               Bridge URL
               <input
                 className={field}
@@ -85,7 +89,7 @@ export function Mt5Setup() {
             </label>
           ) : (
             <>
-              <label className="mb-2 block text-[11px] text-[#787b86]">
+              <label className="mb-2 block text-[11px] text-ev-muted">
                 MCP endpoint
                 <input
                   className={field}
@@ -94,7 +98,7 @@ export function Mt5Setup() {
                   spellCheck={false}
                 />
               </label>
-              <label className="mb-2 block text-[11px] text-[#787b86]">
+              <label className="mb-2 block text-[11px] text-ev-muted">
                 API key
                 <input
                   className={field}
@@ -104,6 +108,9 @@ export function Mt5Setup() {
                   placeholder="Tools → Options → MCP"
                   spellCheck={false}
                 />
+                <span className="mt-0.5 block text-[11px] text-ev-muted">
+                  {keyringAvailable() ? "Saved in your OS keyring." : "Kept for this session only (desktop app saves it to the keyring)."}
+                </span>
               </label>
             </>
           )}
@@ -112,7 +119,7 @@ export function Mt5Setup() {
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="rounded px-2 py-1 text-[11px] text-[#787b86] hover:bg-[#1e222d] hover:text-white"
+              className="rounded px-2 py-1 text-[11px] text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
             >
               Cancel
             </button>
@@ -120,7 +127,7 @@ export function Mt5Setup() {
               type="button"
               onClick={() => void submit()}
               disabled={busy}
-              className="rounded bg-[#2962ff] px-3 py-1 text-[11px] font-medium text-white hover:bg-[#1e53e5] disabled:opacity-50"
+              className="rounded bg-ev-accent px-3 py-1 text-[11px] font-medium text-white hover:bg-ev-accent-hover disabled:opacity-50"
             >
               {busy ? "Saving…" : "Save"}
             </button>

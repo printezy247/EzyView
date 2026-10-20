@@ -2,6 +2,7 @@ import { useState } from "react";
 import { KeyRound } from "lucide-react";
 import type { ApiKeyName } from "@ezyview/fundamentals";
 import { keyringAvailable, saveApiKey, useApiKeys } from "./apiKeys";
+import { Modal } from "./Modal";
 
 const PROVIDERS: { name: ApiKeyName; label: string; signup: string; covers: string; limit: string }[] = [
   {
@@ -26,40 +27,36 @@ export function ApiKeysDialog() {
   const onChanged = () => void reload();
   const canStore = keyringAvailable();
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="api-keys-title"
-        className="w-[30rem] rounded-md border border-[#2a2e39] bg-[#131722] text-[12px] shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.key === "Escape" && onClose()}
-      >
-        <div className="flex items-center justify-between border-b border-[#1e222d] px-4 py-2.5">
-          <h2 id="api-keys-title" className="flex items-center gap-2 text-sm font-semibold text-white">
-            <KeyRound size={14} aria-hidden />
-            Data provider API keys
-          </h2>
-          <button type="button" onClick={onClose} className="text-[#787b86] hover:text-white">
-            Close
-          </button>
-        </div>
-        <div className="space-y-4 p-4">
-          <p className="text-[#787b86]">
-            Both providers have free plans. Keys are stored in your system keyring (never in a file), and
-            any panel without a key keeps showing demo data.
-          </p>
-          {!canStore && (
-            <p className="rounded border border-[#f0b90b]/40 bg-[#f0b90b]/10 p-2 text-[#f0b90b]">
-              Keys can only be saved in the EzyView desktop app. This browser preview uses demo data.
-            </p>
-          )}
-          {PROVIDERS.map((p) => (
-            <KeyRow key={p.name} provider={p} saved={Boolean(keys[p.name])} disabled={!canStore} onChanged={onChanged} />
-          ))}
-        </div>
+    <Modal
+      onClose={onClose}
+      labelledBy="api-keys-title"
+      backdropClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      className="w-[30rem] rounded-md border border-ev-line bg-ev-panel text-[12px] shadow-2xl"
+    >
+      <div className="flex items-center justify-between border-b border-ev-raised px-4 py-2.5">
+        <h2 id="api-keys-title" className="flex items-center gap-2 text-sm font-semibold text-ev-strong">
+          <KeyRound size={14} aria-hidden />
+          Data provider API keys
+        </h2>
+        <button type="button" onClick={onClose} className="text-ev-muted hover:text-ev-strong">
+          Close
+        </button>
       </div>
-    </div>
+      <div className="space-y-4 p-4">
+        <p className="text-ev-muted">
+          Both providers have free plans. Keys are stored in your system keyring (never in a file), and
+          any panel without a key keeps showing demo data.
+        </p>
+        {!canStore && (
+          <p className="rounded border border-ev-warn/40 bg-ev-warn/10 p-2 text-ev-warn">
+            Keys can only be saved in the EzyView desktop app. This browser preview uses demo data.
+          </p>
+        )}
+        {PROVIDERS.map((p) => (
+          <KeyRow key={p.name} provider={p} saved={Boolean(keys[p.name])} disabled={!canStore} onChanged={onChanged} />
+        ))}
+      </div>
+    </Modal>
   );
 }
 
@@ -103,14 +100,14 @@ function KeyRow({
       }}
     >
       <div className="flex items-baseline justify-between">
-        <label htmlFor={id} className="font-medium text-white">
+        <label htmlFor={id} className="font-medium text-ev-strong">
           {provider.label}
         </label>
-        <span className={saved ? "text-[#26a69a]" : "text-[#787b86]"}>{saved ? "Key saved · live" : "No key · demo data"}</span>
+        <span className={saved ? "text-ev-up" : "text-ev-muted"}>{saved ? "Key saved · live" : "No key · demo data"}</span>
       </div>
-      <p className="text-[11px] text-[#787b86]">
+      <p className="text-[11px] text-ev-muted">
         {provider.covers}. {provider.limit}. Get a free key at{" "}
-        <a href={provider.signup} target="_blank" rel="noreferrer" className="select-all text-[#2962ff] hover:underline">
+        <a href={provider.signup} target="_blank" rel="noopener noreferrer" className="select-all text-ev-accent-text hover:underline">
           {provider.signup}
         </a>
       </p>
@@ -124,12 +121,12 @@ function KeyRow({
           value={value}
           disabled={disabled || busy}
           onChange={(e) => setValue(e.target.value)}
-          className="flex-1 rounded border border-[#2a2e39] bg-[#0e1117] px-2 py-1 text-white disabled:opacity-50"
+          className="flex-1 rounded border border-ev-line bg-ev-bg px-2 py-1 text-ev-strong disabled:opacity-50"
         />
         <button
           type="submit"
           disabled={disabled || busy || !value.trim()}
-          className="rounded bg-[#2962ff] px-3 py-1 font-medium text-white disabled:opacity-40"
+          className="rounded bg-ev-accent px-3 py-1 font-medium text-white disabled:opacity-40"
         >
           Save
         </button>
@@ -138,14 +135,14 @@ function KeyRow({
             type="button"
             disabled={disabled || busy}
             onClick={() => void store("")}
-            className="rounded border border-[#2a2e39] px-3 py-1 text-[#787b86] hover:text-white disabled:opacity-40"
+            className="rounded border border-ev-line px-3 py-1 text-ev-muted hover:text-ev-strong disabled:opacity-40"
           >
             Remove
           </button>
         )}
       </div>
       {status && (
-        <p role="status" className={status.ok ? "text-[#26a69a]" : "text-[#ef5350]"}>
+        <p role="status" className={status.ok ? "text-ev-up" : "text-ev-down"}>
           {status.text}
         </p>
       )}

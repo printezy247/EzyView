@@ -1,7 +1,81 @@
 @import "tailwindcss";
 
-:root {
+/*
+ * Colour tokens. Components use them as Tailwind colours (`bg-ev-panel`,
+ * `text-ev-muted`, `border-ev-line/40`) so the whole shell follows the theme
+ * set on <html data-theme>. Text tokens meet WCAG AA (4.5:1) on bg, panel and
+ * raised surfaces in both themes.
+ */
+:root,
+:root[data-theme="dark"] {
   color-scheme: dark;
+  --ev-bg: #0e1117;
+  --ev-panel: #131722;
+  --ev-raised: #1e222d;
+  --ev-line: #2a2e39;
+  --ev-line-strong: #363a45;
+  --ev-dim: #434651;
+  --ev-faint: #868993;
+  --ev-muted: #9598a1;
+  --ev-text-2: #b2b5be;
+  --ev-text: #d1d4dc;
+  --ev-strong: #ffffff;
+  --ev-accent: #2962ff;
+  --ev-accent-hover: #1e53e5;
+  --ev-accent-text: #5b8cff;
+  --ev-up: #26a69a;
+  --ev-down: #ef5350;
+  --ev-up-solid: #00796b;
+  --ev-down-solid: #d32f2f;
+  --ev-warn: #f0b90b;
+  --ev-orange: #ff9800;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --ev-bg: #ffffff;
+  --ev-panel: #f8f9fd;
+  --ev-raised: #eceff5;
+  --ev-line: #e0e3eb;
+  --ev-line-strong: #c9ccd6;
+  --ev-dim: #b2b5be;
+  --ev-faint: #646772;
+  --ev-muted: #50535e;
+  --ev-text-2: #2a2e39;
+  --ev-text: #131722;
+  --ev-strong: #0e1117;
+  --ev-accent: #2962ff;
+  --ev-accent-hover: #1e53e5;
+  --ev-accent-text: #1e53e5;
+  --ev-up: #00796b;
+  --ev-down: #c62828;
+  --ev-up-solid: #00796b;
+  --ev-down-solid: #d32f2f;
+  --ev-warn: #8a6500;
+  --ev-orange: #e65100;
+}
+
+@theme inline {
+  --color-ev-bg: var(--ev-bg);
+  --color-ev-panel: var(--ev-panel);
+  --color-ev-raised: var(--ev-raised);
+  --color-ev-line: var(--ev-line);
+  --color-ev-line-strong: var(--ev-line-strong);
+  --color-ev-dim: var(--ev-dim);
+  --color-ev-faint: var(--ev-faint);
+  --color-ev-muted: var(--ev-muted);
+  --color-ev-text-2: var(--ev-text-2);
+  --color-ev-text: var(--ev-text);
+  --color-ev-strong: var(--ev-strong);
+  --color-ev-accent: var(--ev-accent);
+  --color-ev-accent-hover: var(--ev-accent-hover);
+  --color-ev-accent-text: var(--ev-accent-text);
+  --color-ev-up: var(--ev-up);
+  --color-ev-down: var(--ev-down);
+  --color-ev-up-solid: var(--ev-up-solid);
+  --color-ev-down-solid: var(--ev-down-solid);
+  --color-ev-warn: var(--ev-warn);
+  --color-ev-orange: var(--ev-orange);
 }
 
 html,
@@ -12,15 +86,24 @@ body,
 }
 
 body {
-  background: #0e1117;
-  color: #d1d4dc;
+  background: var(--ev-bg);
+  color: var(--ev-text);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
-  user-select: none;
 }
 
-/* Chart canvas should be allowed to be selected/copied out of the shell. */
-canvas {
+/*
+ * Controls and the chart canvas behave like an app (no accidental text
+ * selection on click-drag); prices, news, tables and notes stay selectable
+ * so they can be copied.
+ */
+button,
+canvas,
+label,
+[role="menubar"],
+[role="menu"],
+[role="tablist"],
+[role="toolbar"] {
   user-select: none;
 }
 
@@ -33,7 +116,7 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 [tabindex]:focus-visible {
-  outline: 2px solid #2962ff;
+  outline: 2px solid var(--ev-accent);
   outline-offset: -1px;
 }
 
@@ -56,15 +139,15 @@ button[aria-disabled="true"] {
   cursor: not-allowed;
 }
 
-/* Scrollbars: no grey90s bars. Thin dark thumb over a transparent track,
- * invisible until the panel under the pointer is scrolled or hovered. */
+/* Scrollbars: thin and quiet, but always visible so scrollable panels are
+ * discoverable; brighter while the panel is hovered. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
+  scrollbar-color: var(--ev-line) transparent;
 }
 
 *:hover {
-  scrollbar-color: #2a2e39 transparent;
+  scrollbar-color: var(--ev-line-strong) transparent;
 }
 
 ::-webkit-scrollbar {
@@ -72,29 +155,26 @@ button[aria-disabled="true"] {
   height: 10px;
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
+::-webkit-scrollbar-track,
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
 
 /* Transparent border + padding-box clip keeps the visible thumb ~6px. */
 ::-webkit-scrollbar-thumb {
-  background: transparent;
+  background: var(--ev-line);
   background-clip: padding-box;
   border: 2px solid transparent;
   border-radius: 999px;
 }
 
 *:hover::-webkit-scrollbar-thumb {
-  background: #2a2e39;
+  background: var(--ev-line-strong);
   background-clip: padding-box;
 }
 
 *:hover::-webkit-scrollbar-thumb:hover {
-  background: #434651;
+  background: var(--ev-dim);
   background-clip: padding-box;
 }
 
