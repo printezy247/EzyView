@@ -15,6 +15,15 @@ export interface ActiveIndicator {
   name?: string;
 }
 
+/** Crosshair interaction style. */
+export type CrosshairModeName = "normal" | "magnet" | "hidden";
+
+/** Named app/chart themes. Tokyo Night ships free. */
+export type ChartThemeName = "dark" | "light" | "tokyo";
+
+/** Right price-scale rendering. */
+export type PriceScaleModeName = "normal" | "log" | "percentage";
+
 /** Everything the user can change about one chart cell. */
 export interface ChartState {
   symbol: string;
@@ -26,19 +35,32 @@ export interface ChartState {
   /** Renko/P&F box and Kagi reversal size; absent or null sizes it from the ATR. */
   boxSize?: number | null;
   showGrid: boolean;
-  theme: "dark" | "light";
+  theme: ChartThemeName;
   indicators: ActiveIndicator[];
   drawings: Drawing[];
+  /** Absent = normal. Magnet snaps the crosshair to bar OHLC. */
+  crosshairMode?: CrosshairModeName;
+  /** Absent = normal. Log and percentage change the right scale. */
+  priceScale?: PriceScaleModeName;
+  /** Flip the right price scale upside-down. */
+  invertScale?: boolean;
+  /** IANA zone for the time axis; absent or empty = exchange/local. */
+  timezone?: string;
+  /** Draw the symbol/interval watermark behind the candles. */
+  watermark?: boolean;
 }
 
 /** How a layout splits its chart area. */
-export type GridMode = "1" | "2h" | "2v" | "4";
+export type GridMode = "1" | "2h" | "2v" | "4" | "6" | "8" | "9";
 
 export const GRID_MODES: readonly { id: GridMode; label: string; cells: number }[] = [
   { id: "1", label: "Single chart", cells: 1 },
   { id: "2h", label: "2 charts side by side", cells: 2 },
   { id: "2v", label: "2 charts stacked", cells: 2 },
   { id: "4", label: "4 charts (2 × 2)", cells: 4 },
+  { id: "6", label: "6 charts (3 × 2)", cells: 6 },
+  { id: "8", label: "8 charts (4 × 2)", cells: 8 },
+  { id: "9", label: "9 charts (3 × 3)", cells: 9 },
 ];
 
 export const cellCount = (grid: GridMode): number => GRID_MODES.find((g) => g.id === grid)?.cells ?? 1;
@@ -52,6 +74,8 @@ export interface Layout {
   name: string;
   color: string;
   grid: GridMode;
+  /** Creation timestamp for date-sorting layout tabs; absent on legacy saves. */
+  createdAt?: number;
   /**
    * Chart cells. May hold more entries than the grid shows, so shrinking to a
    * single chart and back restores the cells you had.
@@ -134,6 +158,7 @@ export function restoreLayout(
       grid: "1",
       charts,
       activeChart: 0,
+      ...(typeof raw.createdAt === "number" ? { createdAt: raw.createdAt } : {}),
     },
     grid,
   );
@@ -146,9 +171,17 @@ export interface PersistedWorkspace {
   layouts: Layout[];
   activeLayoutId: string;
   magnet: MagnetMode;
+  /** Mirror the crosshair across every cell of the active layout. Absent = off. */
+  crosshairSync?: boolean;
+  /** Replay play speed; absent = 1×. */
+  replaySpeed?: ReplaySpeed;
 }
 
+/** Replay transport speed multipliers (× a 500 ms/bar base). */
+export type ReplaySpeed = 0.5 | 1 | 2 | 4;
+
 const MAGNET_IDS = new Set<string>(["off", "weak", "strong"]);
+const REPLAY_SPEEDS = new Set<number>([0.5, 1, 2, 4]);
 
 /**
  * Validate what came out of storage. Anything malformed falls back to
@@ -165,10 +198,15 @@ export function restoreWorkspace(
     .map((l) => restoreLayout(l, fallback, resolveDef))
     .filter((l): l is Layout => l !== null);
   const magnet = typeof raw.magnet === "string" && MAGNET_IDS.has(raw.magnet) ? (raw.magnet as MagnetMode) : current.magnet;
-  if (layouts.length === 0) return { ...current, magnet };
+  const crosshairSync = typeof raw.crosshairSync === "boolean" ? raw.crosshairSync : current.crosshairSync;
+  const replaySpeed =
+    typeof raw.replaySpeed === "number" && REPLAY_SPEEDS.has(raw.replaySpeed)
+      ? (raw.replaySpeed as ReplaySpeed)
+      : current.replaySpeed;
+  if (layouts.length === 0) return { ...current, magnet, crosshairSync, replaySpeed };
   const activeLayoutId =
     typeof raw.activeLayoutId === "string" && layouts.some((l) => l.id === raw.activeLayoutId)
       ? raw.activeLayoutId
       : layouts[0]!.id;
-  return { layouts, activeLayoutId, magnet };
+  return { layouts, activeLayoutId, magnet, crosshairSync, replaySpeed };
 }

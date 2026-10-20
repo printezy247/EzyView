@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { Bell, Eye, EyeOff, Lock, LockOpen, Trash2 } from "lucide-react";
 import { useWorkspace } from "./store";
 import { drawingLabel } from "./ObjectTree";
+import { applyDrawingTemplate, listDrawingTemplates, saveDrawingTemplate } from "./drawingTemplates";
+import type { DrawingTemplate } from "./drawingTemplates";
 
 const COLORS = ["#2962ff", "#f23645", "#ff9800", "#4caf50", "#9c27b0", "#00bcd4", "#ffd700", "#ffffff"];
 const WIDTHS = [1, 2, 3, 4];
@@ -21,6 +24,11 @@ export function DrawingProperties() {
   const remove = useWorkspace((s) => s.deleteDrawing);
   const addAlert = useWorkspace((s) => s.addAlert);
   const alerts = useWorkspace((s) => s.alerts);
+
+  // Templates live in localStorage, so the list is local state refreshed on
+  // save — the store has nothing to notify about.
+  const [templates, setTemplates] = useState<DrawingTemplate[]>(() => listDrawingTemplates());
+  const [templateName, setTemplateName] = useState("");
 
   if (!drawing) return null;
   const d = drawing;
@@ -108,6 +116,48 @@ export function DrawingProperties() {
               </button>
             ))}
           </div>
+        </div>
+      </div>
+
+      <div className="mb-2">
+        <span className="mb-1 block text-[11px] text-ev-muted">Template</span>
+        <div className="flex gap-1">
+          <select
+            value=""
+            onChange={(e) => {
+              if (e.target.value && applyDrawingTemplate(e.target.value, d.id)) {
+                setTemplates(listDrawingTemplates());
+              }
+            }}
+            aria-label="Apply drawing template"
+            className="rounded border border-ev-line bg-ev-panel px-1.5 py-1 text-xs text-ev-text"
+          >
+            <option value="">Apply…</option>
+            {templates.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+          <input
+            value={templateName}
+            placeholder="Name"
+            onChange={(e) => setTemplateName(e.target.value)}
+            aria-label="Template name"
+            className="min-w-0 flex-1 rounded bg-ev-panel px-1.5 py-1 text-xs text-ev-strong outline-none ring-1 ring-ev-line focus:ring-ev-accent"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              const name = templateName.trim() || drawingLabel(d);
+              saveDrawingTemplate(name, style);
+              setTemplateName("");
+              setTemplates(listDrawingTemplates());
+            }}
+            className={btn}
+          >
+            Save
+          </button>
         </div>
       </div>
 

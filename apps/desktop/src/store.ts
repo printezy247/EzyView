@@ -3,14 +3,14 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import type { Candle } from "@ezyview/data-adapters";
 import { evaluateAlert, pushHistory } from "@ezyview/data-adapters";
 import type { AlertCondition, AlertFrequency, AlertHistory, PriceAlert } from "@ezyview/data-adapters";
-import { DARK_THEME, LIGHT_THEME } from "@ezyview/chart-engine";
+import { DARK_THEME, LIGHT_THEME, TOKYO_THEME } from "@ezyview/chart-engine";
 import type { Drawing, DrawingToolId, MagnetMode } from "@ezyview/drawing-tools";
 import { catalog, getIndicator } from "@ezyview/indicators";
 import type { IndicatorDef } from "@ezyview/indicators";
 import type { PinePlot, PineOrder, ScriptOptions } from "@ezyview/pine-transpiler";
 import { DEFAULT_SYMBOL } from "./data";
 import { activeChartOf, restoreWorkspace, setActiveChart, setGrid, updateChart } from "./layout";
-import type { ActiveIndicator, ChartState, GridMode, Layout, PersistedWorkspace } from "./layout";
+import type { ActiveIndicator, ChartState, GridMode, Layout, PersistedWorkspace, ReplaySpeed } from "./layout";
 import { readDetached } from "./windows";
 
 export type { ActiveIndicator, ChartState, GridMode, Layout } from "./layout";
@@ -64,6 +64,7 @@ function defaultLayout(index: number): Layout {
     name: `Layout ${index + 1}`,
     color: LAYOUT_COLORS[index % LAYOUT_COLORS.length]!,
     grid: "1",
+    createdAt: Date.now(),
     charts: [defaultChartState()],
     activeChart: 0,
   };
@@ -88,6 +89,10 @@ interface WorkspaceStore {
   replayBar: number | null;
   /** Drawing magnet: snaps placed anchors to the nearest candle's OHLC. */
   magnet: MagnetMode;
+  /** Mirror the crosshair time across every cell of the active layout. */
+  crosshairSync: boolean;
+  /** Replay play speed (× 500 ms/bar). */
+  replaySpeed: ReplaySpeed;
 
   activeLayout(): Layout;
   /** The focused chart cell of the active layout. */
@@ -133,6 +138,10 @@ interface WorkspaceStore {
   updateIndicator(uid: string, patch: Partial<Pick<ActiveIndicator, "hidden" | "name">>): void;
   setActiveTool(tool: DrawingToolId | null): void;
   setMagnet(mode: MagnetMode): void;
+  setCrosshairSync(on: boolean): void;
+  setReplaySpeed(speed: ReplaySpeed): void;
+  /** Reorder the layout tabs alphabetically, or oldest-first. */
+  sortLayouts(by: "name" | "date"): void;
 
   addAlert(symbol: string, condition: AlertCondition, frequency: AlertFrequency, message: string, drawingId?: string): void;
   removeAlert(id: string): void;
@@ -224,6 +233,8 @@ export const useWorkspace = create<WorkspaceStore>()(
       pineScripts: {},
       replayBar: null,
       magnet: "off",
+      crosshairSync: false,
+      replaySpeed: 1,
       drawingUndo: [],
       drawingRedo: [],
       selectedDrawingId: null,
@@ -265,6 +276,7 @@ export const useWorkspace = create<WorkspaceStore>()(
             id: uid(),
             name: `${src.name} copy`,
             color: LAYOUT_COLORS[s.layouts.length % LAYOUT_COLORS.length]!,
+            createdAt: Date.now(),
           };
           return { layouts: [...s.layouts, layout], activeLayoutId: layout.id };
         }),
@@ -504,13 +516,32 @@ export const useWorkspace = create<WorkspaceStore>()(
 
       setReplay: (barIndex) => set({ replayBar: barIndex }),
 
+      setCrosshairSync: (on) => set({ crosshairSync: on }),
+      setReplaySpeed: (speed) => set({ replaySpeed: speed }),
+
+      sortLayouts: (by) =>
+        set((s) => {
+          const layouts = s.layouts.toSorted((a, b) =>
+            by === "name"
+              ? a.name.localeCompare(b.name)
+              : (a.createdAt ?? 0) - (b.createdAt ?? 0),
+          );
+          return { layouts };
+        }),
+
       markSaved: (id) => set((s) => ({ dirty: { ...s.dirty, [id]: false } })),
     }),
     {
       name: "ezyview.workspace",
       version: 1,
       storage: workspaceStorage,
-      partialize: (s): PersistedWorkspace => ({ layouts: s.layouts, activeLayoutId: s.activeLayoutId, magnet: s.magnet }),
+      partialize: (s): PersistedWorkspace => ({
+        layouts: s.layouts,
+        activeLayoutId: s.activeLayoutId,
+        magnet: s.magnet,
+        crosshairSync: s.crosshairSync,
+        replaySpeed: s.replaySpeed,
+      }),
       merge: (persisted, current) => ({
         ...current,
         ...restoreWorkspace(persisted, current, defaultChartState(), getIndicator),
@@ -538,4 +569,4 @@ export const INDICATOR_FAMILIES = (() => {
   return out;
 })();
 
-export const THEME_OF = { dark: DARK_THEME, light: LIGHT_THEME } as const;
+export const THEME_OF = { dark: DARK_THEME, light: LIGHT_THEME, tokyo: TOKYO_THEME } as const;

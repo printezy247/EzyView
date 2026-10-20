@@ -69,7 +69,9 @@ export default function App() {
   // The shell's colour tokens follow the active chart's theme.
   useEffect(() => {
     document.documentElement.dataset.theme = state.theme;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", state.theme === "light" ? "#ffffff" : "#0e1117");
+    const chrome =
+      state.theme === "light" ? "#ffffff" : state.theme === "tokyo" ? "#1a1b26" : "#0e1117";
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", chrome);
   }, [state.theme]);
 
   // Honour a remembered broker feed once, if MT5 answers on first load.
@@ -133,8 +135,18 @@ export default function App() {
             boxSize={state.boxSize ?? null}
             onBoxSize={(boxSize) => updateActive({ boxSize })}
             onToggleGrid={() => updateActive({ showGrid: !state.showGrid })}
-            onToggleTheme={() => updateActive({ theme: state.theme === "dark" ? "light" : "dark" })}
+            onSetTheme={(theme) => updateActive({ theme })}
             theme={state.theme}
+            crosshairMode={state.crosshairMode ?? "normal"}
+            onCrosshairMode={(crosshairMode) => updateActive({ crosshairMode })}
+            priceScale={state.priceScale ?? "normal"}
+            onPriceScale={(priceScale) => updateActive({ priceScale })}
+            invertScale={state.invertScale ?? false}
+            onInvertScale={() => updateActive({ invertScale: !state.invertScale })}
+            timezone={state.timezone}
+            onTimezone={(timezone) => updateActive({ timezone })}
+            watermark={state.watermark ?? false}
+            onWatermark={() => updateActive({ watermark: !state.watermark })}
             onOpenIndicators={() => setDialogOpen(true)}
             onToggleReplay={() => setReplay(replayBar === null ? 0 : null)}
             replayActive={replayBar !== null}

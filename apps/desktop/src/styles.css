@@ -55,6 +55,30 @@
   --ev-orange: #e65100;
 }
 
+:root[data-theme="tokyo"] {
+  color-scheme: dark;
+  --ev-bg: #1a1b26;
+  --ev-panel: #24283b;
+  --ev-raised: #292e42;
+  --ev-line: #3b4261;
+  --ev-line-strong: #565f89;
+  --ev-dim: #565f89;
+  --ev-faint: #787c99;
+  --ev-muted: #9aa5ce;
+  --ev-text-2: #a9b1d6;
+  --ev-text: #c0caf5;
+  --ev-strong: #ffffff;
+  --ev-accent: #2962ff;
+  --ev-accent-hover: #1e53e5;
+  --ev-accent-text: #5b8cff;
+  --ev-up: #9ece6a;
+  --ev-down: #f7768e;
+  --ev-up-solid: #4c7a3f;
+  --ev-down-solid: #a53a4a;
+  --ev-warn: #e0af68;
+  --ev-orange: #ff9e64;
+}
+
 @theme inline {
   --color-ev-bg: var(--ev-bg);
   --color-ev-panel: var(--ev-panel);

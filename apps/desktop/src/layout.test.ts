@@ -34,6 +34,9 @@ describe("cellCount", () => {
     expect(cellCount("2h")).toBe(2);
     expect(cellCount("2v")).toBe(2);
     expect(cellCount("4")).toBe(4);
+    expect(cellCount("6")).toBe(6);
+    expect(cellCount("8")).toBe(8);
+    expect(cellCount("9")).toBe(9);
   });
 });
 
@@ -124,12 +127,18 @@ describe("restoreLayout", () => {
   it("rejects garbage", () => {
     expect(restoreLayout(null, chart("D"), resolveDef)).toBeNull();
     expect(restoreLayout({ id: "x", charts: [] }, chart("D"), resolveDef)).toBeNull();
-    expect(restoreLayout({ id: "x", grid: "9", charts: [{}] }, chart("D"), resolveDef)!.grid).toBe("1");
+    expect(restoreLayout({ id: "x", grid: "3", charts: [{}] }, chart("D"), resolveDef)!.grid).toBe("1");
   });
 });
 
 describe("restoreWorkspace", () => {
-  const current: PersistedWorkspace = { layouts: [layout([chart("CUR")])], activeLayoutId: "L1", magnet: "off" };
+  const current: PersistedWorkspace = {
+    layouts: [layout([chart("CUR")])],
+    activeLayoutId: "L1",
+    magnet: "off",
+    crosshairSync: false,
+    replaySpeed: 1,
+  };
 
   it("round-trips a saved workspace through JSON", () => {
     const saved: PersistedWorkspace = {
@@ -139,9 +148,28 @@ describe("restoreWorkspace", () => {
       ],
       activeLayoutId: "two",
       magnet: "strong",
+      crosshairSync: true,
+      replaySpeed: 2,
     };
     const restored = restoreWorkspace(JSON.parse(JSON.stringify(saved)), current, chart("D"), resolveDef);
     expect(restored).toEqual(saved);
+  });
+
+  it("keeps defaults for workspace fields saved before they existed", () => {
+    const old = { layouts: [layout([chart("A")])], activeLayoutId: "L1", magnet: "weak" };
+    const restored = restoreWorkspace(old, current, chart("D"), resolveDef);
+    expect(restored.crosshairSync).toBe(false);
+    expect(restored.replaySpeed).toBe(1);
+  });
+
+  it("rejects an unknown replay speed", () => {
+    const restored = restoreWorkspace(
+      { layouts: [layout([chart("A")])], activeLayoutId: "L1", magnet: "off", replaySpeed: 3 },
+      current,
+      chart("D"),
+      resolveDef,
+    );
+    expect(restored.replaySpeed).toBe(1);
   });
 
   it("falls back to the current workspace when storage is empty or corrupt", () => {

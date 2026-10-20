@@ -48,8 +48,28 @@ export function ChartPage({ watchlistOpen, domOpen, objectsOpen, tradingOpen, on
   const [commandOpen, setCommandOpen] = useState(false);
   const [historyBars, setHistoryBars] = useState(0);
   const [crosshairTime, setCrosshairTime] = useState<number | null>(null);
+  const crosshairSync = useWorkspace((s) => s.crosshairSync);
+  // Focused cell's pointer position, mirrored into every other cell when on.
+  const [syncCross, setSyncCross] = useState<{ time: number; price: number } | null>(null);
 
   const onCrosshairTime = useCallback((t: number | null) => setCrosshairTime(t), []);
+
+  // Read at event time so the handler never re-subscribes on a toggle.
+  const onCrosshairMove = useCallback((t: number | null, p: number | null) => {
+    setCrosshairTime(t);
+    const on = useWorkspace.getState().crosshairSync;
+    if (!on || t === null || p === null) {
+      // Same-ref no-op keeps an already-cleared mirror from re-rendering.
+      setSyncCross((prev) => (prev === null ? prev : null));
+      return;
+    }
+    setSyncCross((prev) => (prev && prev.time === t && prev.price === p ? prev : { time: t, price: p }));
+  }, []);
+
+  // Turning sync off drops the mirror so every cell clears its imposed crosshair.
+  useEffect(() => {
+    if (!crosshairSync) setSyncCross(null);
+  }, [crosshairSync]);
 
   // The replay transport needs the bar count for its slider range.
   useEffect(() => {
@@ -149,6 +169,9 @@ export function ChartPage({ watchlistOpen, domOpen, objectsOpen, tradingOpen, on
             linesFor={linesFor}
             onCrosshairTime={onCrosshairTime}
             crosshairTime={crosshairTime}
+            syncCrosshair={syncCross}
+            syncOn={crosshairSync}
+            onCrosshairMove={onCrosshairMove}
             onFocus={setActiveChart}
           />
           {activeTool && <ToolHint tool={activeTool} />}
@@ -184,6 +207,9 @@ const GRID_CLASS: Record<GridMode, string> = {
   "2h": "grid-cols-2 grid-rows-1",
   "2v": "grid-cols-1 grid-rows-2",
   "4": "grid-cols-2 grid-rows-2",
+  "6": "grid-cols-3 grid-rows-2",
+  "8": "grid-cols-4 grid-rows-2",
+  "9": "grid-cols-3 grid-rows-3",
 };
 
 interface ChartGridProps {
@@ -192,6 +218,10 @@ interface ChartGridProps {
   linesFor: (symbol: string) => TradingLine[];
   onCrosshairTime: (t: number | null) => void;
   crosshairTime: number | null;
+  /** Focused cell's pointer position, mirrored into the other cells. */
+  syncCrosshair: { time: number; price: number } | null;
+  syncOn: boolean;
+  onCrosshairMove: (t: number | null, p: number | null) => void;
   onFocus: (index: number) => void;
 }
 
@@ -199,7 +229,17 @@ interface ChartGridProps {
  * The layout's chart cells. Each cell keeps its own symbol and interval; the
  * focused one (blue outline) is what the toolbar, studies and drawings act on.
  */
-function ChartGrid({ layout, replayBar, linesFor, onCrosshairTime, crosshairTime, onFocus }: ChartGridProps) {
+function ChartGrid({
+  layout,
+  replayBar,
+  linesFor,
+  onCrosshairTime,
+  crosshairTime,
+  syncCrosshair,
+  syncOn,
+  onCrosshairMove,
+  onFocus,
+}: ChartGridProps) {
   const cells: ChartState[] = layout.charts.slice(0, cellCount(layout.grid));
   const multi = cells.length > 1;
   return (
@@ -230,7 +270,14 @@ function ChartGrid({ layout, replayBar, linesFor, onCrosshairTime, crosshairTime
               drawings={chart.drawings}
               replayBar={focused ? replayBar : null}
               tradingLines={linesFor(chart.symbol)}
+              crosshairMode={chart.crosshairMode}
+              priceScale={chart.priceScale}
+              invertScale={chart.invertScale}
+              timezone={chart.timezone}
+              watermark={chart.watermark}
+              syncCrosshair={focused ? null : syncOn ? syncCrosshair : null}
               onCrosshairTime={focused ? onCrosshairTime : undefined}
+              onCrosshairMove={focused ? onCrosshairMove : undefined}
             />
             <Readout symbol={multi ? `${chart.symbol} · ${chart.resolution}` : chart.symbol} time={focused ? crosshairTime : null} />
             {multi && focused && (

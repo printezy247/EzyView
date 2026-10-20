@@ -40,6 +40,21 @@ export const LIGHT_THEME: ChartTheme = {
   paneSeparator: "#e0e3eb",
 };
 
+/** Tokyo Night — cool indigo dark, matching the app's optional UI theme. */
+export const TOKYO_THEME: ChartTheme = {
+  background: "#1a1b26",
+  textColor: "#c0caf5",
+  grid: "#292e42",
+  crosshair: "#7aa2f7",
+  upColor: "#9ece6a",
+  downColor: "#f7768e",
+  borderUpColor: "#9ece6a",
+  borderDownColor: "#f7768e",
+  wickUpColor: "#9ece6a",
+  wickDownColor: "#f7768e",
+  paneSeparator: "#292e42",
+};
+
 /**
  * Cycle through a fixed, contrast-checked palette so the Nth indicator still
  * reads against the dark background.
