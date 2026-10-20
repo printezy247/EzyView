@@ -5,6 +5,15 @@
  * SQLite/Postgres later without touching the UI.
  */
 
+/** How the trader felt when the trade was taken (review metadata). */
+export type TradeEmotion = "calm" | "confident" | "anxious" | "fomo" | "revenge" | "tired";
+
+/** One item on the trade's pre-flight rule checklist. */
+export interface RuleCheck {
+  label: string;
+  done: boolean;
+}
+
 /** One closed (or open) trade, however it was captured. */
 export interface JournalEntry {
   id: string;
@@ -26,6 +35,10 @@ export interface JournalEntry {
   screenshots?: string[];
   rating?: number;
   source?: "manual" | "mt5" | "ccxt" | "alpaca" | "paper";
+  emotion?: TradeEmotion;
+  rules?: RuleCheck[];
+  stopPrice?: number;
+  targetPrice?: number;
 }
 
 /** A free-form journal note: session observation, plan, screenshot. */
