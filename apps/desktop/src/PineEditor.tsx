@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Play, Save, Trash2, X, TrendingUp } from "lucide-react";
-import { Modal } from "./Modal";
 // Type-only: Monaco itself is dynamically imported so it stays out of the
 // initial bundle. Types are erased by the compiler, so this costs nothing.
 import type * as Monaco from "monaco-editor";
@@ -10,7 +9,6 @@ import { useWorkspace, uid } from "./store";
 import type { PineScriptRecord } from "./store";
 
 interface Props {
-  open: boolean;
   onClose: () => void;
   /** Bars for the active symbol/interval, used as the script's data source. */
   bars: { open: number; high: number; low: number; close: number; volume: number }[];
@@ -25,12 +23,12 @@ plot(ma, "SMA", color.blue)
 `;
 
 /**
- * Pine script editor.
+ * Pine script editor, filling its page.
  *
  * Monaco is configured lazily on first mount so the worker and language
- * registration do not cost anything until the panel is actually opened.
+ * registration do not cost anything until the editor's route is visited.
  */
-export function PineEditor({ open, onClose, bars, symbol }: Props) {
+export function PineEditor({ onClose, bars, symbol }: Props) {
   const host = useRef<HTMLDivElement | null>(null);
   const editor = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
   const [scriptId, setScriptId] = useState<string>(() => uid());
@@ -46,14 +44,14 @@ export function PineEditor({ open, onClose, bars, symbol }: Props) {
   const record: PineScriptRecord | undefined = scripts[scriptId];
 
   // Monaco is ~1 MB of JS, so it is fetched on first open rather than bundled
-  // into the initial payload — most sessions never open this panel at all.
+  // into the initial payload — most sessions never visit this route at all.
   useEffect(() => {
-    if (!open || !host.current || editor.current) return;
+    if (!host.current || editor.current) return;
     let disposed = false;
     let sub: Monaco.IDisposable | null = null;
 
     void loadMonaco().then((monaco) => {
-      // The panel can close while the chunk is still in flight.
+      // The route can unmount while the chunk is still in flight.
       if (disposed || !host.current || editor.current) return;
       registerPineLanguage(monaco);
       const created = monaco.editor.create(host.current, {
@@ -80,7 +78,7 @@ export function PineEditor({ open, onClose, bars, symbol }: Props) {
     };
     // Mount-only: the editor owns its buffer after this.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, []);
 
   const run = useCallback(() => {
     if (bars.length === 0) {
@@ -119,13 +117,10 @@ export function PineEditor({ open, onClose, bars, symbol }: Props) {
     }
   }, [bars, name, scriptId, source, setPineResult]);
 
-  if (!open) return null;
-
   return (
-    <Modal
-      onClose={onClose}
-      labelledBy="pine-editor-title"
-      className="flex h-[34rem] w-[46rem] flex-col rounded-md border border-ev-line bg-ev-panel shadow-2xl"
+    <section
+      aria-label="Pine editor"
+      className="flex min-h-0 flex-1 flex-col border-t border-ev-raised bg-ev-bg text-[11px]"
     >
       <div className="flex items-center justify-between border-b border-ev-raised px-4 py-2.5">
         <h2 id="pine-editor-title" className="text-sm font-semibold text-ev-strong">Pine Editor — {symbol}</h2>
@@ -215,7 +210,7 @@ export function PineEditor({ open, onClose, bars, symbol }: Props) {
       ) : null}
 
       {result && result.trades.length > 0 && <StrategyTester result={result} />}
-    </Modal>
+    </section>
   );
 }
 
