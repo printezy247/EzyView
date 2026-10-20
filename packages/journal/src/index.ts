@@ -8,4 +8,5 @@ export { isClosed } from "./model";
 export type { JournalEntry, JournalItem, JournalNote, RuleCheck, TradeEmotion } from "./model";
 export { computeStats } from "./stats";
 export type { JournalStats, RBucket, SetupBreakdown, SymbolBreakdown, TagBreakdown, TimeOfDayBreakdown } from "./stats";
+export { composeReview, dateKey, reviewWindow } from "./review";
 export { entriesFromDeals, existingKeys } from "./import";
