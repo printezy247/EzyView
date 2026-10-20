@@ -625,6 +625,19 @@ export class EzyChart {
     this.drawings.setDrawings(drawings);
   }
 
+  /** Highlight one drawing's anchors (null clears the highlight). */
+  setSelection(id: string | null): void {
+    this.drawings.setSelection(id);
+  }
+
+  /**
+   * Enable or disable drag-to-scroll and drag-to-scale on the chart. Drawing
+   * drags turn this off so grabbing a drawing never pans the chart.
+   */
+  setPanEnabled(enabled: boolean): void {
+    this.chart.applyOptions({ handleScroll: enabled, handleScale: enabled });
+  }
+
   /** Project a drawing's anchors into pixels for hit-testing. */
   projectDrawing(drawing: Drawing): (ScreenPoint | null)[] {
     return this.drawings.project(drawing);

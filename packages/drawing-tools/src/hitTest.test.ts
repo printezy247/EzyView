@@ -119,6 +119,29 @@ describe("hitTest", () => {
   });
 });
 
+describe("hitTest with off-view anchors", () => {
+  const trend = line("t9", "trend_line", [
+    { time: 0, price: 0 },
+    { time: 10, price: 10 },
+  ]);
+
+  it("keeps grabbing a visible anchor when the other point is off-view", () => {
+    const screen = [{ x: 50, y: 50 }, null];
+    expect(hitTest(trend, screen, { x: 50, y: 50 }, 6)).toEqual({ id: "t9", handle: 0 });
+  });
+
+  it("skips the body when any anchor is off-view", () => {
+    // Without the guard this click sits inside the degenerate bounds and would
+    // count as a body hit.
+    const screen = [{ x: 50, y: 50 }, null];
+    expect(hitTest(trend, screen, { x: 55, y: 55 }, 6)).toBeNull();
+  });
+
+  it("misses entirely when every anchor is off-view", () => {
+    expect(hitTest(trend, [null, null], { x: 50, y: 50 }, 6)).toBeNull();
+  });
+});
+
 describe("tool table", () => {
   it("P1 tools all declare anchor counts", () => {
     for (const tool of P1_TOOLS) {

@@ -71,7 +71,18 @@ export function ChartPage({ watchlistOpen, domOpen, objectsOpen, tradingOpen, on
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
       if (e.key === "Escape") {
         useWorkspace.getState().setActiveTool(null);
+        useWorkspace.getState().selectDrawing(null);
         setCommandOpen(false);
+        return;
+      }
+      // Delete/Backspace removes the selected drawing (the input guard above
+      // keeps this from firing while typing or editing in Monaco).
+      if (e.key === "Delete" || e.key === "Backspace") {
+        const id = useWorkspace.getState().selectedDrawingId;
+        if (id) {
+          e.preventDefault();
+          useWorkspace.getState().deleteDrawing(id);
+        }
         return;
       }
       if (e.key === "/" && !e.ctrlKey && !e.metaKey) {

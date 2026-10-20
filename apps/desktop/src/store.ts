@@ -117,12 +117,24 @@ interface WorkspaceStore {
   drawingUndo: Drawing[][];
   /** Redo stack for the focused cell's drawings (not persisted). */
   drawingRedo: Drawing[][];
+  /** Edit a drawing of the focused cell; pushes one undo entry. */
   updateDrawing(id: string, patch: Partial<Drawing>): void;
+  /** Apply a drag-phase patch with no undo entry; `commitDrawingHistory` closes the drag. */
+  previewDrawing(id: string, patch: Partial<Drawing>, chartIndex?: number): void;
+  /** Push the pre-drag snapshot as one undo entry (drag end). */
+  commitDrawingHistory(previous: readonly Drawing[], chartIndex?: number): void;
+  /** Remove a drawing of the focused cell (or `chartIndex`), its bound alerts and the selection. */
+  deleteDrawing(id: string, chartIndex?: number): void;
+  /** Append imported drawings under fresh ids; one undo entry. */
+  importDrawings(list: readonly Drawing[], chartIndex?: number): void;
+  /** View state: drawing selected for editing (not persisted, not undo-tracked). */
+  selectedDrawingId: string | null;
+  selectDrawing(id: string | null): void;
   updateIndicator(uid: string, patch: Partial<Pick<ActiveIndicator, "hidden" | "name">>): void;
   setActiveTool(tool: DrawingToolId | null): void;
   setMagnet(mode: MagnetMode): void;
 
-  addAlert(symbol: string, condition: AlertCondition, frequency: AlertFrequency, message: string): void;
+  addAlert(symbol: string, condition: AlertCondition, frequency: AlertFrequency, message: string, drawingId?: string): void;
   removeAlert(id: string): void;
   /** Fold one candle into every matching alert; returns ids that just fired. */
   applyCandle(symbol: string, candle: Candle, barClosed: boolean): string[];
@@ -153,6 +165,29 @@ function editActive(s: WorkspaceStore, fn: (layout: Layout) => Layout): Partial<
 /** Apply `fn` to the focused chart cell of the active layout. */
 function editChart(s: WorkspaceStore, fn: (chart: ChartState) => ChartState): Partial<WorkspaceStore> {
   return editActive(s, (l) => updateChart(l, l.activeChart, fn));
+}
+
+/**
+ * Keep price alerts bound to a horizontal line in step with the line: moving
+ * the anchor re-arms the alert's level. Only price-carrying conditions can
+ * follow; channel/moving conditions are left alone.
+ */
+function syncBoundAlert(
+  s: Partial<WorkspaceStore>,
+  drawingId: string,
+  before: Drawing,
+  patch: Partial<Drawing>,
+): Partial<WorkspaceStore> {
+  if (!patch.points || before.tool !== "horizontal_line" || !s.alerts) return s;
+  const price = patch.points[0]?.price;
+  if (price === undefined || !Number.isFinite(price)) return s;
+  return {
+    ...s,
+    alerts: s.alerts.map((a) => {
+      if (a.drawingId !== drawingId || !("value" in a.condition)) return a;
+      return { ...a, condition: { ...a.condition, value: price } };
+    }),
+  };
 }
 
 const initial = [defaultLayout(0)];
@@ -191,6 +226,7 @@ export const useWorkspace = create<WorkspaceStore>()(
       magnet: "off",
       drawingUndo: [],
       drawingRedo: [],
+      selectedDrawingId: null,
 
       activeLayout: () => {
         const { layouts, activeLayoutId } = get();
@@ -199,7 +235,7 @@ export const useWorkspace = create<WorkspaceStore>()(
 
       activeChart: () => activeChartOf(get().activeLayout()),
 
-      setActiveLayout: (id) => set({ activeLayoutId: id, activeTool: null }),
+      setActiveLayout: (id) => set({ activeLayoutId: id, activeTool: null, selectedDrawingId: null }),
 
       updateActive: (patch) => set((s) => editChart(s, (c) => ({ ...c, ...patch }))),
 
@@ -310,15 +346,86 @@ export const useWorkspace = create<WorkspaceStore>()(
         }),
 
       updateDrawing: (id, patch) =>
-        set((s) =>
-          editChart(s, (c) => ({ ...c, drawings: c.drawings.map((d) => (d.id === id ? { ...d, ...patch } : d)) })),
-        ),
+        set((s) => {
+          const layout = s.activeLayout();
+          const idx = layout.activeChart;
+          const prev = layout.charts[idx]?.drawings ?? [];
+          const target = prev.find((d) => d.id === id);
+          if (!target) return s;
+          const edited = editChart(s, (c) => ({
+            ...c,
+            drawings: c.drawings.map((d) => (d.id === id ? { ...d, ...patch } : d)),
+          }));
+          return {
+            ...syncBoundAlert({ ...edited, alerts: s.alerts }, id, target, patch),
+            drawingUndo: [...s.drawingUndo, structuredClone(prev)],
+            drawingRedo: [],
+          };
+        }),
+
+      previewDrawing: (id, patch, chartIndex) =>
+        set((s) => {
+          const layout = s.activeLayout();
+          const idx = chartIndex ?? layout.activeChart;
+          const prev = layout.charts[idx]?.drawings ?? [];
+          const target = prev.find((d) => d.id === id);
+          if (!target) return s;
+          const edited = editActive(s, (l) =>
+            updateChart(l, idx, (c) => ({ ...c, drawings: c.drawings.map((d) => (d.id === id ? { ...d, ...patch } : d)) })),
+          );
+          return syncBoundAlert({ ...edited, alerts: s.alerts }, id, target, patch);
+        }),
+
+      commitDrawingHistory: (previous) =>
+        set((s) => ({
+          drawingUndo: [...s.drawingUndo, structuredClone([...previous])],
+          drawingRedo: [],
+        })),
+
+      deleteDrawing: (id, chartIndex) =>
+        set((s) => {
+          const layout = s.activeLayout();
+          const idx = chartIndex ?? layout.activeChart;
+          const prev = layout.charts[idx]?.drawings ?? [];
+          const drawings = prev.filter((d) => d.id !== id);
+          const selection = s.selectedDrawingId === id ? null : s.selectedDrawingId;
+          if (drawings.length === prev.length) {
+            return selection === s.selectedDrawingId ? s : { selectedDrawingId: selection };
+          }
+          const next = editActive(s, (l) => updateChart(l, idx, (c) => ({ ...c, drawings })));
+          const alerts = s.alerts.filter((a) => a.drawingId !== id);
+          const alertHistory = Object.fromEntries(
+            Object.entries(s.alertHistory).filter(([aid]) => alerts.some((a) => a.id === aid)),
+          );
+          return {
+            ...next,
+            alerts,
+            alertHistory,
+            selectedDrawingId: selection,
+            drawingUndo: [...s.drawingUndo, structuredClone(prev)],
+            drawingRedo: [],
+          };
+        }),
+
+      importDrawings: (list, chartIndex) =>
+        set((s) => {
+          const layout = s.activeLayout();
+          const idx = chartIndex ?? layout.activeChart;
+          const prev = layout.charts[idx]?.drawings ?? [];
+          const fresh = list.map((d) => ({ ...d, id: uid() }));
+          const next = editActive(s, (l) =>
+            updateChart(l, idx, (c) => ({ ...c, drawings: [...c.drawings, ...fresh] })),
+          );
+          return { ...next, drawingUndo: [...s.drawingUndo, structuredClone(prev)], drawingRedo: [] };
+        }),
+
+      selectDrawing: (id) => set({ selectedDrawingId: id }),
 
       setActiveTool: (tool) => set({ activeTool: tool }),
 
       setMagnet: (mode) => set({ magnet: mode }),
 
-      addAlert: (symbol, condition, frequency, message) =>
+      addAlert: (symbol, condition, frequency, message, drawingId) =>
         set((s) => ({
           alerts: [
             ...s.alerts,
@@ -330,6 +437,7 @@ export const useWorkspace = create<WorkspaceStore>()(
               frequency,
               state: "armed",
               createdAt: Date.now(),
+              ...(drawingId ? { drawingId } : {}),
             },
           ],
         })),

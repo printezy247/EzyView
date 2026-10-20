@@ -5,7 +5,7 @@ import type { ScreenPoint } from "./types.js";
 
 export interface HitResult {
   id: string;
-  /** 0 = body, 1..n = draggable anchor index. */
+  /** 0-based anchor index, or -1 for the body. */
   handle: number;
 }
 
@@ -13,15 +13,28 @@ export interface HitResult {
  * Hit-test one drawing in pixel space.
  *
  * `screen` holds the drawing's anchors already projected to pixels, in the same
- * order as `drawing.points`.
+ * order as `drawing.points`. A null entry means that anchor is off-view (the
+ * projection could not place it): visible anchors still grab, but the body is
+ * skipped until every point projects — the same condition the renderer uses
+ * before drawing the shape.
  */
-export function hitTest(drawing: Drawing, screen: ScreenPoint[], click: ScreenPoint, tol = 6): HitResult | null {
+export function hitTest(
+  drawing: Drawing,
+  screen: (ScreenPoint | null)[],
+  click: ScreenPoint,
+  tol = 6,
+): HitResult | null {
   if (drawing.hidden) return null;
 
   // Anchor grabs win over body hits so handles stay draggable when overlapping.
   for (let i = 0; i < screen.length; i++) {
-    if (near(click, screen[i]!, tol)) return { id: drawing.id, handle: i };
+    const p = screen[i];
+    if (p && near(click, p, tol)) return { id: drawing.id, handle: i };
   }
+
+  // Off-view anchors make the body's geometry degenerate — skip it.
+  if (screen.some((p) => p === null)) return null;
+  const pts = screen as ScreenPoint[];
 
   switch (drawing.tool) {
     case "trend_line": {
@@ -50,7 +63,7 @@ export function hitTest(drawing: Drawing, screen: ScreenPoint[], click: ScreenPo
     case "fib_retracement":
     case "fib_extension": {
       if (screen.length < 2) return null;
-      const box = bounds(screen);
+      const box = bounds(pts);
       const insideX = click.x >= box.x0 - tol && click.x <= box.x1 + tol;
       if (!insideX) return null;
       if (click.y >= box.y0 - tol && click.y <= box.y1 + tol) return { id: drawing.id, handle: -1 };
@@ -66,7 +79,7 @@ export function hitTest(drawing: Drawing, screen: ScreenPoint[], click: ScreenPo
     }
     default: {
       if (screen.length === 0) return null;
-      const box = bounds(screen);
+      const box = bounds(pts);
       return insideRect(click, { x: box.x0, y: box.y0 }, { x: box.x1, y: box.y1 }, tol)
         ? { id: drawing.id, handle: -1 }
         : null;
@@ -76,7 +89,7 @@ export function hitTest(drawing: Drawing, screen: ScreenPoint[], click: ScreenPo
 
 /** Topmost hit across a layer, first match wins (later drawings sit on top). */
 export function hitTestAll(
-  layers: { drawing: Drawing; screen: ScreenPoint[] }[],
+  layers: { drawing: Drawing; screen: (ScreenPoint | null)[] }[],
   click: ScreenPoint,
   tol = 6,
 ): HitResult | null {
