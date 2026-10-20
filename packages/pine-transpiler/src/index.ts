@@ -9,4 +9,8 @@ export { NA, isNa, nz, ta, math, color, shape, location, size } from "./runtime.
 export type { Context, PineValue, PinePlot, PineOrder, PineOutput } from "./runtime.js";
 export { backtest } from "./backtest.js";
 export type { BacktestResult, BacktestOptions, Trade } from "./backtest.js";
+export { pineCompletions } from "./completion.js";
+export type { PineCompletion } from "./completion.js";
+export { lintPine } from "./lint.js";
+export type { PineLintIssue } from "./lint.js";
 export type { Node, Script } from "./ast.js";
