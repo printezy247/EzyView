@@ -14,9 +14,9 @@ Non-goal: copying TradingView's proprietary data feeds or its closed cloud. We b
 
 ---
 
-## 1. What we extracted from the deb files
+## 1. What we researched
 
-### 1.1 TradingView Desktop (`tradingview_amd64.deb`, v3.4.1)
+### 1.1 TradingView
 
 Method: extracted `app.asar` and harvested the desktop shell's `resources/locales/en.json` (367 UI labels); manual inspection of the compiled bundle for feature inventory (no third-party reverse-engineering tooling used).
 
