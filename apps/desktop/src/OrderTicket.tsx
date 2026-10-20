@@ -29,6 +29,7 @@ export function OrderTicket({ symbol }: Props) {
   const source = useMt5((s) => s.source);
   const tradeMode = useTrading((s) => s.account?.tradeMode);
   const error = useTrading((s) => s.error);
+  const note = useTrading((s) => s.note);
   const clearError = useTrading((s) => s.clearError);
   const maxLeverage = useTrading((s) => s.account?.leverage ?? 100);
 
@@ -87,6 +88,8 @@ export function OrderTicket({ symbol }: Props) {
     const ok = await submit(request);
     setSending(false);
     if (ok) setNotice(`${side === "buy" ? "Buy" : "Sell"} ${type} order for ${quantity} ${ticker} sent.`);
+    else if (useTrading.getState().pending)
+      setNotice(`${side === "buy" ? "Buy" : "Sell"} ${type} order for ${quantity} ${ticker} — awaiting confirmation.`);
   };
 
   return (
@@ -217,6 +220,11 @@ export function OrderTicket({ symbol }: Props) {
           className="rounded border border-ev-down/40 bg-ev-down/10 px-2 py-1.5 text-[11px] leading-snug text-ev-down"
         >
           {error}
+        </p>
+      )}
+      {note && !error && (
+        <p role="status" className="rounded border border-ev-line bg-ev-raised/40 px-2 py-1.5 text-[11px] leading-snug text-ev-muted">
+          {note}
         </p>
       )}
 

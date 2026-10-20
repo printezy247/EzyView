@@ -197,6 +197,60 @@ describe("bridge transport", () => {
     const transport = createTransport({ kind: "bridge", fetchFn });
     await expect(transport.placeOrder({ symbol: "XAUUSD", side: "buy", type: "market", qty: 1 })).rejects.toThrow(/no money/);
   });
+
+  it("mints a session on /connect and stamps every later write with it", async () => {
+    const bodies: Record<string, unknown>[] = [];
+    const fetchFn = vi.fn(async (url: string, init?: RequestInit) => {
+      bodies.push(url.endsWith("/connect") ? { url } : JSON.parse(String(init?.body)));
+      const payload = url.endsWith("/connect")
+        ? { ok: true, session: "abc123", login: "4123", server: "MetaQuotes-Demo", demo: true, balance: 10000 }
+        : { ok: true };
+      return new Response(JSON.stringify(payload), { status: 200 });
+    });
+    const transport = createTransport({ kind: "bridge", fetchFn });
+    const result = await transport.connect?.({ server: "MetaQuotes-Demo", login: "4123", password: "hunter2" });
+    expect(result?.session).toBe("abc123");
+    await transport.placeOrder({ symbol: "EURUSD", side: "buy", type: "market", qty: 0.1 });
+    expect(bodies[1]).toMatchObject({ session: "abc123" });
+  });
+
+  it("keeps dry-run off the wire unless asked, and on when asked", async () => {
+    const bodies: Record<string, unknown>[] = [];
+    const fetchFn = vi.fn(async (_url: string, init?: RequestInit) => {
+      bodies.push(JSON.parse(String(init?.body)));
+      return new Response(JSON.stringify({ ok: true, dry_run: true }), { status: 200 });
+    });
+    const transport = createTransport({ kind: "bridge", fetchFn });
+    await transport.close("EURUSD", 0.1);
+    await transport.close("EURUSD", 0.1, { dryRun: true });
+    expect(bodies[0]?.dry_run).toBeUndefined();
+    expect(bodies[1]?.dry_run).toBe(true);
+  });
+
+  it("drops the session on /disconnect so later writes carry no stamp", async () => {
+    const bodies: Record<string, unknown>[] = [];
+    const fetchFn = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith("/cancel")) bodies.push(JSON.parse(String(init?.body)));
+      return new Response(JSON.stringify({ ok: true, session: "s1" }), { status: 200 });
+    });
+    const transport = createTransport({ kind: "bridge", fetchFn });
+    await transport.connect?.({ server: "S", login: "1", password: "p" });
+    await transport.cancel("41");
+    await transport.disconnect?.();
+    await transport.cancel("42");
+    expect(bodies[0]).toMatchObject({ ticket: "41", session: "s1" });
+    expect(bodies[1]).toMatchObject({ ticket: "42" });
+    expect(bodies[1]?.session).toBeUndefined();
+  });
+
+  it("MCP transport refuses dry-run rather than silently sending", () => {
+    const fetchFn = vi.fn(async () => new Response("", { status: 500 }));
+    const transport = createTransport({ kind: "mcp", mcp: { url: "http://127.0.0.1:22346/mcp", key: "k" }, fetchFn });
+    expect(transport.connect).toBeUndefined();
+    expect(() =>
+      transport.placeOrder({ symbol: "EURUSD", side: "buy", type: "market", qty: 0.1 }, { dryRun: true }),
+    ).toThrow(/cannot dry-run/);
+  });
 });
 
 /** JSON-RPC test double: one canned handler map, one captured header log. */

@@ -18,6 +18,7 @@ import { ApiKeysDialog } from "./ApiKeysDialog";
 import { useApiKeys } from "./apiKeys";
 import { openChartWindow } from "./windows";
 import { Mt5Setup } from "./Mt5Setup";
+import { TradeConfirmDialog } from "./TradeConfirmDialog";
 import { RightRail } from "./RightRail";
 import { useWorkspace } from "./store";
 import type { ChartState, Layout } from "./store";
@@ -27,7 +28,10 @@ import { ObjectTree } from "./ObjectTree";
 import { loadHistory } from "./data";
 import { bootstrapMt5, getMt5, useMt5 } from "./mt5";
 import type { ChartSource } from "./mt5";
+import { useMt5Accounts } from "./mt5Accounts";
+import { maskLogin } from "./tradingSafety";
 import { useTrading, useTradingTicks } from "./trading";
+import { Modal } from "./Modal";
 
 // Bottom panels load on first open so they stay out of the startup bundle.
 const JournalPanel = lazy(() => import("./JournalPanel").then((m) => ({ default: m.JournalPanel })));
@@ -318,6 +322,7 @@ export default function App() {
         symbol={state.symbol}
       />
       {apiKeysOpen && <ApiKeysDialog />}
+      <TradeConfirmDialog />
       <AlertDialog
         open={alertOpen}
         onClose={() => setAlertOpen(false)}
@@ -348,16 +353,50 @@ const SOURCE_LABEL: Record<ChartSource, string> = {
   mt5: "Broker · MT5",
 };
 
+/** Real accounts the user already acknowledged this session, keyed `server|login`. */
+const realSourceAcked = new Set<string>();
+
+/**
+ * Which account the MT5 source would drive: the app-logged session, or — when
+ * the bridge merely attached to a running terminal — the terminal's own
+ * account type. Returns the risk key only for a real account.
+ */
+async function realSourceKey(): Promise<string | null> {
+  const session = useMt5Accounts.getState().session;
+  if (session) return session.demo ? null : `${session.server}|${session.login}`;
+  try {
+    const raw = (await getMt5().transport.account()) as { trade_mode?: number; login?: number | string };
+    return raw.trade_mode === 1 ? `attached|${String(raw.login ?? "")}` : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Segmented switch between the bundled feed and the connected broker. */
 function SourceToggle() {
   const source = useMt5((s) => s.source);
   const setSource = useMt5((s) => s.setSource);
   const [busy, setBusy] = useState(false);
+  const [risk, setRisk] = useState<string | null>(null);
 
   const pick = (id: ChartSource) => {
     if (busy || id === source) return;
     setBusy(true);
-    void setSource(id).finally(() => setBusy(false));
+    void (async () => {
+      await setSource(id);
+      if (id !== "mt5" || useMt5.getState().source !== "mt5") return;
+      const key = await realSourceKey();
+      if (key && !realSourceAcked.has(key)) setRisk(key);
+    })().finally(() => setBusy(false));
+  };
+
+  const acceptRisk = () => {
+    if (risk) realSourceAcked.add(risk);
+    setRisk(null);
+  };
+  const refuseRisk = () => {
+    setRisk(null);
+    void setSource("ezyview");
   };
 
   return (
@@ -387,6 +426,32 @@ function SourceToggle() {
           {SOURCE_LABEL[id]}
         </button>
       ))}
+      {risk && (
+        <Modal
+          onClose={refuseRisk}
+          labelledBy="real-source-title"
+          backdropClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          className="w-[24rem] rounded-md border border-ev-warn/40 bg-ev-panel text-[12px] shadow-2xl"
+        >
+          <div className="space-y-3 p-4">
+            <h2 id="real-source-title" className="text-sm font-semibold text-ev-warn">
+              Real account detected — {maskLogin(risk.split("|")[1] ?? "")}
+            </h2>
+            <p className="text-ev-text">
+              The broker feed is live on a real-money account. EzyView keeps asking to confirm every order, but
+              a confirmation now trades real money.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button type="button" autoFocus onClick={refuseRisk} className="rounded border border-ev-line px-3 py-1 text-ev-muted hover:text-ev-strong">
+                Switch back to demo data
+              </button>
+              <button type="button" onClick={acceptRisk} className="rounded bg-ev-warn px-3 py-1 font-semibold text-white">
+                I understand — continue
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
