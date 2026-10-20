@@ -1,8 +1,18 @@
-/** Options destination — full panel arrives in Task 3. */
+import { Suspense, lazy } from "react";
+import { useNavigate } from "react-router";
+import { activeChartOf } from "./layout";
+import { useWorkspace } from "./store";
+
+const OptionsPanel = lazy(() => import("./OptionsPanel").then((m) => ({ default: m.OptionsPanel })));
+
+/** Options chain as a full-page destination, keyed to the active chart symbol. */
 export function OptionsPage() {
+  const navigate = useNavigate();
+  const layout = useWorkspace((s) => s.activeLayout());
+  const state = activeChartOf(layout);
   return (
-    <section aria-label="Options" className="flex min-h-0 flex-1 items-center justify-center text-[12px] text-ev-muted">
-      Options
-    </section>
+    <Suspense fallback={null}>
+      <OptionsPanel symbol={state.symbol} onClose={() => navigate("/chart")} />
+    </Suspense>
   );
 }

@@ -1,8 +1,14 @@
-/** Journal destination — full panel arrives in Task 3. */
+import { Suspense, lazy } from "react";
+import { useNavigate } from "react-router";
+
+const JournalPanel = lazy(() => import("./JournalPanel").then((m) => ({ default: m.JournalPanel })));
+
+/** Trading journal as a full-page destination; Close returns to the chart. */
 export function JournalPage() {
+  const navigate = useNavigate();
   return (
-    <section aria-label="Journal" className="flex min-h-0 flex-1 items-center justify-center text-[12px] text-ev-muted">
-      Journal
-    </section>
+    <Suspense fallback={null}>
+      <JournalPanel onClose={() => navigate("/chart")} />
+    </Suspense>
   );
 }
