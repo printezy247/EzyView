@@ -3,7 +3,7 @@ import type { Candle, Resolution } from "@ezyview/data-adapters";
 import { EzyChart } from "@ezyview/chart-engine";
 import type { ChartType, IndicatorInstance, ScriptPlotSpec, TradingLine } from "@ezyview/chart-engine";
 import type { Drawing, DrawingToolId } from "@ezyview/drawing-tools";
-import { isComplete, snapToOhlc } from "@ezyview/drawing-tools";
+import { hitTestAll, isComplete, setAnchor, snapToOhlc, translateDrawing } from "@ezyview/drawing-tools";
 import { DEFAULT_DRAWING_STYLE } from "@ezyview/drawing-tools";
 import type { PinePlot } from "@ezyview/pine-transpiler";
 import { THEME_OF, uid as newId, useWorkspace } from "./store";
@@ -79,8 +79,16 @@ export function ChartHost(props: Props) {
         if (drawingInProgressRef.current) return;
         const { activeTool: tool, magnet } = useWorkspace.getState();
         const chartIndex = chartIndexRef.current;
-        if (!tool || chartIndex === undefined) {
-          setFlash("Select a drawing tool first");
+        if (chartIndex === undefined) return; // detached windows stay inert
+        if (!tool) {
+          // No tool armed: select what was clicked, or clear on empty space.
+          const drawings = useWorkspace.getState().activeLayout().charts[chartIndex]?.drawings ?? [];
+          const hit = hitTestAll(
+            drawings.map((d) => ({ drawing: d, screen: chart.projectDrawing(d) })),
+            { x: info.x, y: info.y },
+          );
+          useWorkspace.getState().selectDrawing(hit?.id ?? null);
+          chart.setSelection(hit?.id ?? null);
           return;
         }
         if (info.time === null || info.price === null) {
@@ -120,6 +128,115 @@ export function ChartHost(props: Props) {
       chartRef.current = null;
     };
     // Mount-only: prop changes are applied by the effects below.
+  }, []);
+
+  // Select-and-drag when no tool is armed. The pointerdown listener runs in
+  // the capture phase, before lightweight-charts' own canvas listeners, so a
+  // grab on a drawing stops the event there and the chart never starts panning.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    type Drag = {
+      id: string;
+      /** 0-based anchor index, or -1 for the body. */
+      handle: number;
+      /** Pre-drag drawings, pushed as one undo entry when the drag ends. */
+      snapshot: Drawing[];
+      startPoint: { time: number; price: number };
+      moved: boolean;
+    };
+    let drag: Drag | null = null;
+
+    const localPoint = (e: PointerEvent) => {
+      const r = el.getBoundingClientRect();
+      return { x: e.clientX - r.left, y: e.clientY - r.top };
+    };
+
+    const onDown = (e: PointerEvent) => {
+      if (e.button !== 0) return;
+      const chart = chartRef.current;
+      const chartIndex = chartIndexRef.current;
+      if (!chart || chartIndex === undefined) return;
+      const st = useWorkspace.getState();
+      if (st.activeTool) return;
+      const drawings = st.activeLayout().charts[chartIndex]?.drawings ?? [];
+      if (drawings.length === 0) return;
+      const pt = localPoint(e);
+      const hit = hitTestAll(
+        drawings.map((d) => ({ drawing: d, screen: chart.projectDrawing(d) })),
+        pt,
+      );
+      if (!hit) return;
+      e.stopPropagation();
+      st.selectDrawing(hit.id);
+      chart.setSelection(hit.id);
+      const target = drawings.find((d) => d.id === hit.id);
+      if (!target || target.locked) return;
+      const start = chart.screenToTimePrice(pt.x, pt.y);
+      if (!start.ok || start.time === null || start.price === null) return;
+      drag = {
+        id: hit.id,
+        handle: hit.handle,
+        snapshot: [...drawings], // entries are immutable; the array copy is the boundary
+        startPoint: { time: start.time, price: start.price },
+        moved: false,
+      };
+      el.setPointerCapture(e.pointerId);
+      chart.setPanEnabled(false);
+    };
+
+    const onMove = (e: PointerEvent) => {
+      const cur = drag;
+      if (!cur) return;
+      const chart = chartRef.current;
+      const chartIndex = chartIndexRef.current;
+      if (!chart || chartIndex === undefined) return;
+      const raw = localPoint(e);
+      const conv = chart.screenToTimePrice(raw.x, raw.y);
+      if (!conv.ok || conv.time === null || conv.price === null) return;
+      const st = useWorkspace.getState();
+      const target = cur.snapshot.find((d) => d.id === cur.id);
+      if (!target) return;
+      let points: { time: number; price: number }[];
+      if (cur.handle >= 0) {
+        const want = { time: conv.time, price: conv.price };
+        const snapped = st.magnet === "off" ? want : snapToOhlc(want, historyRef.current, st.magnet);
+        points = setAnchor(target, cur.handle, snapped).points;
+      } else {
+        points = translateDrawing(target, conv.time - cur.startPoint.time, conv.price - cur.startPoint.price).points;
+      }
+      st.previewDrawing(cur.id, { points }, chartIndex);
+      cur.moved = true;
+      e.preventDefault();
+    };
+
+    const onFinish = (e: PointerEvent) => {
+      const cur = drag;
+      if (!cur) return;
+      const chartIndex = chartIndexRef.current;
+      if (cur.moved && chartIndex !== undefined) {
+        useWorkspace.getState().commitDrawingHistory(cur.snapshot, chartIndex);
+      }
+      try {
+        el.releasePointerCapture(e.pointerId);
+      } catch {
+        // Capture can already be gone (e.g. the window lost the pointer).
+      }
+      chartRef.current?.setPanEnabled(true);
+      drag = null;
+    };
+
+    el.addEventListener("pointerdown", onDown, true);
+    el.addEventListener("pointermove", onMove);
+    el.addEventListener("pointerup", onFinish);
+    el.addEventListener("pointercancel", onFinish);
+    return () => {
+      el.removeEventListener("pointerdown", onDown, true);
+      el.removeEventListener("pointermove", onMove);
+      el.removeEventListener("pointerup", onFinish);
+      el.removeEventListener("pointercancel", onFinish);
+      if (drag) chartRef.current?.setPanEnabled(true);
+    };
   }, []);
 
   // Screen readers get a text summary in place of the canvas.
@@ -176,18 +293,35 @@ export function ChartHost(props: Props) {
 
   useEffect(() => {
     chartRef.current?.setDrawings(props.drawings);
+    // An undo/redo can drop the selected drawing; never keep a stale id.
+    const sel = useWorkspace.getState().selectedDrawingId;
+    if (sel && !props.drawings.some((d) => d.id === sel)) {
+      useWorkspace.getState().selectDrawing(null);
+      chartRef.current?.setSelection(null);
+    }
   }, [props.drawings]);
+
+  // Mirrors every selection change (click, tree, Escape) onto the primitive.
+  // A foreign id simply finds no drawing here, so multi-cell stays correct.
+  const selectedId = useWorkspace((s) => s.selectedDrawingId);
+  useEffect(() => {
+    chartRef.current?.setSelection(selectedId);
+  }, [selectedId]);
 
   // Position levels are constant, so they only change when a fill does.
   useEffect(() => {
     chartRef.current?.setTradingLines(props.tradingLines ?? []);
   }, [props.tradingLines]);
 
-  // Switching tools abandons any half-placed drawing.
+  // Switching tools abandons any half-placed drawing; arming a tool also
+  // leaves selection mode (tools and selection are mutually exclusive).
   useEffect(() => {
     if (!activeTool) {
       pendingRef.current = null;
       setGhost(null);
+    } else {
+      useWorkspace.getState().selectDrawing(null);
+      chartRef.current?.setSelection(null);
     }
   }, [activeTool]);
 
