@@ -27,6 +27,8 @@ export interface PriceAlert {
   triggeredAt?: number;
   /** Last close the evaluator saw, so crossings do not re-fire. */
   lastPrice?: number;
+  /** When set, the alert follows this horizontal drawing: moving the line moves the level, deleting the line deletes the alert. */
+  drawingId?: string;
 }
 
 /**
