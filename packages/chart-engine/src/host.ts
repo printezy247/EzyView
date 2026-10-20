@@ -23,10 +23,11 @@ import {
   type Time,
   type UTCTimestamp,
 } from "lightweight-charts";
-import type { Candle } from "@ezyview/data-adapters";
+import type { Candle, Impact } from "@ezyview/data-adapters";
 import type { IndicatorDef, SeriesValue } from "@ezyview/indicators";
 import type { Drawing, ScreenPoint } from "@ezyview/drawing-tools";
 import { BgBandsPrimitive } from "./bands.js";
+import { FundamentalLinesPrimitive, type FundamentalLine } from "./fundamentalLines.js";
 import { DrawingsPrimitive } from "./drawings.js";
 import { DARK_THEME, colorAt, type ChartTheme } from "./theme.js";
 import { crosshairModeOf, priceScaleModeOf, timezoneFormatters, type CrosshairModeName, type PriceScaleModeName } from "./settings.js";
@@ -138,6 +139,76 @@ function translucent(hex: string, alpha: number): string {
   return `rgba(${(v >> 16) & 255}, ${(v >> 8) & 255}, ${v & 255}, ${alpha})`;
 }
 
+// --- fundamental event overlays ----------------------------------------------
+
+/**
+ * Structural twin of `@ezyview/fundamentals`' `fundamentalOverlays` output.
+ * Defined here (not imported) so the chart engine never depends on that package.
+ * Times are epoch seconds.
+ */
+export interface FundamentalEventOverlay {
+  markers: FundamentalEventMarker[];
+  lines: number[];
+}
+
+/** One earnings dot or economic-event marker on the time axis. */
+export interface FundamentalEventMarker {
+  time: number;
+  title: string;
+  kind: "earnings" | "event";
+  impact?: Impact;
+}
+
+/** Impact colours shared by event markers and their vertical lines. */
+const IMPACT_COLORS: Record<Impact, string> = {
+  high: "#f23645",
+  medium: "#ff9800",
+  low: "#787b86",
+  none: "#787b86",
+};
+
+/** Earnings dots use the platform's amber so they read apart from events. */
+const EARNINGS_COLOR = "#f0b90b";
+
+/** Map overlay markers onto LWC series markers: amber circles and impact squares. */
+export function toFundamentalMarkers(markers: readonly FundamentalEventMarker[]): SeriesMarker<Time>[] {
+  return markers
+    .map(
+      (m): SeriesMarker<Time> => ({
+        time: m.time as UTCTimestamp,
+        position: "aboveBar",
+        shape: m.kind === "earnings" ? "circle" : "square",
+        color: m.kind === "earnings" ? EARNINGS_COLOR : IMPACT_COLORS[m.impact ?? "high"],
+      }),
+    )
+    .toSorted((a, b) => Number(a.time) - Number(b.time));
+}
+
+/** Vertical lines with the impact colour of the event marker at the same time. */
+export function toFundamentalLines(overlays: FundamentalEventOverlay): FundamentalLine[] {
+  const impactAt = new Map<number, Impact>();
+  for (const m of overlays.markers) {
+    if (m.kind === "event") impactAt.set(m.time, m.impact ?? "high");
+  }
+  return overlays.lines
+    .map((time): FundamentalLine => ({ time, color: IMPACT_COLORS[impactAt.get(time) ?? "high"] }))
+    .toSorted((a, b) => a.time - b.time);
+}
+
+/**
+ * Script `plotshape()` markers and fundamental event markers, composited into
+ * one time-ascending list for the series-markers plugin. Neither input is
+ * mutated, so replacing or clearing the fundamentals layer always leaves the
+ * script layer intact.
+ */
+export function mergeMarkerLayers(
+  script: readonly SeriesMarker<Time>[],
+  fundamental: readonly SeriesMarker<Time>[],
+): SeriesMarker<Time>[] {
+  // Stable sort: equal times keep script markers ahead of fundamentals.
+  return [...script, ...fundamental].toSorted((a, b) => Number(a.time) - Number(b.time));
+}
+
 /**
  * Imperative wrapper around a Lightweight Charts instance.
  *
@@ -160,6 +231,10 @@ export class EzyChart {
   private readonly volumeProfile = new VolumeProfilePrimitive((price) => this.priceToCoordinate(price));
   /** Markers contributed by `plotshape()`-style plots, rebuilt with the data. */
   private markerLayer: SeriesMarker<Time>[] = [];
+  /** Earnings dots + event squares from `setFundamentalEvents`, kept apart from script markers. */
+  private fundamentalMarkerLayer: SeriesMarker<Time>[] = [];
+  /** Full-pane dashed lines for macro events; a primitive, never a drawing. */
+  private readonly fundamentalLines = new FundamentalLinesPrimitive();
   /** v5 exposes markers as a series plugin, so it is bound to the main series. */
   private markerApi: ISeriesMarkersPluginApi<Time> | null = null;
   /** Entry/stop/target levels for the open position, drawn as price lines. */
@@ -217,6 +292,7 @@ export class EzyChart {
 
     this.chart.panes()[0]!.attachPrimitive(this.drawings);
     this.chart.panes()[0]!.attachPrimitive(this.bgBands);
+    this.chart.panes()[0]!.attachPrimitive(this.fundamentalLines);
     this.chart.panes()[0]!.attachPrimitive(this.volumeProfile);
     this.volumeProfile.setEnabled(options.showVolumeProfile ?? false);
     this.volumeProfile.setColors(this.theme.upColor, this.theme.downColor);
@@ -424,6 +500,20 @@ export class EzyChart {
   }
 
   /**
+   * Draw (or replace) earnings markers and macro-event vertical lines.
+   *
+   * Kept in a layer of its own so a refresh never disturbs script markers;
+   * empty overlays clear the fundamentals state and leave the script layer
+   * alone. Lines are a pane primitive, so they survive series rebuilds and
+   * never enter the drawings/undo stack.
+   */
+  setFundamentalEvents(overlays: FundamentalEventOverlay): void {
+    this.fundamentalMarkerLayer = toFundamentalMarkers(overlays.markers);
+    this.fundamentalLines.setLines(toFundamentalLines(overlays));
+    this.applyMarkers();
+  }
+
+  /**
    * Move the crosshair to a time/price on this chart — the read side of
    * crosshair sync. LWC's own API; no-op until a main series exists.
    */
@@ -565,21 +655,22 @@ export class EzyChart {
   }
 
   /**
-   * Push the current markers onto the main series, creating the plugin on
-   * first use so a script with no shapes costs nothing.
+   * Push the composited script + fundamental markers onto the main series,
+   * creating the plugin on first use so an empty chart costs nothing.
    */
   private applyMarkers(): void {
     const series = this.mainSeries;
     if (!series) return;
+    const merged = mergeMarkerLayers(this.markerLayer, this.fundamentalMarkerLayer);
     if (this.markerApi === null) {
-      if (this.markerLayer.length === 0) return;
+      if (merged.length === 0) return;
       this.markerApi = createSeriesMarkers(
         series as unknown as ISeriesApi<SeriesType, Time>,
-        [...this.markerLayer],
+        [...merged],
       );
       return;
     }
-    this.markerApi.setMarkers([...this.markerLayer]);
+    this.markerApi.setMarkers([...merged]);
   }
 
   /** The plugin is bound to one series instance; unbind before rebuilding it. */

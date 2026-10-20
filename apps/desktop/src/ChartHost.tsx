@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Candle, Resolution } from "@ezyview/data-adapters";
 import { EzyChart } from "@ezyview/chart-engine";
-import type { ChartType, IndicatorInstance, ScriptPlotSpec, TradingLine } from "@ezyview/chart-engine";
+import type { ChartType, FundamentalEventOverlay, IndicatorInstance, ScriptPlotSpec, TradingLine } from "@ezyview/chart-engine";
 import type { Drawing, DrawingToolId } from "@ezyview/drawing-tools";
 import { hitTestAll, isComplete, setAnchor, snapToOhlc, translateDrawing } from "@ezyview/drawing-tools";
 import { DEFAULT_DRAWING_STYLE } from "@ezyview/drawing-tools";
@@ -11,6 +11,7 @@ import type { ActiveIndicator, PineScriptRecord } from "./store";
 import type { ChartThemeName, CrosshairModeName, PriceScaleModeName } from "./layout";
 import { loadHistory, tickerOf } from "./data";
 import { summarizeChart } from "./chartSummary";
+import { EMPTY_FUNDAMENTAL_EVENTS } from "./fundamentalEvents";
 
 interface Props {
   symbol: string;
@@ -27,6 +28,8 @@ interface Props {
   replayBar?: number | null;
   /** Entry/stop/target levels for the open position on this symbol. */
   tradingLines?: TradingLine[];
+  /** Earnings markers + macro event lines; absent = none. */
+  fundamentalEvents?: FundamentalEventOverlay;
   /** Crosshair interaction style; absent = normal. */
   crosshairMode?: CrosshairModeName;
   /** Right price-scale rendering; absent = linear. */
@@ -347,6 +350,12 @@ export function ChartHost(props: Props) {
   useEffect(() => {
     chartRef.current?.setTradingLines(props.tradingLines ?? []);
   }, [props.tradingLines]);
+
+  // Fundamental overlays: refetched on symbol/toggle change upstream; each
+  // cell applies whatever it is given (empty = clear).
+  useEffect(() => {
+    chartRef.current?.setFundamentalEvents(props.fundamentalEvents ?? EMPTY_FUNDAMENTAL_EVENTS);
+  }, [props.fundamentalEvents]);
 
   // Switching tools abandons any half-placed drawing; arming a tool also
   // leaves selection mode (tools and selection are mutually exclusive).

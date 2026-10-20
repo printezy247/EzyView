@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { KeyRound, X } from "lucide-react";
-import type { DividendEvent, EarningsReport, EconomicEvent, Impact, IpoEvent, NewsItem } from "@ezyview/data-adapters";
+import type { DividendEvent, IpoEvent } from "@ezyview/data-adapters";
 import {
   buildSources,
   heatColor,
@@ -11,7 +11,8 @@ import {
 import type { FundamentalsSources, ScreenerField, ScreenerRow, SourceSlot } from "@ezyview/fundamentals";
 import { useApiKeys } from "./apiKeys";
 import { market, tickerOf } from "./data";
-import { safeHref } from "./links";
+import { CalendarTab, DAY, day, EarningsTab, Empty, Failed, NewsTab, pct, tone, useLoad } from "./FundamentalsTabs";
+import type { Src } from "./FundamentalsTabs";
 
 interface Props {
   symbol: string;
@@ -31,20 +32,6 @@ const TABS: { id: Tab; label: string; slots: SourceSlot[] }[] = [
   { id: "screener", label: "Screener", slots: [] },
   { id: "heatmap", label: "Heatmap", slots: [] },
 ];
-
-const DAY = 86400;
-const IMPACT_COLOR: Record<Impact, string> = {
-  high: "var(--ev-down)",
-  medium: "var(--ev-warn)",
-  low: "var(--ev-muted)",
-  none: "var(--ev-dim)",
-};
-const when = (epoch: number): string =>
-  new Date(epoch * 1000).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-/** Provider dates are UTC days; render them in UTC so they do not shift a day. */
-const day = (epoch: number): string => new Date(epoch * 1000).toLocaleDateString(undefined, { timeZone: "UTC" });
-const pct = (v: number): string => `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`;
-const tone = (v: number): string => (v >= 0 ? "text-ev-up" : "text-ev-down");
 
 /** Calendar, news, earnings, IPOs, dividends, screener and heatmap in one bottom panel. */
 export function FundamentalsPanel({ symbol, onClose, onPickSymbol }: Props) {
@@ -110,12 +97,6 @@ export function FundamentalsPanel({ symbol, onClose, onPickSymbol }: Props) {
   );
 }
 
-/** Current providers plus a version string that changes when they do. */
-interface Src {
-  sources: FundamentalsSources;
-  version: string;
-}
-
 /** Says, for the open tab, whether the rows are live and from whom, or demo data. */
 function SourceBadge({ slots, live, keyError }: { slots: SourceSlot[]; live: FundamentalsSources["live"]; keyError: string | null }) {
   if (keyError) return <span className="ml-3 truncate text-ev-down">{keyError}</span>;
@@ -133,178 +114,6 @@ function SourceBadge({ slots, live, keyError }: { slots: SourceSlot[]; live: Fun
       LIVE · {names.join(" + ")}
       {demo && <span className="text-ev-warn"> (part demo)</span>}
     </span>
-  );
-}
-
-/** Run an async loader whenever `key` changes, ignoring stale results and keeping errors. */
-function useLoad<T>(load: () => Promise<T>, key: string): { data: T | null; error: string | null } {
-  const [state, setState] = useState<{ data: T | null; error: string | null }>({ data: null, error: null });
-  const loadRef = useRef(load);
-  loadRef.current = load;
-  useEffect(() => {
-    let cancelled = false;
-    setState({ data: null, error: null });
-    loadRef.current().then(
-      (data) => !cancelled && setState({ data, error: null }),
-      (err: unknown) => !cancelled && setState({ data: null, error: err instanceof Error ? err.message : String(err) }),
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [key]);
-  return state;
-}
-
-const Empty = ({ text }: { text: string }) => <p className="p-3 text-[11px] text-ev-muted">{text}</p>;
-const Failed = ({ text }: { text: string }) => <p role="alert" className="p-3 text-[11px] text-ev-down">Could not load: {text}</p>;
-
-function CalendarTab({ src }: { src: Src }) {
-  const [impact, setImpact] = useState<Impact | "all">("all");
-  const { data: events, error } = useLoad<EconomicEvent[]>(() => {
-    const now = Math.floor(Date.now() / 1000);
-    return src.sources.calendar.getCalendar(now - DAY, now + 7 * DAY);
-  }, `calendar:${src.version}`);
-
-  const rows = (events ?? []).filter((e) => impact === "all" || e.impact === impact);
-
-  return (
-    <div className="text-[11px]">
-      <div className="sticky top-0 flex items-center gap-2 bg-ev-bg px-3 py-1.5">
-        <label className="text-ev-muted" htmlFor="impact">
-          Impact
-        </label>
-        <select
-          id="impact"
-          value={impact}
-          onChange={(e) => setImpact(e.target.value as Impact | "all")}
-          className="rounded border border-ev-line bg-ev-panel px-1 py-0.5"
-        >
-          <option value="all">All</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-        </select>
-      </div>
-      {error ? (
-        <Failed text={error} />
-      ) : events === null ? (
-        <Empty text="Loading…" />
-      ) : rows.length === 0 ? (
-        <Empty text="No events match." />
-      ) : (
-        <table className="w-full">
-          <thead className="text-left text-ev-muted">
-            <tr>
-              <th scope="col" className="px-3 py-1 font-normal">Time</th>
-              <th scope="col" className="font-normal">Cur</th>
-              <th scope="col" className="font-normal">Event</th>
-              <th scope="col" className="text-right font-normal">Actual</th>
-              <th scope="col" className="text-right font-normal">Forecast</th>
-              <th scope="col" className="pr-3 text-right font-normal">Previous</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((e) => (
-              <tr key={e.id} className="border-t border-ev-raised">
-                <td className="px-3 py-1 text-ev-muted">{when(e.time)}</td>
-                <td>{e.currency}</td>
-                <td>
-                  <span className="mr-1.5 inline-block size-1.5 rounded-full" style={{ background: IMPACT_COLOR[e.impact] }} aria-label={`${e.impact} impact`} />
-                  {e.title}
-                </td>
-                <td className={`text-right ${e.deviation === "better" ? "text-ev-up" : e.deviation === "worse" ? "text-ev-down" : ""}`}>
-                  {e.actual ?? "—"}
-                </td>
-                <td className="text-right">{e.forecast ?? "—"}</td>
-                <td className="pr-3 text-right text-ev-muted">{e.previous ?? "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
-  );
-}
-
-function NewsTab({ symbol, src }: { symbol: string; src: Src }) {
-  const { data: items, error } = useLoad<NewsItem[]>(
-    () => src.sources.news.getNews({ symbols: [symbol], limit: 25 }),
-    `${symbol}:${src.version}`,
-  );
-  if (error) return <Failed text={error} />;
-  if (items === null) return <Empty text="Loading…" />;
-  if (items.length === 0) return <Empty text="No recent news." />;
-  return (
-    <ul className="divide-y divide-ev-raised text-[11px]">
-      {items.map((n) => (
-        <li key={n.id} className="flex items-center gap-3 px-3 py-1.5">
-          <span className="w-24 shrink-0 text-ev-muted">{when(n.time)}</span>
-          {safeHref(n.url) ? (
-            <a href={safeHref(n.url)} target="_blank" rel="noopener noreferrer" title={n.summary} className="flex-1 hover:text-ev-strong hover:underline">
-              {n.headline}
-            </a>
-          ) : (
-            <span className="flex-1">{n.headline}</span>
-          )}
-          {n.source !== "demo" && <span className="shrink-0 text-ev-muted">{n.source}</span>}
-          {n.sentiment !== undefined && n.sentiment !== 0 && (
-            <span className={tone(n.sentiment)}>{n.sentiment > 0 ? "bullish" : "bearish"}</span>
-          )}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function EarningsTab({ symbol, src }: { symbol: string; src: Src }) {
-  const { data, error } = useLoad<{ earnings: EarningsReport[]; profile: Record<string, number | string | null> }>(
-    async () => {
-      const [earnings, profile] = await Promise.all([src.sources.earnings.getEarnings(symbol), src.sources.profile.getProfile(symbol)]);
-      return { earnings, profile };
-    },
-    `${symbol}:${src.version}`,
-  );
-  if (error) return <Failed text={error} />;
-  if (data === null) return <Empty text="Loading…" />;
-  if (data.earnings.length === 0 && Object.keys(data.profile).length === 0)
-    return <Empty text={`No earnings or company profile for ${tickerOf(symbol)} (stocks only).`} />;
-  return (
-    <div className="flex gap-6 p-3 text-[11px]">
-      <table className="flex-1">
-        <thead className="text-left text-ev-muted">
-          <tr>
-            <th scope="col" className="font-normal">Quarter</th>
-            <th scope="col" className="font-normal">Date</th>
-            <th scope="col" className="text-right font-normal">EPS est.</th>
-            <th scope="col" className="text-right font-normal">EPS actual</th>
-            <th scope="col" className="text-right font-normal">Surprise</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.earnings.map((r) => {
-            const surprise = r.eps != null && r.estimate ? ((r.eps - r.estimate) / Math.abs(r.estimate)) * 100 : null;
-            return (
-              <tr key={r.time} className="border-t border-ev-raised">
-                <td className="py-1">{r.quarter}</td>
-                <td className="text-ev-muted">{day(r.time)}</td>
-                <td className="text-right">{r.estimate?.toFixed(2) ?? "—"}</td>
-                <td className="text-right">{r.eps?.toFixed(2) ?? "upcoming"}</td>
-                <td className={`text-right ${surprise === null ? "" : tone(surprise)}`}>{surprise === null ? "—" : pct(surprise)}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-      <dl className="w-56 shrink-0 space-y-0.5">
-        <dt className="mb-1 font-medium text-ev-strong">{tickerOf(symbol)} profile</dt>
-        {Object.entries(data.profile).map(([k, v]) => (
-          <div key={k} className="flex justify-between">
-            <dt className="text-ev-muted">{k}</dt>
-            <dd>{v ?? "—"}</dd>
-          </div>
-        ))}
-      </dl>
-    </div>
   );
 }
 

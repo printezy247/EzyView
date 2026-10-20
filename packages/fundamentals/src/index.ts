@@ -6,3 +6,4 @@ export * from "./http.js";
 export * from "./finnhub.js";
 export * from "./alphavantage.js";
 export * from "./sources.js";
+export * from "./overlay.js";
