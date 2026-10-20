@@ -18,6 +18,7 @@ import type { Drawing, ScreenPoint } from "@ezyview/drawing-tools";
  */
 export class DrawingsPrimitive implements IPanePrimitive<Time> {
   private drawings: Drawing[] = [];
+  private selectedId: string | null = null;
   private chart: IChartApiBase<Time> | null = null;
   private requestUpdate: () => void = () => {};
 
@@ -25,6 +26,12 @@ export class DrawingsPrimitive implements IPanePrimitive<Time> {
 
   setDrawings(drawings: Drawing[]): void {
     this.drawings = drawings.filter((d) => !d.hidden && d.points.length > 0);
+    this.requestUpdate();
+  }
+
+  /** Mark one drawing as selected so its anchors render as handles. */
+  setSelection(id: string | null): void {
+    this.selectedId = id;
     this.requestUpdate();
   }
 
@@ -69,7 +76,26 @@ export class DrawingsPrimitive implements IPanePrimitive<Time> {
         this.renderOne(ctx, drawing, pts, width, height);
         ctx.restore();
       }
+      this.renderSelectionHandles(ctx);
     });
+  }
+
+  /** 6×6 squares on each anchor of the selected drawing. */
+  private renderSelectionHandles(ctx: CanvasRenderingContext2D): void {
+    if (!this.selectedId) return;
+    const drawing = this.drawings.find((d) => d.id === this.selectedId);
+    if (!drawing) return;
+    ctx.save();
+    ctx.setLineDash([]);
+    ctx.lineWidth = 1;
+    for (const p of this.project(drawing)) {
+      if (!p) continue;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(p.x - 3, p.y - 3, 6, 6);
+      ctx.strokeStyle = drawing.style.color;
+      ctx.strokeRect(p.x - 3, p.y - 3, 6, 6);
+    }
+    ctx.restore();
   }
 
   private renderOne(
