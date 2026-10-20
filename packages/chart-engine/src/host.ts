@@ -162,6 +162,11 @@ export class EzyChart {
   private seriesCache: { data: Candle[]; type: ChartType; theme: ChartTheme; box: number | null; points: never[] } | null =
     null;
 
+  /** Debug: count of click events received by this chart instance. */
+  clickCount = 0;
+  /** Debug: most recent click coordinates and wall-clock time. */
+  lastClick: { x: number; y: number; t: number } | null = null;
+
   constructor(private readonly container: HTMLElement, options: EzyChartOptions = {}) {
     this.opts = options;
     this.type = options.chartType ?? "candles";
@@ -206,11 +211,15 @@ export class EzyChart {
 
     this.chart.subscribeClick((param) => {
       const point = param.point;
-      if (!point) return;
-      const price = this.mainSeries?.coordinateToPrice(point.y) ?? null;
+      if (!point) {
+        this.clickCount += 1;
+        this.lastClick = { x: -1, y: -1, t: Date.now() };
+        return;
+      }
+      const result = this.screenToTimePrice(point.x, point.y);
       this.opts.onClick?.({
-        time: param.time === undefined ? null : Number(param.time),
-        price: price === null ? null : Number(price),
+        time: result.time,
+        price: result.price,
         x: point.x,
         y: point.y,
       });
@@ -619,6 +628,31 @@ export class EzyChart {
   /** Project a drawing's anchors into pixels for hit-testing. */
   projectDrawing(drawing: Drawing): (ScreenPoint | null)[] {
     return this.drawings.project(drawing);
+  }
+
+  /**
+   * Convert a pixel position to a (time, price) pair, validating finiteness and
+   * plot-area bounds. Returns `{ ok:false, time:null, price:null, reason }` when
+   * the click cannot be placed (outside the plot area, non-finite conversion,
+   * or NaN/Infinity input). Increments the debug click counter on every call.
+   */
+  screenToTimePrice(x: number, y: number): { ok: boolean; time: number | null; price: number | null; reason: string | null } {
+    this.clickCount += 1;
+    this.lastClick = { x, y, t: Date.now() };
+
+    if (!Number.isFinite(x) || !Number.isFinite(y)) {
+      return { ok: false, time: null, price: null, reason: "non-finite" };
+    }
+
+    const time = this.coordinateToTime(x);
+    const price = this.coordinateToPrice(y);
+    if (time === null || price === null) {
+      return { ok: false, time: null, price: null, reason: "outside chart" };
+    }
+    if (!Number.isFinite(time) || !Number.isFinite(price)) {
+      return { ok: false, time: null, price: null, reason: "non-finite" };
+    }
+    return { ok: true, time, price, reason: null };
   }
 
   coordinateToTime(x: number): number | null {

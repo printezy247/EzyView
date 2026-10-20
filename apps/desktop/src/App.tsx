@@ -2,6 +2,7 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react
 import type { Candle } from "@ezyview/data-adapters";
 import type { TradingLine } from "@ezyview/chart-engine";
 import { ChartHost } from "./ChartHost";
+import { ChartCommandInput } from "./ChartCommandInput";
 import { DrawingToolbar } from "./DrawingToolbar";
 import { IndicatorDialog } from "./IndicatorDialog";
 import { PineEditor } from "./PineEditor";
@@ -49,6 +50,9 @@ export default function App() {
   const orders = useTrading((s) => s.orders);
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
+  const watchlist = useWorkspace((s) => s.watchlist);
+  const symbols = watchlist.map((w) => w.symbol);
   const [alertOpen, setAlertOpen] = useState(false);
   const apiKeysOpen = useApiKeys((s) => s.dialogOpen);
   const openApiKeys = useApiKeys((s) => s.openDialog);
@@ -121,9 +125,34 @@ export default function App() {
   }, [state.symbol, state.resolution, setReplay]);
 
   // Escape clears the armed drawing tool, like TradingView.
+  // Undo/redo: Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") useWorkspace.getState().setActiveTool(null);
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+      if (e.key === "Escape") {
+        useWorkspace.getState().setActiveTool(null);
+        setCommandOpen(false);
+        return;
+      }
+      if (e.key === "/" && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setCommandOpen(true);
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setCommandOpen((v) => !v);
+        return;
+      }
+      if (!(e.ctrlKey || e.metaKey)) return;
+      if (e.key.toLowerCase() === "z" && !e.shiftKey) {
+        e.preventDefault();
+        useWorkspace.getState().undoDrawing();
+      } else if (e.key.toLowerCase() === "y" || (e.key.toLowerCase() === "z" && e.shiftKey)) {
+        e.preventDefault();
+        useWorkspace.getState().redoDrawing();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -248,6 +277,16 @@ export default function App() {
             onFocus={setActiveChart}
           />
           {activeTool && <ToolHint tool={activeTool} />}
+          {commandOpen && (
+            <ChartCommandInput
+              open={commandOpen}
+              symbols={symbols}
+              currentSymbol={state.symbol}
+              currentResolution={state.resolution}
+              onClose={() => setCommandOpen(false)}
+              onApply={(symbol, resolution) => updateActive({ symbol, resolution: resolution as never })}
+            />
+          )}
         </main>
 
         {objectsOpen && <ObjectTree onClose={() => setObjectsOpen(false)} />}

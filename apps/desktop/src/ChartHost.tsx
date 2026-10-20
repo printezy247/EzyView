@@ -53,8 +53,13 @@ export function ChartHost(props: Props) {
   // In-progress drawing anchors, kept off the store so each pointer move does
   // not trigger a React render.
   const pendingRef = useRef<{ tool: DrawingToolId; points: { time: number; price: number }[] } | null>(null);
+  // Guards against a single physical click producing two anchors.
+  const drawingInProgressRef = useRef(false);
+  const lastClickAtRef = useRef(0);
   // Full loaded history, so replay can reveal a prefix without a refetch.
   const historyRef = useRef<Candle[]>([]);
+  const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
+  const [flash, setFlash] = useState<string | null>(null);
 
   const activeTool = useWorkspace((s) => s.activeTool);
   const setDrawings = useWorkspace((s) => s.setDrawings);
@@ -68,24 +73,44 @@ export function ChartHost(props: Props) {
       theme: THEME_OF[props.theme],
       onCrosshairTime: (t) => crosshairRef.current?.(t),
       onClick: (info) => {
+        const now = Date.now();
+        if (now - lastClickAtRef.current < 150) return;
+        lastClickAtRef.current = now;
+        if (drawingInProgressRef.current) return;
         const { activeTool: tool, magnet } = useWorkspace.getState();
         const chartIndex = chartIndexRef.current;
-        if (!tool || chartIndex === undefined || info.time === null || info.price === null) return;
-        const point = snapToOhlc({ time: info.time, price: info.price }, historyRef.current, magnet);
-        const pending = pendingRef.current;
-        if (!pending || pending.tool !== tool) {
-          pendingRef.current = { tool, points: [point] };
+        if (!tool || chartIndex === undefined) {
+          setFlash("Select a drawing tool first");
           return;
         }
-        pending.points.push(point);
-        if (isComplete(tool, pending.points)) {
-          const drawings = useWorkspace.getState().activeLayout().charts[chartIndex]?.drawings ?? [];
-          setDrawings(
-            [...drawings, { id: newId(), tool, points: pending.points, style: { ...DEFAULT_DRAWING_STYLE } }],
-            chartIndex,
-          );
-          pendingRef.current = null;
-          useWorkspace.getState().setActiveTool(null);
+        if (info.time === null || info.price === null) {
+          setFlash("Click inside the chart area to place a point");
+          return;
+        }
+        drawingInProgressRef.current = true;
+        try {
+          const point = snapToOhlc({ time: info.time, price: info.price }, historyRef.current, magnet);
+          const pending = pendingRef.current;
+          if (!pending || pending.tool !== tool) {
+            pendingRef.current = { tool, points: [point] };
+            setGhost({ x: info.x, y: info.y });
+            return;
+          }
+          pending.points.push(point);
+          setGhost({ x: info.x, y: info.y });
+          if (isComplete(tool, pending.points)) {
+            const drawings = useWorkspace.getState().activeLayout().charts[chartIndex]?.drawings ?? [];
+            const newPoints = [...pending.points];
+            setDrawings(
+              [...drawings, { id: newId(), tool, points: newPoints, style: { ...DEFAULT_DRAWING_STYLE } }],
+              chartIndex,
+            );
+            pendingRef.current = null;
+            setGhost(null);
+            useWorkspace.getState().setActiveTool(null);
+          }
+        } finally {
+          drawingInProgressRef.current = false;
         }
       },
     });
@@ -160,8 +185,17 @@ export function ChartHost(props: Props) {
 
   // Switching tools abandons any half-placed drawing.
   useEffect(() => {
-    if (!activeTool) pendingRef.current = null;
+    if (!activeTool) {
+      pendingRef.current = null;
+      setGhost(null);
+    }
   }, [activeTool]);
+
+  useEffect(() => {
+    if (!flash) return;
+    const t = setTimeout(() => setFlash(null), 2000);
+    return () => clearTimeout(t);
+  }, [flash]);
 
   const withProfile = props.showVolumeProfile ?? false;
   const summary = useMemo(
@@ -174,6 +208,18 @@ export function ChartHost(props: Props) {
   return (
     <>
       <div ref={containerRef} role="img" aria-label={summary} className="absolute inset-0" data-testid="chart-host" />
+      {ghost && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute z-20 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-dashed border-ev-accent"
+          style={{ left: ghost.x, top: ghost.y }}
+        />
+      )}
+      {flash && (
+        <p className="pointer-events-none absolute bottom-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-ev-panel/90 px-2 py-1 text-[11px] text-ev-muted">
+          {flash}
+        </p>
+      )}
       {hidesLayers && (
         <p className="pointer-events-none absolute bottom-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-ev-panel/90 px-2 py-1 text-[11px] text-ev-muted">
           {typeLabel} plots price only, so volume, indicators and Pine plots are hidden.

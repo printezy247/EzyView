@@ -96,8 +96,9 @@ const MAGNET_TITLE: Record<MagnetMode, string> = {
 export function DrawingToolbar() {
   const activeTool = useWorkspace((s) => s.activeTool);
   const setActiveTool = useWorkspace((s) => s.setActiveTool);
-  const drawings = useWorkspace((s) => s.activeChart().drawings);
-  const setDrawings = useWorkspace((s) => s.setDrawings);
+  const undoDrawing = useWorkspace((s) => s.undoDrawing);
+  const redoDrawing = useWorkspace((s) => s.redoDrawing);
+  const canRedo = useWorkspace((s) => s.drawingRedo.length > 0);
   const magnet = useWorkspace((s) => s.magnet);
   const setMagnet = useWorkspace((s) => s.setMagnet);
 
@@ -153,20 +154,27 @@ export function DrawingToolbar() {
         )}
       </button>
 
-      {drawings.length > 0 && (
-        <>
-          <div className="my-1 h-px w-5 bg-ev-raised" />
-          <button
-            type="button"
-            title="Remove last drawing"
-            aria-label="Remove last drawing"
-            onClick={() => setDrawings(drawings.slice(0, -1))}
-            className="flex size-8 items-center justify-center rounded text-[11px] font-medium text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-          >
-            Undo
-          </button>
-        </>
-      )}
+      <div className="my-1 h-px w-5 bg-ev-raised" />
+      <button
+        type="button"
+        title="Undo last drawing (Ctrl+Z)"
+        aria-label="Undo last drawing"
+        onClick={() => undoDrawing()}
+        disabled={false}
+        className="flex size-8 items-center justify-center rounded text-[11px] font-medium text-ev-muted hover:bg-ev-raised hover:text-ev-strong disabled:opacity-40"
+      >
+        U
+      </button>
+      <button
+        type="button"
+        title="Redo last drawing (Ctrl+Y)"
+        aria-label="Redo last drawing"
+        onClick={() => redoDrawing()}
+        disabled={!canRedo}
+        className="flex size-8 items-center justify-center rounded text-[11px] font-medium text-ev-muted hover:bg-ev-raised hover:text-ev-strong disabled:opacity-40"
+      >
+        R
+      </button>
     </div>
   );
 }
