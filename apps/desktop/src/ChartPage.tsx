@@ -19,7 +19,11 @@ import { useWorkspace } from "./store";
 import type { ChartState } from "./store";
 import { useTrading, useTradingTicks } from "./trading";
 import { useApiKeys } from "./apiKeys";
+import { BarsTable } from "./BarsTable";
 import { ChartBottomBar } from "./ChartBottomBar";
+import { ChartMenuHost } from "./ChartMenuHost";
+import type { ChartMenuRequest } from "./ChartMenuHost";
+import { TemplateNameDialog } from "./TemplateNameDialog";
 import { eventsActive } from "./eventOptions";
 import { EMPTY_FUNDAMENTAL_EVENTS, fetchFundamentalEvents } from "./fundamentalEvents";
 import { publishCrosshair, subscribeCrosshair } from "./crosshairBus";
@@ -81,6 +85,19 @@ export function ChartPage({ watchlistOpen, domOpen, objectsOpen, tradingOpen, on
   // Another window's pointer, mirrored onto cells showing the same symbol.
   const [remoteCross, setRemoteCross] = useState<CrosshairMessage | null>(null);
   useEffect(() => subscribeCrosshair((m) => setRemoteCross(m.time === null ? null : m)), []);
+
+  // Right-click menu, Table view and the template-name dialog.
+  const [menu, setMenu] = useState<ChartMenuRequest | null>(null);
+  const [tableOpen, setTableOpen] = useState(false);
+  const [nameOpen, setNameOpen] = useState(false);
+  const saveChartTemplate = useWorkspace((s) => s.saveChartTemplate);
+  const onCellContextMenu = useCallback(
+    (index: number, info: { clientX: number; clientY: number; time: number; price: number }) => {
+      useWorkspace.getState().setActiveChart(index);
+      setMenu({ x: info.clientX, y: info.clientY, time: info.time, price: info.price });
+    },
+    [],
+  );
 
   // Where the pointer last was on the focused chart; Ctrl+V pastes there.
   const lastCursorRef = useRef<{ time: number; price: number } | null>(null);
@@ -241,6 +258,7 @@ export function ChartPage({ watchlistOpen, domOpen, objectsOpen, tradingOpen, on
             syncOn={crosshairSync}
             onCrosshairMove={onCrosshairMove}
             onFocus={setActiveChart}
+            onContextMenu={onCellContextMenu}
           />
           {activeTool && <ToolHint tool={activeTool} />}
           {commandOpen && (
@@ -262,6 +280,20 @@ export function ChartPage({ watchlistOpen, domOpen, objectsOpen, tradingOpen, on
       </div>
 
       <ChartBottomBar />
+
+      {menu && (
+        <ChartMenuHost
+          request={menu}
+          tradingOpen={tradingOpen}
+          objectsOpen={objectsOpen}
+          onTogglePanel={onToggle}
+          onOpenTable={() => setTableOpen(true)}
+          onSaveTemplate={() => setNameOpen(true)}
+          onClose={() => setMenu(null)}
+        />
+      )}
+      {tableOpen && <BarsTable onClose={() => setTableOpen(false)} />}
+      {nameOpen && <TemplateNameDialog onSave={saveChartTemplate} onClose={() => setNameOpen(false)} />}
 
       {tradingOpen && <TradingPanel symbol={state.symbol} />}
 
@@ -301,6 +333,7 @@ interface ChartGridProps {
   syncOn: boolean;
   onCrosshairMove: (t: number | null, p: number | null) => void;
   onFocus: (index: number) => void;
+  onContextMenu: (index: number, info: { clientX: number; clientY: number; time: number; price: number }) => void;
 }
 
 /**
@@ -322,6 +355,7 @@ function ChartGrid({
   syncOn,
   onCrosshairMove,
   onFocus,
+  onContextMenu,
 }: ChartGridProps) {
   const cells: ChartState[] = layout.charts.slice(0, cellCount(layout.grid));
   const multi = cells.length > 1;
@@ -379,6 +413,7 @@ function ChartGrid({
                     ? remoteFor(chart.symbol)
                     : (syncCrosshair ?? remoteFor(chart.symbol))
               }
+              onContextMenu={(info) => onContextMenu(index, info)}
               onCrosshairTime={focused ? onCrosshairTime : undefined}
               onCrosshairMove={focused ? onCrosshairMove : undefined}
             />

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { OrderRequest, OrderSide, OrderType } from "@ezyview/data-adapters";
 import { precisionFor, quoteOf, tickerOf } from "./data";
 import { useMt5 } from "./mt5";
+import { useOrderDraft } from "./orderDraft";
 import { useTrading } from "./trading";
 
 interface Props {
@@ -40,6 +41,20 @@ export function OrderTicket({ symbol }: Props) {
   const [stopLoss, setStopLoss] = useState("");
   const [takeProfit, setTakeProfit] = useState("");
   const [last, setLast] = useState<number | null>(null);
+
+  // A prefilled order from the chart's right-click menu. The form is the
+  // user's: this only loads side/type/price, it never sends anything.
+  const draft = useOrderDraft((d) => d.draft);
+  useEffect(() => {
+    if (!draft || draft.symbol !== symbol) return;
+    setSide(draft.side);
+    setType(draft.type);
+    setLimitPrice(draft.price);
+    // Consume it, so reopening the panel later does not replay an old draft.
+    useOrderDraft.setState({ draft: null });
+    // Keyed on the sequence so a repeated identical draft still applies.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft?.seq]);
   const [sending, setSending] = useState(false);
   /** Screen-reader confirmation of the last order sent. */
   const [notice, setNotice] = useState("");

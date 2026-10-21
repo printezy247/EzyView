@@ -54,6 +54,8 @@ interface Props {
    * there; without it (detached windows) drawing tools are inert.
    */
   chartIndex?: number;
+  /** Right-click on the plot: viewport position plus the time/price under it. */
+  onContextMenu?: (info: { clientX: number; clientY: number; time: number; price: number }) => void;
 }
 
 /**
@@ -488,7 +490,26 @@ export function ChartHost(props: Props) {
   const hidesLayers = typeLabel !== undefined && (props.showVolume || props.indicators.length > 0 || Object.keys(scripts).length > 0);
   return (
     <>
-      <div ref={containerRef} role="img" aria-label={summary} className="absolute inset-0" data-testid="chart-host" />
+      <div
+        ref={containerRef}
+        role="img"
+        aria-label={summary}
+        className="absolute inset-0"
+        data-testid="chart-host"
+        onContextMenu={(e) => {
+          const handler = propsRef.current.onContextMenu;
+          const chart = chartRef.current;
+          if (!handler || !chart) return;
+          e.preventDefault();
+          const rect = e.currentTarget.getBoundingClientRect();
+          const price = chart.coordinateToPrice(e.clientY - rect.top);
+          if (price === null) return;
+          // Past the newest bar there is no time under the cursor; use the newest bar's.
+          const time = chart.coordinateToTime(e.clientX - rect.left) ?? historyRef.current.at(-1)?.time;
+          if (time === undefined) return;
+          handler({ clientX: e.clientX, clientY: e.clientY, time, price });
+        }}
+      />
       {ghost && (
         <div
           aria-hidden
