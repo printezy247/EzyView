@@ -71,6 +71,7 @@ export type PendingAction =
   | { kind: "place"; request: OrderRequest; gate: GateResult; token: string }
   | { kind: "close"; symbol: string; qty?: number; gate: GateResult; token: string }
   | { kind: "cancel"; id: string; gate: GateResult; token: string }
+  | { kind: "amend"; symbol: string; stopLoss?: number | null; takeProfit?: number | null; gate: GateResult; token: string }
   | { kind: "close-all"; rows: { symbol: string; qty: number }[]; gate: GateResult; token: string };
 
 export interface TradingState {
@@ -91,6 +92,12 @@ export interface TradingActions {
   submit(request: OrderRequest): Promise<boolean>;
   cancel(id: string): Promise<boolean>;
   close(symbol: string, qty?: number): Promise<void>;
+  /**
+   * Move or clear an open position's stop and/or target. `null` clears a level,
+   * `undefined` leaves it as it is — so dragging the stop on the chart does not
+   * disturb the target.
+   */
+  amend(symbol: string, levels: { stopLoss?: number | null; takeProfit?: number | null }): Promise<boolean>;
   closeAll(): Promise<void>;
   /** Send the parked action once, after the user confirms. */
   approve(): Promise<boolean>;
@@ -130,6 +137,9 @@ async function sendMt5(action: PendingAction): Promise<string | null> {
       break;
     case "cancel":
       await transport.cancel(action.id, options);
+      break;
+    case "amend":
+      await transport.modify(action.symbol, action.stopLoss ?? undefined, action.takeProfit ?? undefined, options);
       break;
     case "close-all":
       // Serial on purpose: the bridge holds one MT5 lock, and two closes of
@@ -197,6 +207,24 @@ export const useTrading = create<TradingState & TradingActions>((set, get) => ({
     }
     const gate = mt5Gate({ action: "close", symbol, volume: qty });
     park(set, gate, { kind: "close", symbol, qty, gate, token: approvalTokens.mint() });
+  },
+
+  async amend(symbol, levels) {
+    if (useMt5.getState().source !== "mt5") {
+      try {
+        await paperEngine.setLevels(symbol, levels);
+        set({ error: null, note: null });
+        await refreshInto(set);
+        return true;
+      } catch (err) {
+        set({ error: message(err) });
+        return false;
+      }
+    }
+    // Amending an open position is a write like any other, so it parks at the
+    // gate rather than going straight to the bridge.
+    const gate = mt5Gate({ action: "modify", symbol });
+    return park(set, gate, { kind: "amend", symbol, ...levels, gate, token: approvalTokens.mint() });
   },
 
   async closeAll() {

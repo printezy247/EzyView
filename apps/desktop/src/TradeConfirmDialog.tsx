@@ -26,6 +26,13 @@ function describe(action: PendingAction): { title: string; lines: string[] } {
       return { title: "Close position", lines: [`${action.qty ?? "full"} ${action.symbol}`] };
     case "cancel":
       return { title: "Delete pending order", lines: [`ticket ${action.id}`] };
+    case "amend": {
+      const changes = [
+        action.stopLoss !== undefined ? `SL ${action.stopLoss ?? "none"}` : null,
+        action.takeProfit !== undefined ? `TP ${action.takeProfit ?? "none"}` : null,
+      ].filter((v): v is string => v !== null);
+      return { title: `Amend ${action.symbol} levels`, lines: changes.length > 0 ? changes : ["no change"] };
+    }
     case "close-all":
       return {
         title: `Close all ${action.rows.length} positions`,

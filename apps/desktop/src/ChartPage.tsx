@@ -219,6 +219,7 @@ export function ChartPage({ dockTab, onSelectDockTab, onSetDockTab, tradingOpen,
   // The engine only needs ticks where it has something at stake: an open
   // position or a resting order, plus the chart's symbol while the ticket can
   // be used to open one.
+  const amend = useTrading((s) => s.amend);
   const exposure = new Set<string>(positions.map((p) => p.symbol));
   for (const order of orders) exposure.add(order.symbol);
   if (tradingOpen) exposure.add(state.symbol);
@@ -246,6 +247,34 @@ export function ChartPage({ dockTab, onSelectDockTab, onSetDockTab, tradingOpen,
   }, [positions, lineColor]);
   const linesFor = useCallback((symbol: string) => linesBySymbol.get(symbol) ?? NO_LINES, [linesBySymbol]);
 
+  // The stop/target a drag may grab, plus the price the line should render at
+  // while the drag is live. Kept here rather than in the store: it is a
+  // transient pointer preview, not workspace state.
+  const [levelPreview, setLevelPreview] = useState<{ symbol: string; id: string; price: number } | null>(null);
+  const draggableLevelsFor = useCallback(
+    (symbol: string) => {
+      const position = positions.find((p) => p.symbol === symbol);
+      if (!position) return undefined;
+      const out: { id: string; price: number }[] = [];
+      if (position.stopLoss !== undefined) {
+        out.push({ id: "SL", price: levelPreview?.symbol === symbol && levelPreview.id === "SL" ? levelPreview.price : position.stopLoss });
+      }
+      if (position.takeProfit !== undefined) {
+        out.push({ id: "TP", price: levelPreview?.symbol === symbol && levelPreview.id === "TP" ? levelPreview.price : position.takeProfit });
+      }
+      return out.length > 0 ? out : undefined;
+    },
+    [positions, levelPreview],
+  );
+  const onLevelPreview = useCallback((symbol: string, id: string, price: number) => setLevelPreview({ symbol, id, price }), []);
+  const onLevelCommit = useCallback(
+    (symbol: string, levels: { stopLoss?: number; takeProfit?: number }) => {
+      setLevelPreview(null);
+      void amend(symbol, levels);
+    },
+    [amend],
+  );
+
   return (
     <>
       <div className="relative flex min-h-0 flex-1">
@@ -256,6 +285,9 @@ export function ChartPage({ dockTab, onSelectDockTab, onSetDockTab, tradingOpen,
             layout={layout}
             replayBar={replayBar}
             linesFor={linesFor}
+            draggableLevelsFor={draggableLevelsFor}
+            onLevelPreview={onLevelPreview}
+            onLevelCommit={onLevelCommit}
             activeSymbol={state.symbol}
             fundamentalEvents={fundamentalEvents}
             onCrosshairTime={onCrosshairTime}
@@ -355,6 +387,10 @@ interface ChartGridProps {
   layout: Layout;
   replayBar: number | null;
   linesFor: (symbol: string) => TradingLine[];
+  /** Which levels on a symbol a pointer may drag, or undefined = none. */
+  draggableLevelsFor: (symbol: string) => { id: string; price: number }[] | undefined;
+  onLevelPreview: (symbol: string, id: string, price: number) => void;
+  onLevelCommit: (symbol: string, levels: { stopLoss?: number; takeProfit?: number }) => void;
   /** Focused cell's symbol — its overlays apply to matching cells only. */
   activeSymbol: string;
   fundamentalEvents: FundamentalEventOverlay;
@@ -381,6 +417,9 @@ function ChartGrid({
   layout,
   replayBar,
   linesFor,
+  draggableLevelsFor,
+  onLevelPreview,
+  onLevelCommit,
   activeSymbol,
   fundamentalEvents,
   onCrosshairTime,
@@ -437,6 +476,9 @@ function ChartGrid({
               drawings={chart.drawings}
               replayBar={focused ? replayBar : null}
               tradingLines={linesFor(chart.symbol)}
+              draggableLevels={focused ? draggableLevelsFor(chart.symbol) : undefined}
+              onLevelPreview={onLevelPreview}
+              onLevelCommit={onLevelCommit}
               fundamentalEvents={chart.symbol === activeSymbol ? fundamentalEvents : undefined}
               crosshairMode={chart.crosshairMode}
               priceScale={chart.priceScale}

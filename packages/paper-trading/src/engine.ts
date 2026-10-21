@@ -263,6 +263,32 @@ export class PaperTradingEngine implements TradingAdapter {
     return this.marketOrder(symbol, position.side === "long" ? "sell" : "buy", size);
   }
 
+  /**
+   * Move (or clear) an open position's stop and target.
+   *
+   * `null` clears a level, `undefined` leaves it alone — which is what dragging
+   * one line on the chart needs: the entry and the other level must not move.
+   * A non-finite price is rejected rather than stored, because a NaN stop would
+   * silently never trigger.
+   */
+  async setLevels(symbol: string, patch: { stopLoss?: number | null; takeProfit?: number | null }): Promise<PaperPosition> {
+    const position = this.positions.get(symbol);
+    if (!position) throw new PaperTradingError("no_position", `No open position on ${symbol}`);
+    for (const value of [patch.stopLoss, patch.takeProfit]) {
+      if (typeof value === "number" && !Number.isFinite(value)) {
+        throw new PaperTradingError("bad_level", "stop and target must be finite prices");
+      }
+    }
+    const next: PaperPosition = {
+      ...position,
+      stopLoss: patch.stopLoss === null ? undefined : (patch.stopLoss ?? position.stopLoss),
+      takeProfit: patch.takeProfit === null ? undefined : (patch.takeProfit ?? position.takeProfit),
+    };
+    this.positions.set(symbol, next);
+    this.onUpdate?.();
+    return next;
+  }
+
   /** Flatten everything at market — the panic button above the positions list. */
   async closeAll(): Promise<Order[]> {
     const closed: Order[] = [];

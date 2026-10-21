@@ -4,6 +4,7 @@ import { EzyChart } from "@ezyview/chart-engine";
 import type { ChartType, FundamentalEventOverlay, IndicatorInstance, ScriptPlotSpec, TradingLine } from "@ezyview/chart-engine";
 import type { Drawing, DrawingToolId } from "@ezyview/drawing-tools";
 import { hitTestAll, isComplete, setAnchor, snapToOhlc, translateDrawing } from "@ezyview/drawing-tools";
+import { hitTestLevel, moveLevel } from "./priceDrag";
 import { DEFAULT_DRAWING_STYLE } from "@ezyview/drawing-tools";
 import type { PinePlot } from "@ezyview/pine-transpiler";
 import { THEME_OF, uid as newId, useWorkspace } from "./store";
@@ -32,6 +33,16 @@ interface Props {
   replayBar?: number | null;
   /** Entry/stop/target levels for the open position on this symbol. */
   tradingLines?: TradingLine[];
+  /**
+   * Which of `tradingLines` a drag may grab, and by what id ("SL"/"TP"). Absent
+   * = the levels are display-only, which is right in a detached window and for
+   * the entry line.
+   */
+  draggableLevels?: { id: string; price: number }[];
+  /** While dragging: the level's preview price, so the chart can redraw it. */
+  onLevelPreview?: (symbol: string, id: string, price: number) => void;
+  /** On drop: amend the position. Only the dragged level is in the patch. */
+  onLevelCommit?: (symbol: string, levels: { stopLoss?: number; takeProfit?: number }) => void;
   /** Earnings markers + macro event lines; absent = none. */
   fundamentalEvents?: FundamentalEventOverlay;
   /** Crosshair interaction style; absent = normal. */
@@ -79,6 +90,12 @@ export function ChartHost(props: Props) {
   // never serves stale identity after a prop change.
   const propsRef = useRef(props);
   propsRef.current = props;
+  // Draggable stop/target levels and their drop handler, read inside the
+  // mount-only pointer effect so a new position does not re-subscribe it.
+  const levelDragRef = useRef<{ symbol: string; levels: { id: string; price: number }[] } | null>(null);
+  levelDragRef.current = props.draggableLevels ? { symbol: props.symbol, levels: props.draggableLevels } : null;
+  const onLevelPreview = props.onLevelPreview;
+  const onLevelCommit = props.onLevelCommit;
 
   // In-progress drawing anchors, kept off the store so each pointer move does
   // not trigger a React render.
@@ -166,10 +183,15 @@ export function ChartHost(props: Props) {
   // Select-and-drag when no tool is armed. The pointerdown listener runs in
   // the capture phase, before lightweight-charts' own canvas listeners, so a
   // grab on a drawing stops the event there and the chart never starts panning.
+  //
+  // Two gestures share the effect because only one can be active at a time and
+  // both need the same capture/release-pan bookkeeping: dragging a drawing, and
+  // dragging a position's stop/target level.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     type Drag = {
+      kind: "drawing";
       id: string;
       /** 0-based anchor index, or -1 for the body. */
       handle: number;
@@ -178,7 +200,15 @@ export function ChartHost(props: Props) {
       startPoint: { time: number; price: number };
       moved: boolean;
     };
-    let drag: Drag | null = null;
+    type LevelDrag = {
+      kind: "level";
+      /** "SL" or "TP". */
+      id: string;
+      symbol: string;
+      /** Where the line should be drawn while dragging; null until the first move. */
+      preview: number | null;
+    };
+    let gesture: Drag | LevelDrag | null = null;
 
     const localPoint = (e: PointerEvent) => {
       const r = el.getBoundingClientRect();
@@ -192,9 +222,25 @@ export function ChartHost(props: Props) {
       if (!chart || chartIndex === undefined) return;
       const st = useWorkspace.getState();
       if (st.activeTool) return;
+      const pt = localPoint(e);
+
+      // A stop/target line sits on top of the drawings, so it gets first refusal
+      // on a grab: the same pixel could otherwise start a drawing drag.
+      const levels = levelDragRef.current;
+      if (levels) {
+        const projected = levels.levels.map((l) => ({ ...l, y: chart.priceToCoordinate(l.price) }));
+        const hitLevel = hitTestLevel(projected, pt.y);
+        if (hitLevel) {
+          e.stopPropagation();
+          gesture = { kind: "level", id: hitLevel.id, symbol: levels.symbol, preview: null };
+          el.setPointerCapture(e.pointerId);
+          chart.setPanEnabled(false);
+          return;
+        }
+      }
+
       const drawings = st.activeLayout().charts[chartIndex]?.drawings ?? [];
       if (drawings.length === 0) return;
-      const pt = localPoint(e);
       const hit = hitTestAll(
         drawings.map((d) => ({ drawing: d, screen: chart.projectDrawing(d) })),
         pt,
@@ -207,7 +253,8 @@ export function ChartHost(props: Props) {
       if (!target || target.locked) return;
       const start = chart.screenToTimePrice(pt.x, pt.y);
       if (!start.ok || start.time === null || start.price === null) return;
-      drag = {
+      gesture = {
+        kind: "drawing",
         id: hit.id,
         handle: hit.handle,
         snapshot: [...drawings], // entries are immutable; the array copy is the boundary
@@ -219,13 +266,27 @@ export function ChartHost(props: Props) {
     };
 
     const onMove = (e: PointerEvent) => {
-      const cur = drag;
+      const cur = gesture;
       if (!cur) return;
       const chart = chartRef.current;
+      if (!chart) return;
+      const pt = localPoint(e);
+
+      if (cur.kind === "level") {
+        // The line follows the pointer visually; the position is only amended on
+        // pointerup, so a stray click never moves a stop.
+        const price = moveLevel({ id: cur.id, price: 0, y: null }, chart.coordinateToPrice(pt.y));
+        if (price !== null) {
+          cur.preview = price;
+          onLevelPreview?.(cur.symbol, cur.id, price);
+        }
+        e.preventDefault();
+        return;
+      }
+
       const chartIndex = chartIndexRef.current;
-      if (!chart || chartIndex === undefined) return;
-      const raw = localPoint(e);
-      const conv = chart.screenToTimePrice(raw.x, raw.y);
+      if (chartIndex === undefined) return;
+      const conv = chart.screenToTimePrice(pt.x, pt.y);
       if (!conv.ok || conv.time === null || conv.price === null) return;
       const st = useWorkspace.getState();
       const target = cur.snapshot.find((d) => d.id === cur.id);
@@ -244,11 +305,18 @@ export function ChartHost(props: Props) {
     };
 
     const onFinish = (e: PointerEvent) => {
-      const cur = drag;
+      const cur = gesture;
       if (!cur) return;
-      const chartIndex = chartIndexRef.current;
-      if (cur.moved && chartIndex !== undefined) {
-        useWorkspace.getState().commitDrawingHistory(cur.snapshot, chartIndex);
+      if (cur.kind === "level") {
+        if (cur.preview !== null) {
+          // One amend carrying only the dragged level, so the other one stays put.
+          onLevelCommit?.(cur.symbol, cur.id === "SL" ? { stopLoss: cur.preview } : { takeProfit: cur.preview });
+        }
+      } else {
+        const chartIndex = chartIndexRef.current;
+        if (cur.moved && chartIndex !== undefined) {
+          useWorkspace.getState().commitDrawingHistory(cur.snapshot, chartIndex);
+        }
       }
       try {
         el.releasePointerCapture(e.pointerId);
@@ -256,7 +324,7 @@ export function ChartHost(props: Props) {
         // Capture can already be gone (e.g. the window lost the pointer).
       }
       chartRef.current?.setPanEnabled(true);
-      drag = null;
+      gesture = null;
     };
 
     el.addEventListener("pointerdown", onDown, true);
@@ -268,7 +336,7 @@ export function ChartHost(props: Props) {
       el.removeEventListener("pointermove", onMove);
       el.removeEventListener("pointerup", onFinish);
       el.removeEventListener("pointercancel", onFinish);
-      if (drag) chartRef.current?.setPanEnabled(true);
+      if (gesture) chartRef.current?.setPanEnabled(true);
     };
   }, []);
 

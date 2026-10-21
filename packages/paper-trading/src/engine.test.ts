@@ -222,3 +222,46 @@ describe("PaperTradingEngine", () => {
     expect(engine.isConnected()).toBe(false);
   });
 });
+
+describe("amending an open position's stop and target", () => {
+  let engine: PaperTradingEngine;
+
+  beforeEach(async () => {
+    engine = makeEngine();
+    await engine.connect();
+    engine.updateQuote("DEMO:BTCUSDT", 100);
+    await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "market", qty: 10, stopLoss: 90, takeProfit: 120 });
+  });
+
+  it("moves a stop and leaves the target where it was", async () => {
+    const next = await engine.setLevels("DEMO:BTCUSDT", { stopLoss: 95 });
+    expect(next.stopLoss).toBe(95);
+    expect(next.takeProfit).toBe(120);
+  });
+
+  it("moves a target and leaves the stop where it was", async () => {
+    const next = await engine.setLevels("DEMO:BTCUSDT", { takeProfit: 130 });
+    expect(next.takeProfit).toBe(130);
+    expect(next.stopLoss).toBe(90);
+  });
+
+  it("clears a level when the patch passes null", async () => {
+    const next = await engine.setLevels("DEMO:BTCUSDT", { stopLoss: null });
+    expect(next.stopLoss).toBeUndefined();
+    expect(next.takeProfit).toBe(120);
+  });
+
+  it("refuses a non-finite level instead of arming a broken stop", async () => {
+    await expect(engine.setLevels("DEMO:BTCUSDT", { stopLoss: Number.NaN })).rejects.toThrow(PaperTradingError);
+  });
+
+  it("refuses to amend a symbol with no open position", async () => {
+    await expect(engine.setLevels("DEMO:ETHUSDT", { stopLoss: 1 })).rejects.toThrow(PaperTradingError);
+  });
+
+  it("applies the amended stop on the next quote", async () => {
+    await engine.setLevels("DEMO:BTCUSDT", { stopLoss: 98 });
+    engine.updateQuote("DEMO:BTCUSDT", 97);
+    await expect(engine.getPositions()).resolves.toEqual([]);
+  });
+});
