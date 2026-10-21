@@ -186,7 +186,7 @@ export function ChartCommandInput({ open, symbols, currentSymbol, currentResolut
               onClick={() => (mode === "symbol" ? applySymbol(item) : applyTimeframe(item))}
               onMouseEnter={() => setActive(i)}
               className={`flex w-full px-3 py-1.5 text-left text-sm ${
-                i === active ? "bg-ev-raised text-ev-strong" : "text-ev-text-2"
+                i === active ? "bg-ev-raised text-ev-strong" : "text-ev-muted"
               }`}
             >
               {item}

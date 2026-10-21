@@ -10,6 +10,7 @@
     "./*": "./src/*.ts"
   },
   "dependencies": {
+    "@ezyview/brand": "*",
     "@ezyview/data-adapters": "*",
     "@ezyview/drawing-tools": "*",
     "@ezyview/indicators": "*",

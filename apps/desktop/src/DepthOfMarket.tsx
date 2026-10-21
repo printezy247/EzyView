@@ -94,7 +94,7 @@ function Row({
         className="absolute inset-y-0 left-0"
         style={{
           width,
-          backgroundColor: side === "ask" ? "rgba(239, 83, 80, 0.14)" : "rgba(38, 166, 154, 0.14)",
+          backgroundColor: `color-mix(in srgb, var(--ev-${side === "ask" ? "down" : "up"}) 14%, transparent)`,
         }}
         aria-hidden
       />

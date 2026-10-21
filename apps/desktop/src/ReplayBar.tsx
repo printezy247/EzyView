@@ -126,7 +126,7 @@ export function ReplayBar({ totalBars }: Props) {
         aria-label="Replay position"
       />
 
-      <span className="w-24 text-right tabular-nums text-ev-text-2">
+      <span className="w-24 text-right tabular-nums text-ev-muted">
         {replayBar + 1} / {totalBars}
       </span>
 

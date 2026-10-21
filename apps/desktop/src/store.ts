@@ -15,7 +15,17 @@ import { applyTemplate, restoreTemplates, templateFromChart } from "./chartTempl
 import type { ChartTemplate } from "./chartTemplates";
 import { pasteAt } from "./drawingClipboard";
 import { activeChartOf, restoreWorkspace, setActiveChart, setGrid, updateChart } from "./layout";
-import type { ActiveIndicator, ChartState, GridMode, Layout, PersistedWorkspace, ReplaySpeed } from "./layout";
+import { resolveAppTheme } from "./layout";
+import type {
+  ActiveIndicator,
+  AppTheme,
+  ChartState,
+  ChartThemeName,
+  GridMode,
+  Layout,
+  PersistedWorkspace,
+  ReplaySpeed,
+} from "./layout";
 import { readDetached } from "./windows";
 
 export type { ActiveIndicator, ChartState, GridMode, Layout } from "./layout";
@@ -63,7 +73,7 @@ export interface WatchEntry {
   changePct: number | null;
 }
 
-const LAYOUT_COLORS = ["#2962ff", "#ff9800", "#4caf50", "#e91e63", "#00bcd4", "#9c27b0"];
+const LAYOUT_COLORS = ["#d91400", "#0ea600", "#f2a93b", "#4a90e2", "#9c27b0", "#00bcd4"];
 
 /** How many superseded sources a script keeps in its version list. */
 const MAX_PINE_VERSIONS = 20;
@@ -98,6 +108,17 @@ function defaultLayout(index: number): Layout {
 
 interface WorkspaceStore {
   layouts: Layout[];
+  /**
+   * Colour theme for the shell (rails, toolbar, panels, dialogs). `auto`
+   * follows the active chart's theme, which is what the app did before the
+   * brand pass; `light`/`dark`/`tokyo` pin the chrome so a mixed-theme grid
+   * stays readable.
+   */
+  appTheme: AppTheme;
+  /** Pin or unpin the shell theme. */
+  setAppTheme(theme: AppTheme): void;
+  /** The theme the shell actually paints with (resolves `auto`). */
+  shellTheme(): ChartThemeName;
   activeLayoutId: string;
   /** Currently armed drawing tool, or null when panning/selecting. */
   activeTool: DrawingToolId | null;
@@ -244,6 +265,11 @@ function syncBoundAlert(
   };
 }
 
+/** Old saves predate the app theme; anything unknown means "follow the chart". */
+function restoreAppTheme(raw: unknown): AppTheme {
+  return raw === "dark" || raw === "light" || raw === "tokyo" ? raw : "auto";
+}
+
 const initial = [defaultLayout(0)];
 
 /** Detached chart windows share this origin's storage but must never write the workspace. */
@@ -269,6 +295,9 @@ export const useWorkspace = create<WorkspaceStore>()(
   persist(
     (set, get) => ({
       layouts: initial,
+      appTheme: "auto",
+      setAppTheme: (theme) => set({ appTheme: theme }),
+      shellTheme: () => resolveAppTheme(get().appTheme, activeChartOf(get().activeLayout()).theme),
       activeLayoutId: initial[0]!.id,
       activeTool: null,
       dirty: {},
@@ -689,8 +718,14 @@ export const useWorkspace = create<WorkspaceStore>()(
       name: "ezyview.workspace",
       version: 1,
       storage: workspaceStorage,
-      partialize: (s): PersistedWorkspace & { pineScripts: Record<string, PineScriptRecord>; eventOptions: EventOptions; chartTemplates: ChartTemplate[] } => ({
+      partialize: (s): PersistedWorkspace & {
+        pineScripts: Record<string, PineScriptRecord>;
+        eventOptions: EventOptions;
+        chartTemplates: ChartTemplate[];
+        appTheme: AppTheme;
+      } => ({
         layouts: s.layouts,
+        appTheme: s.appTheme,
         activeLayoutId: s.activeLayoutId,
         magnet: s.magnet,
         crosshairSync: s.crosshairSync,
@@ -704,6 +739,7 @@ export const useWorkspace = create<WorkspaceStore>()(
         return {
           ...current,
           ...restoreWorkspace(persisted, current, defaultChartState(), getIndicator),
+          appTheme: restoreAppTheme(raw.appTheme),
           // Old blobs predate the key entirely; restorePineScripts turns that
           // (and any malformed entry) into a valid, possibly empty map.
           pineScripts: restorePineScripts(raw.pineScripts),

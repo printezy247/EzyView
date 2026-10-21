@@ -1,58 +1,87 @@
 @import "tailwindcss";
 
 /*
+ * Inter, self-hosted so the UI renders identically on every OS. The variable
+ * font is 352 KB and covers the whole 100–900 weight axis plus italic; the
+ * licence is SIL OFL 1.1 (see `public/fonts/Inter-LICENSE.txt`). Loading it
+ * from a CDN would break the offline desktop app.
+ */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/InterVariable.woff2") format("woff2-variations");
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/InterVariable-Italic.woff2") format("woff2-variations");
+}
+
+/*
  * Colour tokens. Components use them as Tailwind colours (`bg-ev-panel`,
  * `text-ev-muted`, `border-ev-line/40`) so the whole shell follows the theme
  * set on <html data-theme>. Text tokens meet WCAG AA (4.5:1) on bg, panel and
  * raised surfaces in both themes.
+ *
+ * The palette is Investing.com's: brand red #d91400, market green #0ea600,
+ * link blue #1256a0, gold #f2a93b, dark chrome #181c21. These values are
+ * mirrored in `packages/brand/src/index.ts` (the single source of truth for
+ * the chart engine); keep the two in step.
  */
 :root,
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --ev-bg: #0e1117;
-  --ev-panel: #131722;
-  --ev-raised: #1e222d;
-  --ev-line: #2a2e39;
-  --ev-line-strong: #363a45;
-  --ev-dim: #434651;
-  --ev-faint: #868993;
-  --ev-muted: #9598a1;
-  --ev-text-2: #b2b5be;
-  --ev-text: #d1d4dc;
+  --ev-bg: #12161d;
+  --ev-panel: #181c21;
+  --ev-raised: #22272f;
+  --ev-chrome: #0e1216;
+  --ev-line: #2a2f38;
+  --ev-line-strong: #3a4049;
+  --ev-dim: #4a4f59;
+  --ev-faint: #8b909a;
+  --ev-muted: #aab0ba;
+  --ev-text: #d8dce2;
   --ev-strong: #ffffff;
-  --ev-accent: #2962ff;
-  --ev-accent-hover: #1e53e5;
-  --ev-accent-text: #5b8cff;
-  --ev-up: #26a69a;
-  --ev-down: #ef5350;
-  --ev-up-solid: #00796b;
-  --ev-down-solid: #d32f2f;
-  --ev-warn: #f0b90b;
+  --ev-accent: #d91400;
+  --ev-accent-hover: #b91100;
+  --ev-accent-text: #ff4b3e;
+  --ev-up: #0ea600;
+  --ev-down: #d91400;
+  --ev-up-solid: #0a7d00;
+  --ev-down-solid: #b91100;
+  --ev-link: #4a90e2;
+  --ev-warn: #f2a93b;
   --ev-orange: #ff9800;
 }
 
 :root[data-theme="light"] {
   color-scheme: light;
   --ev-bg: #ffffff;
-  --ev-panel: #f8f9fd;
-  --ev-raised: #eceff5;
-  --ev-line: #e0e3eb;
-  --ev-line-strong: #c9ccd6;
+  --ev-panel: #f7f8fa;
+  --ev-raised: #eceff2;
+  --ev-chrome: #181c21;
+  --ev-line: #e2e5ea;
+  --ev-line-strong: #c9cdd4;
   --ev-dim: #b2b5be;
-  --ev-faint: #646772;
-  --ev-muted: #50535e;
-  --ev-text-2: #2a2e39;
-  --ev-text: #131722;
-  --ev-strong: #0e1117;
-  --ev-accent: #2962ff;
-  --ev-accent-hover: #1e53e5;
-  --ev-accent-text: #1e53e5;
-  --ev-up: #00796b;
-  --ev-down: #c62828;
-  --ev-up-solid: #00796b;
-  --ev-down-solid: #d32f2f;
-  --ev-warn: #8a6500;
-  --ev-orange: #e65100;
+  --ev-faint: #6b7078;
+  --ev-muted: #4a4e56;
+  --ev-text: #1b1f26;
+  --ev-strong: #000000;
+  --ev-accent: #d91400;
+  --ev-accent-hover: #b91100;
+  --ev-accent-text: #c11200;
+  --ev-up: #0ea600;
+  --ev-down: #d91400;
+  --ev-up-solid: #0a7d00;
+  --ev-down-solid: #b91100;
+  --ev-link: #1256a0;
+  --ev-warn: #8a7000;
+  --ev-orange: #b1560f;
 }
 
 :root[data-theme="tokyo"] {
@@ -60,21 +89,22 @@
   --ev-bg: #1a1b26;
   --ev-panel: #24283b;
   --ev-raised: #292e42;
+  --ev-chrome: #16161e;
   --ev-line: #3b4261;
   --ev-line-strong: #565f89;
   --ev-dim: #565f89;
   --ev-faint: #787c99;
   --ev-muted: #9aa5ce;
-  --ev-text-2: #a9b1d6;
   --ev-text: #c0caf5;
   --ev-strong: #ffffff;
-  --ev-accent: #2962ff;
-  --ev-accent-hover: #1e53e5;
-  --ev-accent-text: #5b8cff;
+  --ev-accent: #d91400;
+  --ev-accent-hover: #b91100;
+  --ev-accent-text: #ff4b3e;
   --ev-up: #9ece6a;
   --ev-down: #f7768e;
   --ev-up-solid: #4c7a3f;
   --ev-down-solid: #a53a4a;
+  --ev-link: #7aa2f7;
   --ev-warn: #e0af68;
   --ev-orange: #ff9e64;
 }
@@ -83,12 +113,12 @@
   --color-ev-bg: var(--ev-bg);
   --color-ev-panel: var(--ev-panel);
   --color-ev-raised: var(--ev-raised);
+  --color-ev-chrome: var(--ev-chrome);
   --color-ev-line: var(--ev-line);
   --color-ev-line-strong: var(--ev-line-strong);
   --color-ev-dim: var(--ev-dim);
   --color-ev-faint: var(--ev-faint);
   --color-ev-muted: var(--ev-muted);
-  --color-ev-text-2: var(--ev-text-2);
   --color-ev-text: var(--ev-text);
   --color-ev-strong: var(--ev-strong);
   --color-ev-accent: var(--ev-accent);
@@ -98,9 +128,62 @@
   --color-ev-down: var(--ev-down);
   --color-ev-up-solid: var(--ev-up-solid);
   --color-ev-down-solid: var(--ev-down-solid);
+  --color-ev-link: var(--ev-link);
   --color-ev-warn: var(--ev-warn);
   --color-ev-orange: var(--ev-orange);
 }
+
+/*
+ * Type ramp. One scale for the whole app — the redesign removed the
+ * text-[9px]/[10px]/[11px]/[12px] soup. Sizes are registered as Tailwind
+ * utilities (`text-micro`, `text-dense`, `text-base`, `text-body`,
+ * `text-title`, `text-head`) so no component needs an arbitrary size.
+ */
+@theme {
+  --text-micro: 10px;
+  --text-micro--line-height: 14px;
+  --text-dense: 11px;
+  --text-dense--line-height: 16px;
+  --text-base: 12px;
+  --text-base--line-height: 18px;
+  --text-body: 13px;
+  --text-body--line-height: 20px;
+  --text-title: 15px;
+  --text-title--line-height: 20px;
+  --text-head: 18px;
+  --text-head--line-height: 24px;
+
+  /* One radius, one elevation language. */
+  --radius: 4px;
+  --radius-ev: 4px;
+
+  /*
+   * Z-index scale. Every stacking context in the app picks a rung: canvas <
+   * docked panels < sticky headers < nav rails < dropdowns < overlay scrims <
+   * dialogs < command palette < toasts. Monaco's internal layers sit between
+   * dropdown and overlay.
+   */
+  --z-canvas: 0;
+  --z-panel: 10;
+  --z-sticky: 20;
+  --z-nav: 30;
+  --z-dropdown: 40;
+  --z-overlay: 50;
+  --z-dialog: 60;
+  --z-palette: 70;
+  --z-toast: 80;
+}
+
+/*
+ * Numbers inside tables, prices and P&L line up column-wise. Inter ships
+ * tabular figures; the fallbacks in a proportional font still read acceptably
+ * because the class is only about alignment.
+ */
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
 
 html,
 body,

@@ -15,7 +15,7 @@ const ICONS: Record<string, ReactNode> = {
 
 export function NavRail() {
   return (
-    <nav aria-label="Sections" className="flex w-12 shrink-0 flex-col items-center gap-1 border-r border-ev-raised py-2">
+    <nav aria-label="Sections" className="flex w-12 shrink-0 flex-col items-center gap-1 border-r border-ev-raised bg-ev-chrome py-2">
       {NAV_ITEMS.map((item) => (
         <NavLink
           key={item.key}

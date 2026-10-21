@@ -5,7 +5,7 @@ import { drawingLabel } from "./ObjectTree";
 import { applyDrawingTemplate, listDrawingTemplates, saveDrawingTemplate } from "./drawingTemplates";
 import type { DrawingTemplate } from "./drawingTemplates";
 
-const COLORS = ["#2962ff", "#f23645", "#ff9800", "#4caf50", "#9c27b0", "#00bcd4", "#ffd700", "#ffffff"];
+const COLORS = ["#d91400", "#0ea600", "#f2a93b", "#4a90e2", "#9c27b0", "#00bcd4", "#ffd700", "#ffffff"];
 const WIDTHS = [1, 2, 3, 4];
 const LINE_STYLES = ["solid", "dashed", "dotted"] as const;
 
@@ -222,7 +222,7 @@ export function DrawingProperties() {
         <button
           type="button"
           onClick={() => remove(d.id)}
-          className={`${btn} flex items-center gap-1 text-[#f23645] hover:text-[#ff5f6d]`}
+          className={`${btn} flex items-center gap-1 text-ev-down hover:opacity-80`}
         >
           <Trash2 size={12} aria-hidden />
           Delete

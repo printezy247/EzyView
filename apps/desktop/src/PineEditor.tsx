@@ -17,12 +17,15 @@ import type { PineScriptRecord } from "./store";
 import { parseParamValues } from "./pineOptimize";
 import { exportScriptJson, parseScriptJson } from "./pineShare";
 import { sanitizeExportFilename } from "./exportUi";
+import { themeColors } from "@ezyview/brand";
 
 interface Props {
   onClose: () => void;
   /** Bars for the active symbol/interval, used as the script's data source. */
   bars: { open: number; high: number; low: number; close: number; volume: number }[];
   symbol: string;
+  /** The app theme, so the code editor matches the shell. */
+  uiTheme: "dark" | "light" | "tokyo";
 }
 
 /**
@@ -72,7 +75,7 @@ function errorLocation(e: unknown): SyntaxLocation | null {
  * Monaco is configured lazily on first mount so the worker and language
  * registration do not cost anything until the editor's route is visited.
  */
-export function PineEditor({ onClose, bars, symbol }: Props) {
+export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
   const host = useRef<HTMLDivElement | null>(null);
   const editor = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
   // Marker updates need the Monaco API outside the mount effect (run button),
@@ -128,7 +131,7 @@ export function PineEditor({ onClose, bars, symbol }: Props) {
       const created = monaco.editor.create(host.current, {
         value: source,
         language: "pine",
-        theme: "pine-dark",
+        theme: `pine-${uiTheme === "light" ? "light" : "dark"}`,
         automaticLayout: true,
         minimap: { enabled: false },
         fontSize: 12,
@@ -168,6 +171,12 @@ export function PineEditor({ onClose, bars, symbol }: Props) {
     // Mount-only: the editor owns its buffer after this.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Follow app-theme switches without rebuilding the editor (both variants
+  // were registered up front).
+  useEffect(() => {
+    monacoApi.current?.editor.setTheme(uiTheme === "light" ? "pine-light" : "pine-dark");
+  }, [uiTheme]);
 
   /**
    * Recompute markers from the live buffer: lint findings always, plus the
@@ -379,7 +388,7 @@ export function PineEditor({ onClose, bars, symbol }: Props) {
                 refreshMarkers();
               }}
               className={`rounded px-2 py-1 text-xs ${
-                s.id === scriptId ? "bg-ev-accent text-white" : "bg-ev-line text-ev-text-2 hover:bg-ev-line-strong"
+                s.id === scriptId ? "bg-ev-accent text-white" : "bg-ev-line text-ev-muted hover:bg-ev-line-strong"
               }`}
             >
               {s.name}
@@ -400,7 +409,7 @@ export function PineEditor({ onClose, bars, symbol }: Props) {
               setResult(null);
               refreshMarkers();
             }}
-            className="rounded bg-ev-line p-1.5 text-ev-text-2 hover:bg-ev-line-strong"
+            className="rounded bg-ev-line p-1.5 text-ev-muted hover:bg-ev-line-strong"
             aria-label="Delete script"
           >
             <Trash2 size={13} aria-hidden />
@@ -416,7 +425,7 @@ export function PineEditor({ onClose, bars, symbol }: Props) {
         </div>
       )}
       {record?.plots.length ? (
-        <div className="flex flex-wrap items-center gap-3 border-t border-ev-raised px-4 py-2 text-xs text-ev-text-2">
+        <div className="flex flex-wrap items-center gap-3 border-t border-ev-raised px-4 py-2 text-xs text-ev-muted">
           <TrendingUp size={13} aria-hidden />
           <span>
             {record.plots.length} plot{record.plots.length === 1 ? "" : "s"}
@@ -519,7 +528,7 @@ function OptimizePanel({
 
   return (
     <div className="border-t border-ev-raised px-4 py-2 text-xs">
-      <div className="mb-1.5 flex items-center gap-3 text-ev-text-2">
+      <div className="mb-1.5 flex items-center gap-3 text-ev-muted">
         <span className="font-semibold uppercase tracking-wider text-ev-faint">Optimize</span>
         <button
           type="button"
@@ -566,7 +575,7 @@ function OptimizePanel({
       )}
       {outcome && outcome.best && (
         <>
-          <div className="mb-1 flex items-center gap-3 text-ev-text-2">
+          <div className="mb-1 flex items-center gap-3 text-ev-muted">
             <span>
               {outcome.runs.length} run{outcome.runs.length === 1 ? "" : "s"}
             </span>
@@ -587,7 +596,7 @@ function OptimizePanel({
                 <th scope="col" className="py-0.5 font-semibold">PF</th>
               </tr>
             </thead>
-            <tbody className="text-ev-text-2">
+            <tbody className="text-ev-muted">
               {/* Runs arrive best-first; the first row is the highlighted best. */}
               {outcome.runs.slice(0, 10).map((r, i) => (
                 <tr key={i} className={`border-t border-ev-raised ${i === 0 ? "bg-ev-line/40" : ""}`}>
@@ -616,7 +625,7 @@ function StrategyTester({ result, inputs }: { result: BacktestResult; inputs?: R
   return (
     <div className="border-t border-ev-raised px-4 py-2 text-xs">
       <EquityCurve equity={result.equity} />
-      <div className="mb-1.5 flex items-center gap-4 text-ev-text-2">
+      <div className="mb-1.5 flex items-center gap-4 text-ev-muted">
         <span className="font-semibold uppercase tracking-wider text-ev-faint">Strategy Tester</span>
         <Metric label="Trades" value={String(result.trades.length)} />
         <Metric
@@ -636,7 +645,7 @@ function StrategyTester({ result, inputs }: { result: BacktestResult; inputs?: R
         <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
           <span className="text-ev-faint">Inputs</span>
           {inputEntries.map(([key, value]) => (
-            <span key={key} className="rounded bg-ev-line px-1.5 py-0.5 text-ev-text-2">
+            <span key={key} className="rounded bg-ev-line px-1.5 py-0.5 text-ev-muted">
               {key}={String(value)}
             </span>
           ))}
@@ -652,7 +661,7 @@ function StrategyTester({ result, inputs }: { result: BacktestResult; inputs?: R
             <th scope="col" className="py-0.5 font-semibold">Return</th>
           </tr>
         </thead>
-        <tbody className="text-ev-text-2">
+        <tbody className="text-ev-muted">
           {recent.map((t, i) => (
             <tr key={`${t.entryBar}-${t.exitBar}-${i}`} className="border-t border-ev-raised">
               <td className="py-0.5 capitalize">{t.side}</td>
@@ -709,7 +718,7 @@ function EquityCurve({ equity }: { equity: readonly number[] }) {
           y1={y(last)}
           x2={x(0) + 2}
           y2={y(last)}
-          stroke={last >= first ? "#3fb950" : "#f85149"}
+          stroke={last >= first ? "var(--ev-up)" : "var(--ev-down)"}
           strokeWidth={1.5}
           vectorEffect="non-scaling-stroke"
         />
@@ -717,7 +726,7 @@ function EquityCurve({ equity }: { equity: readonly number[] }) {
         <polyline
           points={coords}
           fill="none"
-          stroke={last >= first ? "#3fb950" : "#f85149"}
+          stroke={last >= first ? "var(--ev-up)" : "var(--ev-down)"}
           strokeWidth={1.5}
           vectorEffect="non-scaling-stroke"
         />
@@ -908,23 +917,42 @@ function registerPineLanguage(monaco: typeof Monaco): void {
     },
   });
 
-  monaco.editor.defineTheme("pine-dark", {
-    base: "vs-dark",
-    inherit: true,
-    rules: [
-      { token: "keyword", foreground: "ff7b72" },
-      { token: "type.identifier", foreground: "79c0ff" },
-      { token: "namespace", foreground: "d2a8ff" },
-      { token: "predefined", foreground: "ffa657" },
-      { token: "constant", foreground: "79c0ff" },
-      { token: "number", foreground: "79c0ff" },
-      { token: "string", foreground: "a5d6ff" },
-      { token: "comment", foreground: "8b949e" },
-      { token: "operator", foreground: "ff7b72" },
-    ],
-    colors: {
-      "editor.background": "#0e1117",
-      "editor.lineHighlightBackground": "#161b22",
-    },
-  });
+  definePineTheme(monaco);
+}
+
+/** Monaco wants bare RRGGBB, not `#rrggbb` — strip the hash. */
+const bare = (hex: string): string => hex.replace("#", "");
+
+/**
+ * The Pine editor theme is built from the app's brand tokens (contrast-corrected
+ * where a token is too dim for code), and dropped in twice so a theme switch
+ * only needs `setTheme`, not a re-parse.
+ */
+function definePineTheme(monaco: typeof Monaco): void {
+  for (const theme of ["dark", "light"] as const) {
+    const c = themeColors(theme);
+    monaco.editor.defineTheme(`pine-${theme}`, {
+      base: theme === "light" ? "vs" : "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "keyword", foreground: bare(c.accentText) },
+        { token: "type.identifier", foreground: bare(c.link) },
+        ...(theme === "dark"
+          ? [
+              { token: "namespace", foreground: "d2a8ff" },
+              { token: "predefined", foreground: bare(c.orange) },
+              { token: "string", foreground: "a5d6ff" },
+            ]
+          : []),
+        { token: "constant", foreground: bare(c.link) },
+        { token: "number", foreground: bare(c.link) },
+        { token: "comment", foreground: bare(c.faint) },
+        { token: "operator", foreground: bare(c.accentText) },
+      ],
+      colors: {
+        "editor.background": bare(c.bg),
+        "editor.lineHighlightBackground": bare(theme === "light" ? c.raised : c.panel),
+      },
+    });
+  }
 }

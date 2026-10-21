@@ -6,6 +6,7 @@ import tailwindcss from "@tailwindcss/vite";
 const src = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
 const alias = {
+  "@ezyview/brand": src("../../packages/brand/src/index.ts"),
   "@ezyview/data-adapters": src("../../packages/data-adapters/src/index.ts"),
   "@ezyview/indicators": src("../../packages/indicators/src/index.ts"),
   "@ezyview/chart-engine": src("../../packages/chart-engine/src/index.ts"),

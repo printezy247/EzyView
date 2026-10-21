@@ -310,7 +310,7 @@ function HeatmapTab({ onPick }: { onPick: (symbol: string) => void }) {
           <title>{`${t.label} ${pct(t.changePct)}`}</title>
           <rect x={t.x} y={t.y} width={t.w} height={t.h} fill={heatColor(t.changePct)} className="stroke-ev-bg" strokeWidth={2} />
           {t.w > 60 && t.h > 30 && (
-            <text x={t.x + t.w / 2} y={t.y + t.h / 2} textAnchor="middle" fill="#fff" fontSize={Math.min(22, t.w / 6)}>
+            <text x={t.x + t.w / 2} y={t.y + t.h / 2} textAnchor="middle" fill="currentColor" fontSize={Math.min(22, t.w / 6)}>
               <tspan x={t.x + t.w / 2} dy="-0.2em" fontWeight={600}>
                 {t.label}
               </tspan>

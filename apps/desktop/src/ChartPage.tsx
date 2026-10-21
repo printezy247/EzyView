@@ -17,6 +17,7 @@ import { ObjectTree } from "./ObjectTree";
 import { loadHistory } from "./data";
 import { useWorkspace } from "./store";
 import type { ChartState } from "./store";
+import { themeColors } from "@ezyview/brand";
 import { useTrading, useTradingTicks } from "./trading";
 import { useApiKeys } from "./apiKeys";
 import { BarsTable } from "./BarsTable";
@@ -219,22 +220,26 @@ export function ChartPage({ watchlistOpen, domOpen, objectsOpen, tradingOpen, on
   // Entry/stop/target for the position on this chart, as constant price lines.
   // Built once per positions change, so each cell gets a stable array and the
   // chart only redraws its lines when a fill actually changes them.
+  // Entry/stop/target for the position on this chart, as constant price lines.
+  // Built once per positions change, so each cell gets a stable array and the
+  // chart only redraws its lines when a fill actually changes them.
+  const lineColor = useCallback((role: "accent" | "up" | "down") => themeColors(state.theme)[role], [state.theme]);
   const linesBySymbol = useMemo(() => {
     const out = new Map<string, TradingLine[]>();
     for (const position of positions) {
       const lines: TradingLine[] = [
-        { price: position.entryPrice, color: "#2962ff", title: position.side === "long" ? "LONG" : "SHORT" },
+        { price: position.entryPrice, color: lineColor("accent"), title: position.side === "long" ? "LONG" : "SHORT" },
       ];
       if (position.stopLoss !== undefined) {
-        lines.push({ price: position.stopLoss, color: "#ef5350", title: "SL", dashed: true });
+        lines.push({ price: position.stopLoss, color: lineColor("down"), title: "SL", dashed: true });
       }
       if (position.takeProfit !== undefined) {
-        lines.push({ price: position.takeProfit, color: "#26a69a", title: "TP", dashed: true });
+        lines.push({ price: position.takeProfit, color: lineColor("up"), title: "TP", dashed: true });
       }
       if (!out.has(position.symbol)) out.set(position.symbol, lines);
     }
     return out;
-  }, [positions]);
+  }, [positions, lineColor]);
   const linesFor = useCallback((symbol: string) => linesBySymbol.get(symbol) ?? NO_LINES, [linesBySymbol]);
 
   return (

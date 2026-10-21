@@ -142,7 +142,7 @@ export function CommandPalette({ open, onClose, groups }: Props) {
               onMouseEnter={() => setActive(i)}
               onClick={() => run(c)}
               className={`flex cursor-pointer items-center gap-3 px-4 py-2 text-xs ${
-                i === active ? "bg-ev-raised text-ev-strong" : "text-ev-text-2"
+                i === active ? "bg-ev-raised text-ev-strong" : "text-ev-muted"
               }`}
             >
               <span className="w-20 shrink-0 text-[11px] uppercase tracking-wider text-ev-faint">{c.group}</span>

@@ -1,15 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { CHART_THEMES, DARK_THEME, INDICATOR_COLORS, LIGHT_THEME, colorAt } from "./theme";
+import { CHART_THEMES, DARK_THEME, INDICATOR_COLORS, LIGHT_THEME, colorAt } from "@ezyview/chart-engine";
 import {
   INVEST_DARK,
   INVEST_LIGHT,
   THEME_NAMES,
-  TOKYO,
   isThemeName,
   themeColors,
   themeSurface,
-} from "./brand";
+} from "./index";
 
 /**
  * Brand contract: EzyView's palette is Investing.com's, not TradingView's.
@@ -22,9 +21,10 @@ import {
 // TradingView's signature colours. None of them may appear in app surfaces.
 const TRADINGVIEW_COLORS = ["#2962ff", "#131722", "#1e222d"];
 
-const hexOf = (colors: Record<string, string>, pattern: RegExp): string | undefined => {
-  const key = Object.keys(colors).find((k) => pattern.test(k));
-  return key ? colors[key]?.toLowerCase() : undefined;
+const hexOf = (colors: object, pattern: RegExp): string | undefined => {
+  const entries = Object.entries(colors) as [string, string][];
+  const hit = entries.find(([k]) => pattern.test(k));
+  return hit ? hit[1].toLowerCase() : undefined;
 };
 
 describe("palette is the Investing.com brand", () => {
@@ -40,8 +40,11 @@ describe("palette is the Investing.com brand", () => {
     expect(dark.down).toBe("#d91400");
   });
 
-  it("keeps the Investing.com dark chrome and gold", () => {
-    expect(INVEST_DARK.chrome).toBe("#181c21");
+  it("keeps the Investing.com chrome, gold and link blue", () => {
+    // Chrome is the darkest surface: rails/nav sit under the panel colour, and
+    // the light theme's dark bar is literally Investing.com's #181c21.
+    expect(INVEST_DARK.chrome).toBe("#0e1216");
+    expect(INVEST_DARK.panel).toBe("#181c21");
     expect(INVEST_DARK.warn).toBe("#f2a93b");
     expect(INVEST_LIGHT.chrome).toBe("#181c21");
     expect(INVEST_LIGHT.link).toBe("#1256a0");
@@ -66,7 +69,7 @@ describe("palette is the Investing.com brand", () => {
     const tokens = themeSurface(INVEST_DARK);
     expect(tokens["--ev-accent"]).toBe("#d91400");
     expect(tokens["--ev-up"]).toBe("#0ea600");
-    expect(tokens["--ev-chrome"]).toBe("#181c21");
+    expect(tokens["--ev-chrome"]).toBe(INVEST_DARK.chrome);
     // Every token maps to a kebab-case --ev-* name.
     for (const key of Object.keys(tokens)) expect(key).toMatch(/^--ev-[a-z0-9-]+$/);
   });
@@ -89,15 +92,15 @@ describe("chart palette derives from the brand", () => {
   });
 
   it("exposes exactly the three UI themes", () => {
-    expect(Object.keys(CHART_THEMES).sort()).toEqual(["dark", "light", "tokyo"]);
+    expect(Object.keys(CHART_THEMES).toSorted()).toEqual(["dark", "light", "tokyo"]);
     expect(CHART_THEMES.dark).toBe(DARK_THEME);
   });
 
-  it("matches the UI theme's chrome on the chart background", () => {
+  it("matches the UI theme's surface on the chart background", () => {
     expect(DARK_THEME.background).toBe(themeColors("dark").bg);
     expect(DARK_THEME.paneSeparator).toBe(themeColors("dark").line);
     expect(LIGHT_THEME.background).toBe(themeColors("light").bg);
-    expect(TOKYO.background).toBe(themeColors("tokyo").bg);
+    expect(CHART_THEMES.tokyo.background).toBe(themeColors("tokyo").bg);
   });
 
   it("drops TradingView blue from the indicator cycle", () => {

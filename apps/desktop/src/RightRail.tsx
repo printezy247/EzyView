@@ -18,7 +18,7 @@ interface Props {
 /** Icon rail on the right edge: one click shows or hides any panel, with a lit icon for each open one. */
 export function RightRail({ panels, onToggle }: Props) {
   return (
-    <nav aria-label="Panels" className="flex w-10 shrink-0 flex-col items-center gap-1 border-l border-ev-raised py-2">
+    <nav aria-label="Panels" className="flex w-10 shrink-0 flex-col items-center gap-1 border-l border-ev-raised bg-ev-chrome py-2">
       {ITEMS.map((item) => (
         <button
           key={item.id}

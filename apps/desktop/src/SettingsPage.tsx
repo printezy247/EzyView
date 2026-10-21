@@ -34,6 +34,8 @@ export function SettingsPage() {
   const layout = useWorkspace((s) => s.activeLayout());
   const updateActive = useWorkspace((s) => s.updateActive);
   const theme = activeChartOf(layout).theme;
+  const appTheme = useWorkspace((s) => s.appTheme);
+  const setAppTheme = useWorkspace((s) => s.setAppTheme);
   const openDialog = useApiKeys((s) => s.openDialog);
   // `?tab=appearance` deep-links a section (the chart's right-click "Settings…").
   const [params] = useSearchParams();
@@ -92,6 +94,29 @@ export function SettingsPage() {
         {tab === "appearance" && (
           <>
             <p className="mb-3 text-[11px] text-ev-muted">Colour theme for the shell and the active chart.</p>
+            <div className="flex gap-2" role="radiogroup" aria-label="App theme">
+              {(["auto", "dark", "light", "tokyo"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  role="radio"
+                  aria-checked={appTheme === t}
+                  onClick={() => setAppTheme(t)}
+                  className={
+                    appTheme === t
+                      ? "rounded bg-ev-raised px-3 py-1.5 text-[11px] font-medium capitalize text-ev-strong"
+                      : "rounded border border-ev-line px-3 py-1.5 text-[11px] capitalize text-ev-muted hover:text-ev-strong"
+                  }
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+            <p className="mb-3 mt-1.5 text-[11px] text-ev-faint">
+              Auto follows the focused chart. Pin a theme to keep the chrome still across a mixed grid.
+            </p>
+            <h2 className="mb-1 text-[11px] font-medium uppercase tracking-wider text-ev-faint">Chart theme</h2>
+            <p className="mb-3 text-[11px] text-ev-muted">Palette for this chart cell only.</p>
             <div className="flex gap-2" role="radiogroup" aria-label="Theme">
               {(["dark", "light", "tokyo"] as const).map((t) => (
                 <button
