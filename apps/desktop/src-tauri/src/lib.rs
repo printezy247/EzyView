@@ -20,6 +20,40 @@ async fn open_chart_window(app: AppHandle, query: String) -> Result<(), String> 
     Ok(())
 }
 
+/// A bare file name for the save dialog's default: no separators, no traversal.
+fn is_plain_file_name(name: &str) -> bool {
+    !name.is_empty() && name.len() <= 200 && name != ".." && !name.contains(['/', '\\', '\0'])
+}
+
+/// Ask the user where to save, then write `bytes` there. The dialog runs in
+/// Rust so the webview never supplies a write path. `Ok(false)` = cancelled.
+#[tauri::command]
+async fn save_file(
+    app: AppHandle,
+    default_name: String,
+    filter_name: String,
+    extensions: Vec<String>,
+    bytes: Vec<u8>,
+) -> Result<bool, String> {
+    use tauri_plugin_dialog::DialogExt;
+    if !is_plain_file_name(&default_name) {
+        return Err("unexpected file name".into());
+    }
+    let exts: Vec<&str> = extensions.iter().map(String::as_str).collect();
+    let picked = app
+        .dialog()
+        .file()
+        .set_file_name(default_name)
+        .add_filter(filter_name, &exts)
+        .blocking_save_file();
+    let Some(path) = picked else {
+        return Ok(false);
+    };
+    let path = path.into_path().map_err(|e| e.to_string())?;
+    std::fs::write(path, bytes).map_err(|e| e.to_string())?;
+    Ok(true)
+}
+
 /// Keyring service name; each provider key is stored under its own account.
 const KEYRING_SERVICE: &str = "EzyView";
 /// The only secrets the webview may read or write: data-provider keys and the MT5 MCP key.
@@ -84,7 +118,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_sql::Builder::default().build())
-        .invoke_handler(tauri::generate_handler![open_chart_window, api_key_get, api_key_set])
+        .invoke_handler(tauri::generate_handler![open_chart_window, api_key_get, api_key_set, save_file])
         .run(tauri::generate_context!())
         .expect("error while running EzyView");
 }
@@ -97,6 +131,14 @@ mod tests {
     fn rejects_unknown_key_names() {
         assert!(api_key_get("../etc".into()).is_err());
         assert!(api_key_set("github".into(), "x".into()).is_err());
+    }
+
+    #[test]
+    fn save_file_names_must_be_plain() {
+        assert!(is_plain_file_name("chart-BTCUSDT-1D.png"));
+        for bad in ["", "..", "../x.png", "a/b.png", "a\\b.png", "a\0b.png"] {
+            assert!(!is_plain_file_name(bad), "should reject {bad:?}");
+        }
     }
 
     #[test]

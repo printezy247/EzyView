@@ -33,8 +33,8 @@ export function chartPngFilename(meta: { symbol: string; resolution: string }): 
 
 /**
  * Trigger a browser download of a Blob via the anchor idiom. No-op outside
- * the browser (vitest runs in node). Task 6 swaps the interior for the Tauri
- * save dialog; the signature stays.
+ * the browser (vitest runs in node). Exporters go through `saveBlob`, which
+ * calls this outside Tauri.
  */
 export function downloadBlob(blob: Blob, filename: string): void {
   if (typeof document === "undefined") return;
@@ -46,23 +46,56 @@ export function downloadBlob(blob: Blob, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
-/**
- * Trigger a browser download of a data URL (the PNG save path): the href is
- * the payload itself — no fetch, no Blob conversion.
- */
-export function downloadDataUrl(dataUrl: string, filename: string): void {
-  if (typeof document === "undefined") return;
-  const a = document.createElement("a");
-  a.href = dataUrl;
-  a.download = filename;
-  a.click();
+/** Decode a base64 data URL into a Blob (the PNG save path under Tauri needs bytes). */
+export function dataUrlToBlob(dataUrl: string): Blob {
+  const comma = dataUrl.indexOf(",");
+  const mime = /^data:([^;,]+)/.exec(dataUrl)?.[1] ?? "application/octet-stream";
+  const binary = atob(dataUrl.slice(comma + 1));
+  const bytes = Uint8Array.from(binary, (ch) => ch.charCodeAt(0));
+  return new Blob([bytes], { type: mime });
 }
 
-/** Save an export source's composited chart as a PNG download. */
+/** Dialog filter for a file name: `chart.png` → `{ name: "PNG", extensions: ["png"] }`. */
+export function saveFilterFor(filename: string): { name: string; extensions: string[] } {
+  const ext = filename.includes(".") ? filename.slice(filename.lastIndexOf(".") + 1).toLowerCase() : "";
+  return ext ? { name: ext.toUpperCase(), extensions: [ext] } : { name: "All files", extensions: ["*"] };
+}
+
+const inTauri = (): boolean => typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+
+export type SaveResult = "saved" | "cancelled" | "failed";
+
+/**
+ * The one save path every exporter uses. In the browser: the anchor download.
+ * Under Tauri: the native "where to save" dialog (run in Rust) and a write;
+ * cancelling aborts cleanly with no file, and failures alert the user.
+ */
+export async function saveBlob(blob: Blob, filename: string): Promise<SaveResult> {
+  if (!inTauri()) {
+    downloadBlob(blob, filename);
+    return "saved";
+  }
+  try {
+    const { invoke } = await import("@tauri-apps/api/core");
+    const filter = saveFilterFor(filename);
+    const saved = await invoke<boolean>("save_file", {
+      defaultName: filename,
+      filterName: filter.name,
+      extensions: filter.extensions,
+      bytes: Array.from(new Uint8Array(await blob.arrayBuffer())),
+    });
+    return saved ? "saved" : "cancelled";
+  } catch (e) {
+    window.alert(`Could not save ${filename}: ${e instanceof Error ? e.message : String(e)}`);
+    return "failed";
+  }
+}
+
+/** Save an export source's composited chart as a PNG. */
 export function saveChartPng(source: ExportSource): void {
   const png = source.getPng();
   if (!png) return;
-  downloadDataUrl(png, chartPngFilename(source.meta()));
+  void saveBlob(dataUrlToBlob(png), chartPngFilename(source.meta()));
 }
 
 /** Save name for chart data: `chart-<symbol>-<resolution>.<ext>`. */
@@ -73,19 +106,19 @@ export function chartDataFilename(meta: { symbol: string; resolution: string }, 
 /** Save the bars the user can see (replay-sliced) as CSV. */
 export function saveChartCsv(source: ExportSource): void {
   const blob = new Blob([candlesToCsv(source.getCandles())], { type: "text/csv;charset=utf-8" });
-  downloadBlob(blob, chartDataFilename(source.meta(), "csv"));
+  void saveBlob(blob, chartDataFilename(source.meta(), "csv"));
 }
 
 /** Save the bars the user can see (replay-sliced) as JSON. */
 export function saveChartJson(source: ExportSource): void {
   const blob = new Blob([candlesToJson(source.getCandles(), source.meta())], { type: "application/json" });
-  downloadBlob(blob, chartDataFilename(source.meta(), "json"));
+  void saveBlob(blob, chartDataFilename(source.meta(), "json"));
 }
 
 /** Save the layout as a shareable JSON file. */
 export function saveLayoutJson(layout: Layout): void {
   const blob = new Blob([exportLayoutJson(layout)], { type: "application/json" });
-  downloadBlob(blob, `${sanitizeExportFilename(`layout-${layout.name}`, "layout")}.json`);
+  void saveBlob(blob, `${sanitizeExportFilename(`layout-${layout.name}`, "layout")}.json`);
 }
 
 /**
@@ -152,7 +185,7 @@ export function saveChartSvg(source: ExportSource): void {
   const png = source.getPng();
   if (!png) return;
   const blob = new Blob([svgFromPng(png, imageMeta(source))], { type: "image/svg+xml" });
-  downloadBlob(blob, chartPngFilename(source.meta()).replace(/\.png$/, ".svg"));
+  void saveBlob(blob, chartPngFilename(source.meta()).replace(/\.png$/, ".svg"));
 }
 
 /** Open the print dialog for the focused chart (Save as PDF). */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chartPngFilename, sanitizeExportFilename } from "./exportUi";
+import { chartPngFilename, dataUrlToBlob, sanitizeExportFilename, saveFilterFor } from "./exportUi";
 
 /**
  * The sanitizer moved here from PineEditor (pineExportFilename) in Phase 8 so
@@ -46,5 +46,19 @@ describe("chartPngFilename", () => {
 
   it("degrades to a safe name when the meta is empty", () => {
     expect(chartPngFilename({ symbol: "", resolution: "" })).toBe("chart--.png");
+  });
+});
+
+describe("save helpers", () => {
+  it("derives a dialog filter from the file name", () => {
+    expect(saveFilterFor("chart-BTC-1D.png")).toEqual({ name: "PNG", extensions: ["png"] });
+    expect(saveFilterFor("layout-x.JSON")).toEqual({ name: "JSON", extensions: ["json"] });
+    expect(saveFilterFor("noext")).toEqual({ name: "All files", extensions: ["*"] });
+  });
+
+  it("decodes a base64 data URL to a typed Blob of the same bytes", async () => {
+    const blob = dataUrlToBlob(`data:image/png;base64,${btoa("\x89PNG")}`);
+    expect(blob.type).toBe("image/png");
+    expect([...new Uint8Array(await blob.arrayBuffer())]).toEqual([0x89, 0x50, 0x4e, 0x47]);
   });
 });
