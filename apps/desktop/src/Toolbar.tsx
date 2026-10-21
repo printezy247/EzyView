@@ -1,17 +1,22 @@
 import type { Resolution } from "@ezyview/data-adapters";
 import type { ChartType } from "@ezyview/chart-engine";
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { ArrowLeftRight, CandlestickChart, Clock, Eye, FlaskConical, Search, Telescope } from "lucide-react";
+import { ArrowLeftRight, CandlestickChart, Clock, Eye, FlaskConical, Search, Share2, Telescope } from "lucide-react";
 import { CommandPalette } from "./CommandPalette";
 import type { CommandGroup } from "./CommandPalette";
 import { RESOLUTION_GROUPS, resolutionName } from "./data";
 import { Menu } from "./Menu";
 import type { MenuEntry } from "./Menu";
 import { SymbolSearch } from "./SymbolSearch";
+import { getActiveExportSource, getExportSourceVersion, subscribeExportSources } from "./exportBridge";
+import type { ExportSource } from "./exportBridge";
+import { copyChartEmbed, copyChartLink, pickTextFile, printChart, saveChartCsv, saveChartJson, saveChartPng, saveChartSvg, saveLayoutJson } from "./exportUi";
+import { parseLayoutJson } from "./layoutShare";
+import { getIndicator } from "@ezyview/indicators";
 import { GRID_MODES } from "./layout";
 import type { ChartThemeName, CrosshairModeName, GridMode, PriceScaleModeName } from "./layout";
-import { useWorkspace } from "./store";
+import { defaultChartState, useWorkspace } from "./store";
 import type { MagnetMode } from "@ezyview/drawing-tools";
 
 /** Timezones offered in the View menu; empty = exchange/UTC default. */
@@ -100,6 +105,51 @@ const toggle = (id: string, label: string, checked: boolean, onSelect: () => voi
   onSelect,
 });
 
+/** Bridge surface the Export menu drives; injectable so the builder stays testable. */
+export interface ExportMenuApi {
+  getActive: () => ExportSource | null;
+  savePng: (source: ExportSource) => void;
+  saveCsv: (source: ExportSource) => void;
+  saveJson: (source: ExportSource) => void;
+  copyLink: (source: ExportSource) => void;
+  copyEmbed: (source: ExportSource) => void;
+  saveSvg: (source: ExportSource) => void;
+  printPdf: (source: ExportSource) => void;
+  saveLayout: () => void;
+  importLayout: () => void;
+}
+
+/**
+ * The Export menu's rows (Phase 8 starts with one). Actions only: the PNG
+ * entry is disabled until some chart cell has published an export source, and
+ * re-reads the bridge at click time so a stale render can't save nothing.
+ * The same array feeds the Ctrl+K palette through the groups below.
+ */
+export function buildExportEntries(api: ExportMenuApi): MenuEntry[] {
+  const action = (id: string, label: string, run: (source: ExportSource) => void): MenuEntry => ({
+    kind: "action",
+    id,
+    label,
+    disabled: api.getActive() === null,
+    onSelect: () => {
+      const source = api.getActive();
+      if (source) run(source);
+    },
+  });
+  return [
+    action("save-png", "Save chart image (PNG)", api.savePng),
+    action("save-csv", "Export chart data (CSV)", api.saveCsv),
+    action("save-json", "Export chart data (JSON)", api.saveJson),
+    action("save-svg", "Export chart image (SVG)", api.saveSvg),
+    action("print-pdf", "Export chart image (PDF, print)", api.printPdf),
+    action("copy-link", "Copy chart link", api.copyLink),
+    action("copy-embed", "Copy embed snippet", api.copyEmbed),
+    { kind: "separator", id: "s-layout" },
+    { kind: "action", id: "save-layout", label: "Export layout (JSON)", onSelect: api.saveLayout },
+    { kind: "action", id: "import-layout", label: "Import layout…", onSelect: api.importLayout },
+  ];
+}
+
 /**
  * The top bar is a quiet menu bar, not a row of buttons. Features are grouped
  * by intent, and every menu item is also reachable from the Ctrl+K palette:
@@ -108,12 +158,17 @@ const toggle = (id: string, label: string, checked: boolean, onSelect: () => voi
  *   Analysis                — research tools (fundamentals, options, replay, alerts)
  *   Trade                   — order ticket, depth of market, journal
  *   View                    — side panels, overlays, theme, windows
+ *   Export                  — save the focused chart (PNG first; formats grow later)
  */
 export function Toolbar(props: Props) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const pineActive = location.pathname === "/pine";
+  // Export registry changes (a chart cell mounts or focus moves) bump a
+  // version so this bar re-renders and the Export entry's disabled state
+  // tracks getActiveExportSource() instead of freezing at first paint.
+  useSyncExternalStore(subscribeExportSources, getExportSourceVersion, getExportSourceVersion);
 
   // Ctrl+Shift+K (Cmd+Shift+K on macOS) opens the feature search from anywhere.
   // Ctrl+K is reserved for the quick chart command input.
@@ -288,6 +343,29 @@ export function Toolbar(props: Props) {
     { kind: "action", id: "palette", label: "Search features…", hint: PALETTE_KEY, onSelect: () => setPaletteOpen(true) },
   ];
 
+  const exportEntries: MenuEntry[] = buildExportEntries({
+    getActive: getActiveExportSource,
+    savePng: saveChartPng,
+    saveCsv: saveChartCsv,
+    saveJson: saveChartJson,
+    copyLink: copyChartLink,
+    copyEmbed: copyChartEmbed,
+    saveSvg: saveChartSvg,
+    printPdf: printChart,
+    saveLayout: () => saveLayoutJson(useWorkspace.getState().activeLayout()),
+    importLayout: () => {
+      void pickTextFile(".json,application/json").then((text) => {
+        if (text === null) return;
+        try {
+          const ws = useWorkspace.getState();
+          ws.importLayout(parseLayoutJson(text, defaultChartState(), getIndicator));
+        } catch (e) {
+          window.alert(e instanceof Error ? e.message : "Could not import layout");
+        }
+      });
+    },
+  });
+
   const groups: CommandGroup[] = [
     { title: "Interval", entries: intervalEntries },
     { title: "Chart type", entries: typeEntries },
@@ -295,6 +373,7 @@ export function Toolbar(props: Props) {
     { title: "Analysis", entries: analysisEntries },
     { title: "Trade", entries: tradeEntries },
     { title: "View", entries: viewEntries.filter((e) => e.id !== "palette") },
+    { title: "Export", entries: exportEntries },
   ];
 
   const tradeOpen = props.panels.trading || props.panels.depth;
@@ -348,6 +427,7 @@ export function Toolbar(props: Props) {
         <Menu label="Analysis" icon={<Telescope size={13} aria-hidden />} triggerActive={analysisOpen} entries={analysisEntries} />
         <Menu label="Trade" icon={<ArrowLeftRight size={13} aria-hidden />} triggerActive={tradeOpen} entries={tradeEntries} />
         <Menu label="View" icon={<Eye size={13} aria-hidden />} entries={viewEntries} />
+        <Menu label="Export" icon={<Share2 size={13} aria-hidden />} entries={exportEntries} />
       </nav>
 
       {props.replayActive && (

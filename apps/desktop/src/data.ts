@@ -47,7 +47,7 @@ export function resolutionName(r: Resolution): string {
   return `${n} ${unit}${n === 1 ? "" : "s"}`;
 }
 
-export const DEFAULT_SYMBOL = "BINANCE:BTCUSDT";
+export const DEFAULT_SYMBOL = "OANDA:XAUUSD";
 
 /** Display ticker: the part after the exchange prefix, e.g. "BTCUSDT". */
 export const tickerOf = (symbol: string): string => symbol.split(":").pop() ?? symbol;

@@ -195,7 +195,7 @@ export class DemoMarketAdapter implements MarketDataAdapter {
   }
 
   private findSpec(symbol: string): DemoSpec | null {
-    // The workspace defaults to a TradingView-style id (`BINANCE:BTCUSDT`)
+    // The workspace defaults to a TradingView-style id (`OANDA:XAUUSD`)
     // while this feed knows only its own instruments, so any `EXCHANGE:TICKER`
     // prefix resolves by ticker instead of silently missing.
     const ticker = symbol.includes(":") ? symbol.slice(symbol.indexOf(":") + 1) : symbol;

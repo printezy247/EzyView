@@ -355,6 +355,25 @@ export class EzyChart {
     return this.data;
   }
 
+  /**
+   * Snapshot of the chart's own panes: lightweight-charts composites every
+   * layer it owns into one canvas (`IChartApi.takeScreenshot`,
+   * node_modules/lightweight-charts/dist/typings.d.ts:1767).
+   *
+   * The export bridge does NOT use this by default — it composites the whole
+   * host container instead (chartImage.ts) for parity with journal capture,
+   * which also picks up canvases drawn outside lightweight-charts. This is
+   * the single-canvas alternative when only the engine's own layers matter.
+   */
+  takeScreenshot(): HTMLCanvasElement | null {
+    try {
+      return this.chart.takeScreenshot();
+    } catch {
+      // No canvas or no backing store yet: an empty snapshot, never a throw.
+      return null;
+    }
+  }
+
   /** Candles for time-aligned layers; none while a price-only type is shown. */
   private get layerData(): Candle[] {
     return isTimeBased(this.type) ? this.data : [];

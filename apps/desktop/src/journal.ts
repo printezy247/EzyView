@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { entriesFromDeals, existingKeys } from "@ezyview/journal";
 import type { JournalEntry, JournalNote } from "@ezyview/journal";
 import type { Deal } from "@ezyview/data-adapters";
+import { compositeCanvasesToPng } from "./chartImage";
 
 const STORAGE_KEY = "ezyview.journal.v1";
 
@@ -254,40 +255,13 @@ export const useJournal = create<JournalState>((set, get) => {
 });
 
 /**
- * Chart snapshot for a note.
- *
- * The chart is plain canvases on an opaque background: composite every layer
- * (price panes, scale, volume) into one image so the note keeps what the user
- * was actually looking at.
+ * Chart snapshot for a note: find the live chart host and hand it to the
+ * shared compositor (Phase 8 moved the pixel work to chartImage.ts so journal
+ * capture and the export bridge share one implementation).
  */
 export function captureChart(): string | null {
   if (typeof document === "undefined") return null;
   const host = document.querySelector('[data-testid="chart-host"]');
   if (!(host instanceof HTMLElement)) return null;
-  const canvases = [...host.querySelectorAll("canvas")].filter((c): c is HTMLCanvasElement => c instanceof HTMLCanvasElement);
-  if (canvases.length === 0) return null;
-
-  const hostRect = host.getBoundingClientRect();
-  const out = document.createElement("canvas");
-  out.width = Math.max(1, Math.round(hostRect.width));
-  out.height = Math.max(1, Math.round(hostRect.height));
-  const ctx = out.getContext("2d");
-  if (!ctx) return null;
-
-  ctx.fillStyle = "#0e1117";
-  ctx.fillRect(0, 0, out.width, out.height);
-  for (const canvas of canvases) {
-    const rect = canvas.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) continue;
-    try {
-      ctx.drawImage(canvas, rect.left - hostRect.left, rect.top - hostRect.top, rect.width, rect.height);
-    } catch {
-      // A zero-sized or backing-store-less layer is skipped, never fatal.
-    }
-  }
-  try {
-    return out.toDataURL("image/png");
-  } catch {
-    return null;
-  }
+  return compositeCanvasesToPng(host);
 }

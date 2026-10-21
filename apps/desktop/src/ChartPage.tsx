@@ -20,6 +20,7 @@ import type { ChartState } from "./store";
 import { useTrading, useTradingTicks } from "./trading";
 import { useApiKeys } from "./apiKeys";
 import { EMPTY_FUNDAMENTAL_EVENTS, fetchFundamentalEvents } from "./fundamentalEvents";
+import { setActiveExportSource } from "./exportBridge";
 
 interface ChartPageProps {
   watchlistOpen: boolean;
@@ -273,6 +274,13 @@ function ChartGrid({
 }: ChartGridProps) {
   const cells: ChartState[] = layout.charts.slice(0, cellCount(layout.grid));
   const multi = cells.length > 1;
+  // Export acts on the focused cell (the same `index === layout.activeChart`
+  // test each cell uses below): its bridge id is the cell index. This lives in
+  // the component body — a hook cannot run inside the cells.map callback —
+  // and runs after ChartHost's registration effect, child-before-parent.
+  useEffect(() => {
+    setActiveExportSource(layout.activeChart);
+  }, [layout.activeChart]);
   return (
     <div className={`absolute inset-0 grid gap-px bg-ev-raised ${GRID_CLASS[layout.grid]}`}>
       {cells.map((chart, index) => {

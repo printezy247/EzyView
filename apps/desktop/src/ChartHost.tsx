@@ -12,6 +12,8 @@ import type { ChartThemeName, CrosshairModeName, PriceScaleModeName } from "./la
 import { loadHistory, tickerOf } from "./data";
 import { summarizeChart } from "./chartSummary";
 import { EMPTY_FUNDAMENTAL_EVENTS } from "./fundamentalEvents";
+import { registerExportSource } from "./exportBridge";
+import { compositeCanvasesToPng } from "./chartImage";
 
 interface Props {
   symbol: string;
@@ -69,6 +71,10 @@ export function ChartHost(props: Props) {
   crosshairMoveRef.current = props.onCrosshairMove;
   const chartIndexRef = useRef(props.chartIndex);
   chartIndexRef.current = props.chartIndex;
+  // Export meta (symbol/interval) read at call time so the registered source
+  // never serves stale identity after a prop change.
+  const propsRef = useRef(props);
+  propsRef.current = props;
 
   // In-progress drawing anchors, kept off the store so each pointer move does
   // not trigger a React render.
@@ -78,6 +84,9 @@ export function ChartHost(props: Props) {
   const lastClickAtRef = useRef(0);
   // Full loaded history, so replay can reveal a prefix without a refetch.
   const historyRef = useRef<Candle[]>([]);
+  // The replay-visible slice (what the chart shows), mirrored for the export
+  // bridge — exporters must not see bars hidden behind a replay cursor.
+  const shownRef = useRef<Candle[]>([]);
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
 
@@ -258,6 +267,24 @@ export function ChartHost(props: Props) {
 
   // Screen readers get a text summary in place of the canvas.
   const [shown, setShown] = useState<Candle[]>([]);
+  shownRef.current = shown;
+
+  // Export bridge: publish this cell while it is mounted (id = layout cell
+  // index). ChartPage points the active source at the focused cell. Detached
+  // windows have no cell index — drawings are inert there too — so they never
+  // register. The source closes over refs, so every call reads live state.
+  useEffect(() => {
+    const index = props.chartIndex;
+    if (index === undefined) return;
+    return registerExportSource(index, {
+      // The container compositor, not EzyChart.takeScreenshot(): it matches
+      // journal capture and keeps every layer (parity note in chartImage.ts).
+      getPng: () => (containerRef.current ? compositeCanvasesToPng(containerRef.current) : null),
+      // Replay-visible bars only; historyRef holds the full loaded history.
+      getCandles: () => shownRef.current,
+      meta: () => ({ symbol: propsRef.current.symbol, resolution: propsRef.current.resolution }),
+    });
+  }, [props.chartIndex]);
 
   useEffect(() => {
     let cancelled = false;
