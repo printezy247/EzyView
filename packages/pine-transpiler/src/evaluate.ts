@@ -28,6 +28,7 @@ export function runPine(source: string, ctx: Context): PineResult {
     `"use strict";
      const {
        NA, isNa, nz, ta, math, color, strategy, shape, location, size,
+       crossover, crossunder,
        add, sub, mul, div, mod, eq, ne, lt, le, gt, ge, and, or,
        truthy, num, at, plotCall, shapeCall, bgcolorCall, inputCall, inputScalar,
        strategyEntry, strategyClose, strategyExit, strategyCloseAll,
@@ -39,8 +40,28 @@ export function runPine(source: string, ctx: Context): PineResult {
   ) as (h: unknown) => (ctx: Context) => EmittedResult;
 
   const fn = factory(buildHelpers());
-  const out = fn(ctx);
+  const out = fn(withDerivedSeries(ctx));
   return { plots: out.plots, orders: out.orders, options, barIndexUsed: out.barIndexUsed ?? 0 };
+}
+
+/**
+ * Mid-price series Pine exposes as bare builtins.
+ *
+ * `hl2`/`hlc3`/`ohlc4` are pure functions of the bar's OHLC, so they are
+ * derived here once per run rather than carried on every caller's Context.
+ */
+function withDerivedSeries(ctx: Context): Context {
+  return {
+    ...ctx,
+    hl2: mid([ctx.high, ctx.low]),
+    hlc3: mid([ctx.high, ctx.low, ctx.close]),
+    ohlc4: mid([ctx.open, ctx.high, ctx.low, ctx.close]),
+  };
+}
+
+/** Element-wise mean of equal-length bar series. */
+function mid(parts: number[][]): number[] {
+  return parts[0]!.map((_, i) => parts.reduce((sum, series) => sum + (series[i] ?? Number.NaN), 0) / parts.length);
 }
 
 /**
@@ -286,6 +307,7 @@ function bgcolorCall(
 /** `input.int()` / `input.float()` / `input.bool()` / `input.string()`. */
 function inputCall(
   inputs: Record<string, PineValue>,
+  site: number,
   kwargs: Kwargs,
   defval?: PineValue,
   title?: string,
@@ -294,15 +316,24 @@ function inputCall(
   active?: PineValue,
   id?: string,
 ): PineValue {
-  // Pine keys an input by `id` when given, else by declaration order.
-  const key = id ?? optStr(kwargs, "id") ?? String(Object.keys(inputs).length);
+  // Pine keys an input by `id` when given, else by declaration order. The
+  // emitter assigns each call site a compile-time index, so the positional
+  // key is stable across bars — seeding `ctx.inputs["0"]` (the optimizer's
+  // mechanism) lands on the same key the script reads.
+  const key = id ?? optStr(kwargs, "id") ?? String(site);
   if (!(key in inputs)) inputs[key] = defval ?? kwargs.defval ?? NA;
   return inputs[key] ?? NA;
 }
 
 /** Bare `input(…)` — the v4 name, equivalent to `input.int`. */
-function inputScalar(inputs: Record<string, PineValue>, kwargs: Kwargs, defval?: PineValue, title?: string): PineValue {
-  return inputCall(inputs, kwargs, defval, title);
+function inputScalar(
+  inputs: Record<string, PineValue>,
+  site: number,
+  kwargs: Kwargs,
+  defval?: PineValue,
+  title?: string,
+): PineValue {
+  return inputCall(inputs, site, kwargs, defval, title);
 }
 
 /**
@@ -391,6 +422,9 @@ function buildHelpers(): Record<string, unknown> {
     shape,
     location,
     size,
+    // Bare `crossover(…)`/`crossunder(…)` are v4 aliases of the ta.* pair.
+    crossover: ta.crossover,
+    crossunder: ta.crossunder,
     add: (a: PineValue | PineValue[], b: PineValue | PineValue[]) => broadcast(a, b, (x, y) => x + y),
     sub: (a: PineValue | PineValue[], b: PineValue | PineValue[]) => broadcast(a, b, (x, y) => x - y),
     mul: (a: PineValue | PineValue[], b: PineValue | PineValue[]) => broadcast(a, b, (x, y) => x * y),

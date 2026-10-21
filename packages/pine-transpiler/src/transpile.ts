@@ -115,6 +115,21 @@ class Emitter {
     return this.plotSiteCount++;
   }
 
+  /**
+   * Stable id per `input()` call site, same idea as {@link plotSiteCount}.
+   *
+   * The runtime keys a positional input by this compile-time index rather
+   * than by `inputs.length` at call time — the body runs once per bar, so a
+   * runtime count would mint a fresh key on every iteration and defeat both
+   * the per-site dedupe and the optimizer's seeded overrides.
+   */
+  private inputSiteCount = 0;
+
+  /** Reserve the next input call site's id. */
+  private nextInputSite(): number {
+    return this.inputSiteCount++;
+  }
+
   line(text: string): void {
     this.lines.push("  ".repeat(this.depth) + text);
   }
@@ -127,8 +142,9 @@ class Emitter {
 
   declareGlobals(): void {
     // `close` etc. shadow nothing useful, so they are destructured from the
-    // context object the runtime passes in.
-    this.line("const { open, high, low, close, volume, inputs } = ctx;");
+    // context object the runtime passes in. The mid-price series are derived
+    // from OHLC by the runtime before the body runs.
+    this.line("const { open, high, low, close, volume, hl2, hlc3, ohlc4, inputs } = ctx;");
     this.line("let barIndexUsed = 0;");
     this.line("let bar_index = 0;");
   }
@@ -322,7 +338,7 @@ class Emitter {
     const orderCall = (fn: string): string =>
       `${fn}(barIndex, orders, ${opts}${posArgs.length ? `, ${posArgs.join(", ")}` : ""})`;
     const inputEmit = (fn: string): string =>
-      `${fn}(inputs, ${opts}${posArgs.length ? `, ${posArgs.join(", ")}` : ""})`;
+      `${fn}(inputs, ${this.nextInputSite()}, ${opts}${posArgs.length ? `, ${posArgs.join(", ")}` : ""})`;
 
     if (callee.kind === "MemberExpr") {
       const obj = callee.object;
@@ -365,6 +381,8 @@ class Emitter {
       if (callee.name === "input") return inputEmit("inputCall");
       if (callee.name === "nz") return `nz(${args[0] ?? "NA"}${args[1] ? `, ${args[1]}` : ""})`;
       if (callee.name === "na") return `isNa(${args[0] ?? "NA"})`;
+      if (callee.name === "crossover") return `crossover(${args.join(", ")})`;
+      if (callee.name === "crossunder") return `crossunder(${args.join(", ")})`;
       if (callee.name === "plot") return sinkCall("plotCall");
       if (callee.name === "plotshape") return sinkCall("shapeCall");
       if (callee.name === "bgcolor") return sinkCall("bgcolorCall");
@@ -407,6 +425,8 @@ const BUILTIN_NAMES = new Set([
   "nz",
   "isNa",
   "NA",
+  "crossover",
+  "crossunder",
   "plotCall",
   "shapeCall",
   "bgcolorCall",
