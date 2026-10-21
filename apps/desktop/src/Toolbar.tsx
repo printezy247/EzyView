@@ -4,6 +4,7 @@ import { useEffect, useSyncExternalStore, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { ArrowLeftRight, CandlestickChart, Clock, Eye, FlaskConical, Search, Share2, Telescope } from "lucide-react";
 import { CommandPalette } from "./CommandPalette";
+import { IntervalDialog } from "./IntervalDialog";
 import { buildNavCommands } from "./commandRegistry";
 import type { CommandGroup } from "./commandRegistry";
 import { RESOLUTION_GROUPS, resolutionName } from "./data";
@@ -174,6 +175,7 @@ export function buildExportEntries(api: ExportMenuApi): MenuEntry[] {
  */
 export function Toolbar(props: Props) {
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [intervalOpen, setIntervalOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const strategiesActive = location.pathname === "/strategies";
@@ -218,6 +220,17 @@ export function Toolbar(props: Props) {
       });
     }
   }
+  // The served intervals are a closed set, so "custom" is a dialog that explains
+  // why a typed interval cannot be honoured rather than a free-text field that
+  // silently picks something else.
+  intervalEntries.push({ kind: "separator", id: "sep-custom" });
+  intervalEntries.push({
+    kind: "action",
+    id: "custom",
+    label: "Custom interval…",
+    hint: "Type 15m, 4h, 1d",
+    onSelect: () => setIntervalOpen(true),
+  });
 
   const typeEntries: MenuEntry[] = CHART_TYPES.map(
     (t): MenuEntry => ({
@@ -468,6 +481,7 @@ export function Toolbar(props: Props) {
       </button>
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} groups={groups} />
+      <IntervalDialog open={intervalOpen} onClose={() => setIntervalOpen(false)} onPick={props.onResolution} />
     </div>
   );
 }
