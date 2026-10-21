@@ -4,6 +4,7 @@ import { filterEvents, filterNews } from "@ezyview/fundamentals";
 import type { FundamentalsSources } from "@ezyview/fundamentals";
 import { tickerOf } from "./data";
 import { safeHref } from "./links";
+import { inputClass } from "./ui";
 
 /** Current providers plus a version string that changes when they do. */
 export interface Src {
@@ -117,7 +118,7 @@ export function CalendarTab({ src }: { src: Src }) {
     [events, impact, currency, search, range],
   );
 
-  const input = "rounded border border-ev-line bg-ev-panel px-1 py-0.5";
+  const input = inputClass("h-6 w-auto");
   return (
     <div className="text-[11px]">
       <div className="sticky top-0 flex flex-wrap items-center gap-2 bg-ev-bg px-3 py-1.5">
@@ -221,7 +222,7 @@ export function NewsTab({ symbol, src }: { symbol: string; src: Src }) {
   if (items === null) return <Empty text="Loading…" />;
   const rows = filterNews(items, search);
   const searching = search.trim() !== "";
-  const input = "rounded border border-ev-line bg-ev-panel px-1.5 py-0.5";
+  const input = inputClass("h-6 w-auto");
   return (
     <div>
       <div className="sticky top-0 flex items-center gap-2 bg-ev-bg px-3 py-1.5">

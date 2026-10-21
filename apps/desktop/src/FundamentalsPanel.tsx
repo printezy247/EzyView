@@ -13,6 +13,7 @@ import { useApiKeys } from "./apiKeys";
 import { market, tickerOf } from "./data";
 import { CalendarTab, DAY, day, EarningsTab, Empty, Failed, NewsTab, pct, tone, useLoad } from "./FundamentalsTabs";
 import type { Src } from "./FundamentalsTabs";
+import { inputClass } from "./ui";
 
 interface Props {
   symbol: string;
@@ -220,7 +221,7 @@ function ScreenerTab({ onPick }: { onPick: (symbol: string) => void }) {
     });
   }, [universe, text, assetClass, rsiMin, rsiMax, sortBy, descending]);
 
-  const input = "rounded border border-ev-line bg-ev-panel px-1.5 py-0.5";
+  const input = inputClass("h-6 w-auto");
   return (
     <div className="text-[11px]">
       <div className="sticky top-0 flex flex-wrap items-center gap-2 bg-ev-bg px-3 py-1.5">

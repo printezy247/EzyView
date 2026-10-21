@@ -16,7 +16,6 @@ export function BarsTable({ onClose }: { onClose: () => void }) {
     <Modal
       onClose={onClose}
       labelledBy="bars-table-title"
-      backdropClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       className="flex max-h-[80vh] w-[min(640px,92vw)] flex-col rounded-lg border border-ev-line bg-ev-panel shadow-2xl"
     >
       <div className="flex items-center gap-2 border-b border-ev-raised px-4 py-3">

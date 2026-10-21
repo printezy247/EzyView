@@ -30,7 +30,6 @@ export function ApiKeysDialog() {
     <Modal
       onClose={onClose}
       labelledBy="api-keys-title"
-      backdropClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       className="w-[30rem] rounded-md border border-ev-line bg-ev-panel text-[12px] shadow-2xl"
     >
       <div className="flex items-center justify-between border-b border-ev-raised px-4 py-2.5">

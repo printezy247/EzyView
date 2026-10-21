@@ -115,7 +115,6 @@ export function JournalEntryDialog({ onClose }: Props) {
     <Modal
       onClose={onClose}
       labelledBy="manual-entry-title"
-      backdropClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
       className="flex max-h-[90vh] w-[40rem] flex-col rounded-md border border-ev-line bg-ev-panel shadow-2xl"
     >
       <div className="flex shrink-0 items-center justify-between border-b border-ev-raised px-4 py-2.5">

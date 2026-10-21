@@ -12,6 +12,7 @@ import { JournalEntryDialog } from "./JournalEntryDialog";
 import { JournalPropFirmBar } from "./JournalPropFirmBar";
 import { JournalReviews } from "./JournalReviews";
 import { JournalStatsView } from "./JournalStatsView";
+import { buttonClass, chipClass } from "./ui";
 
 interface Props {
   onClose: () => void;
@@ -118,9 +119,8 @@ export function JournalPanel({ onClose }: Props) {
     setLastImport(importDeals(deals, source === "mt5" ? "mt5" : "paper"));
   };
 
-  const chip = "rounded border border-ev-line px-2 py-0.5 tabular-nums";
-  const headerBtn =
-    "rounded px-2 py-0.5 text-[11px] text-ev-muted hover:bg-ev-raised hover:text-ev-strong";
+  const chip = chipClass({ tone: "neutral" });
+  const headerBtn = buttonClass({ size: "sm", variant: "ghost" });
 
   return (
     <section aria-label="Trading journal" className="flex min-h-0 flex-1 flex-col border-t border-ev-raised bg-ev-bg">

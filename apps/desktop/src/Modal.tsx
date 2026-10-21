@@ -12,11 +12,13 @@ export function nextFocusIndex(count: number, current: number, backwards: boolea
 }
 
 interface Props {
+  /** Mount the dialog only while it is open; the caller gates rendering. */
+  open?: boolean;
   onClose: () => void;
   /** id of the dialog's visible title. */
   labelledBy: string;
   /** Classes for the dialog box itself. */
-  className: string;
+  className?: string;
   /** Classes for the dimmed backdrop; clicking it closes the dialog. */
   backdropClassName?: string;
   children: ReactNode;
@@ -27,22 +29,26 @@ interface Props {
  * it, and focus returns to whatever opened it.
  */
 export function Modal({
+  open = true,
   onClose,
   labelledBy,
-  className,
-  backdropClassName = "absolute inset-0 z-40 flex items-center justify-center bg-black/40",
+  className = "",
+  backdropClassName = "fixed inset-0 z-[var(--z-dialog)] flex items-center justify-center bg-black/50",
   children,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!open) return;
     const opener = document.activeElement as HTMLElement | null;
     const box = ref.current;
     if (box && !box.contains(document.activeElement)) {
       (box.querySelector<HTMLElement>("[autofocus]") ?? box.querySelector<HTMLElement>(FOCUSABLE) ?? box).focus();
     }
     return () => opener?.focus?.();
-  }, []);
+    // Re-running on `open` keeps the focus/keyboard wiring honest when a host
+    // keeps the component mounted across open/close cycles.
+  }, [open]);
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     // Editors (Monaco) consume their own Escape/Tab and mark them handled.
@@ -60,6 +66,8 @@ export function Modal({
     e.preventDefault();
     items[nextFocusIndex(items.length, current, e.shiftKey)]?.focus();
   };
+
+  if (!open) return null;
 
   return (
     <div className={backdropClassName} onClick={onClose}>

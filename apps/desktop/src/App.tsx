@@ -26,6 +26,7 @@ import type { ChartSource } from "./mt5";
 import { useMt5Accounts } from "./mt5Accounts";
 import { maskLogin } from "./tradingSafety";
 import { Modal } from "./Modal";
+import { NoticeHost } from "./NoticeHost";
 
 /**
  * The persistent shell: left section rail, tab strip, toolbar, routed page
@@ -239,6 +240,7 @@ export default function App() {
           </span>
         </footer>
       </div>
+      <NoticeHost />
     </div>
   );
 }
@@ -325,7 +327,6 @@ function SourceToggle() {
         <Modal
           onClose={refuseRisk}
           labelledBy="real-source-title"
-          backdropClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
           className="w-[24rem] rounded-md border border-ev-warn/40 bg-ev-panel text-[12px] shadow-2xl"
         >
           <div className="space-y-3 p-4">

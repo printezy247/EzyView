@@ -3,8 +3,9 @@ import { getActiveExportSource, getExportSourceVersion, subscribeExportSources }
 import { formatClock, parseGoToDate, RANGE_PRESETS } from "./chartView";
 import { EventsControls } from "./EventsControls";
 import { useWorkspace } from "./store";
+import { buttonClass } from "./ui";
 
-const chip = "rounded px-1.5 py-0.5 text-[11px] disabled:opacity-40";
+const chip = buttonClass({ size: "sm", variant: "ghost" });
 const idle = "text-ev-muted hover:bg-ev-raised hover:text-ev-strong";
 const lit = "bg-ev-raised font-medium text-ev-strong";
 

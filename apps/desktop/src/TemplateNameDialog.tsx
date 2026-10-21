@@ -16,7 +16,6 @@ export function TemplateNameDialog({ onSave, onClose }: { onSave: (name: string)
     <Modal
       onClose={onClose}
       labelledBy={titleId}
-      backdropClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       className="w-[min(360px,92vw)] rounded-lg border border-ev-line bg-ev-panel p-4 shadow-2xl">
       <h2 id={titleId} className="mb-2 text-sm font-semibold text-ev-strong">
         Save chart template

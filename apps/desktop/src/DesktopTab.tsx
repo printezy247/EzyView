@@ -12,6 +12,7 @@ import {
 import type { ShellSettings } from "./shell";
 import { checkForUpdate, openReleasePage } from "./updateCheck";
 import type { UpdateResult } from "./updateCheck";
+import { notice } from "./notice";
 
 const button =
   "rounded bg-ev-line px-3 py-1.5 text-[11px] text-ev-strong hover:bg-ev-line-strong disabled:opacity-40";
@@ -42,11 +43,17 @@ export function DesktopTab() {
     if (error === null) setDirty(false);
   };
 
-  const reset = () => {
-    const ok = window.confirm(
-      "Factory reset deletes all layouts, drawings, alerts, the journal and settings stored by EzyView, then restarts. API keys in your OS keyring are kept. Continue?",
-    );
-    if (ok) void factoryReset().catch((e: unknown) => setStatus(e instanceof Error ? e.message : String(e)));
+  const reset = async () => {
+    const ok = await notice.confirm("Factory reset EzyView?", {
+      body: "This deletes all layouts, drawings, alerts, the journal and settings stored by EzyView, then restarts. API keys in your OS keyring are kept.",
+      confirmLabel: "Reset and restart",
+    });
+    if (!ok) return;
+    try {
+      await factoryReset();
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : String(e));
+    }
   };
 
   return (
@@ -146,7 +153,7 @@ export function DesktopTab() {
       <section aria-label="Factory reset">
         <h2 className={heading}>Factory reset</h2>
         <p className="mb-2 text-[11px] text-ev-muted">Wipes local app data and restarts. API keys in the OS keyring are kept.</p>
-        <button type="button" className={`${button} text-ev-down`} onClick={reset}>
+        <button type="button" className={`${button} text-ev-down`} onClick={() => void reset()}>
           Factory reset…
         </button>
       </section>

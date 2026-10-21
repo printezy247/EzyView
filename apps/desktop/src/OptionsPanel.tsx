@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { breakevens, buildChain, expiryPnl } from "@ezyview/options";
 import type { ChainRow, Leg } from "@ezyview/options";
 import { loadHistory, tickerOf } from "./data";
+import { inputClass } from "./ui";
 
 interface Props {
   symbol: string;
@@ -55,7 +56,7 @@ export function OptionsPanel({ symbol, onClose }: Props) {
 
   const expiry = useMemo(() => (spot === null ? null : buildChain({ spot, baseVol, expiries: [days] })[0]!), [spot, baseVol, days]);
 
-  const input = "rounded border border-ev-line bg-ev-panel px-1.5 py-0.5";
+  const input = inputClass("h-6 w-auto");
   return (
     <section aria-label="Options" className="flex min-h-0 flex-1 flex-col border-t border-ev-raised bg-ev-bg text-[11px]">
       <header className="flex h-8 shrink-0 items-center gap-2 border-b border-ev-raised px-3">

@@ -19,6 +19,7 @@ import type { ChartThemeName, CrosshairModeName, GridMode, PriceScaleModeName } 
 import { defaultChartState, useWorkspace } from "./store";
 import { useZen } from "./zen";
 import type { MagnetMode } from "@ezyview/drawing-tools";
+import { notice } from "./notice";
 
 /** Timezones offered in the View menu; empty = exchange/UTC default. */
 const TIMEZONES: { id: string; label: string }[] = [
@@ -360,7 +361,7 @@ export function Toolbar(props: Props) {
           const ws = useWorkspace.getState();
           ws.importLayout(parseLayoutJson(text, defaultChartState(), getIndicator));
         } catch (e) {
-          window.alert(e instanceof Error ? e.message : "Could not import layout");
+          notice.alert("Could not import layout", e instanceof Error ? e.message : String(e));
         }
       });
     },

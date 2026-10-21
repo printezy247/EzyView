@@ -4,6 +4,7 @@ import { RiskRequiredError, useMt5Accounts } from "./mt5Accounts";
 import type { Mt5Settings } from "./mt5";
 import { maskLogin } from "./tradingSafety";
 import type { TransportKind } from "@ezyview/mt5-adapter";
+import { inputClass } from "./ui";
 
 /**
  * Connection settings for the broker feed.
@@ -15,7 +16,7 @@ import type { TransportKind } from "@ezyview/mt5-adapter";
  * bridge audit log.
  */
 
-const field = "w-full rounded border border-ev-line bg-ev-bg px-2 py-1 text-[11px] text-ev-text focus:border-ev-accent";
+const field = inputClass("w-full");
 
 function money(value: number | undefined, currency: string | undefined): string {
   if (value === undefined || !Number.isFinite(value)) return "—";

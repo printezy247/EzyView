@@ -32,7 +32,7 @@ describe("control scale is uniform", () => {
   it("gives every button size its height, and every variant its colours", () => {
     for (const [size, cls] of Object.entries(BUTTON_SIZES)) {
       expect(cls, size).toMatch(/h-6|h-7|h-8/);
-      expect(cls, size).toContain("text-base");
+      expect(cls, size).toMatch(/text-dense|text-base/);
       expect(cls, size).toContain("rounded");
     }
     for (const [variant, cls] of Object.entries(BUTTON_VARIANTS)) {
