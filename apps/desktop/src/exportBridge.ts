@@ -30,8 +30,12 @@ function notify(): void {
 
 /**
  * Publish a chart cell's export source under `id` (the layout cell index).
- * Returns the unregister function; it withdraws only its own registration
- * and drops the active pointer if it still names this id.
+ * Returns the unregister function; it withdraws only its own registration.
+ *
+ * The active pointer is a cell index, not a source, so it survives
+ * unregister: a layout switch unmounts cell N and mounts a new cell N while
+ * `activeChart` stays N, and nothing re-sets focus. `getActiveExportSource`
+ * already returns null for an empty slot.
  */
 export function registerExportSource(id: number, src: ExportSource): () => void {
   sources.set(id, src);
@@ -40,7 +44,6 @@ export function registerExportSource(id: number, src: ExportSource): () => void 
     // A later cell may have re-registered the id (layout remount); never
     // delete someone else's source.
     if (sources.get(id) === src) sources.delete(id);
-    if (activeId === id && !sources.has(id)) activeId = null;
     notify();
   };
 }

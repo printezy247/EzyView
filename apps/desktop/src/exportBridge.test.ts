@@ -24,7 +24,17 @@ describe("exportBridge", () => {
     expect(active?.getPng()).toBe("data:image/png;base64,x");
     expect(active?.getCandles()).toEqual([BAR]);
     off();
-    expect(getActiveExportSource()).toBeNull(); // unregister clears the active id
+    expect(getActiveExportSource()).toBeNull(); // empty slot reads as null
+    setActiveExportSource(null);
+  });
+
+  it("follows a remounted cell at the same index (layout switch)", () => {
+    const offOld = registerExportSource(0, source("OLD"));
+    setActiveExportSource(0);
+    offOld(); // old layout's cell unmounts first...
+    const offNew = registerExportSource(0, source("NEW")); // ...then the new one mounts
+    expect(getActiveExportSource()?.meta().symbol).toBe("NEW");
+    offNew();
     setActiveExportSource(null);
   });
 
