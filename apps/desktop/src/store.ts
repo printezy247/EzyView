@@ -772,6 +772,9 @@ export const useWorkspace = create<WorkspaceStore>()(
         chartTemplates: ChartTemplate[];
         appTheme: AppTheme;
         density: Density;
+        alerts: PriceAlert[];
+        alertHistory: AlertHistory;
+        watchlist: WatchEntry[];
       } => ({
         layouts: s.layouts,
         appTheme: s.appTheme,
@@ -783,6 +786,9 @@ export const useWorkspace = create<WorkspaceStore>()(
         pineScripts: s.pineScripts,
         eventOptions: s.eventOptions,
         chartTemplates: s.chartTemplates,
+        alerts: s.alerts,
+        alertHistory: s.alertHistory,
+        watchlist: s.watchlist,
       }),
       merge: (persisted, current) => {
         const raw = (persisted ?? {}) as Record<string, unknown>;
@@ -796,6 +802,12 @@ export const useWorkspace = create<WorkspaceStore>()(
           pineScripts: restorePineScripts(raw.pineScripts),
           eventOptions: restoreEventOptions(raw.eventOptions),
           chartTemplates: restoreTemplates(raw.chartTemplates),
+          // Restore alerts, alertHistory, watchlist — they may be absent in
+          // blobs written before this change; fall back to current state defaults.
+          alerts: "alerts" in raw ? (raw.alerts as PriceAlert[]) : current.alerts,
+          alertHistory:
+            "alertHistory" in raw ? (raw.alertHistory as AlertHistory) : current.alertHistory,
+          watchlist: "watchlist" in raw ? (raw.watchlist as WatchEntry[]) : current.watchlist,
         };
       },
     },
