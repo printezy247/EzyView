@@ -9,7 +9,9 @@ import type { PinePlot } from "@ezyview/pine-transpiler";
 import { THEME_OF, uid as newId, useWorkspace } from "./store";
 import type { ActiveIndicator, PineScriptRecord } from "./store";
 import type { ChartThemeName, CrosshairModeName, PriceScaleModeName } from "./layout";
-import { loadHistory, tickerOf } from "./data";
+import { brokerFeed, loadHistory, quoteOf, RESOLUTION_SECONDS, tickerOf } from "./data";
+import { barsNeeded, rangeStart } from "./chartView";
+import { mergeQuote } from "./liveBars";
 import { summarizeChart } from "./chartSummary";
 import { EMPTY_FUNDAMENTAL_EVENTS } from "./fundamentalEvents";
 import { registerExportSource } from "./exportBridge";
@@ -52,6 +54,8 @@ interface Props {
    * there; without it (detached windows) drawing tools are inert.
    */
   chartIndex?: number;
+  /** Right-click on the plot: viewport position plus the time/price under it. */
+  onContextMenu?: (info: { clientX: number; clientY: number; time: number; price: number }) => void;
 }
 
 /**
@@ -84,6 +88,9 @@ export function ChartHost(props: Props) {
   const lastClickAtRef = useRef(0);
   // Full loaded history, so replay can reveal a prefix without a refetch.
   const historyRef = useRef<Candle[]>([]);
+  // "symbol|interval" the bars in historyRef belong to; live polling waits for
+  // it to match the props so a quote is never folded into another series.
+  const historyKeyRef = useRef<string | null>(null);
   // The replay-visible slice (what the chart shows), mirrored for the export
   // bridge — exporters must not see bars hidden behind a replay cursor.
   const shownRef = useRef<Candle[]>([]);
@@ -283,7 +290,49 @@ export function ChartHost(props: Props) {
       // Replay-visible bars only; historyRef holds the full loaded history.
       getCandles: () => shownRef.current,
       meta: () => ({ symbol: propsRef.current.symbol, resolution: propsRef.current.resolution }),
+      view: {
+        showRange: async (preset) => {
+          // Replay owns the visible bars; loading history under it would reveal the future.
+          if (propsRef.current.replayBar != null) return;
+          const history = historyRef.current;
+          const chart = chartRef.current;
+          if (!chart || history.length === 0) return;
+          const last = history[history.length - 1]!.time;
+          const from = rangeStart(preset, last);
+          if (from === null) {
+            chart.fitContent();
+            return;
+          }
+          await ensureHistory(from);
+          const step = RESOLUTION_SECONDS[propsRef.current.resolution];
+          chart.setVisibleTimeRange(from, last + step * 3);
+        },
+        goTo: async (time) => {
+          if (propsRef.current.replayBar != null) return;
+          const step = RESOLUTION_SECONDS[propsRef.current.resolution];
+          await ensureHistory(time - step * 60);
+          chartRef.current?.scrollToTime(time);
+        },
+        reset: () => chartRef.current?.resetView(),
+        autoScale: () => chartRef.current?.autoScalePrice(),
+      },
     });
+    // Load enough history to reach back to `from` (capped); a symbol or
+    // interval change mid-load drops the result.
+    async function ensureHistory(from: number): Promise<void> {
+      const { symbol, resolution } = propsRef.current;
+      const history = historyRef.current;
+      if (history.length === 0 || history[0]!.time <= from) return;
+      const need = barsNeeded(from, history[history.length - 1]!.time, RESOLUTION_SECONDS[resolution]);
+      if (need <= history.length) return;
+      const more = await loadHistory(symbol, resolution, need);
+      if (propsRef.current.symbol !== symbol || propsRef.current.resolution !== resolution) return;
+      if (more.length <= historyRef.current.length) return;
+      if (propsRef.current.replayBar != null) return;
+      historyRef.current = more;
+      chartRef.current?.setData(more);
+      setShown(more);
+    }
   }, [props.chartIndex]);
 
   useEffect(() => {
@@ -291,6 +340,7 @@ export function ChartHost(props: Props) {
     void loadHistory(props.symbol, props.resolution).then((candles: Candle[]) => {
       if (cancelled) return;
       historyRef.current = candles;
+      historyKeyRef.current = `${props.symbol}|${props.resolution}`;
       // A stale replay cursor from another symbol would index past the end.
       const cursor = useWorkspace.getState().replayBar;
       const bars = sliceForReplay(candles, cursor);
@@ -309,6 +359,44 @@ export function ChartHost(props: Props) {
     chartRef.current?.setData(bars);
     setShown(bars);
   }, [props.replayBar]);
+
+  // Live last bar: once a second, fold the feed's price into the newest candle
+  // (a new candle opens on a new period). Replay pauses it. The demo feed's
+  // quotes are not tied to its synthetic history, so the first live price is
+  // anchored to the last close; a broker feed needs no anchor.
+  useEffect(() => {
+    if (props.replayBar != null) return;
+    let cancelled = false;
+    let busy = false;
+    let anchor: number | null = null;
+    const step = RESOLUTION_SECONDS[props.resolution];
+    const timer = setInterval(() => {
+      if (busy || historyRef.current.length === 0) return;
+      if (historyKeyRef.current !== `${props.symbol}|${props.resolution}`) return;
+      busy = true;
+      void quoteOf(props.symbol)
+        .then((q) => {
+          const history = historyRef.current;
+          if (cancelled || !q || history.length === 0) return;
+          if (historyKeyRef.current !== `${props.symbol}|${props.resolution}`) return;
+          if (!brokerFeed() && anchor === null) anchor = history[history.length - 1]!.close - q.last;
+          const price = q.last + (brokerFeed() ? 0 : (anchor ?? 0));
+          const merged = mergeQuote(history, price, q.time || Math.floor(Date.now() / 1000), step);
+          if (merged === history) return;
+          historyRef.current = merged;
+          chartRef.current?.setData(merged);
+          setShown(merged);
+        })
+        .catch(() => {})
+        .finally(() => {
+          busy = false;
+        });
+    }, 1000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [props.symbol, props.resolution, props.replayBar]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -412,7 +500,26 @@ export function ChartHost(props: Props) {
   const hidesLayers = typeLabel !== undefined && (props.showVolume || props.indicators.length > 0 || Object.keys(scripts).length > 0);
   return (
     <>
-      <div ref={containerRef} role="img" aria-label={summary} className="absolute inset-0" data-testid="chart-host" />
+      <div
+        ref={containerRef}
+        role="img"
+        aria-label={summary}
+        className="absolute inset-0"
+        data-testid="chart-host"
+        onContextMenu={(e) => {
+          const handler = propsRef.current.onContextMenu;
+          const chart = chartRef.current;
+          if (!handler || !chart) return;
+          e.preventDefault();
+          const rect = e.currentTarget.getBoundingClientRect();
+          const price = chart.coordinateToPrice(e.clientY - rect.top);
+          if (price === null) return;
+          // Past the newest bar there is no time under the cursor; use the newest bar's.
+          const time = chart.coordinateToTime(e.clientX - rect.left) ?? historyRef.current.at(-1)?.time;
+          if (time === undefined) return;
+          handler({ clientX: e.clientX, clientY: e.clientY, time, price });
+        }}
+      />
       {ghost && (
         <div
           aria-hidden

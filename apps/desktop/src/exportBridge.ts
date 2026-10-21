@@ -1,4 +1,5 @@
 import type { Candle } from "@ezyview/data-adapters";
+import type { RangePreset } from "./chartView";
 
 /**
  * What a chart cell offers an exporter: a composited PNG, the bars the user
@@ -9,12 +10,26 @@ import type { Candle } from "@ezyview/data-adapters";
  * active one on demand. Everything is null-safe in node — vitest never has a
  * document, and an empty registry is the normal boot state.
  */
+/** What the bottom bar and right-click menu can ask a chart cell to do to its view. */
+export interface ViewControls {
+  /** Show a preset range ending at the newest bar, loading more history if needed. */
+  showRange(preset: RangePreset): Promise<void>;
+  /** Centre the chart on a time (epoch seconds), loading history if needed. */
+  goTo(time: number): Promise<void>;
+  /** Default zoom/scroll and auto price scale. */
+  reset(): void;
+  /** Re-fit the price scale only. */
+  autoScale(): void;
+}
+
 export interface ExportSource {
   /** Data URL of the composited chart image, or null when it cannot be built. */
   getPng: () => string | null;
   /** Bars currently shown on this cell (full history only when not replaying). */
   getCandles: () => readonly Candle[];
   meta: () => { symbol: string; resolution: string };
+  /** View controls for the same cell; absent where a cell cannot offer them. */
+  view?: ViewControls;
 }
 
 const sources = new Map<number, ExportSource>();

@@ -904,6 +904,33 @@ export class EzyChart {
     this.chart.timeScale().fitContent();
   }
 
+  /** Show `[from, to]` (epoch seconds); times outside the data leave blank space. */
+  setVisibleTimeRange(from: number, to: number): void {
+    this.chart.timeScale().setVisibleRange({ from: from as UTCTimestamp, to: to as UTCTimestamp });
+  }
+
+  /** Centre the view on `time`, keeping the current zoom. */
+  scrollToTime(time: number): void {
+    const range = this.chart.timeScale().getVisibleRange();
+    if (!range) {
+      this.fitContent();
+      return;
+    }
+    const half = (Number(range.to) - Number(range.from)) / 2;
+    this.setVisibleTimeRange(time - half, time + half);
+  }
+
+  /** Re-fit the price scale to the visible bars (TradingView's "Auto"). */
+  autoScalePrice(): void {
+    this.chart.priceScale("right").applyOptions({ autoScale: true });
+  }
+
+  /** Default zoom and scroll plus an auto-fitted price scale. */
+  resetView(): void {
+    this.frameBars();
+    this.autoScalePrice();
+  }
+
   destroy(): void {
     this.chart.remove();
   }

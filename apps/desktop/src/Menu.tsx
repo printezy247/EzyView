@@ -150,47 +150,56 @@ export function Menu({ label, caption, entries, icon, badge, triggerActive, alig
             align === "right" ? "right-0" : "left-0"
           }`}
         >
-          {entries.map((entry) => {
-            if (entry.kind === "separator") {
-              return <div key={entry.id} role="separator" className="my-1 h-px bg-ev-raised" />;
-            }
-            if (entry.kind === "label") {
-              return (
-                <div key={entry.id} className="px-3 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wider text-ev-faint">
-                  {entry.label}
-                </div>
-              );
-            }
-
-            const on = entry.kind === "toggle" ? entry.checked : entry.kind === "radio" ? entry.selected : false;
-            const role = entry.kind === "toggle" ? "menuitemcheckbox" : entry.kind === "radio" ? "menuitemradio" : "menuitem";
-            const disabled = entry.kind === "action" ? entry.disabled === true : false;
-
-            return (
-              <button
-                key={entry.id}
-                type="button"
-                role={role}
-                aria-checked={entry.kind === "action" ? undefined : on}
-                data-menu-item
-                disabled={disabled}
-                onClick={() => pick(entry)}
-                className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs ${
-                  on ? "text-ev-strong" : "text-ev-muted"
-                } hover:bg-ev-raised hover:text-ev-strong disabled:pointer-events-none disabled:opacity-40`}
-              >
-                <span className="flex w-3 shrink-0 justify-center" aria-hidden>
-                  {on && <Check size={12} />}
-                </span>
-                <span className="flex-1">{entry.label}</span>
-                {entry.kind === "action" && entry.hint !== undefined && (
-                  <span className="text-[11px] text-ev-faint">{entry.hint}</span>
-                )}
-              </button>
-            );
-          })}
+          <MenuItems entries={entries} onPick={pick} />
         </div>
       )}
     </div>
+  );
+}
+
+/** The rows of a menu popup; shared by dropdown menus and the chart's right-click menu. */
+export function MenuItems({ entries, onPick }: { entries: MenuEntry[]; onPick: (entry: MenuEntry) => void }) {
+  return (
+    <>
+      {entries.map((entry) => {
+        if (entry.kind === "separator") {
+          return <div key={entry.id} role="separator" className="my-1 h-px bg-ev-raised" />;
+        }
+        if (entry.kind === "label") {
+          return (
+            <div key={entry.id} className="px-3 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wider text-ev-faint">
+              {entry.label}
+            </div>
+          );
+        }
+
+        const on = entry.kind === "toggle" ? entry.checked : entry.kind === "radio" ? entry.selected : false;
+        const role = entry.kind === "toggle" ? "menuitemcheckbox" : entry.kind === "radio" ? "menuitemradio" : "menuitem";
+        const disabled = entry.kind === "action" ? entry.disabled === true : false;
+
+        return (
+          <button
+            key={entry.id}
+            type="button"
+            role={role}
+            aria-checked={entry.kind === "action" ? undefined : on}
+            data-menu-item
+            disabled={disabled}
+            onClick={() => onPick(entry)}
+            className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs ${
+              on ? "text-ev-strong" : "text-ev-muted"
+            } hover:bg-ev-raised hover:text-ev-strong disabled:pointer-events-none disabled:opacity-40`}
+          >
+            <span className="flex w-3 shrink-0 justify-center" aria-hidden>
+              {on && <Check size={12} />}
+            </span>
+            <span className="flex-1">{entry.label}</span>
+            {entry.kind === "action" && entry.hint !== undefined && (
+              <span className="text-[11px] text-ev-faint">{entry.hint}</span>
+            )}
+          </button>
+        );
+      })}
+    </>
   );
 }

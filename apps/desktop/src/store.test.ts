@@ -320,3 +320,47 @@ describe("undo/redo drawings", () => {
     expect(useWorkspace.getState().activeChart().drawings).toEqual(d);
   });
 });
+describe("drawing clipboard", () => {
+  it("copies the selected drawing and pastes it at a point, selected and undoable", () => {
+    seed(line("c1"));
+    useWorkspace.getState().selectDrawing("c1");
+    useWorkspace.getState().copyDrawing();
+    useWorkspace.getState().pasteDrawing({ time: 900, price: 70 });
+    const s = useWorkspace.getState();
+    const drawings = s.activeChart().drawings;
+    expect(drawings).toHaveLength(2);
+    const pasted = drawings[1]!;
+    expect(pasted.id).not.toBe("c1");
+    expect(pasted.points[0]).toEqual({ time: 900, price: 70 });
+    expect(s.selectedDrawingId).toBe(pasted.id);
+    s.undoDrawing();
+    expect(useWorkspace.getState().activeChart().drawings).toHaveLength(1);
+  });
+
+  it("paste does nothing with an empty clipboard", () => {
+    seed(line("c2"));
+    useWorkspace.setState({ drawingClipboard: null });
+    useWorkspace.getState().pasteDrawing({ time: 1, price: 1 });
+    expect(useWorkspace.getState().activeChart().drawings).toHaveLength(1);
+  });
+});
+
+describe("chart templates", () => {
+  it("saves the focused chart's look and applies it to another look, keeping symbol and drawings", () => {
+    seed(line("t1"));
+    useWorkspace.getState().updateActive({ chartType: "heikin", showGrid: false });
+    useWorkspace.getState().saveChartTemplate("Heikin clean");
+    const saved = useWorkspace.getState().chartTemplates.at(-1)!;
+    expect(saved.name).toBe("Heikin clean");
+
+    useWorkspace.getState().updateActive({ chartType: "candles", showGrid: true });
+    useWorkspace.getState().applyChartTemplate(saved.id);
+    const chart = useWorkspace.getState().activeChart();
+    expect(chart.chartType).toBe("heikin");
+    expect(chart.showGrid).toBe(false);
+    expect(chart.drawings.map((d) => d.id)).toEqual(["t1"]);
+
+    useWorkspace.getState().deleteChartTemplate(saved.id);
+    expect(useWorkspace.getState().chartTemplates.some((t) => t.id === saved.id)).toBe(false);
+  });
+});
