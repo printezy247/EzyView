@@ -1,6 +1,6 @@
 # EzyView — Master Plan
 
-> Status: **Planning complete; build not started on the remediation track.** Historical milestones P0–P9 are merged to `main`; P10 is optional. This document is the single canonical plan. `docs/MEGA-PLAN.md` retains the original detailed research notes and is superseded by §7–§11 of this file.
+> Status: **All phases 0–10 delivered and merged to `main` (v0.2.0).** Known gaps are listed per phase in §8 and §12. This document is the single canonical plan. `docs/MEGA-PLAN.md` retains the original detailed research notes and is superseded by §7–§11 of this file.
 > Owner: printezy247 · Date: 2026-10-20
 > Companion detail: `docs/MEGA-PLAN.md` (research notes), `docs/ARCHITECTURE.md` (layering/storage rules).
 
@@ -261,7 +261,7 @@ Status legend: **done** = merged to `main`; **next** = first build target once a
 | 7 | Pine editor & strategy testing (Monaco, lint, compile, backtest, optimize) | custom indicator runs | **done** (PR #17) |
 | 8 | Sharing / export / collaboration | export + share links | **done** (PR #18) |
 | 9 | Desktop, multi-monitor, MCP (workspace restore, native windows, MCP parity) | desktop app shipped | **done** (PR #19) |
-| 10 | Git ops / CI / report / merge | green CI, merged PR, report | planned |
+| 10 | Git ops / CI / report / merge | green CI, merged PR, report | **done** (PR #20) |
 
 Historical note: the original scaffold phases (P0–P9) are already delivered and merged to `main` (see git log). The phase table above re-sequences the remaining remediation and parity work per `docs/MEGA-PLAN.md`; it does not discard delivered work. Phase 10 is the standing git-ops close-out and runs after every green build.
 
