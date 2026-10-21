@@ -36,6 +36,8 @@ export function SettingsPage() {
   const theme = activeChartOf(layout).theme;
   const appTheme = useWorkspace((s) => s.appTheme);
   const setAppTheme = useWorkspace((s) => s.setAppTheme);
+  const density = useWorkspace((s) => s.density);
+  const setDensity = useWorkspace((s) => s.setDensity);
   const openDialog = useApiKeys((s) => s.openDialog);
   // `?tab=appearance` deep-links a section (the chart's right-click "Settings…").
   const [params] = useSearchParams();
@@ -135,6 +137,29 @@ export function SettingsPage() {
                 </button>
               ))}
             </div>
+            <h2 className="mb-1 mt-5 text-dense font-medium uppercase tracking-wider text-ev-faint">Density</h2>
+            <p className="mb-3 text-dense text-ev-muted">Row height for tables, blotter and lists.</p>
+            <div className="flex gap-2" role="radiogroup" aria-label="Density">
+              {(["compact", "comfortable"] as const).map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  role="radio"
+                  aria-checked={density === d}
+                  onClick={() => setDensity(d)}
+                  className={
+                    density === d
+                      ? "rounded bg-ev-raised px-3 py-1.5 text-dense font-medium capitalize text-ev-strong"
+                      : "rounded border border-ev-line px-3 py-1.5 text-dense capitalize text-ev-muted hover:text-ev-strong"
+                  }
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+            <p className="mb-3 mt-1.5 text-dense text-ev-faint">
+              Comfortable gives each row a full line of breathing room for long table reading.
+            </p>
             <h2 className="mb-1 mt-5 text-dense font-medium uppercase tracking-wider text-ev-faint">Chart events</h2>
             <p className="mb-2 text-dense text-ev-muted">
               What to draw on the chart. The same switches sit in the bar under the chart.

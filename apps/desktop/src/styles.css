@@ -296,3 +296,12 @@ button[aria-disabled="true"] {
     scroll-behavior: auto !important;
   }
 }
+
+/*
+ * Density. `rowClass` marks a row with `.ev-row`; the comfortable density
+ * stretches it. Reading the root attribute means a density switch repaints
+ * every table at once, without threading a prop through each component.
+ */
+:root[data-density="comfortable"] .ev-row {
+  height: 2rem;
+}

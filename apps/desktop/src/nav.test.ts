@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * Route logic for the Phase 2 shell: known routes, left-rail order, and the
- * persisted last route. Node environment — localStorage is stubbed by hand.
+ * Route logic for the shell: known routes, left-rail order, and the persisted
+ * last route. Node environment — localStorage is stubbed by hand.
+ *
+ * The eight-section table itself is covered by `navRouting.test.ts`; this file
+ * keeps the storage/persistence half, including the legacy-path aliases.
  */
 
 const h = vi.hoisted(() => ({ storage: new Map<string, string>() }));
@@ -20,7 +23,7 @@ function disarmLocalStorage(): void {
   delete (globalThis as Record<string, unknown>).localStorage;
 }
 
-import { NAV_ITEMS, PANEL_ROUTES, ROUTE_PATHS, normalizePath, readLastRoute, rememberRoute } from "./nav";
+import { NAV_ITEMS, NAV_SECTIONS, PANEL_ROUTES, ROUTE_PATHS, isRestorableRoute, normalizePath, readLastRoute, rememberRoute, resolveRoute } from "./nav";
 
 beforeEach(() => {
   h.storage.clear();
@@ -28,29 +31,72 @@ beforeEach(() => {
 });
 
 describe("route tables", () => {
-  it("ROUTE_PATHS lists the six navigation destinations in rail order", () => {
-    expect([...ROUTE_PATHS]).toEqual(["/chart", "/journal", "/fundamentals", "/options", "/pine", "/settings"]);
+  it("ROUTE_PATHS lists the eight navigation destinations in rail order", () => {
+    expect([...ROUTE_PATHS]).toEqual([
+      "/chart",
+      "/markets",
+      "/trade",
+      "/research",
+      "/journal",
+      "/strategies",
+      "/alerts",
+      "/settings",
+    ]);
   });
 
-  it("NAV_ITEMS follows the left-rail order from the spec", () => {
-    expect(NAV_ITEMS.map((i) => i.label)).toEqual(["Chart", "Journal", "Fundamentals", "Options", "Pine", "Settings"]);
+  it("NAV_ITEMS follows the left-rail order from the redesign", () => {
+    expect(NAV_ITEMS.map((i) => i.label)).toEqual([
+      "Terminal",
+      "Markets",
+      "Trade",
+      "Research",
+      "Journal",
+      "Strategies",
+      "Alerts",
+      "Settings",
+    ]);
     expect(NAV_ITEMS.map((i) => i.to)).toEqual([...ROUTE_PATHS]);
+    expect(NAV_ITEMS).toBe(NAV_SECTIONS);
     for (const item of NAV_ITEMS) expect(item.key.length).toBeGreaterThan(0);
   });
 
-  it("PANEL_ROUTES maps panel names to their routes", () => {
-    expect({ ...PANEL_ROUTES }).toEqual({
-      journal: "/journal",
-      fundamentals: "/fundamentals",
-      options: "/options",
-      pine: "/pine",
-    });
+  it("PANEL_ROUTES maps panel names to their new sections", () => {
+    // The two research panels share a destination; Pine became Strategies.
+    expect(PANEL_ROUTES.fundamentals).toBe("/research");
+    expect(PANEL_ROUTES.options).toBe("/research");
+    expect(PANEL_ROUTES.pine).toBe("/strategies");
+    expect(PANEL_ROUTES.journal).toBe("/journal");
+    for (const to of Object.values(PANEL_ROUTES)) expect(ROUTE_PATHS).toContain(to);
+  });
+});
+
+describe("resolveRoute aliases", () => {
+  it("maps the pre-redesign paths onto their section", () => {
+    expect(resolveRoute("/fundamentals")).toBe("/research");
+    expect(resolveRoute("/options")).toBe("/research");
+    expect(resolveRoute("/pine")).toBe("/strategies");
+  });
+
+  it("passes current and unknown paths through untouched", () => {
+    expect(resolveRoute("/chart")).toBe("/chart");
+    expect(resolveRoute("/nope")).toBe("/nope");
+  });
+
+  it("treats legacy paths as restorable", () => {
+    expect(isRestorableRoute("/pine")).toBe(true);
+    expect(isRestorableRoute("/chart")).toBe(true);
+    expect(isRestorableRoute("/gone-forever")).toBe(false);
   });
 });
 
 describe("normalizePath", () => {
   it("passes every known route through unchanged", () => {
     for (const route of ROUTE_PATHS) expect(normalizePath(route)).toBe(route);
+  });
+
+  it("resolves a legacy deep link to its section", () => {
+    expect(normalizePath("/pine")).toBe("/strategies");
+    expect(normalizePath("/options")).toBe("/research");
   });
 
   it("falls back to /chart when storage is empty", () => {
@@ -62,9 +108,9 @@ describe("normalizePath", () => {
 
   it("resolves unknown paths to the stored last route", () => {
     armLocalStorage();
-    rememberRoute("/options");
-    expect(normalizePath("/bogus")).toBe("/options");
-    expect(normalizePath("/")).toBe("/options");
+    rememberRoute("/alerts");
+    expect(normalizePath("/bogus")).toBe("/alerts");
+    expect(normalizePath("/")).toBe("/alerts");
   });
 
   it("ignores a stale stored route", () => {
@@ -86,11 +132,17 @@ describe("rememberRoute", () => {
     expect(h.storage.get("ezyview:lastRoute")).toBe("/journal");
   });
 
+  it("stores the resolved section for a legacy path", () => {
+    armLocalStorage();
+    rememberRoute("/pine");
+    expect(h.storage.get("ezyview:lastRoute")).toBe("/strategies");
+  });
+
   it("leaves storage untouched for unknown routes", () => {
     armLocalStorage();
-    rememberRoute("/options");
+    rememberRoute("/alerts");
     rememberRoute("/bogus");
-    expect(h.storage.get("ezyview:lastRoute")).toBe("/options");
+    expect(h.storage.get("ezyview:lastRoute")).toBe("/alerts");
   });
 
   it("is a no-op without localStorage", () => {
@@ -106,8 +158,8 @@ describe("readLastRoute", () => {
 
   it("returns the stored route when it is known", () => {
     armLocalStorage();
-    rememberRoute("/pine");
-    expect(readLastRoute()).toBe("/pine");
+    rememberRoute("/strategies");
+    expect(readLastRoute()).toBe("/strategies");
   });
 
   it("returns /chart when the stored route is stale", () => {

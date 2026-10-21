@@ -15,12 +15,13 @@ import { applyTemplate, restoreTemplates, templateFromChart } from "./chartTempl
 import type { ChartTemplate } from "./chartTemplates";
 import { pasteAt } from "./drawingClipboard";
 import { activeChartOf, restoreWorkspace, setActiveChart, setGrid, updateChart } from "./layout";
-import { resolveAppTheme } from "./layout";
+import { isDensity, resolveAppTheme } from "./layout";
 import type {
   ActiveIndicator,
   AppTheme,
   ChartState,
   ChartThemeName,
+  Density,
   GridMode,
   Layout,
   PersistedWorkspace,
@@ -117,6 +118,9 @@ interface WorkspaceStore {
   appTheme: AppTheme;
   /** Pin or unpin the shell theme. */
   setAppTheme(theme: AppTheme): void;
+  /** Table/chrome density; applied as `data-density` on the root. */
+  density: Density;
+  setDensity(density: Density): void;
   /** The theme the shell actually paints with (resolves `auto`). */
   shellTheme(): ChartThemeName;
   activeLayoutId: string;
@@ -297,6 +301,8 @@ export const useWorkspace = create<WorkspaceStore>()(
       layouts: initial,
       appTheme: "auto",
       setAppTheme: (theme) => set({ appTheme: theme }),
+      density: "compact",
+      setDensity: (density) => set({ density }),
       shellTheme: () => resolveAppTheme(get().appTheme, activeChartOf(get().activeLayout()).theme),
       activeLayoutId: initial[0]!.id,
       activeTool: null,
@@ -723,9 +729,11 @@ export const useWorkspace = create<WorkspaceStore>()(
         eventOptions: EventOptions;
         chartTemplates: ChartTemplate[];
         appTheme: AppTheme;
+        density: Density;
       } => ({
         layouts: s.layouts,
         appTheme: s.appTheme,
+        density: s.density,
         activeLayoutId: s.activeLayoutId,
         magnet: s.magnet,
         crosshairSync: s.crosshairSync,
@@ -740,6 +748,7 @@ export const useWorkspace = create<WorkspaceStore>()(
           ...current,
           ...restoreWorkspace(persisted, current, defaultChartState(), getIndicator),
           appTheme: restoreAppTheme(raw.appTheme),
+          density: isDensity(raw.density) ? raw.density : "compact",
           // Old blobs predate the key entirely; restorePineScripts turns that
           // (and any malformed entry) into a valid, possibly empty map.
           pineScripts: restorePineScripts(raw.pineScripts),

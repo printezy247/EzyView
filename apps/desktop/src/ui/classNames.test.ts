@@ -91,8 +91,19 @@ describe("variants and tones", () => {
 });
 
 describe("tables and rows", () => {
-  it("ships a dense and a comfortable row, both explicitly sized", () => {
-    expect(rowClass()).toContain("h-6");
+  it("marks every row so the root density setting reaches it", () => {
+    // The `[data-density="comfortable"] .ev-row` rule in styles.css styles rows
+    // through this marker; without it, the Settings density switch is inert.
+    expect(rowClass()).toContain("ev-row");
+    expect(rowClass({ className: "border-b" })).toContain("ev-row");
+  });
+
+  it("leaves row height to the density rule by default", () => {
+    expect(rowClass()).not.toMatch(/\bh-6\b|\bh-8\b/);
+  });
+
+  it("still honours an explicit density prop, which wins over the global rule", () => {
+    expect(rowClass({ density: "compact" })).toContain("h-6");
     expect(rowClass({ density: "comfortable" })).toContain("h-8");
   });
 

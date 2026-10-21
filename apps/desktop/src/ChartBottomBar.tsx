@@ -15,7 +15,7 @@ const lit = "bg-ev-raised font-medium text-ev-strong";
  * timezone. Every control has a hover description. The view controls come from
  * the focused chart cell through the export bridge.
  */
-export function ChartBottomBar() {
+export function ChartBottomBar({ onOpenHotkeys }: { onOpenHotkeys: () => void }) {
   useSyncExternalStore(subscribeExportSources, getExportSourceVersion, getExportSourceVersion);
   // Range and go-to would reveal bars hidden behind a replay cursor, so they wait.
   const replaying = useWorkspace((s) => s.replayBar !== null);
@@ -92,6 +92,15 @@ export function ChartBottomBar() {
         <span className="ml-2 text-dense num text-ev-muted" title="Current time in the chart's timezone">
           {formatClock(now, timezone)}
         </span>
+        <button
+          type="button"
+          onClick={onOpenHotkeys}
+          title="Keyboard shortcuts (?)"
+          aria-keyshortcuts="?"
+          className={`${chip} ${idle} ml-auto`}
+        >
+          Shortcuts
+        </button>
       </div>
     </div>
   );

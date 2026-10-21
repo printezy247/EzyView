@@ -4,7 +4,7 @@ import { ChartPage } from "./ChartPage";
 import { IndicatorDialog } from "./IndicatorDialog";
 import { TabBar } from "./TabBar";
 import { Toolbar } from "./Toolbar";
-import type { PanelId } from "./Toolbar";
+import type { DockTabId } from "./Toolbar";
 import { AlertDialog } from "./AlertDialog";
 import { ApiKeysDialog } from "./ApiKeysDialog";
 import { useApiKeys } from "./apiKeys";
@@ -13,10 +13,13 @@ import { NavRail } from "./NavRail";
 import { useZen } from "./zen";
 import { TradeConfirmDialog } from "./TradeConfirmDialog";
 import { JournalPage } from "./JournalPage";
-import { FundamentalsPage } from "./FundamentalsPage";
-import { OptionsPage } from "./OptionsPage";
-import { PinePage } from "./PinePage";
+import { ResearchPage } from "./ResearchPage";
+import { StrategiesPage } from "./StrategiesPage";
+import { MarketsPage } from "./MarketsPage";
+import { TradePage } from "./TradePage";
+import { AlertsPage } from "./AlertsPage";
 import { SettingsPage } from "./SettingsPage";
+import { HotkeySheet } from "./HotkeySheet";
 import { useWorkspace } from "./store";
 import { activeChartOf } from "./layout";
 import { themeWindowColor } from "@ezyview/brand";
@@ -27,6 +30,7 @@ import { useMt5Accounts } from "./mt5Accounts";
 import { maskLogin } from "./tradingSafety";
 import { Modal } from "./Modal";
 import { NoticeHost } from "./NoticeHost";
+import { isTypingTarget } from "./hotkeys";
 
 /**
  * The persistent shell: left section rail, tab strip, toolbar, routed page
@@ -55,6 +59,14 @@ export default function App() {
         useZen.getState().toggle();
       } else if (e.key === "Escape") {
         useZen.getState().exit();
+      } else if (
+        e.key === "?" &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !(e.target instanceof HTMLElement && isTypingTarget(e.target))
+      ) {
+        e.preventDefault();
+        setHotkeysOpen((v) => !v);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -68,10 +80,11 @@ export default function App() {
     void useApiKeys.getState().reload();
   }, []);
   const [tradingOpen, setTradingOpen] = useState(true);
-  const [watchlistOpen, setWatchlistOpen] = useState(true);
-  const [domOpen, setDomOpen] = useState(true);
-  const [objectsOpen, setObjectsOpen] = useState(false);
+  // One right-hand dock, one visible tab. The watchlist used to default open;
+  // the dock starts on watchlist so the default view is unchanged.
+  const [dockTab, setDockTab] = useState<DockTabId | null>("watchlist");
   const [alertOpen, setAlertOpen] = useState(false);
+  const [hotkeysOpen, setHotkeysOpen] = useState(false);
 
   // Remember the last visited route so reloads land where the user left off.
   const location = useLocation();
@@ -90,12 +103,19 @@ export default function App() {
   // behaved before the brand pass.
   const appTheme = useWorkspace((s) => s.appTheme);
   const shellTheme = appTheme === "auto" ? state.theme : appTheme;
+  const density = useWorkspace((s) => s.density);
   useEffect(() => {
     document.documentElement.dataset.theme = shellTheme;
     document
       .querySelector('meta[name="theme-color"]')
       ?.setAttribute("content", themeWindowColor(shellTheme));
   }, [shellTheme]);
+
+  // Density is a CSS contract: `[data-density]` rules in styles.css scale the
+  // shared row height, so a row does not need its own density prop.
+  useEffect(() => {
+    document.documentElement.dataset.density = density;
+  }, [density]);
 
   // Honour a remembered broker feed once, if MT5 answers on first load.
   useEffect(() => {
@@ -118,21 +138,11 @@ export default function App() {
     };
   }, [source, state.symbol, updateActive]);
 
-  // Two independent side rails plus one shared bottom slot (trading only —
-  // journal, fundamentals, options and pine are routes now).
-  const togglePanel = (id: PanelId) => {
-    if (id === "watchlist") setWatchlistOpen((v) => !v);
-    else if (id === "depth") setDomOpen((v) => !v);
-    else if (id === "objects") setObjectsOpen((v) => !v);
-    else setTradingOpen((v) => !v);
-  };
-
-  const panels: Record<PanelId, boolean> = {
-    watchlist: watchlistOpen,
-    depth: domOpen,
-    objects: objectsOpen,
-    trading: tradingOpen,
-  };
+  // The dock holds the three side panels as tabs; trading is the bottom strip.
+  // Journal, research and strategies are routes, not panels.
+  const selectDockTab = (id: DockTabId) => setDockTab((v) => (v === id ? null : id));
+  const setDockTabDirect = (id: DockTabId | null) => setDockTab(id);
+  const toggleTrading = () => setTradingOpen((v) => !v);
 
   return (
     <div className="flex h-full">
@@ -173,11 +183,13 @@ export default function App() {
             onOpenIndicators={() => setDialogOpen(true)}
             onToggleReplay={() => setReplay(replayBar === null ? 0 : null)}
             replayActive={replayBar !== null}
-            panels={panels}
+            dockTab={dockTab}
+            tradingOpen={tradingOpen}
             onOpenWindow={() => void openChartWindow(state.symbol, state.resolution)}
             onOpenAlerts={() => setAlertOpen(true)}
             onOpenApiKeys={openApiKeys}
-            onTogglePanel={togglePanel}
+            onSelectDockTab={selectDockTab}
+            onToggleTrading={toggleTrading}
             grid={layout.grid}
             onGrid={setGrid}
           />
@@ -190,20 +202,27 @@ export default function App() {
               path="/chart"
               element={
                 <ChartPage
-                  watchlistOpen={watchlistOpen}
-                  domOpen={domOpen}
-                  objectsOpen={objectsOpen}
+                  dockTab={dockTab}
+                  onSelectDockTab={selectDockTab}
+                  onSetDockTab={setDockTabDirect}
                   tradingOpen={tradingOpen}
-                  onToggle={togglePanel}
+                  onToggleTrading={toggleTrading}
                   onOpenAlerts={() => setAlertOpen(true)}
+                  onOpenHotkeys={() => setHotkeysOpen(true)}
                 />
               }
             />
+            <Route path="/markets" element={<MarketsPage />} />
+            <Route path="/trade" element={<TradePage />} />
+            <Route path="/research" element={<ResearchPage />} />
             <Route path="/journal" element={<JournalPage />} />
-            <Route path="/fundamentals" element={<FundamentalsPage />} />
-            <Route path="/options" element={<OptionsPage />} />
-            <Route path="/pine" element={<PinePage />} />
+            <Route path="/strategies" element={<StrategiesPage />} />
+            <Route path="/alerts" element={<AlertsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            {/* Legacy paths: a persisted last route or an old bookmark still lands. */}
+            <Route path="/fundamentals" element={<Navigate to="/research?tab=fundamentals" replace />} />
+            <Route path="/options" element={<Navigate to="/research?tab=options" replace />} />
+            <Route path="/pine" element={<Navigate to="/strategies" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
@@ -241,6 +260,7 @@ export default function App() {
         </footer>
       </div>
       <NoticeHost />
+      {hotkeysOpen && <HotkeySheet onClose={() => setHotkeysOpen(false)} />}
     </div>
   );
 }

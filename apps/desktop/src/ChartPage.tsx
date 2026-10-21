@@ -5,8 +5,8 @@ import { ChartHost } from "./ChartHost";
 import { ChartCommandInput } from "./ChartCommandInput";
 import { DrawingToolbar } from "./DrawingToolbar";
 import { ReplayBar } from "./ReplayBar";
-import { RightRail } from "./RightRail";
-import type { PanelId } from "./Toolbar";
+import { RightDock } from "./RightDock";
+import type { DockTabId } from "./Toolbar";
 import { DepthOfMarket } from "./DepthOfMarket";
 import { TradingPanel } from "./TradingPanel";
 import { Watchlist } from "./Watchlist";
@@ -32,12 +32,16 @@ import type { CrosshairMessage } from "./crosshairBus";
 import { setActiveExportSource } from "./exportBridge";
 
 interface ChartPageProps {
-  watchlistOpen: boolean;
-  domOpen: boolean;
-  objectsOpen: boolean;
+  /** Which right-dock tab is visible, or null when the dock is closed. */
+  dockTab: DockTabId | null;
+  onSelectDockTab: (id: DockTabId) => void;
+  /** Set the dock tab directly (null closes the dock); used by the dock's tabs. */
+  onSetDockTab: (id: DockTabId | null) => void;
   tradingOpen: boolean;
-  onToggle: (id: PanelId) => void;
+  onToggleTrading: () => void;
   onOpenAlerts: () => void;
+  /** Opens the `?` shortcut sheet from the chart's bottom bar. */
+  onOpenHotkeys: () => void;
 }
 
 /**
@@ -45,7 +49,7 @@ interface ChartPageProps {
  * replay bar and the quick command input. Navigation destinations live on
  * their own routes; only these side panels stay page-local booleans.
  */
-export function ChartPage({ watchlistOpen, domOpen, objectsOpen, tradingOpen, onToggle, onOpenAlerts }: ChartPageProps) {
+export function ChartPage({ dockTab, onSelectDockTab, onSetDockTab, tradingOpen, onToggleTrading, onOpenAlerts, onOpenHotkeys }: ChartPageProps) {
   const layout = useWorkspace((s) => s.activeLayout());
   const state = activeChartOf(layout);
   const setActiveChart = useWorkspace((s) => s.setActiveChart);
@@ -182,7 +186,9 @@ export function ChartPage({ watchlistOpen, domOpen, objectsOpen, tradingOpen, on
         setCommandOpen(true);
         return;
       }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+      // The command palette owns plain Ctrl+K app-wide; the chart's quick
+      // command input took the Shift variant so both stay reachable.
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setCommandOpen((v) => !v);
         return;
@@ -217,9 +223,6 @@ export function ChartPage({ watchlistOpen, domOpen, objectsOpen, tradingOpen, on
   if (tradingOpen) exposure.add(state.symbol);
   useTradingTicks([...exposure].join("|"));
 
-  // Entry/stop/target for the position on this chart, as constant price lines.
-  // Built once per positions change, so each cell gets a stable array and the
-  // chart only redraws its lines when a fill actually changes them.
   // Entry/stop/target for the position on this chart, as constant price lines.
   // Built once per positions change, so each cell gets a stable array and the
   // chart only redraws its lines when a fill actually changes them.
@@ -278,20 +281,42 @@ export function ChartPage({ watchlistOpen, domOpen, objectsOpen, tradingOpen, on
           )}
         </main>
 
-        {objectsOpen && <ObjectTree onClose={() => onToggle("objects")} />}
-        {watchlistOpen && <Watchlist onOpenAlerts={onOpenAlerts} />}
-        {domOpen && <DepthOfMarket symbol={state.symbol} precision={2} />}
-        <RightRail panels={{ watchlist: watchlistOpen, depth: domOpen, objects: objectsOpen, trading: tradingOpen }} onToggle={onToggle} />
+        <RightDock
+          active={dockTab}
+          onSelect={(id) => onSetDockTab(id as DockTabId | null)}
+          tabs={[
+            {
+              id: "watchlist",
+              label: "Watchlist",
+              hint: "Quotes for the symbols you track",
+              render: () => <Watchlist onOpenAlerts={onOpenAlerts} />,
+            },
+            {
+              id: "depth",
+              label: "Depth",
+              hint: "Depth of market around the current price",
+              render: () => <DepthOfMarket symbol={state.symbol} precision={2} />,
+            },
+            {
+              id: "objects",
+              label: "Objects",
+              hint: "Drawings and indicators on this chart",
+              badge: state.drawings.length,
+              render: () => <ObjectTree onClose={() => onSelectDockTab("objects")} />,
+            },
+          ]}
+        />
       </div>
 
-      <ChartBottomBar />
+      <ChartBottomBar onOpenHotkeys={onOpenHotkeys} />
 
       {menu && (
         <ChartMenuHost
           request={menu}
           tradingOpen={tradingOpen}
-          objectsOpen={objectsOpen}
-          onTogglePanel={onToggle}
+          dockTab={dockTab}
+          onOpenDockTab={onSelectDockTab}
+          onToggleTrading={onToggleTrading}
           onOpenTable={() => setTableOpen(true)}
           onSaveTemplate={() => setNameOpen(true)}
           onClose={() => setMenu(null)}

@@ -1,41 +1,11 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Check, Search } from "lucide-react";
-import type { MenuEntry } from "./Menu";
+import { type Command, type CommandGroup, flattenGroups } from "./commandRegistry";
 
-/** A titled block of menu entries: the same data the toolbar menus render. */
-export interface CommandGroup {
-  title: string;
-  entries: MenuEntry[];
-}
-
-interface Command {
-  key: string;
-  group: string;
-  label: string;
-  hint?: string;
-  on: boolean;
-  run: () => void;
-}
+export type { Command, CommandGroup };
 
 /** Flatten menu groups into runnable commands; headings and dividers drop out. */
-export function toCommands(groups: CommandGroup[]): Command[] {
-  const out: Command[] = [];
-  for (const group of groups) {
-    for (const entry of group.entries) {
-      if (entry.kind === "separator" || entry.kind === "label") continue;
-      if (entry.kind === "action" && entry.disabled) continue;
-      out.push({
-        key: `${group.title}:${entry.id}`,
-        group: group.title,
-        label: entry.label,
-        hint: entry.kind === "action" ? entry.hint : undefined,
-        on: entry.kind === "toggle" ? entry.checked : entry.kind === "radio" ? entry.selected : false,
-        run: entry.onSelect,
-      });
-    }
-  }
-  return out;
-}
+export const toCommands = flattenGroups;
 
 /** Every word of the query must appear in "group label", in any order. */
 export function matchCommands(commands: Command[], query: string): Command[] {

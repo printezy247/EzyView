@@ -4,7 +4,8 @@ import { useEffect, useSyncExternalStore, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { ArrowLeftRight, CandlestickChart, Clock, Eye, FlaskConical, Search, Share2, Telescope } from "lucide-react";
 import { CommandPalette } from "./CommandPalette";
-import type { CommandGroup } from "./CommandPalette";
+import { buildNavCommands } from "./commandRegistry";
+import type { CommandGroup } from "./commandRegistry";
 import { RESOLUTION_GROUPS, resolutionName } from "./data";
 import { Menu } from "./Menu";
 import type { MenuEntry } from "./Menu";
@@ -46,8 +47,13 @@ export const CHART_TYPES: { id: ChartType; label: string }[] = [
   { id: "pnf", label: "Point & Figure" },
 ];
 
-/** Chart side panels. Journal/Fundamentals/Options/Pine are routes now, not panels. */
-export type PanelId = "watchlist" | "depth" | "objects" | "trading";
+/**
+ * Chart-hosted panels. The three right-hand panels (watchlist, depth, object
+ * tree) are tabs of one dock, so they share the `dock` id; `trading` is the
+ * bottom strip. Journal/Fundamentals/Options/Strategies are routes, not panels.
+ */
+export type PanelId = "dock" | "trading";
+export type DockTabId = "watchlist" | "depth" | "objects";
 
 const MAGNET_MODES: { id: MagnetMode; label: string }[] = [
   { id: "off", label: "Magnet off" },
@@ -73,7 +79,9 @@ interface Props {
   watermark: boolean;
   indicatorCount: number;
   replayActive: boolean;
-  panels: Record<PanelId, boolean>;
+  /** Which dock tab is visible, or null when the dock is closed. */
+  dockTab: DockTabId | null;
+  tradingOpen: boolean;
   onSymbol: (s: string) => void;
   onResolution: (r: Resolution) => void;
   onChartType: (t: ChartType) => void;
@@ -89,7 +97,8 @@ interface Props {
   onWatermark: () => void;
   onOpenIndicators: () => void;
   onToggleReplay: () => void;
-  onTogglePanel: (id: PanelId) => void;
+  onSelectDockTab: (id: DockTabId) => void;
+  onToggleTrading: () => void;
   onOpenWindow: () => void;
   onOpenAlerts: () => void;
   onOpenApiKeys: () => void;
@@ -166,17 +175,18 @@ export function Toolbar(props: Props) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const pineActive = location.pathname === "/pine";
+  const strategiesActive = location.pathname === "/strategies";
   // Export registry changes (a chart cell mounts or focus moves) bump a
   // version so this bar re-renders and the Export entry's disabled state
   // tracks getActiveExportSource() instead of freezing at first paint.
   useSyncExternalStore(subscribeExportSources, getExportSourceVersion, getExportSourceVersion);
 
-  // Ctrl+Shift+K (Cmd+Shift+K on macOS) opens the feature search from anywhere.
-  // Ctrl+K is reserved for the quick chart command input.
+  // Ctrl+K (Cmd+K on macOS) opens the command palette from anywhere; the
+  // chart's quick command input moved to Ctrl+Shift+K in the redesign, since
+  // the palette is the more common action once the app has eight sections.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "k") {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setPaletteOpen((v) => !v);
       }
@@ -190,7 +200,9 @@ export function Toolbar(props: Props) {
   const crosshairSync = useWorkspace((s) => s.crosshairSync);
   const setCrosshairSync = useWorkspace((s) => s.setCrosshairSync);
 
-  const panel = (id: PanelId, label: string) => toggle(id, label, props.panels[id], () => props.onTogglePanel(id));
+  const dockTab = (id: DockTabId, label: string) =>
+    toggle(id, label, props.dockTab === id, () => props.onSelectDockTab(id));
+  const tradingPanel = () => toggle("trading", "Order ticket & positions", props.tradingOpen, props.onToggleTrading);
 
   const intervalEntries: MenuEntry[] = [];
   for (const group of RESOLUTION_GROUPS) {
@@ -218,13 +230,13 @@ export function Toolbar(props: Props) {
 
   const studyEntries: MenuEntry[] = [
     { kind: "action", id: "indicators", label: "Indicators…", onSelect: props.onOpenIndicators },
-    { kind: "action", id: "pine", label: "Pine editor", onSelect: () => navigate("/pine") },
+    { kind: "action", id: "pine", label: "Pine editor", onSelect: () => navigate("/strategies") },
   ];
 
   const analysisEntries: MenuEntry[] = [
     { kind: "label", id: "research", label: "Research" },
-    { kind: "action", id: "fundamentals", label: "Fundamentals & screener", onSelect: () => navigate("/fundamentals") },
-    { kind: "action", id: "options", label: "Options chain", onSelect: () => navigate("/options") },
+    { kind: "action", id: "fundamentals", label: "Fundamentals & screener", onSelect: () => navigate("/research?tab=fundamentals") },
+    { kind: "action", id: "options", label: "Options chain", onSelect: () => navigate("/research?tab=options") },
     { kind: "separator", id: "s-tools" },
     { kind: "label", id: "tools", label: "Tools" },
     toggle("replay", "Bar replay", props.replayActive, props.onToggleReplay),
@@ -235,8 +247,8 @@ export function Toolbar(props: Props) {
   ];
 
   const tradeEntries: MenuEntry[] = [
-    panel("trading", "Order ticket & positions"),
-    panel("depth", "Depth of market"),
+    tradingPanel(),
+    dockTab("depth", "Depth of market"),
     { kind: "separator", id: "s-review" },
     { kind: "action", id: "journal", label: "Trading journal", onSelect: () => navigate("/journal") },
   ];
@@ -254,8 +266,8 @@ export function Toolbar(props: Props) {
     ),
     { kind: "separator", id: "s-panels" },
     { kind: "label", id: "panels", label: "Panels" },
-    panel("watchlist", "Watchlist"),
-    panel("objects", "Object tree"),
+    dockTab("watchlist", "Watchlist"),
+    dockTab("objects", "Object tree"),
     { kind: "separator", id: "s-drawing" },
     { kind: "label", id: "drawing", label: "Drawing" },
     ...MAGNET_MODES.map(
@@ -367,7 +379,14 @@ export function Toolbar(props: Props) {
     },
   });
 
+  const navCommands = buildNavCommands((to) => navigate(to));
+  const navGroup: CommandGroup = {
+    title: "Go to",
+    entries: navCommands.map((c) => ({ kind: "action" as const, id: c.id, label: c.label, hint: c.hint, onSelect: c.run })),
+  };
+
   const groups: CommandGroup[] = [
+    navGroup,
     { title: "Interval", entries: intervalEntries },
     { title: "Chart type", entries: typeEntries },
     { title: "Studies", entries: studyEntries },
@@ -377,7 +396,7 @@ export function Toolbar(props: Props) {
     { title: "Export", entries: exportEntries },
   ];
 
-  const tradeOpen = props.panels.trading || props.panels.depth;
+  const tradeOpen = props.tradingOpen || props.dockTab === "depth";
   const analysisOpen = props.replayActive;
 
   return (
@@ -422,7 +441,7 @@ export function Toolbar(props: Props) {
           label="Studies"
           icon={<FlaskConical size={13} aria-hidden />}
           badge={props.indicatorCount}
-          triggerActive={pineActive}
+          triggerActive={strategiesActive}
           entries={studyEntries}
         />
         <Menu label="Analysis" icon={<Telescope size={13} aria-hidden />} triggerActive={analysisOpen} entries={analysisEntries} />

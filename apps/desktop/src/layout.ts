@@ -27,6 +27,16 @@ export type ChartThemeName = "dark" | "light" | "tokyo";
  */
 export type AppTheme = "auto" | ChartThemeName;
 
+/** UI density. `compact` is the default terminal layout; `comfortable` adds a
+ * row's worth of breathing room for long table reading. */
+export type Density = "compact" | "comfortable";
+
+export const DENSITIES: readonly Density[] = ["compact", "comfortable"] as const;
+
+export function isDensity(v: unknown): v is Density {
+  return v === "compact" || v === "comfortable";
+}
+
 /** The theme the shell should paint with, given the setting and the chart. */
 export function resolveAppTheme(appTheme: AppTheme, chartTheme: ChartThemeName): ChartThemeName {
   return appTheme === "auto" ? chartTheme : appTheme;

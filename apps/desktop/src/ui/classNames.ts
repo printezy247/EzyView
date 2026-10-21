@@ -70,8 +70,15 @@ export function chipClass(options: { tone?: "neutral" | "up" | "down" | "accent"
   );
 }
 
-/** Table row. Compact by default; the comfortable variant is the density toggle. */
+/**
+ * Table row. Compact by default.
+ *
+ * Every row carries the `.ev-row` marker so the root `[data-density]` rule in
+ * `styles.css` can stretch it without each table knowing about density. The
+ * explicit `density` prop is for the rare row that must opt out of that
+ * global setting; it wins, because `tailwind-merge` keeps the last height.
+ */
 export function rowClass(options: { density?: "compact" | "comfortable"; selected?: boolean; className?: ClassValue } = {}): string {
-  const h = options.density === "comfortable" ? "h-8" : "h-6";
-  return cn("num flex items-center px-2 text-dense", h, options.selected ? "bg-ev-raised" : "", options.className);
+  const h = options.density === "comfortable" ? "h-8" : options.density === "compact" ? "h-6" : "";
+  return cn("num ev-row flex items-center px-2 text-dense", h, options.selected ? "bg-ev-raised" : "", options.className);
 }

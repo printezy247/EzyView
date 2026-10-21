@@ -24,9 +24,11 @@ export interface ChartMenuRequest {
 interface Props {
   request: ChartMenuRequest;
   tradingOpen: boolean;
+  /** Which dock tab is visible, or null when the dock is closed. */
+  dockTab: "watchlist" | "depth" | "objects" | null;
   /** Toggle a docked panel ("objects", "trading", ...). */
-  onTogglePanel: (id: "objects" | "trading") => void;
-  objectsOpen: boolean;
+  onOpenDockTab: (id: "objects") => void;
+  onToggleTrading: () => void;
   onOpenTable: () => void;
   onSaveTemplate: () => void;
   onClose: () => void;
@@ -37,7 +39,7 @@ interface Props {
  * store and the cursor position, and gives each one its action. Order items
  * only prefill the order ticket; they never send anything.
  */
-export function ChartMenuHost({ request, tradingOpen, onTogglePanel, objectsOpen, onOpenTable, onSaveTemplate, onClose }: Props) {
+export function ChartMenuHost({ request, tradingOpen, dockTab, onOpenDockTab, onToggleTrading, onOpenTable, onSaveTemplate, onClose }: Props) {
   const navigate = useNavigate();
   const ws = useWorkspace();
   const chart = ws.activeChart();
@@ -45,7 +47,7 @@ export function ChartMenuHost({ request, tradingOpen, onTogglePanel, objectsOpen
   const precision = precisionFor(price);
 
   const prefill = (side: "buy" | "sell", type: "limit" | "stop") => {
-    if (!tradingOpen) onTogglePanel("trading");
+    if (!tradingOpen) onToggleTrading();
     useOrderDraft.getState().setDraft({ symbol: chart.symbol, side, type, price: price.toFixed(precision) });
   };
 
@@ -70,7 +72,7 @@ export function ChartMenuHost({ request, tradingOpen, onTogglePanel, objectsOpen
         ]);
     },
     openTable: onOpenTable,
-    toggleObjectTree: () => onTogglePanel("objects"),
+    toggleObjectTree: () => onOpenDockTab("objects"),
     saveTemplate: onSaveTemplate,
     applyTemplate: ws.applyChartTemplate,
     deleteTemplate: ws.deleteChartTemplate,
@@ -86,7 +88,7 @@ export function ChartMenuHost({ request, tradingOpen, onTogglePanel, objectsOpen
     mt5: brokerFeed(),
     hasClipboard: ws.drawingClipboard !== null,
     cursorLocked: chart.drawings.some((d) => d.name === LOCK_NAME),
-    objectTreeOpen: objectsOpen,
+    objectTreeOpen: dockTab === "objects",
     indicators: chart.indicators.map((i) => ({ uid: i.uid, name: i.name ?? i.def.name })),
     templates: ws.chartTemplates.map((t) => ({ id: t.id, name: t.name })),
     eventOptions: ws.eventOptions,
