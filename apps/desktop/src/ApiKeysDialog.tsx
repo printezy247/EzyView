@@ -30,11 +30,10 @@ export function ApiKeysDialog() {
     <Modal
       onClose={onClose}
       labelledBy="api-keys-title"
-      backdropClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-      className="w-[30rem] rounded-md border border-ev-line bg-ev-panel text-[12px] shadow-2xl"
+      className="w-[30rem] rounded-md border border-ev-line bg-ev-panel text-base shadow-2xl"
     >
       <div className="flex items-center justify-between border-b border-ev-raised px-4 py-2.5">
-        <h2 id="api-keys-title" className="flex items-center gap-2 text-sm font-semibold text-ev-strong">
+        <h2 id="api-keys-title" className="flex items-center gap-2 text-body font-semibold text-ev-strong">
           <KeyRound size={14} aria-hidden />
           Data provider API keys
         </h2>
@@ -105,7 +104,7 @@ function KeyRow({
         </label>
         <span className={saved ? "text-ev-up" : "text-ev-muted"}>{saved ? "Key saved · live" : "No key · demo data"}</span>
       </div>
-      <p className="text-[11px] text-ev-muted">
+      <p className="text-dense text-ev-muted">
         {provider.covers}. {provider.limit}. Get a free key at{" "}
         <a href={provider.signup} target="_blank" rel="noopener noreferrer" className="select-all text-ev-accent-text hover:underline">
           {provider.signup}

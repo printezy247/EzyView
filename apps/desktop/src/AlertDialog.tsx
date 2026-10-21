@@ -53,7 +53,7 @@ export function AlertDialog({
       className="flex h-[28rem] w-[32rem] flex-col rounded-md border border-ev-line bg-ev-panel shadow-2xl"
     >
       <div className="flex items-center justify-between border-b border-ev-raised px-4 py-2.5">
-        <h2 id="alert-dialog-title" className="flex items-center gap-2 text-sm font-semibold text-ev-strong">
+        <h2 id="alert-dialog-title" className="flex items-center gap-2 text-body font-semibold text-ev-strong">
           <Bell size={14} aria-hidden />
           Alerts on {symbol}
         </h2>
@@ -66,7 +66,7 @@ export function AlertDialog({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-2">
         {alerts.length === 0 ? (
-          <p className="py-6 text-center text-sm text-ev-muted">
+          <p className="py-6 text-center text-body text-ev-muted">
             No alerts yet. Set a condition above to get notified when price reaches it.
           </p>
         ) : (
@@ -81,12 +81,12 @@ export function AlertDialog({
                 ) : (
                   <Bell size={13} aria-hidden className="shrink-0 text-ev-muted" />
                 )}
-                <span className="text-xs text-ev-strong">{describeCondition(a.condition)}</span>
-                <span className="text-[11px] text-ev-muted">{FREQ_LABELS[a.frequency]}</span>
+                <span className="text-base text-ev-strong">{describeCondition(a.condition)}</span>
+                <span className="text-dense text-ev-muted">{FREQ_LABELS[a.frequency]}</span>
                 {a.state === "triggered" && (
-                  <span className="rounded bg-ev-line px-1.5 text-[11px] text-ev-orange">triggered</span>
+                  <span className="rounded bg-ev-line px-1.5 text-dense text-ev-orange">triggered</span>
                 )}
-                {a.message && <span className="truncate text-[11px] text-ev-muted">{a.message}</span>}
+                {a.message && <span className="truncate text-dense text-ev-muted">{a.message}</span>}
                 <button
                   type="button"
                   onClick={() => onRemove(a.id)}
@@ -142,7 +142,7 @@ function AlertForm({
         aria-label="Alert condition"
         value={kind}
         onChange={(e) => setKind(e.target.value as AlertCondition["kind"])}
-        className="rounded border border-ev-line bg-ev-bg px-2 py-1 text-xs text-ev-strong"
+        className="rounded border border-ev-line bg-ev-bg px-2 py-1 text-base text-ev-strong"
       >
         {Object.entries(CONDITION_LABELS).map(([k, label]) => (
           <option key={k} value={k}>
@@ -158,7 +158,7 @@ function AlertForm({
           onChange={(e) => setValue(e.target.value)}
           placeholder="Price"
           inputMode="decimal"
-          className="w-24 rounded border border-ev-line bg-ev-bg px-2 py-1 text-xs text-ev-strong"
+          className="w-24 rounded border border-ev-line bg-ev-bg px-2 py-1 text-base text-ev-strong"
         />
       )}
       {needsBars && (
@@ -168,7 +168,7 @@ function AlertForm({
           onChange={(e) => setBars(e.target.value)}
           placeholder="Bars"
           inputMode="numeric"
-          className="w-16 rounded border border-ev-line bg-ev-bg px-2 py-1 text-xs text-ev-strong"
+          className="w-16 rounded border border-ev-line bg-ev-bg px-2 py-1 text-base text-ev-strong"
         />
       )}
       {needsMult && (
@@ -178,7 +178,7 @@ function AlertForm({
           onChange={(e) => setMult(e.target.value)}
           placeholder="σ mult"
           inputMode="decimal"
-          className="w-16 rounded border border-ev-line bg-ev-bg px-2 py-1 text-xs text-ev-strong"
+          className="w-16 rounded border border-ev-line bg-ev-bg px-2 py-1 text-base text-ev-strong"
         />
       )}
 
@@ -186,7 +186,7 @@ function AlertForm({
         aria-label="Alert frequency"
         value={frequency}
         onChange={(e) => setFrequency(e.target.value as AlertFrequency)}
-        className="rounded border border-ev-line bg-ev-bg px-2 py-1 text-xs text-ev-strong"
+        className="rounded border border-ev-line bg-ev-bg px-2 py-1 text-base text-ev-strong"
       >
         {Object.entries(FREQ_LABELS).map(([k, label]) => (
           <option key={k} value={k}>
@@ -200,14 +200,14 @@ function AlertForm({
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         placeholder="Message (optional)"
-        className="min-w-32 flex-1 rounded border border-ev-line bg-ev-bg px-2 py-1 text-xs text-ev-strong"
+        className="min-w-32 flex-1 rounded border border-ev-line bg-ev-bg px-2 py-1 text-base text-ev-strong"
       />
 
       <button
         type="button"
         onClick={submit}
         disabled={disabled}
-        className="rounded bg-ev-accent px-3 py-1 text-xs font-medium text-white disabled:opacity-40"
+        className="rounded bg-ev-accent px-3 py-1 text-base font-medium text-white disabled:opacity-40"
       >
         Create
       </button>

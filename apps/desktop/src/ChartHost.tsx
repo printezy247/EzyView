@@ -528,12 +528,12 @@ export function ChartHost(props: Props) {
         />
       )}
       {flash && (
-        <p className="pointer-events-none absolute bottom-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-ev-panel/90 px-2 py-1 text-[11px] text-ev-muted">
+        <p className="pointer-events-none absolute bottom-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-ev-panel/90 px-2 py-1 text-dense text-ev-muted">
           {flash}
         </p>
       )}
       {hidesLayers && (
-        <p className="pointer-events-none absolute bottom-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-ev-panel/90 px-2 py-1 text-[11px] text-ev-muted">
+        <p className="pointer-events-none absolute bottom-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-ev-panel/90 px-2 py-1 text-dense text-ev-muted">
           {typeLabel} plots price only, so volume, indicators and Pine plots are hidden.
         </p>
       )}

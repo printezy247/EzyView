@@ -161,7 +161,7 @@ export function DrawingToolbar() {
         aria-label="Undo last drawing"
         onClick={() => undoDrawing()}
         disabled={false}
-        className="flex size-8 items-center justify-center rounded text-[11px] font-medium text-ev-muted hover:bg-ev-raised hover:text-ev-strong disabled:opacity-40"
+        className="flex size-8 items-center justify-center rounded text-dense font-medium text-ev-muted hover:bg-ev-raised hover:text-ev-strong disabled:opacity-40"
       >
         U
       </button>
@@ -171,7 +171,7 @@ export function DrawingToolbar() {
         aria-label="Redo last drawing"
         onClick={() => redoDrawing()}
         disabled={!canRedo}
-        className="flex size-8 items-center justify-center rounded text-[11px] font-medium text-ev-muted hover:bg-ev-raised hover:text-ev-strong disabled:opacity-40"
+        className="flex size-8 items-center justify-center rounded text-dense font-medium text-ev-muted hover:bg-ev-raised hover:text-ev-strong disabled:opacity-40"
       >
         R
       </button>

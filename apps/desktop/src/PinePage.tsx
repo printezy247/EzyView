@@ -15,6 +15,8 @@ export function PinePage() {
   const navigate = useNavigate();
   const layout = useWorkspace((s) => s.activeLayout());
   const state = activeChartOf(layout);
+  const appTheme = useWorkspace((s) => s.appTheme);
+  const uiTheme: "dark" | "light" | "tokyo" = appTheme === "auto" ? state.theme : appTheme;
   const [bars, setBars] = useState<Candle[]>([]);
 
   // Load bars for the Pine editor on demand — not on every chart tick.
@@ -28,5 +30,12 @@ export function PinePage() {
     };
   }, [state.symbol, state.resolution]);
 
-  return <PineEditor onClose={() => navigate("/chart")} bars={bars} symbol={state.symbol} />;
+  return (
+    <PineEditor
+      onClose={() => navigate("/chart")}
+      bars={bars}
+      symbol={state.symbol}
+      uiTheme={uiTheme}
+    />
+  );
 }

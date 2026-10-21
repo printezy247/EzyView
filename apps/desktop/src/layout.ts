@@ -21,6 +21,17 @@ export type CrosshairModeName = "normal" | "magnet" | "hidden";
 /** Named app/chart themes. Tokyo Night ships free. */
 export type ChartThemeName = "dark" | "light" | "tokyo";
 
+/**
+ * App-chrome theme. `auto` follows the focused chart's theme (the behaviour
+ * before the brand pass); anything else pins the shell.
+ */
+export type AppTheme = "auto" | ChartThemeName;
+
+/** The theme the shell should paint with, given the setting and the chart. */
+export function resolveAppTheme(appTheme: AppTheme, chartTheme: ChartThemeName): ChartThemeName {
+  return appTheme === "auto" ? chartTheme : appTheme;
+}
+
 /** Right price-scale rendering. */
 export type PriceScaleModeName = "normal" | "log" | "percentage";
 

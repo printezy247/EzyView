@@ -16,6 +16,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      "@ezyview/brand": pkg("brand"),
       "@ezyview/data-adapters": pkg("data-adapters"),
       "@ezyview/indicators": pkg("indicators"),
       "@ezyview/chart-engine": pkg("chart-engine"),

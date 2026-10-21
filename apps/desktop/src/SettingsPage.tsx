@@ -34,6 +34,8 @@ export function SettingsPage() {
   const layout = useWorkspace((s) => s.activeLayout());
   const updateActive = useWorkspace((s) => s.updateActive);
   const theme = activeChartOf(layout).theme;
+  const appTheme = useWorkspace((s) => s.appTheme);
+  const setAppTheme = useWorkspace((s) => s.setAppTheme);
   const openDialog = useApiKeys((s) => s.openDialog);
   // `?tab=appearance` deep-links a section (the chart's right-click "Settings…").
   const [params] = useSearchParams();
@@ -42,9 +44,9 @@ export function SettingsPage() {
   const [busy, setBusy] = useState(false);
 
   return (
-    <section aria-label="Settings" className="flex min-h-0 flex-1 flex-col overflow-y-auto text-[12px]">
+    <section aria-label="Settings" className="flex min-h-0 flex-1 flex-col overflow-y-auto text-base">
       <div className="flex items-center gap-2 border-b border-ev-raised px-4 py-3">
-        <h1 className="text-sm font-semibold text-ev-strong">Settings</h1>
+        <h1 className="text-body font-semibold text-ev-strong">Settings</h1>
       </div>
 
       <div role="tablist" aria-label="Settings sections" className="flex gap-1 border-b border-ev-raised px-4 py-2">
@@ -58,8 +60,8 @@ export function SettingsPage() {
             onClick={() => setTab(id)}
             className={
               tab === id
-                ? "rounded bg-ev-raised px-2.5 py-1.5 text-[11px] font-medium text-ev-strong"
-                : "rounded px-2.5 py-1.5 text-[11px] text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+                ? "rounded bg-ev-raised px-2.5 py-1.5 text-dense font-medium text-ev-strong"
+                : "rounded px-2.5 py-1.5 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
             }
           >
             {label}
@@ -74,14 +76,14 @@ export function SettingsPage() {
         {tab === "audit" && <AuditTab />}
         {tab === "data" && (
           <>
-            <p className="mb-3 text-[11px] text-ev-muted">
+            <p className="mb-3 text-dense text-ev-muted">
               Provider API keys (Finnhub, Alpha Vantage) for fundamentals data. Keys live in the OS keyring only —
               never in a file or localStorage.
             </p>
             <button
               type="button"
               onClick={openDialog}
-              className="rounded bg-ev-line px-3 py-1.5 text-[11px] text-ev-strong hover:bg-ev-line-strong"
+              className="rounded bg-ev-line px-3 py-1.5 text-dense text-ev-strong hover:bg-ev-line-strong"
             >
               Manage API keys
             </button>
@@ -91,7 +93,30 @@ export function SettingsPage() {
         {tab === "diagnostics" && <DiagnosticsTab />}
         {tab === "appearance" && (
           <>
-            <p className="mb-3 text-[11px] text-ev-muted">Colour theme for the shell and the active chart.</p>
+            <p className="mb-3 text-dense text-ev-muted">Colour theme for the shell and the active chart.</p>
+            <div className="flex gap-2" role="radiogroup" aria-label="App theme">
+              {(["auto", "dark", "light", "tokyo"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  role="radio"
+                  aria-checked={appTheme === t}
+                  onClick={() => setAppTheme(t)}
+                  className={
+                    appTheme === t
+                      ? "rounded bg-ev-raised px-3 py-1.5 text-dense font-medium capitalize text-ev-strong"
+                      : "rounded border border-ev-line px-3 py-1.5 text-dense capitalize text-ev-muted hover:text-ev-strong"
+                  }
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+            <p className="mb-3 mt-1.5 text-dense text-ev-faint">
+              Auto follows the focused chart. Pin a theme to keep the chrome still across a mixed grid.
+            </p>
+            <h2 className="mb-1 text-dense font-medium uppercase tracking-wider text-ev-faint">Chart theme</h2>
+            <p className="mb-3 text-dense text-ev-muted">Palette for this chart cell only.</p>
             <div className="flex gap-2" role="radiogroup" aria-label="Theme">
               {(["dark", "light", "tokyo"] as const).map((t) => (
                 <button
@@ -102,16 +127,16 @@ export function SettingsPage() {
                   onClick={() => updateActive({ theme: t })}
                   className={
                     theme === t
-                      ? "rounded bg-ev-raised px-3 py-1.5 text-[11px] font-medium capitalize text-ev-strong"
-                      : "rounded border border-ev-line px-3 py-1.5 text-[11px] capitalize text-ev-muted hover:text-ev-strong"
+                      ? "rounded bg-ev-raised px-3 py-1.5 text-dense font-medium capitalize text-ev-strong"
+                      : "rounded border border-ev-line px-3 py-1.5 text-dense capitalize text-ev-muted hover:text-ev-strong"
                   }
                 >
                   {t}
                 </button>
               ))}
             </div>
-            <h2 className="mb-1 mt-5 text-[11px] font-medium uppercase tracking-wider text-ev-faint">Chart events</h2>
-            <p className="mb-2 text-[11px] text-ev-muted">
+            <h2 className="mb-1 mt-5 text-dense font-medium uppercase tracking-wider text-ev-faint">Chart events</h2>
+            <p className="mb-2 text-dense text-ev-muted">
               What to draw on the chart. The same switches sit in the bar under the chart.
             </p>
             <EventsControls layout="panel" />

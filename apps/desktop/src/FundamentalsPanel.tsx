@@ -13,6 +13,7 @@ import { useApiKeys } from "./apiKeys";
 import { market, tickerOf } from "./data";
 import { CalendarTab, DAY, day, EarningsTab, Empty, Failed, NewsTab, pct, tone, useLoad } from "./FundamentalsTabs";
 import type { Src } from "./FundamentalsTabs";
+import { inputClass } from "./ui";
 
 interface Props {
   symbol: string;
@@ -47,7 +48,7 @@ export function FundamentalsPanel({ symbol, onClose, onPickSymbol }: Props) {
 
   return (
     <section aria-label="Fundamentals" className="flex min-h-0 flex-1 flex-col border-t border-ev-raised bg-ev-bg">
-      <header className="flex h-8 shrink-0 items-center gap-1 border-b border-ev-raised px-3 text-[11px]">
+      <header className="flex h-8 shrink-0 items-center gap-1 border-b border-ev-raised px-3 text-dense">
         <div role="tablist" aria-label="Fundamentals" className="flex gap-1">
           {TABS.map((t) => (
             <button
@@ -126,7 +127,7 @@ function IposTab({ src }: { src: Src }) {
   if (rows === null) return <Empty text="Loading…" />;
   if (rows.length === 0) return <Empty text="No IPOs in the next 30 days." />;
   return (
-    <table className="w-full text-[11px]">
+    <table className="w-full text-dense">
       <thead className="text-left text-ev-muted">
         <tr>
           <th scope="col" className="px-3 py-1 font-normal">Date</th>
@@ -164,7 +165,7 @@ function DividendsTab({ symbol, src }: { symbol: string; src: Src }) {
   if (rows === null) return <Empty text="Loading…" />;
   if (rows.length === 0) return <Empty text={`No dividends for ${tickerOf(symbol)} in the last 3 years (stocks only).`} />;
   return (
-    <table className="w-full text-[11px]">
+    <table className="w-full text-dense">
       <thead className="text-left text-ev-muted">
         <tr>
           <th scope="col" className="px-3 py-1 font-normal">Ex-date</th>
@@ -220,9 +221,9 @@ function ScreenerTab({ onPick }: { onPick: (symbol: string) => void }) {
     });
   }, [universe, text, assetClass, rsiMin, rsiMax, sortBy, descending]);
 
-  const input = "rounded border border-ev-line bg-ev-panel px-1.5 py-0.5";
+  const input = inputClass("h-6 w-auto");
   return (
-    <div className="text-[11px]">
+    <div className="text-dense">
       <div className="sticky top-0 flex flex-wrap items-center gap-2 bg-ev-bg px-3 py-1.5">
         <input aria-label="Search symbols" placeholder="Search" value={text} onChange={(e) => setText(e.target.value)} className={`${input} w-24`} />
         <select aria-label="Asset class" value={assetClass} onChange={(e) => setAssetClass(e.target.value)} className={input}>
@@ -310,7 +311,7 @@ function HeatmapTab({ onPick }: { onPick: (symbol: string) => void }) {
           <title>{`${t.label} ${pct(t.changePct)}`}</title>
           <rect x={t.x} y={t.y} width={t.w} height={t.h} fill={heatColor(t.changePct)} className="stroke-ev-bg" strokeWidth={2} />
           {t.w > 60 && t.h > 30 && (
-            <text x={t.x + t.w / 2} y={t.y + t.h / 2} textAnchor="middle" fill="#fff" fontSize={Math.min(22, t.w / 6)}>
+            <text x={t.x + t.w / 2} y={t.y + t.h / 2} textAnchor="middle" fill="currentColor" fontSize={Math.min(22, t.w / 6)}>
               <tspan x={t.x + t.w / 2} dy="-0.2em" fontWeight={600}>
                 {t.label}
               </tspan>

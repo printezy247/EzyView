@@ -3,8 +3,9 @@ import { getActiveExportSource, getExportSourceVersion, subscribeExportSources }
 import { formatClock, parseGoToDate, RANGE_PRESETS } from "./chartView";
 import { EventsControls } from "./EventsControls";
 import { useWorkspace } from "./store";
+import { buttonClass } from "./ui";
 
-const chip = "rounded px-1.5 py-0.5 text-[11px] disabled:opacity-40";
+const chip = buttonClass({ size: "sm", variant: "ghost" });
 const idle = "text-ev-muted hover:bg-ev-raised hover:text-ev-strong";
 const lit = "bg-ev-raised font-medium text-ev-strong";
 
@@ -57,7 +58,7 @@ export function ChartBottomBar() {
           const t = parseGoToDate(e.target.value);
           if (t !== null) void view?.goTo(t);
         }}
-        className="ml-1 h-5 rounded border border-ev-line bg-ev-panel px-1 text-[11px] text-ev-text disabled:opacity-40"
+        className="ml-1 h-5 rounded border border-ev-line bg-ev-panel px-1 text-dense text-ev-text disabled:opacity-40"
       />
 
       <div className="mx-2 h-4 w-px shrink-0 bg-ev-raised" />
@@ -88,7 +89,7 @@ export function ChartBottomBar() {
         >
           %
         </button>
-        <span className="ml-2 text-[11px] tabular-nums text-ev-muted" title="Current time in the chart's timezone">
+        <span className="ml-2 text-dense num text-ev-muted" title="Current time in the chart's timezone">
           {formatClock(now, timezone)}
         </span>
       </div>

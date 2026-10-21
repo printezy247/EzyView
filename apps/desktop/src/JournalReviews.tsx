@@ -52,7 +52,7 @@ export function JournalReviews({ entries, notes, selectedDay, onSelectDay }: Pro
       type="button"
       onClick={() => setPeriod(value)}
       aria-pressed={period === value}
-      className={`rounded border px-2 py-0.5 text-[11px] ${
+      className={`rounded border px-2 py-0.5 text-dense ${
         period === value ? "border-ev-accent text-ev-strong" : "border-ev-line text-ev-muted hover:text-ev-strong"
       }`}
     >
@@ -61,11 +61,11 @@ export function JournalReviews({ entries, notes, selectedDay, onSelectDay }: Pro
   );
 
   const textarea =
-    "w-full resize-none rounded border border-ev-line bg-ev-bg p-2 text-xs text-ev-text focus:border-ev-accent";
+    "w-full resize-none rounded border border-ev-line bg-ev-bg p-2 text-base text-ev-text focus:border-ev-accent";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3">
-      <div className="flex flex-wrap items-center gap-2 text-[11px]">
+      <div className="flex flex-wrap items-center gap-2 text-dense">
         {periodBtn("daily", "Daily")}
         {periodBtn("weekly", "Weekly")}
         <input
@@ -77,18 +77,18 @@ export function JournalReviews({ entries, notes, selectedDay, onSelectDay }: Pro
           }}
           className="rounded border border-ev-line bg-ev-bg px-2 py-0.5 text-ev-text focus:border-ev-accent"
         />
-        <span className="text-ev-faint tabular-nums">
+        <span className="text-ev-faint num">
           {new Date(win.start * 1000).toLocaleString()} → {new Date(win.end * 1000).toLocaleString()}
         </span>
       </div>
 
       <div className="grid min-h-0 flex-1 grid-cols-2 gap-3">
         <div className="flex min-h-0 flex-col">
-          <span className="mb-1 text-[10px] uppercase tracking-wider text-ev-faint">Preview</span>
+          <span className="mb-1 text-micro uppercase tracking-wider text-ev-faint">Preview</span>
           <textarea readOnly value={composed} aria-label="Composed review preview" className={`${textarea} min-h-40 flex-1`} />
         </div>
         <div className="flex min-h-0 flex-col">
-          <span className="mb-1 text-[10px] uppercase tracking-wider text-ev-faint">Editor</span>
+          <span className="mb-1 text-micro uppercase tracking-wider text-ev-faint">Editor</span>
           <textarea
             value={editor}
             onChange={(e) => edit(e.target.value)}
@@ -100,7 +100,7 @@ export function JournalReviews({ entries, notes, selectedDay, onSelectDay }: Pro
               type="button"
               onClick={() => setDraftKey("")}
               disabled={draftKey !== key}
-              className="rounded border border-ev-line px-2 py-0.5 text-[11px] text-ev-muted hover:text-ev-strong disabled:opacity-40"
+              className="rounded border border-ev-line px-2 py-0.5 text-dense text-ev-muted hover:text-ev-strong disabled:opacity-40"
             >
               Reset to preview
             </button>
@@ -108,7 +108,7 @@ export function JournalReviews({ entries, notes, selectedDay, onSelectDay }: Pro
               type="button"
               onClick={() => saveReview({ key: selectedDay, period, text: editor })}
               disabled={editor.trim() === ""}
-              className="ml-auto rounded bg-ev-accent px-3 py-1 text-[11px] font-medium text-white hover:bg-ev-accent-hover disabled:opacity-40"
+              className="ml-auto rounded bg-ev-accent px-3 py-1 text-dense font-medium text-white hover:bg-ev-accent-hover disabled:opacity-40"
             >
               Save review
             </button>
@@ -117,17 +117,17 @@ export function JournalReviews({ entries, notes, selectedDay, onSelectDay }: Pro
       </div>
 
       <section>
-        <h3 className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-ev-faint">Saved reviews</h3>
+        <h3 className="mb-1 text-dense font-semibold uppercase tracking-wider text-ev-faint">Saved reviews</h3>
         {savedReviews.length === 0 ? (
-          <p className="text-xs text-ev-faint">Nothing saved yet — compose above and hit Save.</p>
+          <p className="text-base text-ev-faint">Nothing saved yet — compose above and hit Save.</p>
         ) : (
           <ul className="space-y-1">
             {savedReviews.map((review) => (
               <li
                 key={review.id}
-                className="flex items-center gap-3 rounded border border-ev-line bg-ev-panel px-2 py-1 text-[11px]"
+                className="flex items-center gap-3 rounded border border-ev-line bg-ev-panel px-2 py-1 text-dense"
               >
-                <span className="w-24 shrink-0 tabular-nums text-ev-strong">{review.key}</span>
+                <span className="w-24 shrink-0 num text-ev-strong">{review.key}</span>
                 <span className="w-14 shrink-0 rounded bg-ev-raised px-1.5 py-0.5 text-center text-ev-muted">
                   {review.period}
                 </span>

@@ -5,7 +5,7 @@ import { drawingLabel } from "./ObjectTree";
 import { applyDrawingTemplate, listDrawingTemplates, saveDrawingTemplate } from "./drawingTemplates";
 import type { DrawingTemplate } from "./drawingTemplates";
 
-const COLORS = ["#2962ff", "#f23645", "#ff9800", "#4caf50", "#9c27b0", "#00bcd4", "#ffd700", "#ffffff"];
+const COLORS = ["#d91400", "#0ea600", "#f2a93b", "#4a90e2", "#9c27b0", "#00bcd4", "#ffd700", "#ffffff"];
 const WIDTHS = [1, 2, 3, 4];
 const LINE_STYLES = ["solid", "dashed", "dotted"] as const;
 
@@ -38,7 +38,7 @@ export function DrawingProperties() {
   const alertBound = alerts.some((a) => a.drawingId === d.id);
 
   const btn =
-    "rounded border border-ev-line px-2 py-1 text-[11px] text-ev-text hover:bg-ev-raised hover:text-ev-strong";
+    "rounded border border-ev-line px-2 py-1 text-dense text-ev-text hover:bg-ev-raised hover:text-ev-strong";
 
   const reorder = (to: "front" | "back") => {
     const chart = useWorkspace.getState().activeLayout();
@@ -49,24 +49,24 @@ export function DrawingProperties() {
   };
 
   return (
-    <div className="border-t border-ev-raised px-3 py-2 text-xs" aria-label="Drawing properties">
+    <div className="border-t border-ev-raised px-3 py-2 text-base" aria-label="Drawing properties">
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-ev-faint">Properties</h3>
-        <span className="truncate text-[11px] text-ev-muted">{drawingLabel(d)}</span>
+        <h3 className="text-dense font-semibold uppercase tracking-wider text-ev-faint">Properties</h3>
+        <span className="truncate text-dense text-ev-muted">{drawingLabel(d)}</span>
       </div>
 
       <label className="mb-2 block">
-        <span className="mb-1 block text-[11px] text-ev-muted">Name</span>
+        <span className="mb-1 block text-dense text-ev-muted">Name</span>
         <input
           value={d.name ?? ""}
           placeholder={drawingLabel(d)}
           onChange={(e) => update(d.id, { name: e.target.value || undefined })}
-          className="w-full rounded bg-ev-panel px-1.5 py-1 text-xs text-ev-strong outline-none ring-1 ring-ev-line focus:ring-ev-accent"
+          className="w-full rounded bg-ev-panel px-1.5 py-1 text-base text-ev-strong outline-none ring-1 ring-ev-line focus:ring-ev-accent"
         />
       </label>
 
       <div className="mb-2">
-        <span className="mb-1 block text-[11px] text-ev-muted">Colour</span>
+        <span className="mb-1 block text-dense text-ev-muted">Colour</span>
         <div className="flex flex-wrap gap-1">
           {COLORS.map((c) => (
             <button
@@ -84,7 +84,7 @@ export function DrawingProperties() {
 
       <div className="mb-2 flex gap-3">
         <div>
-          <span className="mb-1 block text-[11px] text-ev-muted">Width</span>
+          <span className="mb-1 block text-dense text-ev-muted">Width</span>
           <div className="flex gap-1">
             {WIDTHS.map((w) => (
               <button
@@ -101,7 +101,7 @@ export function DrawingProperties() {
           </div>
         </div>
         <div>
-          <span className="mb-1 block text-[11px] text-ev-muted">Style</span>
+          <span className="mb-1 block text-dense text-ev-muted">Style</span>
           <div className="flex gap-1">
             {LINE_STYLES.map((ls) => (
               <button
@@ -120,7 +120,7 @@ export function DrawingProperties() {
       </div>
 
       <div className="mb-2">
-        <span className="mb-1 block text-[11px] text-ev-muted">Template</span>
+        <span className="mb-1 block text-dense text-ev-muted">Template</span>
         <div className="flex gap-1">
           <select
             value=""
@@ -130,7 +130,7 @@ export function DrawingProperties() {
               }
             }}
             aria-label="Apply drawing template"
-            className="rounded border border-ev-line bg-ev-panel px-1.5 py-1 text-xs text-ev-text"
+            className="rounded border border-ev-line bg-ev-panel px-1.5 py-1 text-base text-ev-text"
           >
             <option value="">Apply…</option>
             {templates.map((t) => (
@@ -144,7 +144,7 @@ export function DrawingProperties() {
             placeholder="Name"
             onChange={(e) => setTemplateName(e.target.value)}
             aria-label="Template name"
-            className="min-w-0 flex-1 rounded bg-ev-panel px-1.5 py-1 text-xs text-ev-strong outline-none ring-1 ring-ev-line focus:ring-ev-accent"
+            className="min-w-0 flex-1 rounded bg-ev-panel px-1.5 py-1 text-base text-ev-strong outline-none ring-1 ring-ev-line focus:ring-ev-accent"
           />
           <button
             type="button"
@@ -163,11 +163,11 @@ export function DrawingProperties() {
 
       {(d.tool === "text" || d.text !== undefined) && (
         <label className="mb-2 block">
-          <span className="mb-1 block text-[11px] text-ev-muted">Text</span>
+          <span className="mb-1 block text-dense text-ev-muted">Text</span>
           <input
             value={d.text ?? ""}
             onChange={(e) => update(d.id, { text: e.target.value })}
-            className="w-full rounded bg-ev-panel px-1.5 py-1 text-xs text-ev-strong outline-none ring-1 ring-ev-line focus:ring-ev-accent"
+            className="w-full rounded bg-ev-panel px-1.5 py-1 text-base text-ev-strong outline-none ring-1 ring-ev-line focus:ring-ev-accent"
           />
         </label>
       )}
@@ -222,7 +222,7 @@ export function DrawingProperties() {
         <button
           type="button"
           onClick={() => remove(d.id)}
-          className={`${btn} flex items-center gap-1 text-[#f23645] hover:text-[#ff5f6d]`}
+          className={`${btn} flex items-center gap-1 text-ev-down hover:opacity-80`}
         >
           <Trash2 size={12} aria-hidden />
           Delete

@@ -47,21 +47,21 @@ export function DepthOfMarket({ symbol, precision }: Props) {
   return (
     <aside aria-label="Depth of market" className="flex w-44 shrink-0 flex-col border-l border-ev-raised bg-ev-bg">
       <div className="border-b border-ev-raised px-3 py-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-ev-muted">Depth</h2>
-        <p className="mt-0.5 text-[11px] text-ev-faint">{symbol}</p>
+        <h2 className="text-base font-semibold uppercase tracking-wider text-ev-muted">Depth</h2>
+        <p className="mt-0.5 text-dense text-ev-faint">{symbol}</p>
       </div>
 
       {mid === null ? (
-        <p className="px-3 py-6 text-xs text-ev-faint">Waiting for a quote…</p>
+        <p className="px-3 py-6 text-base text-ev-faint">Waiting for a quote…</p>
       ) : (
-        <div className="min-h-0 flex-1 overflow-y-auto text-[11px] tabular-nums">
+        <div className="min-h-0 flex-1 overflow-y-auto text-dense num">
           <ul>
             {asks.toReversed().map((lvl) => (
                 <Row key={`a-${lvl.price}`} level={lvl} maxCum={maxCum} side="ask" precision={precision} />
               ))}
           </ul>
 
-          <div className="border-y border-ev-raised bg-ev-panel px-2 py-1 text-center text-xs font-semibold text-ev-strong">
+          <div className="border-y border-ev-raised bg-ev-panel px-2 py-1 text-center text-base font-semibold text-ev-strong">
             {mid.toFixed(precision)}
           </div>
 
@@ -94,7 +94,7 @@ function Row({
         className="absolute inset-y-0 left-0"
         style={{
           width,
-          backgroundColor: side === "ask" ? "rgba(239, 83, 80, 0.14)" : "rgba(38, 166, 154, 0.14)",
+          backgroundColor: `color-mix(in srgb, var(--ev-${side === "ask" ? "down" : "up"}) 14%, transparent)`,
         }}
         aria-hidden
       />

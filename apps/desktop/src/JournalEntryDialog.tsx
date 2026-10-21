@@ -108,18 +108,17 @@ export function JournalEntryDialog({ onClose }: Props) {
   };
 
   const field =
-    "w-full rounded border border-ev-line bg-ev-bg px-2 py-1 text-xs text-ev-text focus:border-ev-accent";
-  const label = "block text-[10px] uppercase tracking-wider text-ev-faint";
+    "w-full rounded border border-ev-line bg-ev-bg px-2 py-1 text-base text-ev-text focus:border-ev-accent";
+  const label = "block text-micro uppercase tracking-wider text-ev-faint";
 
   return (
     <Modal
       onClose={onClose}
       labelledBy="manual-entry-title"
-      backdropClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
       className="flex max-h-[90vh] w-[40rem] flex-col rounded-md border border-ev-line bg-ev-panel shadow-2xl"
     >
       <div className="flex shrink-0 items-center justify-between border-b border-ev-raised px-4 py-2.5">
-        <h2 id="manual-entry-title" className="text-sm font-semibold text-ev-strong">
+        <h2 id="manual-entry-title" className="text-body font-semibold text-ev-strong">
           Manual entry
         </h2>
         <button type="button" onClick={onClose} aria-label="Close" className="text-ev-muted hover:text-ev-strong">
@@ -251,7 +250,7 @@ export function JournalEntryDialog({ onClose }: Props) {
               type="file"
               accept="image/*"
               onChange={(e) => onScreenshot(e.target.files?.[0])}
-              className="w-full rounded border border-ev-line bg-ev-bg px-1 py-0.5 text-[11px] text-ev-muted file:mr-2 file:rounded file:border-0 file:bg-ev-raised file:px-2 file:py-0.5 file:text-[11px] file:text-ev-text"
+              className="w-full rounded border border-ev-line bg-ev-bg px-1 py-0.5 text-dense text-ev-muted file:mr-2 file:rounded file:border-0 file:bg-ev-raised file:px-2 file:py-0.5 file:text-dense file:text-ev-text"
             />
           </div>
         </div>
@@ -277,7 +276,7 @@ export function JournalEntryDialog({ onClose }: Props) {
             <button
               type="button"
               onClick={() => setShot(null)}
-              className="rounded border border-ev-line px-2 py-1 text-[11px] text-ev-muted hover:text-ev-strong"
+              className="rounded border border-ev-line px-2 py-1 text-dense text-ev-muted hover:text-ev-strong"
             >
               Remove
             </button>
@@ -286,16 +285,16 @@ export function JournalEntryDialog({ onClose }: Props) {
       </div>
 
       <div className="flex shrink-0 items-center gap-2 border-t border-ev-raised px-4 py-2.5">
-        {!valid && <span className="text-[11px] text-ev-faint">Symbol, qty &gt; 0 and entry price &gt; 0 are required.</span>}
+        {!valid && <span className="text-dense text-ev-faint">Symbol, qty &gt; 0 and entry price &gt; 0 are required.</span>}
         <div className="ml-auto flex gap-2">
-          <button type="button" onClick={onClose} className="rounded border border-ev-line px-3 py-1 text-[11px] text-ev-muted hover:text-ev-strong">
+          <button type="button" onClick={onClose} className="rounded border border-ev-line px-3 py-1 text-dense text-ev-muted hover:text-ev-strong">
             Cancel
           </button>
           <button
             type="button"
             onClick={submit}
             disabled={!valid}
-            className="rounded bg-ev-accent px-3 py-1 text-[11px] font-medium text-white hover:bg-ev-accent-hover disabled:opacity-40"
+            className="rounded bg-ev-accent px-3 py-1 text-dense font-medium text-white hover:bg-ev-accent-hover disabled:opacity-40"
           >
             Add trade
           </button>

@@ -77,7 +77,7 @@ export function ReplayBar({ totalBars }: Props) {
   );
 
   return (
-    <div className="flex items-center gap-2 border-t border-ev-raised bg-ev-panel px-3 py-1.5 text-xs">
+    <div className="flex items-center gap-2 border-t border-ev-raised bg-ev-panel px-3 py-1.5 text-base">
       <span className="font-semibold uppercase tracking-wider text-ev-faint">Replay</span>
 
       <button
@@ -126,7 +126,7 @@ export function ReplayBar({ totalBars }: Props) {
         aria-label="Replay position"
       />
 
-      <span className="w-24 text-right tabular-nums text-ev-text-2">
+      <span className="w-24 text-right num text-ev-muted">
         {replayBar + 1} / {totalBars}
       </span>
 

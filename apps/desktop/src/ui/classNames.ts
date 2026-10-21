@@ -1,0 +1,77 @@
+import type { ClassValue } from "clsx";
+
+import { cn } from "./cn";
+
+/**
+ * Control heights, in px. One scale for the whole app: `sm` for inline chips
+ * and dense toolbars, `md` the default, `lg` for dialog actions and anything
+ * a user hits without aiming.
+ */
+export const CONTROL_HEIGHT = { sm: 24, md: 28, lg: 32 } as const;
+export type ControlSize = keyof typeof CONTROL_HEIGHT;
+
+export const BUTTON_SIZES: Record<ControlSize, string> = {
+  sm: "h-6 gap-1 px-1.5 text-dense rounded",
+  md: "h-7 gap-1.5 px-2.5 text-base rounded",
+  lg: "h-8 gap-2 px-3 text-base rounded",
+};
+
+export type ButtonVariant = "solid" | "outline" | "ghost" | "danger";
+
+export const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
+  // The brand red, white text. Investing.com's primary action.
+  solid: "bg-ev-accent text-white hover:bg-ev-accent-hover disabled:hover:bg-ev-accent",
+  outline: "border border-ev-line bg-transparent text-ev-text hover:bg-ev-raised hover:text-ev-strong",
+  ghost: "bg-transparent text-ev-muted hover:bg-ev-raised hover:text-ev-strong",
+  danger: "border border-ev-down/40 bg-transparent text-ev-down hover:bg-ev-down/10",
+};
+
+const BASE = "inline-flex shrink-0 items-center justify-center font-medium transition disabled:cursor-not-allowed disabled:opacity-50";
+
+/**
+ * The one button class. `Button`/`IconButton` in `./Button` wrap this; a few
+ * trigger components (Menu, Select) need the string directly because they own
+ * their own element.
+ */
+export function buttonClass(options: { size?: ControlSize; variant?: ButtonVariant; className?: ClassValue } = {}): string {
+  const { size = "md", variant = "solid", className } = options;
+  return cn(BASE, BUTTON_SIZES[size], BUTTON_VARIANTS[variant], className);
+}
+
+/** Square icon button; a label is mandatory at the call site. */
+export function iconButtonClass(options: { size?: ControlSize; variant?: ButtonVariant; className?: ClassValue } = {}): string {
+  const { size = "md", variant = "ghost", className } = options;
+  const box = size === "sm" ? "size-6" : size === "lg" ? "size-8" : "size-7";
+  return cn(BASE, box, "rounded", BUTTON_VARIANTS[variant], className);
+}
+
+/** Text/password/number input. `w-full` is the caller's call. */
+export function inputClass(className?: ClassValue): string {
+  return cn(
+    "h-7 rounded border border-ev-line bg-ev-bg px-2 text-base text-ev-text",
+    "placeholder:text-ev-faint focus:border-ev-accent focus:outline-none",
+    "disabled:cursor-not-allowed disabled:opacity-50",
+    className,
+  );
+}
+
+/** Status/interval chip. Never a button. */
+export function chipClass(options: { tone?: "neutral" | "up" | "down" | "accent"; className?: ClassValue } = {}): string {
+  const tones = {
+    neutral: "bg-ev-raised text-ev-muted",
+    up: "bg-ev-up/15 text-ev-up",
+    down: "bg-ev-down/15 text-ev-down",
+    accent: "bg-ev-accent/15 text-ev-accent-text",
+  } as const;
+  return cn(
+    "inline-flex h-4.5 shrink-0 items-center gap-1 rounded px-1 text-micro font-medium",
+    tones[options.tone ?? "neutral"],
+    options.className,
+  );
+}
+
+/** Table row. Compact by default; the comfortable variant is the density toggle. */
+export function rowClass(options: { density?: "compact" | "comfortable"; selected?: boolean; className?: ClassValue } = {}): string {
+  const h = options.density === "comfortable" ? "h-8" : "h-6";
+  return cn("num flex items-center px-2 text-dense", h, options.selected ? "bg-ev-raised" : "", options.className);
+}

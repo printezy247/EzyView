@@ -17,6 +17,7 @@ import { ObjectTree } from "./ObjectTree";
 import { loadHistory } from "./data";
 import { useWorkspace } from "./store";
 import type { ChartState } from "./store";
+import { themeColors } from "@ezyview/brand";
 import { useTrading, useTradingTicks } from "./trading";
 import { useApiKeys } from "./apiKeys";
 import { BarsTable } from "./BarsTable";
@@ -219,22 +220,26 @@ export function ChartPage({ watchlistOpen, domOpen, objectsOpen, tradingOpen, on
   // Entry/stop/target for the position on this chart, as constant price lines.
   // Built once per positions change, so each cell gets a stable array and the
   // chart only redraws its lines when a fill actually changes them.
+  // Entry/stop/target for the position on this chart, as constant price lines.
+  // Built once per positions change, so each cell gets a stable array and the
+  // chart only redraws its lines when a fill actually changes them.
+  const lineColor = useCallback((role: "accent" | "up" | "down") => themeColors(state.theme)[role], [state.theme]);
   const linesBySymbol = useMemo(() => {
     const out = new Map<string, TradingLine[]>();
     for (const position of positions) {
       const lines: TradingLine[] = [
-        { price: position.entryPrice, color: "#2962ff", title: position.side === "long" ? "LONG" : "SHORT" },
+        { price: position.entryPrice, color: lineColor("accent"), title: position.side === "long" ? "LONG" : "SHORT" },
       ];
       if (position.stopLoss !== undefined) {
-        lines.push({ price: position.stopLoss, color: "#ef5350", title: "SL", dashed: true });
+        lines.push({ price: position.stopLoss, color: lineColor("down"), title: "SL", dashed: true });
       }
       if (position.takeProfit !== undefined) {
-        lines.push({ price: position.takeProfit, color: "#26a69a", title: "TP", dashed: true });
+        lines.push({ price: position.takeProfit, color: lineColor("up"), title: "TP", dashed: true });
       }
       if (!out.has(position.symbol)) out.set(position.symbol, lines);
     }
     return out;
-  }, [positions]);
+  }, [positions, lineColor]);
   const linesFor = useCallback((symbol: string) => linesBySymbol.get(symbol) ?? NO_LINES, [linesBySymbol]);
 
   return (
@@ -430,7 +435,7 @@ function ChartGrid({
 
 function Readout({ symbol, time }: { symbol: string; time: number | null }) {
   return (
-    <div className="pointer-events-none absolute left-2 top-2 z-10 text-[11px] text-ev-muted">
+    <div className="pointer-events-none absolute left-2 top-2 z-10 text-dense text-ev-muted">
       <span className="font-medium text-ev-strong">{symbol}</span>
       {time !== null && <span className="ml-2">{new Date(time * 1000).toLocaleString()}</span>}
     </div>
@@ -459,7 +464,7 @@ const TOOL_HINTS: Record<string, string> = {
 
 function ToolHint({ tool }: { tool: string }) {
   return (
-    <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded border border-ev-line bg-ev-panel px-2.5 py-1 text-[11px] text-ev-text shadow-lg">
+    <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded border border-ev-line bg-ev-panel px-2.5 py-1 text-dense text-ev-text shadow-lg">
       {TOOL_HINTS[tool] ?? "Click to place"} · Esc to cancel
     </div>
   );

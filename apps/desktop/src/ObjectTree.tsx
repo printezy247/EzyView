@@ -64,7 +64,7 @@ export function ObjectTree({ onClose }: Props) {
   return (
     <aside aria-label="Object tree" className="flex w-56 shrink-0 flex-col border-l border-ev-raised bg-ev-bg">
       <div className="flex items-center justify-between border-b border-ev-raised px-3 py-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-ev-muted">Object tree</h2>
+        <h2 className="text-base font-semibold uppercase tracking-wider text-ev-muted">Object tree</h2>
         <button
           type="button"
           aria-label="Close object tree"
@@ -76,12 +76,12 @@ export function ObjectTree({ onClose }: Props) {
         </button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto py-1 text-xs">
-        <p className="truncate px-3 pb-1 text-[11px] text-ev-muted">
+      <div className="min-h-0 flex-1 overflow-y-auto py-1 text-base">
+        <p className="truncate px-3 pb-1 text-dense text-ev-muted">
           {chart.symbol} · {chart.resolution}
         </p>
         {empty && (
-          <p className="px-3 py-4 text-[11px] leading-relaxed text-ev-muted">
+          <p className="px-3 py-4 text-dense leading-relaxed text-ev-muted">
             Nothing on this chart yet. Add an indicator from Studies, or pick a tool on the left rail.
           </p>
         )}
@@ -124,7 +124,7 @@ export function ObjectTree({ onClose }: Props) {
 
       <DrawingProperties />
 
-      <div className="border-t border-ev-raised px-3 py-2 text-[11px]">
+      <div className="border-t border-ev-raised px-3 py-2 text-dense">
         <div className="flex gap-2">
           <button
             type="button"
@@ -157,7 +157,7 @@ export function ObjectTree({ onClose }: Props) {
           />
         </div>
         {ioError && (
-          <p role="alert" className="mt-1.5 text-[#f23645]">
+          <p role="alert" className="mt-1.5 text-ev-down">
             {ioError}
           </p>
         )}
@@ -169,7 +169,7 @@ export function ObjectTree({ onClose }: Props) {
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="mt-1">
-      <h3 className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-ev-faint">{title}</h3>
+      <h3 className="px-3 py-1 text-dense font-semibold uppercase tracking-wider text-ev-faint">{title}</h3>
       <ul>{children}</ul>
     </section>
   );
@@ -227,7 +227,7 @@ function Row({ label, swatch, hidden, selected, locked, onSelect, onToggle, onLo
             // Keep Escape from also disarming the drawing tool.
             e.stopPropagation();
           }}
-          className="min-w-0 flex-1 rounded bg-ev-panel px-1 py-0.5 text-xs text-ev-strong outline-none ring-1 ring-ev-accent"
+          className="min-w-0 flex-1 rounded bg-ev-panel px-1 py-0.5 text-base text-ev-strong outline-none ring-1 ring-ev-accent"
         />
       ) : (
         <span

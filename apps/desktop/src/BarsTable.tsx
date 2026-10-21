@@ -16,28 +16,27 @@ export function BarsTable({ onClose }: { onClose: () => void }) {
     <Modal
       onClose={onClose}
       labelledBy="bars-table-title"
-      backdropClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       className="flex max-h-[80vh] w-[min(640px,92vw)] flex-col rounded-lg border border-ev-line bg-ev-panel shadow-2xl"
     >
       <div className="flex items-center gap-2 border-b border-ev-raised px-4 py-3">
-        <h2 id="bars-table-title" className="text-sm font-semibold text-ev-strong">
+        <h2 id="bars-table-title" className="text-body font-semibold text-ev-strong">
           Table view{meta ? ` — ${meta.symbol} ${meta.resolution}` : ""}
         </h2>
-        <span className="text-[11px] text-ev-muted">{rows.length} bars, newest first (UTC)</span>
+        <span className="text-dense text-ev-muted">{rows.length} bars, newest first (UTC)</span>
         <button
           type="button"
           disabled={!source}
           onClick={() => source && saveChartCsv(source)}
-          className="ml-auto rounded bg-ev-line px-2 py-1 text-[11px] text-ev-strong hover:bg-ev-line-strong disabled:opacity-40"
+          className="ml-auto rounded bg-ev-line px-2 py-1 text-dense text-ev-strong hover:bg-ev-line-strong disabled:opacity-40"
         >
           Export CSV
         </button>
-        <button type="button" onClick={onClose} className="rounded px-2 py-1 text-[11px] text-ev-muted hover:text-ev-strong">
+        <button type="button" onClick={onClose} className="rounded px-2 py-1 text-dense text-ev-muted hover:text-ev-strong">
           Close
         </button>
       </div>
       <div className="min-h-0 flex-1 overflow-auto">
-        <table className="w-full text-right text-[11px] tabular-nums">
+        <table className="w-full text-right text-dense num">
           <thead className="sticky top-0 bg-ev-panel text-ev-muted">
             <tr>
               {["Time", "Open", "High", "Low", "Close", "Volume"].map((h, i) => (

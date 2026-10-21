@@ -5,6 +5,7 @@ import { embedSnippet } from "./embedSnippet";
 import { buildShareLink } from "./shareLink";
 import { printPng, svgFromPng } from "./svgExport";
 import { exportLayoutJson } from "./layoutShare";
+import { notice } from "./notice";
 
 /**
  * Make a user-provided name safe for a download filename: strip all C0
@@ -86,7 +87,7 @@ export async function saveBlob(blob: Blob, filename: string): Promise<SaveResult
     });
     return saved ? "saved" : "cancelled";
   } catch (e) {
-    window.alert(`Could not save ${filename}: ${e instanceof Error ? e.message : String(e)}`);
+    notice.alert(`Could not save ${filename}`, e instanceof Error ? e.message : String(e));
     return "failed";
   }
 }

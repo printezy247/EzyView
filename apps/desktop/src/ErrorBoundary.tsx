@@ -25,12 +25,12 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
     if (!this.state.failed) return this.props.children;
     return (
       <div role="alert" className="flex h-screen flex-col items-center justify-center gap-3 bg-ev-bg text-ev-text">
-        <p className="text-sm font-semibold text-ev-strong">Something went wrong.</p>
-        <p className="text-xs text-ev-muted">The error was saved to the local crash log (Settings → Diagnostics).</p>
+        <p className="text-body font-semibold text-ev-strong">Something went wrong.</p>
+        <p className="text-base text-ev-muted">The error was saved to the local crash log (Settings → Diagnostics).</p>
         <button
           type="button"
           onClick={() => window.location.reload()}
-          className="rounded bg-ev-line px-3 py-1.5 text-xs text-ev-strong hover:bg-ev-line-strong"
+          className="rounded bg-ev-line px-3 py-1.5 text-base text-ev-strong hover:bg-ev-line-strong"
         >
           Reload
         </button>

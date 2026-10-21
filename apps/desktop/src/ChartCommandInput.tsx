@@ -170,23 +170,23 @@ export function ChartCommandInput({ open, symbols, currentSymbol, currentResolut
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={onKey}
           placeholder="Symbol, @timeframe, or /command"
-          className="h-9 flex-1 bg-transparent text-sm text-ev-strong placeholder:text-ev-faint focus:outline-none"
+          className="h-9 flex-1 bg-transparent text-body text-ev-strong placeholder:text-ev-faint focus:outline-none"
         />
-        <kbd className="rounded border border-ev-line px-1.5 text-[11px] text-ev-muted">Esc</kbd>
+        <kbd className="rounded border border-ev-line px-1.5 text-dense text-ev-muted">Esc</kbd>
       </div>
       {mode === "symbol" && recent.length > 0 && query.trim() === "" && (
-        <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-ev-faint">Recent</div>
+        <div className="px-3 py-1 text-micro uppercase tracking-wider text-ev-faint">Recent</div>
       )}
       <ul className="max-h-60 overflow-y-auto py-1">
-        {list.length === 0 && <li className="px-3 py-2 text-xs text-ev-muted">No matches</li>}
+        {list.length === 0 && <li className="px-3 py-2 text-base text-ev-muted">No matches</li>}
         {list.map((item, i) => (
           <li key={item}>
             <button
               type="button"
               onClick={() => (mode === "symbol" ? applySymbol(item) : applyTimeframe(item))}
               onMouseEnter={() => setActive(i)}
-              className={`flex w-full px-3 py-1.5 text-left text-sm ${
-                i === active ? "bg-ev-raised text-ev-strong" : "text-ev-text-2"
+              className={`flex w-full px-3 py-1.5 text-left text-body ${
+                i === active ? "bg-ev-raised text-ev-strong" : "text-ev-muted"
               }`}
             >
               {item}
@@ -195,7 +195,7 @@ export function ChartCommandInput({ open, symbols, currentSymbol, currentResolut
         ))}
       </ul>
       {cmd && (
-        <div className="border-t border-ev-raised px-3 py-1.5 text-[11px] text-ev-muted">
+        <div className="border-t border-ev-raised px-3 py-1.5 text-dense text-ev-muted">
           Commands: /tf &lt;timeframe&gt;, /sym &lt;symbol&gt;
         </div>
       )}

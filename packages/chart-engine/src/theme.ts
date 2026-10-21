@@ -1,3 +1,10 @@
+/**
+ * Chart palette, derived from the app brand (`./brand.ts`) so the canvas and
+ * the shell around it can never disagree on what "dark" means.
+ */
+
+import { type ThemeName, themeColors } from "@ezyview/brand";
+
 export interface ChartTheme {
   background: string;
   textColor: string;
@@ -12,56 +19,47 @@ export interface ChartTheme {
   paneSeparator: string;
 }
 
-export const DARK_THEME: ChartTheme = {
-  background: "#0e1117",
-  textColor: "#d1d4dc",
-  grid: "#1e222d",
-  crosshair: "#758696",
-  upColor: "#26a69a",
-  downColor: "#ef5350",
-  borderUpColor: "#26a69a",
-  borderDownColor: "#ef5350",
-  wickUpColor: "#26a69a",
-  wickDownColor: "#ef5350",
-  paneSeparator: "#2a2e39",
-};
+function fromBrand(name: ThemeName): ChartTheme {
+  const c = themeColors(name);
+  return {
+    background: c.bg,
+    textColor: c.text,
+    grid: c.raised,
+    crosshair: c.muted,
+    upColor: c.up,
+    downColor: c.down,
+    borderUpColor: c.up,
+    borderDownColor: c.down,
+    wickUpColor: c.up,
+    wickDownColor: c.down,
+    paneSeparator: c.line,
+  };
+}
 
-export const LIGHT_THEME: ChartTheme = {
-  background: "#ffffff",
-  textColor: "#131722",
-  grid: "#e0e3eb",
-  crosshair: "#9598a1",
-  upColor: "#26a69a",
-  downColor: "#ef5350",
-  borderUpColor: "#26a69a",
-  borderDownColor: "#ef5350",
-  wickUpColor: "#26a69a",
-  wickDownColor: "#ef5350",
-  paneSeparator: "#e0e3eb",
-};
+/** The Investing.com dark terminal. */
+export const DARK_THEME: ChartTheme = fromBrand("dark");
 
-/** Tokyo Night — cool indigo dark, matching the app's optional UI theme. */
-export const TOKYO_THEME: ChartTheme = {
-  background: "#1a1b26",
-  textColor: "#c0caf5",
-  grid: "#292e42",
-  crosshair: "#7aa2f7",
-  upColor: "#9ece6a",
-  downColor: "#f7768e",
-  borderUpColor: "#9ece6a",
-  borderDownColor: "#f7768e",
-  wickUpColor: "#9ece6a",
-  wickDownColor: "#f7768e",
-  paneSeparator: "#292e42",
+/** The Investing.com light web palette. */
+export const LIGHT_THEME: ChartTheme = fromBrand("light");
+
+/** Tokyo Night — the optional indigo palette. */
+export const TOKYO_THEME: ChartTheme = fromBrand("tokyo");
+
+/** Chart palettes by UI theme name. */
+export const CHART_THEMES: Record<ThemeName, ChartTheme> = {
+  dark: DARK_THEME,
+  light: LIGHT_THEME,
+  tokyo: TOKYO_THEME,
 };
 
 /**
  * Cycle through a fixed, contrast-checked palette so the Nth indicator still
- * reads against the dark background.
+ * reads against the dark background. TradingView blue is deliberately absent —
+ * it is the app accent's old value and reads as "the UI", not as data.
  */
 export const INDICATOR_COLORS = [
-  "#2962ff",
-  "#ff9800",
+  "#f2a93b",
+  "#4a90e2",
   "#4caf50",
   "#e91e63",
   "#00bcd4",
@@ -69,7 +67,7 @@ export const INDICATOR_COLORS = [
   "#8bc34a",
   "#ffc107",
   "#03a9f4",
-  "#f44336",
+  "#0ea600",
   "#795548",
   "#607d8b",
   "#cddc39",

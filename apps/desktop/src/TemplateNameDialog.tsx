@@ -16,12 +16,11 @@ export function TemplateNameDialog({ onSave, onClose }: { onSave: (name: string)
     <Modal
       onClose={onClose}
       labelledBy={titleId}
-      backdropClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       className="w-[min(360px,92vw)] rounded-lg border border-ev-line bg-ev-panel p-4 shadow-2xl">
-      <h2 id={titleId} className="mb-2 text-sm font-semibold text-ev-strong">
+      <h2 id={titleId} className="mb-2 text-body font-semibold text-ev-strong">
         Save chart template
       </h2>
-      <p className="mb-2 text-[11px] text-ev-muted">Saves the chart type, options and indicators, not the symbol or drawings.</p>
+      <p className="mb-2 text-dense text-ev-muted">Saves the chart type, options and indicators, not the symbol or drawings.</p>
       <input
         autoFocus
         aria-label="Template name"
@@ -32,17 +31,17 @@ export function TemplateNameDialog({ onSave, onClose }: { onSave: (name: string)
           if (e.key === "Enter") submit();
         }}
         placeholder="Template name"
-        className="mb-3 w-full rounded border border-ev-line bg-ev-bg px-2 py-1.5 text-xs text-ev-strong placeholder:text-ev-faint"
+        className="mb-3 w-full rounded border border-ev-line bg-ev-bg px-2 py-1.5 text-base text-ev-strong placeholder:text-ev-faint"
       />
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onClose} className="rounded px-3 py-1.5 text-[11px] text-ev-muted hover:text-ev-strong">
+        <button type="button" onClick={onClose} className="rounded px-3 py-1.5 text-dense text-ev-muted hover:text-ev-strong">
           Cancel
         </button>
         <button
           type="button"
           disabled={!name.trim()}
           onClick={submit}
-          className="rounded bg-ev-accent px-3 py-1.5 text-[11px] text-white disabled:opacity-40"
+          className="rounded bg-ev-accent px-3 py-1.5 text-dense text-white disabled:opacity-40"
         >
           Save
         </button>

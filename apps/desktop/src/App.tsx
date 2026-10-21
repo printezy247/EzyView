@@ -19,12 +19,14 @@ import { PinePage } from "./PinePage";
 import { SettingsPage } from "./SettingsPage";
 import { useWorkspace } from "./store";
 import { activeChartOf } from "./layout";
+import { themeWindowColor } from "@ezyview/brand";
 import { normalizePath, rememberRoute } from "./nav";
 import { bootstrapMt5, getMt5, useMt5 } from "./mt5";
 import type { ChartSource } from "./mt5";
 import { useMt5Accounts } from "./mt5Accounts";
 import { maskLogin } from "./tradingSafety";
 import { Modal } from "./Modal";
+import { NoticeHost } from "./NoticeHost";
 
 /**
  * The persistent shell: left section rail, tab strip, toolbar, routed page
@@ -83,13 +85,17 @@ export default function App() {
   const mt5Badge =
     mt5Status === "online" ? (session ? "bg-ev-up" : "bg-ev-accent") : mt5Status === "error" ? "bg-ev-down" : "";
 
-  // The shell's colour tokens follow the active chart's theme.
+  // The shell's colour tokens follow the app theme setting (Settings →
+  // Appearance); `auto` follows the focused chart, which is how the app
+  // behaved before the brand pass.
+  const appTheme = useWorkspace((s) => s.appTheme);
+  const shellTheme = appTheme === "auto" ? state.theme : appTheme;
   useEffect(() => {
-    document.documentElement.dataset.theme = state.theme;
-    const chrome =
-      state.theme === "light" ? "#ffffff" : state.theme === "tokyo" ? "#1a1b26" : "#0e1117";
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", chrome);
-  }, [state.theme]);
+    document.documentElement.dataset.theme = shellTheme;
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute("content", themeWindowColor(shellTheme));
+  }, [shellTheme]);
 
   // Honour a remembered broker feed once, if MT5 answers on first load.
   useEffect(() => {
@@ -215,7 +221,7 @@ export default function App() {
           lastPrice={null}
         />
 
-        <footer className="flex h-6 shrink-0 items-center gap-4 border-t border-ev-raised px-3 text-[11px] text-ev-muted">
+        <footer className="flex h-6 shrink-0 items-center gap-4 border-t border-ev-raised bg-ev-chrome px-3 text-dense text-ev-muted">
           <SourceToggle />
           <FeedStatus />
           <span>
@@ -234,6 +240,7 @@ export default function App() {
           </span>
         </footer>
       </div>
+      <NoticeHost />
     </div>
   );
 }
@@ -320,11 +327,10 @@ function SourceToggle() {
         <Modal
           onClose={refuseRisk}
           labelledBy="real-source-title"
-          backdropClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          className="w-[24rem] rounded-md border border-ev-warn/40 bg-ev-panel text-[12px] shadow-2xl"
+          className="w-[24rem] rounded-md border border-ev-warn/40 bg-ev-panel text-base shadow-2xl"
         >
           <div className="space-y-3 p-4">
-            <h2 id="real-source-title" className="text-sm font-semibold text-ev-warn">
+            <h2 id="real-source-title" className="text-body font-semibold text-ev-warn">
               Real account detected — {maskLogin(risk.split("|")[1] ?? "")}
             </h2>
             <p className="text-ev-text">

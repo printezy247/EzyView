@@ -68,7 +68,7 @@ export function JournalCalendar({ entries, selectedDay, onSelectDay }: Props) {
         >
           <ChevronLeft size={14} aria-hidden />
         </button>
-        <span className="min-w-40 text-center text-xs font-medium text-ev-strong">{monthLabel}</span>
+        <span className="min-w-40 text-center text-base font-medium text-ev-strong">{monthLabel}</span>
         <button
           type="button"
           aria-label="Next month"
@@ -80,13 +80,13 @@ export function JournalCalendar({ entries, selectedDay, onSelectDay }: Props) {
         <button
           type="button"
           onClick={goToday}
-          className="ml-auto rounded border border-ev-line px-2 py-0.5 text-[11px] text-ev-muted hover:text-ev-strong"
+          className="ml-auto rounded border border-ev-line px-2 py-0.5 text-dense text-ev-muted hover:text-ev-strong"
         >
           Today
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 pb-1 text-center text-[10px] uppercase tracking-wider text-ev-faint">
+      <div className="grid grid-cols-7 gap-1 pb-1 text-center text-micro uppercase tracking-wider text-ev-faint">
         {WEEKDAYS.map((day) => (
           <span key={day}>{day}</span>
         ))}
@@ -117,11 +117,11 @@ export function JournalCalendar({ entries, selectedDay, onSelectDay }: Props) {
               } ${isToday && !selected ? "border-ev-line-strong" : ""}`}
               style={{ backgroundColor: net === undefined ? undefined : cellBackground(net, maxAbs) }}
             >
-              <span className={`text-[11px] tabular-nums ${selected ? "font-semibold text-ev-strong" : "text-ev-text"}`}>
+              <span className={`text-dense num ${selected ? "font-semibold text-ev-strong" : "text-ev-text"}`}>
                 {day}
               </span>
               {count > 0 && (
-                <span className="mt-auto w-full truncate text-right text-[10px] tabular-nums text-ev-muted">
+                <span className="mt-auto w-full truncate text-right text-micro num text-ev-muted">
                   {count}
                   {net !== undefined && net !== 0 && (
                     <span className={net > 0 ? " text-ev-up" : " text-ev-down"}>
@@ -138,7 +138,7 @@ export function JournalCalendar({ entries, selectedDay, onSelectDay }: Props) {
       </div>
 
       {maxAbs > 0 && (
-        <div className="mt-3 flex items-center gap-2 text-[10px] text-ev-faint">
+        <div className="mt-3 flex items-center gap-2 text-micro text-ev-faint">
           <span>Loss</span>
           <span
             aria-hidden
