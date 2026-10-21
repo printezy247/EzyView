@@ -73,6 +73,17 @@ describe("workspace snapshot tools", () => {
     expect(out.data.summary).toContain("Trades: 1");
   });
 
+  it("survives hostile rows and clamps limit", async () => {
+    const bad = { ...SNAPSHOT, alerts: [null, 5, { id: "ok", symbol: "S" }], journal: { entries: [null, { id: "x" }], notes: [] } };
+    writeFileSync(join(dir, "bad.json"), JSON.stringify(bad));
+    process.env.EZYVIEW_SNAPSHOT = join(dir, "bad.json");
+    const alerts = await call("list_alerts", { symbol: "S" });
+    const journal = await call("get_journal", { limit: -5 });
+    process.env.EZYVIEW_SNAPSHOT = join(dir, "snap.json");
+    expect(alerts.data.alerts).toEqual([{ id: "ok", symbol: "S" }]);
+    expect(journal.data.entries).toEqual([]);
+  });
+
   it("explains a missing snapshot instead of crashing", async () => {
     process.env.EZYVIEW_SNAPSHOT = join(dir, "missing.json");
     const out = await call("get_workspace");

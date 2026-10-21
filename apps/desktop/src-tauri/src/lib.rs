@@ -146,6 +146,10 @@ fn apply_shell_settings_early() {
         for var in ["http_proxy", "https_proxy", "all_proxy"] {
             std::env::set_var(var, &settings.proxy);
         }
+        // Local services (MT5 bridge, sd-server, Ollama) must never go via the proxy.
+        if std::env::var_os("no_proxy").is_none() {
+            std::env::set_var("no_proxy", "127.0.0.1,localhost,::1");
+        }
     }
 }
 

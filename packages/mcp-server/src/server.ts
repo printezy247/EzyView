@@ -225,7 +225,8 @@ const TOOLS: Tool[] = [
     run: async (a) => {
       const snap = await loadSnapshot();
       const symbol = typeof a.symbol === "string" && a.symbol !== "" ? a.symbol : null;
-      const matches = (row: unknown) => symbol === null || (row as { symbol?: string }).symbol === symbol;
+      const matches = (row: unknown) =>
+        typeof row === "object" && row !== null && (symbol === null || (row as { symbol?: string }).symbol === symbol);
       return { alerts: snap.alerts.filter(matches), watchlist: snap.watchlist.filter(matches) };
     },
   },
@@ -237,8 +238,9 @@ const TOOLS: Tool[] = [
     run: async (a) => {
       const snap = await loadSnapshot();
       const symbol = typeof a.symbol === "string" && a.symbol !== "" ? a.symbol : null;
-      const limit = num(a, "limit", 50);
+      const limit = Math.min(1000, Math.max(0, Math.floor(num(a, "limit", 50))));
       const entries = (snap.journal.entries as JournalEntry[])
+        .filter((e) => typeof e === "object" && e !== null && typeof e.entryTime === "number")
         .filter((e) => symbol === null || e.symbol === symbol)
         .toSorted((x, y) => y.entryTime - x.entryTime);
       return { stats: computeStats(entries), entries: entries.slice(0, limit), notes: snap.journal.notes.slice(0, limit) };

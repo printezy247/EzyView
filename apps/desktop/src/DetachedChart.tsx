@@ -13,6 +13,10 @@ interface Props {
 export function DetachedChart({ symbol, resolution: initial }: Props) {
   const [resolution, setResolution] = useState<Resolution>(initial);
   // Mirror the main window's pointer when it is on this symbol; publish ours back.
+  // Publish only while the pointer is really on this chart (a mirrored crosshair
+  // fires move events too, and echoing them would loop between windows), and
+  // never mirror over the user's own crosshair.
+  const [hovering, setHovering] = useState(false);
   const [remote, setRemote] = useState<{ time: number; price: number } | null>(null);
   useEffect(
     () =>
@@ -42,7 +46,14 @@ export function DetachedChart({ symbol, resolution: initial }: Props) {
           ))}
         </div>
       </header>
-      <div className="relative min-h-0 flex-1">
+      <div
+        className="relative min-h-0 flex-1"
+        onPointerEnter={() => setHovering(true)}
+        onPointerLeave={() => {
+          setHovering(false);
+          publishCrosshair(symbol, null, null);
+        }}
+      >
         <ChartHost
           symbol={symbol}
           resolution={resolution}
@@ -52,8 +63,10 @@ export function DetachedChart({ symbol, resolution: initial }: Props) {
           theme="dark"
           indicators={[]}
           drawings={[]}
-          syncCrosshair={remote}
-          onCrosshairMove={(t, p) => publishCrosshair(symbol, t, p)}
+          syncCrosshair={hovering ? null : remote}
+          onCrosshairMove={(t, p) => {
+            if (hovering) publishCrosshair(symbol, t, p);
+          }}
         />
       </div>
     </div>

@@ -94,7 +94,19 @@ export function startSnapshotSync(debounceMs = 1500): () => void {
     clearTimeout(timer);
     timer = setTimeout(() => void writeSnapshot(), debounceMs);
   };
-  const offWs = useWorkspace.subscribe(schedule);
+  // Quote polls churn watchlist prices and alert history many times a minute;
+  // only structural changes are worth rewriting the file for.
+  const offWs = useWorkspace.subscribe((s, prev) => {
+    const symbols = (state: typeof s) => state.watchlist.map((w) => w.symbol).join(",");
+    if (
+      s.layouts !== prev.layouts ||
+      s.activeLayoutId !== prev.activeLayoutId ||
+      s.alerts !== prev.alerts ||
+      symbols(s) !== symbols(prev)
+    ) {
+      schedule();
+    }
+  });
   const offJournal = useJournal.subscribe(schedule);
   schedule();
   return () => {
