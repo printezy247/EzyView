@@ -39,6 +39,11 @@ interface Props {
    * the entry line.
    */
   draggableLevels?: { id: string; price: number }[];
+  /**
+   * Session id from `sessionForSymbol`, or absent for no session shading. Bars
+   * that fall outside it are washed with the theme's `sessionBand`.
+   */
+  session?: string | null;
   /** While dragging: the level's preview price, so the chart can redraw it. */
   onLevelPreview?: (symbol: string, id: string, price: number) => void;
   /** On drop: amend the position. Only the dragged level is in the patch. */
@@ -96,6 +101,12 @@ export function ChartHost(props: Props) {
   levelDragRef.current = props.draggableLevels ? { symbol: props.symbol, levels: props.draggableLevels } : null;
   const onLevelPreview = props.onLevelPreview;
   const onLevelCommit = props.onLevelCommit;
+  // Session id + theme, read inside the shading helper so it never needs to be
+  // re-created when either changes.
+  const sessionRef = useRef<string | null>(props.session ?? null);
+  sessionRef.current = props.session ?? null;
+  const themeRef = useRef(props.theme);
+  themeRef.current = props.theme;
 
   // In-progress drawing anchors, kept off the store so each pointer move does
   // not trigger a React render.
@@ -414,6 +425,8 @@ export function ChartHost(props: Props) {
       const bars = sliceForReplay(candles, cursor);
       chartRef.current?.setData(bars);
       setShown(bars);
+      // The bars changed, so the per-bar break flags did too.
+      applySessionShading();
     });
     return () => {
       cancelled = true;
@@ -533,6 +546,25 @@ export function ChartHost(props: Props) {
   useEffect(() => {
     chartRef.current?.setTradingLines(props.tradingLines ?? []);
   }, [props.tradingLines]);
+
+  /**
+   * Push the current bars' session-break flags onto the chart.
+   *
+   * Read through a ref-free closure because it is called from two effects (bars
+   * arrived, or the session/theme changed). `session` is a session id from
+   * `sessionForSymbol`; null clears the shading.
+   */
+  const applySessionShading = () => {
+    const times = historyRef.current.map((c) => c.time);
+    chartRef.current?.setSessionShading(times, sessionRef.current, THEME_OF[themeRef.current].sessionBand);
+  };
+
+  // Session shading: recoloured with the theme so the band stays a subtle
+  // wash rather than a competing block of colour. Applied alongside the bars in
+  // `applyBars`, since the flags are per loaded bar.
+  useEffect(() => {
+    applySessionShading();
+  }, [props.session, props.theme]);
 
   // Fundamental overlays: refetched on symbol/toggle change upstream; each
   // cell applies whatever it is given (empty = clear).

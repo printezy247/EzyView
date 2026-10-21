@@ -4,6 +4,7 @@
  */
 
 import { type ThemeName, themeColors } from "@ezyview/brand";
+import { withAlpha } from "./volumeProfile.js";
 
 export interface ChartTheme {
   background: string;
@@ -17,6 +18,12 @@ export interface ChartTheme {
   wickUpColor: string;
   wickDownColor: string;
   paneSeparator: string;
+  /**
+   * Wash painted behind bars that fall outside the symbol's trading session.
+   * Kept very translucent so it reads as "the market was shut", not as a
+   * selection or an indicator.
+   */
+  sessionBand: string;
 }
 
 function fromBrand(name: ThemeName): ChartTheme {
@@ -33,6 +40,9 @@ function fromBrand(name: ThemeName): ChartTheme {
     wickUpColor: c.up,
     wickDownColor: c.down,
     paneSeparator: c.line,
+    // A muted text tint at low alpha: the same "context, not data" role the
+    // grid plays, and derived from the theme so all three palettes get one.
+    sessionBand: withAlpha(c.muted, 0.14),
   };
 }
 

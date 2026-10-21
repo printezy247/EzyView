@@ -15,6 +15,7 @@ import type { Layout } from "./store";
 import type { GridMode } from "./layout";
 import { ObjectTree } from "./ObjectTree";
 import { TimeAndSales } from "./TimeAndSales";
+import { sessionForSymbol } from "./sessionFor";
 import { loadHistory } from "./data";
 import { useWorkspace } from "./store";
 import type { ChartState } from "./store";
@@ -285,6 +286,7 @@ export function ChartPage({ dockTab, onSelectDockTab, onSetDockTab, tradingOpen,
             layout={layout}
             replayBar={replayBar}
             linesFor={linesFor}
+            showSessionBreaks={state.showSessionBreaks !== false}
             draggableLevelsFor={draggableLevelsFor}
             onLevelPreview={onLevelPreview}
             onLevelCommit={onLevelCommit}
@@ -389,6 +391,8 @@ interface ChartGridProps {
   linesFor: (symbol: string) => TradingLine[];
   /** Which levels on a symbol a pointer may drag, or undefined = none. */
   draggableLevelsFor: (symbol: string) => { id: string; price: number }[] | undefined;
+  /** Shade bars that fall outside the symbol's trading session. */
+  showSessionBreaks: boolean;
   onLevelPreview: (symbol: string, id: string, price: number) => void;
   onLevelCommit: (symbol: string, levels: { stopLoss?: number; takeProfit?: number }) => void;
   /** Focused cell's symbol — its overlays apply to matching cells only. */
@@ -418,6 +422,7 @@ function ChartGrid({
   replayBar,
   linesFor,
   draggableLevelsFor,
+  showSessionBreaks,
   onLevelPreview,
   onLevelCommit,
   activeSymbol,
@@ -476,6 +481,7 @@ function ChartGrid({
               drawings={chart.drawings}
               replayBar={focused ? replayBar : null}
               tradingLines={linesFor(chart.symbol)}
+              session={showSessionBreaks ? sessionForSymbol(chart.symbol) : null}
               draggableLevels={focused ? draggableLevelsFor(chart.symbol) : undefined}
               onLevelPreview={onLevelPreview}
               onLevelCommit={onLevelCommit}

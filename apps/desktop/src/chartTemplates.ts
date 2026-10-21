@@ -30,6 +30,8 @@ export interface ChartTemplate {
   invertScale?: boolean;
   timezone?: string;
   watermark?: boolean;
+  /** Shade bars outside the symbol's trading session. */
+  showSessionBreaks?: boolean;
   indicators: TemplateIndicator[];
 }
 
@@ -51,6 +53,7 @@ export function templateFromChart(chart: ChartState, name: string, id: string): 
     ...(chart.invertScale !== undefined ? { invertScale: chart.invertScale } : {}),
     ...(chart.timezone !== undefined ? { timezone: chart.timezone } : {}),
     ...(chart.watermark !== undefined ? { watermark: chart.watermark } : {}),
+    ...(chart.showSessionBreaks !== undefined ? { showSessionBreaks: chart.showSessionBreaks } : {}),
     indicators: chart.indicators.map((i) => ({
       defId: i.def.id,
       params: i.params,

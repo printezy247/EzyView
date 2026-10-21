@@ -33,6 +33,7 @@ import { DARK_THEME, colorAt, type ChartTheme } from "./theme.js";
 import { crosshairModeOf, priceScaleModeOf, timezoneFormatters, type CrosshairModeName, type PriceScaleModeName } from "./settings.js";
 import { autoBoxSize, heikinAshi, kagi, pointAndFigure, renko, sequentialTimes, type PriceBox } from "./transforms.js";
 import { VolumeProfilePrimitive } from "./volumeProfile.js";
+import { sessionBreaks } from "./sessionBreaks.js";
 
 export type ChartType =
   | "candles"
@@ -227,6 +228,12 @@ export class EzyChart {
   private readonly plotSeriesByUid = new Map<string, ISeriesApi<never>[]>();
   /** Translucent `bgcolor()` regions, painted behind the price series. */
   private readonly bgBands = new BgBandsPrimitive();
+  /**
+   * Session shading, in its own primitive rather than sharing `bgBands`: a Pine
+   * script's `bgcolor()` and the session break are independent layers, and
+   * merging them into one call would mean the last writer wins.
+   */
+  private readonly sessionBands = new BgBandsPrimitive();
   /** Volume-by-price for the visible range, along the right edge. */
   private readonly volumeProfile = new VolumeProfilePrimitive((price) => this.priceToCoordinate(price));
   /** Markers contributed by `plotshape()`-style plots, rebuilt with the data. */
@@ -292,6 +299,7 @@ export class EzyChart {
 
     this.chart.panes()[0]!.attachPrimitive(this.drawings);
     this.chart.panes()[0]!.attachPrimitive(this.bgBands);
+    this.chart.panes()[0]!.attachPrimitive(this.sessionBands);
     this.chart.panes()[0]!.attachPrimitive(this.fundamentalLines);
     this.chart.panes()[0]!.attachPrimitive(this.volumeProfile);
     this.volumeProfile.setEnabled(options.showVolumeProfile ?? false);
@@ -530,6 +538,23 @@ export class EzyChart {
     this.fundamentalMarkerLayer = toFundamentalMarkers(overlays.markers);
     this.fundamentalLines.setLines(toFundamentalLines(overlays));
     this.applyMarkers();
+  }
+
+  /**
+   * Shade the bars outside a trading session.
+   *
+   * `sessionId` is one of `MARKET_SESSIONS`; an unknown id (or an empty list)
+   * clears the shading, since there is nothing to assert about a symbol whose
+   * session has not been declared. The times are the loaded bars, so the flags
+   * line up with what is actually on screen.
+   */
+  setSessionShading(times: readonly number[], sessionId: string | null, color: string): void {
+    if (!sessionId || times.length === 0) {
+      this.sessionBands.setBands([], []);
+      return;
+    }
+    const breaks = sessionBreaks(times, sessionId);
+    this.sessionBands.setBands(breaks.length > 0 ? [{ color, flags: breaks }] : [], times as UTCTimestamp[]);
   }
 
   /**

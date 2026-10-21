@@ -181,6 +181,8 @@ export default function App() {
             onTimezone={(timezone) => updateActive({ timezone })}
             watermark={state.watermark ?? false}
             onWatermark={() => updateActive({ watermark: !state.watermark })}
+            sessionBreaks={state.showSessionBreaks !== false}
+            onToggleSessionBreaks={() => updateActive({ showSessionBreaks: state.showSessionBreaks === false })}
             onOpenIndicators={() => setDialogOpen(true)}
             onToggleReplay={() => setReplay(replayBar === null ? 0 : null)}
             replayActive={replayBar !== null}

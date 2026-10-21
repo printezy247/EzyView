@@ -69,6 +69,12 @@ export interface ChartState {
   timezone?: string;
   /** Draw the symbol/interval watermark behind the candles. */
   watermark?: boolean;
+  /**
+   * Wash bars that fall outside the symbol's trading session. Optional so
+   * layouts saved before it existed still load; absent means on, because it is
+   * the kind of context a chart is harder to read without.
+   */
+  showSessionBreaks?: boolean;
 }
 
 /** How a layout splits its chart area. */

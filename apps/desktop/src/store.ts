@@ -88,6 +88,7 @@ export function defaultChartState(): ChartState {
     chartType: "candles",
     showVolume: true,
     showVolumeProfile: false,
+    showSessionBreaks: true,
     showGrid: true,
     theme: "dark",
     indicators: [],

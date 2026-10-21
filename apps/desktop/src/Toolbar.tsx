@@ -79,6 +79,8 @@ interface Props {
   invertScale: boolean;
   timezone: string | undefined;
   watermark: boolean;
+  /** Shade bars outside the symbol's trading session. */
+  sessionBreaks: boolean;
   indicatorCount: number;
   replayActive: boolean;
   /** Which dock tab is visible, or null when the dock is closed. */
@@ -97,6 +99,7 @@ interface Props {
   onInvertScale: () => void;
   onTimezone: (tz: string | undefined) => void;
   onWatermark: () => void;
+  onToggleSessionBreaks: () => void;
   onOpenIndicators: () => void;
   onToggleReplay: () => void;
   onSelectDockTab: (id: DockTabId) => void;
@@ -347,6 +350,7 @@ export function Toolbar(props: Props) {
       }),
     ),
     toggle("watermark", "Watermark", props.watermark, props.onWatermark),
+    toggle("session-breaks", "Session breaks", props.sessionBreaks, props.onToggleSessionBreaks),
     { kind: "separator", id: "s-theme" },
     { kind: "label", id: "appearance", label: "Appearance" },
     ...(

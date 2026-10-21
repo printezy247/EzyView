@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { formatClock } from "./chartView";
-import { sessionState, utcOffsetLabel } from "./marketClock";
+import { sessionState, utcOffsetLabel } from "@ezyview/chart-engine";
 
 /**
  * The market clock: one chip per equity session showing whether it is open,
