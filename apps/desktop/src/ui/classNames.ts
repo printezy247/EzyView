@@ -56,11 +56,13 @@ export function inputClass(className?: ClassValue): string {
 }
 
 /** Status/interval chip. Never a button. */
-export function chipClass(options: { tone?: "neutral" | "up" | "down" | "accent"; className?: ClassValue } = {}): string {
+export function chipClass(options: { tone?: "neutral" | "up" | "down" | "warn" | "accent"; className?: ClassValue } = {}): string {
   const tones = {
     neutral: "bg-ev-raised text-ev-muted",
     up: "bg-ev-up/15 text-ev-up",
     down: "bg-ev-down/15 text-ev-down",
+    // Warm, not alarming: a stale price is worth noticing, not a failure.
+    warn: "bg-ev-warn/15 text-ev-warn",
     accent: "bg-ev-accent/15 text-ev-accent-text",
   } as const;
   return cn(

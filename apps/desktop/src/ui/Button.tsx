@@ -49,7 +49,7 @@ export function Input({ className, block, ...rest }: InputProps) {
 
 export interface ChipProps {
   children: ReactNode;
-  tone?: "neutral" | "up" | "down" | "accent";
+  tone?: "neutral" | "up" | "down" | "warn" | "accent";
   className?: string;
   title?: string;
 }

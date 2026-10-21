@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { EarningsReport, EconomicEvent, Impact, NewsItem } from "@ezyview/data-adapters";
+import type { DividendEvent, EarningsReport, EconomicEvent, Impact, NewsItem } from "@ezyview/data-adapters";
 import { filterEvents, filterNews } from "@ezyview/fundamentals";
 import type { FundamentalsSources } from "@ezyview/fundamentals";
+import { annualisedDividend, nextExDate, totalForYear } from "./dividends";
 import { tickerOf } from "./data";
 import { safeHref } from "./links";
 import { inputClass } from "./ui";
@@ -262,6 +263,70 @@ export function NewsTab({ symbol, src }: { symbol: string; src: Src }) {
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+export function DividendsTab({ symbol, src }: { symbol: string; src: Src }) {
+  // Two years back so the annualised rate has a full year of history to scale
+  // from, and a year forward so the next payments are on screen too.
+  const now = Math.floor(Date.now() / 1000);
+  const from = now - 2 * 365 * DAY;
+  const to = now + 365 * DAY;
+  const { data, error } = useLoad<DividendEvent[]>(
+    () => src.sources.corporate.getDividends(symbol, from, to),
+    `${symbol}:${src.version}`,
+  );
+
+  const rows = useMemo(() => (data ?? []).toSorted((a, b) => b.exDate - a.exDate), [data]);
+  const trailing = useMemo(() => annualisedDividend(rows, now - 365 * DAY, now), [rows, now]);
+  const next = useMemo(() => nextExDate(rows, now), [rows, now]);
+  const thisYear = new Date(now * 1000).getUTCFullYear();
+  const yearTotal = useMemo(() => totalForYear(rows, thisYear), [rows, thisYear]);
+
+  if (error) return <Failed text={error} />;
+  if (data === null) return <Empty text="Loading…" />;
+  if (rows.length === 0)
+    return <Empty text={`No dividend history for ${tickerOf(symbol)} (stocks only).`} />;
+
+  return (
+    <div className="text-dense">
+      <div className="flex flex-wrap items-center gap-4 border-b border-ev-raised px-3 py-2">
+        <div>
+          <span className="text-micro uppercase tracking-wider text-ev-faint">Annualised</span>
+          <p className="num text-body font-semibold text-ev-strong">
+            {trailing === null ? "—" : trailing.toFixed(2)} <span className="text-dense text-ev-muted">{rows[0]?.currency ?? ""}</span>
+          </p>
+        </div>
+        <div>
+          <span className="text-micro uppercase tracking-wider text-ev-faint">{thisYear} total</span>
+          <p className="num text-body font-semibold text-ev-strong">{yearTotal.toFixed(2)}</p>
+        </div>
+        <div>
+          <span className="text-micro uppercase tracking-wider text-ev-faint">Next ex-date</span>
+          <p className="text-body font-semibold text-ev-strong">{next === null ? "—" : day(next)}</p>
+        </div>
+      </div>
+      <table className="w-full">
+        <thead className="text-left text-ev-muted">
+          <tr>
+            <th scope="col" className="px-3 py-1 font-normal">Ex-date</th>
+            <th scope="col" className="font-normal">Pay date</th>
+            <th scope="col" className="text-right font-normal">Amount</th>
+            <th scope="col" className="pr-3 text-right font-normal">Currency</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((e) => (
+            <tr key={e.exDate} className="border-t border-ev-raised">
+              <td className="px-3 py-1">{day(e.exDate)}</td>
+              <td className="text-ev-muted">{e.payDate ? day(e.payDate) : "—"}</td>
+              <td className="num text-right">{e.amount.toFixed(4)}</td>
+              <td className="pr-3 text-right text-ev-muted">{e.currency ?? "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

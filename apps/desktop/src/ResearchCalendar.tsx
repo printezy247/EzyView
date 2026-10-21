@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 import { buildSources } from "@ezyview/fundamentals";
-import { CalendarTab, EarningsTab, type Src } from "./FundamentalsTabs";
+import { CalendarTab, DividendsTab, EarningsTab, type Src } from "./FundamentalsTabs";
 import { useApiKeys } from "./apiKeys";
 
 /**
- * The calendar view of the Research page: economic events, plus the earnings
- * dates for the active symbol. Reuses the panel's tab components so the
- * calendar stays one implementation, not two.
+ * The calendar view of the Research page: economic events, the earnings dates
+ * for the active symbol, and its dividend history. Reuses the panel's tab
+ * components so the calendar stays one implementation, not two.
  */
 export function ResearchCalendar({ symbol }: { symbol: string }) {
   const keys = useApiKeys((s) => s.keys);
@@ -16,6 +16,7 @@ export function ResearchCalendar({ symbol }: { symbol: string }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       <EarningsTab symbol={symbol} src={src} />
+      <DividendsTab symbol={symbol} src={src} />
       <CalendarTab src={src} />
     </div>
   );

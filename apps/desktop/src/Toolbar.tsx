@@ -12,6 +12,7 @@ import type { DockTabId } from "./RightDock";
 import { Menu } from "./Menu";
 import type { MenuEntry } from "./Menu";
 import { SymbolSearch } from "./SymbolSearch";
+import { QuoteHeader } from "./QuoteHeader";
 import { getActiveExportSource, getExportSourceVersion, subscribeExportSources } from "./exportBridge";
 import type { ExportSource } from "./exportBridge";
 import { copyChartEmbed, copyChartLink, pickTextFile, printChart, saveChartCsv, saveChartJson, saveChartPng, saveChartSvg, saveLayoutJson } from "./exportUi";
@@ -421,6 +422,7 @@ export function Toolbar(props: Props) {
   return (
     <div className="flex h-9 shrink-0 items-center gap-0.5 border-b border-ev-raised px-2">
       <SymbolSearch symbol={props.symbol} onSelect={props.onSymbol} />
+      <QuoteHeader symbol={props.symbol} />
 
       <div className="mx-1 h-4 w-px bg-ev-raised" />
 
