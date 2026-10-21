@@ -8,6 +8,11 @@ describe("share link", () => {
     expect(parseShareLink(link)).toEqual({ symbol: "BTCUSDT", resolution: "4h" });
   });
 
+  it("round-trips exchange-prefixed symbols like the default chart", () => {
+    const link = buildShareLink("https://x/", { symbol: "BINANCE:BTCUSDT", resolution: "1D" });
+    expect(parseShareLink(link)).toEqual({ symbol: "BINANCE:BTCUSDT", resolution: "1D" });
+  });
+
   it("parses a link that also carries a hash route", () => {
     expect(parseShareLink("http://localhost:5173/?share=eurusd:1D#/chart")).toEqual({
       symbol: "EURUSD",
@@ -22,7 +27,8 @@ describe("share link", () => {
       "http://x/?share=",
       "http://x/?share=BTC",
       "http://x/?share=BTC:99x",
-      "http://x/?share=BTC:1D:extra",
+      "http://x/?share=A:B:C:1D",
+      "http://x/?share=:1D",
       "http://x/?share=%3Cscript%3E:1D",
       `http://x/?share=${"A".repeat(21)}:1D`,
       `http://x/?share=BTC:1D&pad=${"a".repeat(600)}`,

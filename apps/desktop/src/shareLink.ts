@@ -15,7 +15,8 @@ export interface ShareTarget {
 }
 
 const MAX_LENGTH = 512;
-const SYMBOL = /^[A-Z0-9.-]{1,20}$/;
+/** Optional `EXCHANGE:` prefix, as in the default `BINANCE:BTCUSDT`. */
+const SYMBOL = /^([A-Z0-9_.-]{1,20}:)?[A-Z0-9.-]{1,20}$/;
 const RESOLUTIONS: ReadonlySet<string> = new Set(RESOLUTION_GROUPS.flatMap((g) => g.items));
 
 export function buildShareLink(base: string, meta: { symbol: string; resolution: string }): string {
@@ -32,9 +33,11 @@ export function parseShareLink(url: string): ShareTarget | null {
     return null;
   }
   if (!value) return null;
-  const [rawSymbol, resolution, ...rest] = value.split(":");
-  if (rest.length > 0 || rawSymbol === undefined || resolution === undefined) return null;
-  const symbol = rawSymbol.toUpperCase();
+  // The interval is after the last colon; the symbol may itself hold one.
+  const cut = value.lastIndexOf(":");
+  if (cut < 1) return null;
+  const symbol = value.slice(0, cut).toUpperCase();
+  const resolution = value.slice(cut + 1);
   if (!SYMBOL.test(symbol) || !RESOLUTIONS.has(resolution)) return null;
   return { symbol, resolution: resolution as Resolution };
 }
