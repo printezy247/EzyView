@@ -1,8 +1,8 @@
 # EzyView — Master Plan
 
-> Status: **All phases 0–10 delivered and merged to `main` (v0.2.0).** Known gaps are listed per phase in §8 and §12. This document is the single canonical plan. `docs/MEGA-PLAN.md` retains the original detailed research notes and is superseded by §7–§11 of this file.
-> Owner: printezy247 · Date: 2026-10-20
-> Companion detail: `docs/MEGA-PLAN.md` (research notes), `docs/ARCHITECTURE.md` (layering/storage rules).
+> Status: **All phases 0–10 delivered and merged to `main` (v0.2.0), plus the Investing.com brand redesign (§23).** Known gaps are listed per phase in §8 and §12. This document is the single canonical plan. `docs/MEGA-PLAN.md` retains the original detailed research notes and is superseded by §7–§11 of this file.
+> Owner: printezy247 · Date: 2026-10-21
+> Companion detail: `docs/MEGA-PLAN.md` (research notes), `docs/ARCHITECTURE.md` (layering/storage rules), `docs/superpowers/specs/2026-10-21-investing-com-brand-redesign.md` (brand redesign spec).
 
 ---
 
@@ -562,3 +562,119 @@ Work proceeds on a feature branch with the git-ops flow (commit → push → PR 
 - TV Pro gating strings: search `locales/en.json` for "layout", "saved", "Pro" to enumerate paywalled features EzyView will ship free.
 - Related repos (trading journals, MT5, fundamentals) summarized in `docs/research-repos.md`; refresh as needed.
 - Deeper feature extraction possible if user opens TV live for screenshots.
+
+---
+
+## 23. Investing.com brand redesign (delivered)
+
+**Goal:** the app must not look like TradingView, must carry the same functions
+(plus more), and must read as an Investing.com terminal — compact, uniform,
+one destination per function.
+
+Spec: `docs/superpowers/specs/2026-10-21-investing-com-brand-redesign.md`.
+Four phases, each committed to `main` with a green CI run.
+
+### Phase A — brand foundation
+
+- `@ezyview/brand` is the single source of truth for the palette. `styles.css`
+  mirrors it; the chart engine derives its own theme from it, so the canvas and
+  the shell around it cannot disagree about what "dark" means.
+- Palette: brand red `#d91400` (accent, down), market green `#0ea600` (up),
+  gold `#f2a93b` (warning), chrome `#181c21`, link `#1256a0`. The old
+  TradingView blue `#2962ff` is gone from every surface the user can see.
+- Inter, self-hosted as woff2.
+- One type ramp (`text-micro` / `dense` / `base` / `body` / `title` / `head`)
+  and one `.num` tabular class, so numbers line up and nothing has a private
+  font size. 282 arbitrary text sizes migrated.
+- One z-index scale, one control-height scale, one radius, one backdrop
+  policy for dialogs.
+- `appTheme` store field (`auto` / `dark` / `light` / `tokyo`) decoupled from
+  the per-chart theme; `auto` follows the chart. Density (`compact` /
+  `comfortable`) is a store field applied as `data-density` on the root, and
+  `rowClass` marks every row with `.ev-row` so one rule restyles every table.
+- `ui/` primitives (`Button`, `Chip`, `Input`, `IconButton`) with their class
+  contracts unit-tested, so heights and radii cannot drift file by file.
+
+### Phase B — navigation, command registry, dock
+
+- Eight sections in one table (`nav.ts`): Terminal, Markets, Trade, Research,
+  Journal, Strategies, Alerts, Settings. `resolveRoute` maps the
+  pre-redesign paths (`/fundamentals`, `/options` → `/research`, `/pine` →
+  `/strategies`) so an old bookmark still lands, with the old tab deep-linked.
+- `commandRegistry.ts` is the one declaration per feature. The toolbar menus
+  build groups, the Ctrl+K palette flattens them, and the nav commands are
+  generated from the section table — so a feature cannot appear in one surface
+  and not another.
+- The right dock is one tabbed panel (`RightDock.tsx`) instead of three
+  booleans, so the chart width is stable and "what is open" is one value.
+  `DockTabId` lives with the dock it names.
+- `hotkeys.ts` is the shortcut table and `HotkeySheet` renders it, so a
+  binding cannot exist undocumented. Ctrl+K is the palette; the chart's quick
+  input moved to Ctrl+Shift+K.
+
+### Phase C — features
+
+- **Market clock** (`marketClock.ts`): the five sessions as one table of UTC
+  windows, with the next transition and a UTC-offset label. Pure date math, so
+  it is tested at fixed instants rather than by mocking "now".
+- **Time & Sales** (`tape.ts`): a bounded ring buffer of prints with a side
+  inferred from the previous price. One tape per symbol, kept out of the
+  persisted workspace because a tape is transient.
+- **Currency converter** (`currency.ts`): pure cross-rate arithmetic. It
+  returns null for a pair it cannot price rather than a wrong number, and the
+  UI says the rates are a bundled snapshot — `FundamentalsSources` has no FX
+  slot, and inventing a provider call would be a lie.
+- **Drag SL/TP on the chart**: `priceDrag.ts` hit-tests the rendered level and
+  converts a drag to a price; the paper engine gained `setLevels` (null clears,
+  undefined leaves, non-finite is refused) and the trading store an `amend`
+  action that parks at the MT5 safety gate.
+- **Custom interval** (`intervalBuilder.ts`): `Resolution` is a closed union,
+  so the builder normalises a typed spelling and, when the count is not
+  served, says why and offers the nearest neighbour. `M` is a month and `m` a
+  minute; the case is load-bearing.
+- **Session breaks** (`sessionBreaks.ts`): bars outside the symbol's session
+  are washed with a theme token. The session table moved into
+  `@ezyview/chart-engine` because the engine needs it too.
+- **Chart-cell linking** (`linkGroups.ts`): cells sharing a group name share
+  their symbol, interval and crosshair. Only those three fields travel — a
+  link is "these show the same thing", not "these are configured identically".
+- **Quote provenance** (`provenance.ts`): every quote header says LIVE,
+  DELAYED, DEMO or CACHED. A demo price that looks like a live one is the kind
+  of thing that costs money.
+- **Dividends calendar**: the corporate adapter already had `getDividends`;
+  nothing rendered it. The tab shows the annualised run rate, the year's
+  total and the next ex-date.
+
+### Phase D — quality gates
+
+- **Render tests**: happy-dom for the component layer, with the default
+  environment left as `node` so the pure-logic tests keep their speed. Five
+  suites cover the NavRail, the shared Menu, the Modal, the Ctrl+K palette
+  and the two new dialogs.
+- **Playwright smoke test**: the app boots, every section resolves, the
+  legacy routes still land, the palette opens, the chart mounts.
+- **Visual baselines**: eight committed screenshots. The clock is installed at
+  a fixed time and the live readouts are masked, so a run is comparable with
+  the last one. CI runs the smoke spec only — a runner's font rasteriser is
+  not a developer's, so a CI pixel diff would report a difference that is not
+  one.
+- **Attribution**: the TradingView logo in the corner of every chart was
+  lightweight-charts' own. Its licence lets the logo be disabled once the
+  app fulfils the linking requirement, so EzyView now does — the notice is in
+  `NOTICE` and in Settings → Diagnostics → Third-party notices.
+
+### Deferred on purpose
+
+Cloud sync, co-editing, walk-forward optimisation and a signed in-app updater
+stay deferred, as they were before the redesign.
+
+### Known limits
+
+- Pine's `color.*` constants keep Pine's palette. They are a language
+  contract, so a script written elsewhere behaves the same here.
+- The session table is conventional, not an exchange holiday calendar. A
+  symbol whose venue is not recognised gets no session shading, rather than a
+  guess.
+- The currency converter is a labelled snapshot until an FX provider slot
+  exists in `FundamentalsSources`.
+- The Time & Sales feed is the quote poll, one print per tick. It says so.

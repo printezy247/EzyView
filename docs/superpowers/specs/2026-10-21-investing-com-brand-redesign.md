@@ -1,6 +1,6 @@
 # EzyView UI/UX Redesign — Investing.com Brand, Compact Density, Every Function a Destination
 
-Date: 2026-10-21 · Status: proposed · Input: full codebase audit + external research
+Date: 2026-10-21 · Status: **delivered** (Phases A–D merged to `main`) · Input: full codebase audit + external research
 (Investing.com brand measurement, 6 open-source trading repos, TradingView label inventory)
 
 Goal: keep every function EzyView has (feature parity with TradingView), add the ones
@@ -293,3 +293,64 @@ notice visible in Settings → About (verify present; required by license).
 - **Phase C (P2)**: feature batch 1 (T&S, drag SL/TP, volume profile, interval builder, `?`
   sheet), batch 2 (calendars, heatmap, converter).
 - **Phase D (P3)**: render-test env, Playwright smoke, visual baselines, MASTERPLAN update.
+
+---
+
+## 10. Close-out (delivered)
+
+All four phases are merged to `main`, each with a green CI run. MASTERPLAN §23
+carries the full account; this is the checklist.
+
+### §6 P0 — brand + foundation
+
+- `@ezyview/brand` package, palette retokenised across three themes, one
+  source of truth shared with the chart engine.
+- Inter self-hosted as woff2; one type ramp (`text-micro` / `dense` / `base` /
+  `body` / `title` / `head`) plus `.num`; 282 arbitrary text sizes migrated.
+- One z-index scale, one control-height scale, one radius.
+- `ui/` primitives; `notice.ts` + `NoticeHost`; one Modal backdrop policy.
+- `appTheme` (`auto` / `dark` / `light` / `tokyo`) decoupled from the
+  per-chart theme; density (`compact` / `comfortable`) as `data-density`.
+
+### §6 P1 — flow & navigation
+
+- Eight sections in `nav.ts`, with `resolveRoute` mapping the old routes.
+- `commandRegistry.ts` as the one declaration per feature; the palette
+  flattens it; the nav commands are generated from the section table.
+- `RightDock.tsx` replaces three booleans; `DockTabId` lives with the dock.
+- `hotkeys.ts` + `HotkeySheet`: a binding cannot exist undocumented.
+- Settings gains the app-theme and density radios.
+
+### §6 P2 — features
+
+- Market clock, Time & Sales tape, currency converter, drag SL/TP, custom
+  interval, session-break shading, chart-cell link groups, quote provenance
+  chips, dividends calendar, volume profile (Phase A).
+
+### §6 P3 — quality gates
+
+- happy-dom render tests: five suites.
+- Playwright smoke test: five specs, plus a CI job.
+- Eight committed visual baselines.
+- MASTERPLAN §23 written.
+
+### Deviations from the spec, and why
+
+- **No Radix UI.** The existing `Menu` and `Modal` already implement the focus
+  trap and the keyboard contract, and they are unit-tested. The cost of
+  adding Radix was a second menu implementation to keep in step, for a
+  collision-aware popup positioner the app does not yet need.
+- **The session table moved into `@ezyview/chart-engine`.** The chart engine
+  needs it to shade session breaks, and a package cannot import from `apps/`.
+  The app imports it back from the package — one table, one source.
+- **The currency converter ships as a labelled snapshot.** `FundamentalsSources`
+  has no FX slot, so a live rate would have meant inventing a provider call
+  that cannot be honoured. Wiring a provider later is a data change, not a
+  rewrite.
+- **The interval builder refuses rather than rounds.** `Resolution` is a
+  closed union; showing a 5-minute chart for a "7m" request would misreport
+  the data, so it explains and offers the nearest neighbour.
+- **The attribution logo is disabled by fulfilling the licence, not by
+  hiding it.** lightweight-charts lets the logo go once the app carries the
+  notice and a link to tradingview.com, which EzyView now does in `NOTICE` and
+  in Settings → Diagnostics.
