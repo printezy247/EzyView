@@ -95,7 +95,7 @@ export class AlphaVantageFundamentalsAdapter implements FundamentalsAdapter {
         source: "alphavantage",
       });
     }
-    return out.toSorted((a, b) => a.time - b.time);
+    return [...out].sort((a, b) => a.time - b.time);
   }
 
   /** Dividend history (DIVIDENDS), newest first. */
@@ -111,6 +111,6 @@ export class AlphaVantageFundamentalsAdapter implements FundamentalsAdapter {
       if (exDate === null || amount === null || exDate < from || exDate > to) continue;
       out.push({ symbol, exDate, payDate: parseYmd(r["payment_date"]), amount, currency: null, source: "alphavantage" });
     }
-    return out.toSorted((a, b) => b.exDate - a.exDate);
+    return [...out].sort((a, b) => b.exDate - a.exDate);
   }
 }

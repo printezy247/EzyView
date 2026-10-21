@@ -620,7 +620,7 @@ function OptimizePanel({
 
 /** Backtest readout: equity curve, headline metrics, the input snapshot, recent fills. */
 function StrategyTester({ result, inputs }: { result: BacktestResult; inputs?: Record<string, number | string | boolean> }) {
-  const recent = result.trades.toReversed().slice(0, 5);
+  const recent = [...result.trades].reverse().slice(0, 5);
   const inputEntries = Object.entries(inputs ?? {});
   return (
     <div className="border-t border-ev-raised px-4 py-2 text-base">

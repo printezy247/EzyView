@@ -758,7 +758,7 @@ export const useWorkspace = create<WorkspaceStore>()(
 
       sortLayouts: (by) =>
         set((s) => {
-          const layouts = s.layouts.toSorted((a, b) =>
+          const layouts = [...s.layouts].sort((a, b) =>
             by === "name"
               ? a.name.localeCompare(b.name)
               : (a.createdAt ?? 0) - (b.createdAt ?? 0),

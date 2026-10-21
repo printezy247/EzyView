@@ -260,8 +260,8 @@ export function TradingPanel({ symbol }: Props) {
               <Table
                 head={["Time", "Symbol", "Side", "Qty", "Price", "Realized P&L"]}
                 empty="Nothing traded yet."
-                rows={deals
-                  .toSorted((a, b) => b.time - a.time)
+                rows={[...deals]
+                  .sort((a, b) => b.time - a.time)
                   .map((d) => ({
                     key: d.id,
                     cells: [

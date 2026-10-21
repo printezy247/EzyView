@@ -85,9 +85,9 @@ export class DemoCalendarAdapter implements CalendarAdapter {
         });
       }
     }
-    return out
+    return [...out]
       .filter((e) => (!filter?.currency || e.currency === filter.currency) && (!filter?.impact || e.impact === filter.impact))
-      .toSorted((a, b) => a.time - b.time);
+      .sort((a, b) => a.time - b.time);
   }
 }
 
@@ -232,6 +232,6 @@ export class DemoCorporateCalendarAdapter implements CorporateCalendarAdapter {
     for (let exDate = offset; exDate <= to; exDate += 91 * DAY) {
       if (exDate >= from) out.push({ symbol, exDate, payDate: exDate + 21 * DAY, amount, currency: "USD", source: "demo" });
     }
-    return out.toSorted((a, b) => b.exDate - a.exDate);
+    return [...out].sort((a, b) => b.exDate - a.exDate);
   }
 }

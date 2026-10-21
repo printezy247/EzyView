@@ -173,7 +173,7 @@ function byTime(a: JournalEntry, b: JournalEntry): number {
 
 /** Peak-to-trough of the running total, in chronological order. */
 function maxDrawdown(closed: readonly Closed[]): number {
-  const timeline = closed.toSorted(byTime).map((entry) => entry.pnl);
+  const timeline = [...closed].sort(byTime).map((entry) => entry.pnl);
 
   let equity = 0;
   let peak = 0;
@@ -190,7 +190,7 @@ function maxDrawdown(closed: readonly Closed[]): number {
 /** Cumulative net P&L after each closed trade, chronological. */
 function equitySeries(closed: readonly Closed[]): { time: number; equity: number }[] {
   let equity = 0;
-  return closed.toSorted(byTime).map((entry) => {
+  return [...closed].sort(byTime).map((entry) => {
     equity += entry.pnl;
     return { time: entry.exitTime ?? entry.entryTime, equity };
   });
@@ -198,9 +198,9 @@ function equitySeries(closed: readonly Closed[]): { time: number; equity: number
 
 /** r = pnl / plannedRisk, chronological; trades without a positive risk are skipped. */
 function rMultiplesOf(closed: readonly Closed[]): number[] {
-  return closed
+  return [...closed]
     .filter((entry): entry is Closed & { plannedRisk: number } => typeof entry.plannedRisk === "number" && entry.plannedRisk > 0)
-    .toSorted(byTime)
+    .sort(byTime)
     .map((entry) => entry.pnl / entry.plannedRisk);
 }
 
@@ -254,7 +254,7 @@ function rankedRows(buckets: Map<string, PnlBucket>): { key: string; trades: num
       netPnl: bucket.netPnl,
       winRate: bucket.wins / bucket.trades,
     }))
-    .toSorted((a, b) => b.netPnl - a.netPnl);
+    .sort((a, b) => b.netPnl - a.netPnl);
 }
 
 function bySymbol(closed: readonly Closed[]): SymbolBreakdown[] {

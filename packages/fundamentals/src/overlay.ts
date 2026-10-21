@@ -105,5 +105,5 @@ export function fundamentalOverlays(
   }
 
   markers.sort((a, b) => a.time - b.time);
-  return { markers, lines: Array.from(lineSet).toSorted((a, b) => a - b) };
+  return { markers, lines: Array.from(lineSet).sort((a, b) => a - b) };
 }

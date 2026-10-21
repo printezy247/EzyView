@@ -203,7 +203,7 @@ export default function App() {
             sessionBreaks={state.showSessionBreaks !== false}
             onToggleSessionBreaks={() => updateActive({ showSessionBreaks: state.showSessionBreaks === false })}
             onOpenIndicators={() => setDialogOpen(true)}
-            onToggleReplay={() => setReplay(replayBar === null ? 0 : null)}
+            onToggleReplay={() => setReplay(replayBar === null ? -30 : null)}
             replayActive={replayBar !== null}
             dockTab={dockTab}
             tradingOpen={tradingOpen}

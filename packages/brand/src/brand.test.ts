@@ -92,7 +92,7 @@ describe("chart palette derives from the brand", () => {
   });
 
   it("exposes exactly the three UI themes", () => {
-    expect(Object.keys(CHART_THEMES).toSorted()).toEqual(["dark", "light", "tokyo"]);
+    expect(Object.keys(CHART_THEMES).sort()).toEqual(["dark", "light", "tokyo"]);
     expect(CHART_THEMES.dark).toBe(DARK_THEME);
   });
 

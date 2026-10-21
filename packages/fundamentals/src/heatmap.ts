@@ -27,7 +27,7 @@ const worst = (row: number[], side: number): number => {
  * tile areas are proportional to weight and aspect ratios stay close to 1.
  */
 export function layoutHeatmap(items: HeatmapItem[], width: number, height: number): HeatmapTile[] {
-  const sorted = items.filter((i) => i.weight > 0).toSorted((a, b) => b.weight - a.weight);
+  const sorted = items.filter((i) => i.weight > 0).sort((a, b) => b.weight - a.weight);
   const total = sorted.reduce((sum, i) => sum + i.weight, 0);
   if (sorted.length === 0 || total <= 0 || width <= 0 || height <= 0) return [];
 

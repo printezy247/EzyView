@@ -66,7 +66,7 @@ export function currencyOptions(events: readonly EconomicEvent[]): string[] {
     if (key === "" || seen.has(key)) continue;
     seen.set(key, e.currency);
   }
-  return [...seen.values()].toSorted((a, b) => a.localeCompare(b));
+  return [...seen.values()].sort((a, b) => a.localeCompare(b));
 }
 
 /** Run an async loader whenever `key` changes, ignoring stale results and keeping errors. */
@@ -278,7 +278,7 @@ export function DividendsTab({ symbol, src }: { symbol: string; src: Src }) {
     `${symbol}:${src.version}`,
   );
 
-  const rows = useMemo(() => (data ?? []).toSorted((a, b) => b.exDate - a.exDate), [data]);
+  const rows = useMemo(() => [...(data ?? [])].sort((a, b) => b.exDate - a.exDate), [data]);
   const trailing = useMemo(() => annualisedDividend(rows, now - 365 * DAY, now), [rows, now]);
   const next = useMemo(() => nextExDate(rows, now), [rows, now]);
   const thisYear = new Date(now * 1000).getUTCFullYear();
