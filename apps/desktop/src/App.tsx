@@ -10,6 +10,7 @@ import { ApiKeysDialog } from "./ApiKeysDialog";
 import { useApiKeys } from "./apiKeys";
 import { openChartWindow } from "./windows";
 import { NavRail } from "./NavRail";
+import { useZen } from "./zen";
 import { TradeConfirmDialog } from "./TradeConfirmDialog";
 import { JournalPage } from "./JournalPage";
 import { FundamentalsPage } from "./FundamentalsPage";
@@ -41,6 +42,22 @@ export default function App() {
   const removeAlert = useWorkspace((s) => s.removeAlert);
   const replayBar = useWorkspace((s) => s.replayBar);
   const setReplay = useWorkspace((s) => s.setReplay);
+
+  // F11 toggles fullscreen "zen" mode (nav rail and tabs hidden); Esc leaves it.
+  // An open menu swallows Escape first, so Esc closes the menu before it exits.
+  const zen = useZen((s) => s.on);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "F11") {
+        e.preventDefault();
+        useZen.getState().toggle();
+      } else if (e.key === "Escape") {
+        useZen.getState().exit();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const apiKeysOpen = useApiKeys((s) => s.dialogOpen);
@@ -114,10 +131,10 @@ export default function App() {
   return (
     <div className="flex h-full">
       <h1 className="sr-only">EzyView</h1>
-      <NavRail />
+      {!zen && <NavRail />}
       <div className="flex min-w-0 flex-1 flex-col bg-ev-bg text-ev-text">
         <header className="contents">
-          <TabBar />
+          {!zen && <TabBar />}
 
           <Toolbar
             symbol={state.symbol}

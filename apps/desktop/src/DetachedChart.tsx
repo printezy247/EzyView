@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Resolution } from "@ezyview/data-adapters";
 import { ChartHost } from "./ChartHost";
+import { publishCrosshair, subscribeCrosshair } from "./crosshairBus";
 import { PICKER_RESOLUTIONS, tickerOf } from "./data";
 
 interface Props {
@@ -11,6 +12,20 @@ interface Props {
 /** A single chart for a secondary window. It has no workspace of its own: pick an interval, nothing persists. */
 export function DetachedChart({ symbol, resolution: initial }: Props) {
   const [resolution, setResolution] = useState<Resolution>(initial);
+  // Mirror the main window's pointer when it is on this symbol; publish ours back.
+  // Publish only while the pointer is really on this chart (a mirrored crosshair
+  // fires move events too, and echoing them would loop between windows), and
+  // never mirror over the user's own crosshair.
+  const [hovering, setHovering] = useState(false);
+  const [remote, setRemote] = useState<{ time: number; price: number } | null>(null);
+  useEffect(
+    () =>
+      subscribeCrosshair((m) => {
+        if (m.symbol !== symbol) return;
+        setRemote(m.time === null || m.price === null ? null : { time: m.time, price: m.price });
+      }),
+    [symbol],
+  );
   document.title = `${tickerOf(symbol)} · EzyView`;
 
   return (
@@ -31,7 +46,14 @@ export function DetachedChart({ symbol, resolution: initial }: Props) {
           ))}
         </div>
       </header>
-      <div className="relative min-h-0 flex-1">
+      <div
+        className="relative min-h-0 flex-1"
+        onPointerEnter={() => setHovering(true)}
+        onPointerLeave={() => {
+          setHovering(false);
+          publishCrosshair(symbol, null, null);
+        }}
+      >
         <ChartHost
           symbol={symbol}
           resolution={resolution}
@@ -41,6 +63,10 @@ export function DetachedChart({ symbol, resolution: initial }: Props) {
           theme="dark"
           indicators={[]}
           drawings={[]}
+          syncCrosshair={hovering ? null : remote}
+          onCrosshairMove={(t, p) => {
+            if (hovering) publishCrosshair(symbol, t, p);
+          }}
         />
       </div>
     </div>

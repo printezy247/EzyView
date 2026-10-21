@@ -17,6 +17,7 @@ import { getIndicator } from "@ezyview/indicators";
 import { GRID_MODES } from "./layout";
 import type { ChartThemeName, CrosshairModeName, GridMode, PriceScaleModeName } from "./layout";
 import { defaultChartState, useWorkspace } from "./store";
+import { useZen } from "./zen";
 import type { MagnetMode } from "@ezyview/drawing-tools";
 
 /** Timezones offered in the View menu; empty = exchange/UTC default. */
@@ -340,6 +341,7 @@ export function Toolbar(props: Props) {
     { kind: "separator", id: "s-window" },
     { kind: "label", id: "window", label: "Window" },
     { kind: "action", id: "new-window", label: "Open chart in new window", onSelect: props.onOpenWindow },
+    { kind: "action", id: "zen", label: "Fullscreen (hide tabs)", hint: "F11", onSelect: () => useZen.getState().toggle() },
     { kind: "action", id: "palette", label: "Search features…", hint: PALETTE_KEY, onSelect: () => setPaletteOpen(true) },
   ];
 

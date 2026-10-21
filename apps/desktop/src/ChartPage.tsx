@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FundamentalEventOverlay, TradingLine } from "@ezyview/chart-engine";
 import { buildSources } from "@ezyview/fundamentals";
 import { ChartHost } from "./ChartHost";
@@ -20,6 +20,8 @@ import type { ChartState } from "./store";
 import { useTrading, useTradingTicks } from "./trading";
 import { useApiKeys } from "./apiKeys";
 import { EMPTY_FUNDAMENTAL_EVENTS, fetchFundamentalEvents } from "./fundamentalEvents";
+import { publishCrosshair, subscribeCrosshair } from "./crosshairBus";
+import type { CrosshairMessage } from "./crosshairBus";
 import { setActiveExportSource } from "./exportBridge";
 
 interface ChartPageProps {
@@ -59,12 +61,33 @@ export function ChartPage({ watchlistOpen, domOpen, objectsOpen, tradingOpen, on
   // Focused cell's pointer position, mirrored into every other cell when on.
   const [syncCross, setSyncCross] = useState<{ time: number; price: number } | null>(null);
 
+  // Cell the pointer is over. Only a real hover publishes to other windows:
+  // a mirrored crosshair also fires move events, and echoing those would
+  // ping-pong between windows forever.
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const hoverRef = useRef<number | null>(null);
+  const onHover = useCallback((index: number | null) => {
+    const prev = hoverRef.current;
+    hoverRef.current = index;
+    setHoverIndex(index);
+    const ws = useWorkspace.getState();
+    if (index === null && prev !== null && ws.crosshairSync && prev === ws.activeLayout().activeChart) {
+      publishCrosshair(ws.activeChart().symbol, null, null);
+    }
+  }, []);
+
+  // Another window's pointer, mirrored onto cells showing the same symbol.
+  const [remoteCross, setRemoteCross] = useState<CrosshairMessage | null>(null);
+  useEffect(() => subscribeCrosshair((m) => setRemoteCross(m.time === null ? null : m)), []);
+
   const onCrosshairTime = useCallback((t: number | null) => setCrosshairTime(t), []);
 
   // Read at event time so the handler never re-subscribes on a toggle.
   const onCrosshairMove = useCallback((t: number | null, p: number | null) => {
     setCrosshairTime(t);
     const on = useWorkspace.getState().crosshairSync;
+    const ws = useWorkspace.getState();
+    if (on && hoverRef.current === ws.activeLayout().activeChart) publishCrosshair(ws.activeChart().symbol, t, p);
     if (!on || t === null || p === null) {
       // Same-ref no-op keeps an already-cleared mirror from re-rendering.
       setSyncCross((prev) => (prev === null ? prev : null));
@@ -197,6 +220,9 @@ export function ChartPage({ watchlistOpen, domOpen, objectsOpen, tradingOpen, on
             onCrosshairTime={onCrosshairTime}
             crosshairTime={crosshairTime}
             syncCrosshair={syncCross}
+            remoteCrosshair={remoteCross}
+            hoverIndex={hoverIndex}
+            onHover={onHover}
             syncOn={crosshairSync}
             onCrosshairMove={onCrosshairMove}
             onFocus={setActiveChart}
@@ -250,6 +276,11 @@ interface ChartGridProps {
   crosshairTime: number | null;
   /** Focused cell's pointer position, mirrored into the other cells. */
   syncCrosshair: { time: number; price: number } | null;
+  /** Crosshair from another EzyView window; used for cells on the same symbol. */
+  remoteCrosshair: CrosshairMessage | null;
+  /** Cell under the pointer; its crosshair is the user's, never a mirror. */
+  hoverIndex: number | null;
+  onHover: (index: number | null) => void;
   syncOn: boolean;
   onCrosshairMove: (t: number | null, p: number | null) => void;
   onFocus: (index: number) => void;
@@ -268,12 +299,19 @@ function ChartGrid({
   onCrosshairTime,
   crosshairTime,
   syncCrosshair,
+  remoteCrosshair,
+  hoverIndex,
+  onHover,
   syncOn,
   onCrosshairMove,
   onFocus,
 }: ChartGridProps) {
   const cells: ChartState[] = layout.charts.slice(0, cellCount(layout.grid));
   const multi = cells.length > 1;
+  const remoteFor = (symbol: string) =>
+    remoteCrosshair && remoteCrosshair.symbol === symbol && remoteCrosshair.time !== null && remoteCrosshair.price !== null
+      ? { time: remoteCrosshair.time, price: remoteCrosshair.price }
+      : null;
   // Export acts on the focused cell (the same `index === layout.activeChart`
   // test each cell uses below): its bridge id is the cell index. This lives in
   // the component body — a hook cannot run inside the cells.map callback —
@@ -292,6 +330,8 @@ function ChartGrid({
             aria-current={multi && focused ? "true" : undefined}
             // Capture so focus moves before the chart handles the click.
             onPointerDownCapture={() => onFocus(index)}
+            onPointerEnter={() => onHover(index)}
+            onPointerLeave={() => onHover(null)}
             className="relative min-h-0 min-w-0 bg-ev-bg"
           >
             <ChartHost
@@ -315,7 +355,13 @@ function ChartGrid({
               invertScale={chart.invertScale}
               timezone={chart.timezone}
               watermark={chart.watermark}
-              syncCrosshair={focused ? null : syncOn ? syncCrosshair : null}
+              syncCrosshair={
+                !syncOn || hoverIndex === index
+                  ? null
+                  : focused
+                    ? remoteFor(chart.symbol)
+                    : (syncCrosshair ?? remoteFor(chart.symbol))
+              }
               onCrosshairTime={focused ? onCrosshairTime : undefined}
               onCrosshairMove={focused ? onCrosshairMove : undefined}
             />

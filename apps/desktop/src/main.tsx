@@ -3,7 +3,12 @@ import { createRoot } from "react-dom/client";
 import { HashRouter } from "react-router";
 import App from "./App.js";
 import { DetachedChart } from "./DetachedChart.js";
+import { installCrashCapture } from "./diagnostics.js";
+import { ErrorBoundary } from "./ErrorBoundary.js";
 import { parseShareLink } from "./shareLink.js";
+import { checkOnStartup } from "./updateCheck.js";
+import { startAlertFeed } from "./alertFeed.js";
+import { startSnapshotSync } from "./snapshot.js";
 import { useWorkspace } from "./store.js";
 import { readDetached } from "./windows.js";
 import "./styles.css";
@@ -23,10 +28,20 @@ if (shared) {
   window.history.replaceState(null, "", `${window.location.pathname}${window.location.hash}`);
 }
 
+installCrashCapture();
+
+// Keep the MCP workspace snapshot current (main window only; no-op outside Tauri).
+if (!detached) {
+  startSnapshotSync();
+  startAlertFeed();
+  void checkOnStartup();
+}
+
 // HashRouter survives Tauri's asset-protocol origins, where history routing
 // cannot: the path lives in the fragment and never touches the filesystem.
 createRoot(container).render(
   <StrictMode>
+    <ErrorBoundary>
     {detached ? (
       <DetachedChart symbol={detached.symbol} resolution={detached.resolution} />
     ) : (
@@ -34,5 +49,6 @@ createRoot(container).render(
         <App />
       </HashRouter>
     )}
+    </ErrorBoundary>
   </StrictMode>,
 );

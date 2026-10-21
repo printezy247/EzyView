@@ -513,7 +513,10 @@ export const useWorkspace = create<WorkspaceStore>()(
           if (next.state === "triggered" && alert.state !== "triggered") fired.push(next.id);
           return next;
         });
-        set({ alerts, alertHistory: history });
+        // Keep the array identity when nothing fired or changed, so subscribers
+        // (the MCP snapshot sync) are not woken by every quote poll.
+        const prev = get().alerts;
+        set({ alerts: alerts.every((a, i) => a === prev[i]) ? prev : alerts, alertHistory: history });
         return fired;
       },
 
