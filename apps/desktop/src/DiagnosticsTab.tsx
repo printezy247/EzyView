@@ -51,6 +51,28 @@ export function DiagnosticsTab() {
           {log === null ? "Loading…" : log === "" ? "No crashes recorded." : log}
         </pre>
       </section>
+
+      <section aria-label="Third-party notices">
+        <h2 className="mb-1 text-dense font-medium uppercase tracking-wider text-ev-faint">Third-party notices</h2>
+        <p className="mb-2 text-dense text-ev-muted">
+          EzyView is built on open-source components. The charting engine is TradingView Lightweight Charts™, which
+          requires this attribution and a link to their site — the link is right here.
+        </p>
+        <ul className="space-y-1 text-dense">
+          <li className="text-ev-text">
+            TradingView Lightweight Charts™ — Copyright (с) 2025 TradingView, Inc.{" "}
+            <a
+              href="https://www.tradingview.com/"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="text-ev-link underline decoration-dotted underline-offset-2 hover:text-ev-strong"
+            >
+              tradingview.com
+            </a>
+          </li>
+          <li className="text-ev-muted">Full notices ship with the source, in the NOTICE file.</li>
+        </ul>
+      </section>
     </div>
   );
 }

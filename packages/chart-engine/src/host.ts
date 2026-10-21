@@ -282,6 +282,12 @@ export class EzyChart {
         fontFamily: "Inter, system-ui, sans-serif",
         fontSize: 11,
         panes: { separatorColor: this.theme.paneSeparator, enableResize: true },
+        // The library's own attribution logo is off because EzyView meets the
+        // licence's linking requirement itself: the TradingView notice and a
+        // link to tradingview.com are in Settings -> Diagnostics and in the
+        // NOTICE file shipped with the source. The licence allows the logo to
+        // be disabled once that requirement is fulfilled.
+        attributionLogo: false,
       },
       grid: {
         vertLines: { color: options.showGrid === false ? "transparent" : this.theme.grid },
@@ -289,8 +295,8 @@ export class EzyChart {
       },
       crosshair: {
         mode: CrosshairMode.Normal,
-        vertLine: { color: this.theme.crosshair, labelBackgroundColor: "#2962ff" },
-        horzLine: { color: this.theme.crosshair, labelBackgroundColor: "#2962ff" },
+        vertLine: { color: this.theme.crosshair, labelBackgroundColor: this.theme.accent },
+        horzLine: { color: this.theme.crosshair, labelBackgroundColor: this.theme.accent },
       },
       rightPriceScale: { borderColor: this.theme.grid, scaleMargins: { top: 0.1, bottom: 0.16 } },
       timeScale: { borderColor: this.theme.grid, timeVisible: true, secondsVisible: false },

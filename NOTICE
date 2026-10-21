@@ -1,0 +1,17 @@
+EzyView
+Copyright (c) 2026 printezy247
+
+This product includes software developed at TradingView, Inc.:
+
+TradingView Lightweight Charts™
+Copyright (с) 2025 TradingView, Inc. https://www.tradingview.com/
+
+The charting engine is built on TradingView Lightweight Charts, whose licence
+requires the attribution notice above to be included with the source and a link
+to https://www.tradingview.com/ on a page of the application available to its
+users. EzyView meets that requirement in the "Diagnostics" section of Settings
+(Settings -> Diagnostics -> Third-party notices) and in the README, and the
+chart engine therefore runs with the library's own attribution logo disabled.
+
+Other third-party components keep their own notices, listed in the same
+Settings section.

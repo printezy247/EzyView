@@ -1,3 +1,5 @@
+import { themeColors } from "@ezyview/brand";
+
 export type DrawingToolId =
   | "trend_line"
   | "ray"
@@ -62,7 +64,9 @@ export interface Drawing {
 }
 
 export const DEFAULT_DRAWING_STYLE: DrawingStyle = {
-  color: "#2962ff",
+  // The brand's blue, not a leftover accent from the chart's previous life:
+  // this is the colour every new drawing starts as, so it is chrome, not data.
+  color: themeColors("dark").link,
   width: 1,
   lineStyle: "solid",
   showLabels: true,

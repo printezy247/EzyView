@@ -47,10 +47,10 @@ export function MarketClock() {
           {s.label}
         </span>
       ))}
-      <span className="num text-ev-muted" title="UTC time">
+      <span className="num text-ev-muted" title="UTC time" data-volatile="clock">
         {formatClock(now, "UTC")}
       </span>
-      <span className="text-ev-faint" title="Your local offset from UTC">
+      <span className="text-ev-faint" title="Your local offset from UTC" data-volatile="clock">
         {utcOffsetLabel(offsetHours)}
       </span>
     </div>

@@ -89,7 +89,7 @@ export function ChartBottomBar({ onOpenHotkeys }: { onOpenHotkeys: () => void })
         >
           %
         </button>
-        <span className="ml-2 text-dense num text-ev-muted" title="Current time in the chart's timezone">
+        <span className="ml-2 text-dense num text-ev-muted" title="Current time in the chart's timezone" data-volatile="clock">
           {formatClock(now, timezone)}
         </span>
         <button

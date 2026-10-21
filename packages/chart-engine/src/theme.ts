@@ -11,6 +11,12 @@ export interface ChartTheme {
   textColor: string;
   grid: string;
   crosshair: string;
+  /**
+   * The brand accent, used for the crosshair's price/time label backgrounds.
+   * It is a theme token rather than a literal so the label follows the palette
+   * instead of keeping whichever colour the chart was born with.
+   */
+  accent: string;
   upColor: string;
   downColor: string;
   borderUpColor: string;
@@ -33,6 +39,7 @@ function fromBrand(name: ThemeName): ChartTheme {
     textColor: c.text,
     grid: c.raised,
     crosshair: c.muted,
+    accent: c.accent,
     upColor: c.up,
     downColor: c.down,
     borderUpColor: c.up,

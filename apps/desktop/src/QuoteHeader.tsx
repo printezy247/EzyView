@@ -45,11 +45,11 @@ export function QuoteHeader({ symbol }: { symbol: string }) {
   return (
     <div className="flex items-center gap-2">
       <div className="flex items-baseline gap-1.5">
-        <span className="num text-body font-semibold text-ev-strong">
+        <span className="num text-body font-semibold text-ev-strong" data-volatile="price">
           {quote ? quote.last.toFixed(digits) : "—"}
         </span>
         {quote && quote.changePercent !== undefined && (
-          <span className={`num text-dense font-medium ${up ? "text-ev-up" : "text-ev-down"}`}>
+          <span className={`num text-dense font-medium ${up ? "text-ev-up" : "text-ev-down"}`} data-volatile="price">
             {up ? "+" : ""}
             {quote.changePercent.toFixed(2)}%
           </span>
