@@ -82,11 +82,15 @@ export function ChartPage({ watchlistOpen, domOpen, objectsOpen, tradingOpen, on
   const [remoteCross, setRemoteCross] = useState<CrosshairMessage | null>(null);
   useEffect(() => subscribeCrosshair((m) => setRemoteCross(m.time === null ? null : m)), []);
 
+  // Where the pointer last was on the focused chart; Ctrl+V pastes there.
+  const lastCursorRef = useRef<{ time: number; price: number } | null>(null);
+
   const onCrosshairTime = useCallback((t: number | null) => setCrosshairTime(t), []);
 
   // Read at event time so the handler never re-subscribes on a toggle.
   const onCrosshairMove = useCallback((t: number | null, p: number | null) => {
     setCrosshairTime(t);
+    if (t !== null && p !== null) lastCursorRef.current = { time: t, price: p };
     const on = useWorkspace.getState().crosshairSync;
     const ws = useWorkspace.getState();
     if (on && hoverRef.current === ws.activeLayout().activeChart) publishCrosshair(ws.activeChart().symbol, t, p);
@@ -172,6 +176,15 @@ export function ChartPage({ watchlistOpen, domOpen, objectsOpen, tradingOpen, on
       } else if (e.key.toLowerCase() === "y" || (e.key.toLowerCase() === "z" && e.shiftKey)) {
         e.preventDefault();
         useWorkspace.getState().redoDrawing();
+      } else if (e.key.toLowerCase() === "c") {
+        // Copy the selected drawing; without one, leave the browser's copy alone.
+        if (useWorkspace.getState().selectedDrawingId) {
+          e.preventDefault();
+          useWorkspace.getState().copyDrawing();
+        }
+      } else if (e.key.toLowerCase() === "v" && lastCursorRef.current && useWorkspace.getState().drawingClipboard) {
+        e.preventDefault();
+        useWorkspace.getState().pasteDrawing(lastCursorRef.current);
       }
     };
     window.addEventListener("keydown", onKey);

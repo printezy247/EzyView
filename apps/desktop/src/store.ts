@@ -11,6 +11,9 @@ import type { PinePlot, PineOrder, ScriptOptions } from "@ezyview/pine-transpile
 import { DEFAULT_SYMBOL } from "./data";
 import { DEFAULT_EVENT_OPTIONS, restoreEventOptions } from "./eventOptions";
 import type { EventOptions } from "./eventOptions";
+import { applyTemplate, restoreTemplates, templateFromChart } from "./chartTemplates";
+import type { ChartTemplate } from "./chartTemplates";
+import { pasteAt } from "./drawingClipboard";
 import { activeChartOf, restoreWorkspace, setActiveChart, setGrid, updateChart } from "./layout";
 import type { ActiveIndicator, ChartState, GridMode, Layout, PersistedWorkspace, ReplaySpeed } from "./layout";
 import { readDetached } from "./windows";
@@ -116,6 +119,10 @@ interface WorkspaceStore {
   crosshairSync: boolean;
   /** Which chart events to draw (earnings, economic, impact levels). */
   eventOptions: EventOptions;
+  /** Saved chart looks + indicators, applicable to any chart. */
+  chartTemplates: ChartTemplate[];
+  /** Last copied drawing (in memory only). */
+  drawingClipboard: Drawing | null;
   /** Replay play speed (× 500 ms/bar). */
   replaySpeed: ReplaySpeed;
 
@@ -168,6 +175,14 @@ interface WorkspaceStore {
   setCrosshairSync(on: boolean): void;
   setEventOptions(patch: Partial<Omit<EventOptions, "impacts">> & { impacts?: Partial<EventOptions["impacts"]> }): void;
   setReplaySpeed(speed: ReplaySpeed): void;
+  /** Save the focused chart's look and indicators as a named template. */
+  saveChartTemplate(name: string): void;
+  applyChartTemplate(id: string): void;
+  deleteChartTemplate(id: string): void;
+  /** Copy the selected drawing (or `id`) into the clipboard. */
+  copyDrawing(id?: string): void;
+  /** Paste the clipboard drawing with its first anchor at `at`, selected, undoable. */
+  pasteDrawing(at: { time: number; price: number }): void;
   /** Reorder the layout tabs alphabetically, or oldest-first. */
   sortLayouts(by: "name" | "date"): void;
 
@@ -265,6 +280,8 @@ export const useWorkspace = create<WorkspaceStore>()(
       magnet: "off",
       crosshairSync: false,
       eventOptions: DEFAULT_EVENT_OPTIONS,
+      chartTemplates: [],
+      drawingClipboard: null,
       replaySpeed: 1,
       drawingUndo: [],
       drawingRedo: [],
@@ -618,6 +635,34 @@ export const useWorkspace = create<WorkspaceStore>()(
       setReplay: (barIndex) => set({ replayBar: barIndex }),
 
       setCrosshairSync: (on) => set({ crosshairSync: on }),
+      saveChartTemplate: (name) =>
+        set((s) => ({
+          chartTemplates: [...s.chartTemplates, templateFromChart(activeChartOf(s.activeLayout()), name, uid())].slice(-50),
+        })),
+
+      applyChartTemplate: (id) => {
+        const template = get().chartTemplates.find((t) => t.id === id);
+        if (!template) return;
+        set((s) => editChart(s, (c) => applyTemplate(c, template, getIndicator, uid)));
+      },
+
+      deleteChartTemplate: (id) => set((s) => ({ chartTemplates: s.chartTemplates.filter((t) => t.id !== id) })),
+
+      copyDrawing: (id) => {
+        const s = get();
+        const target = id ?? s.selectedDrawingId;
+        const drawing = activeChartOf(s.activeLayout()).drawings.find((d) => d.id === target);
+        if (drawing) set({ drawingClipboard: structuredClone(drawing) });
+      },
+
+      pasteDrawing: (at) => {
+        const s = get();
+        if (!s.drawingClipboard) return;
+        const pasted = pasteAt(s.drawingClipboard, at, uid());
+        s.setDrawings([...activeChartOf(s.activeLayout()).drawings, pasted]);
+        set({ selectedDrawingId: pasted.id });
+      },
+
       setEventOptions: (patch) =>
         set((s) => ({
           eventOptions: {
@@ -644,7 +689,7 @@ export const useWorkspace = create<WorkspaceStore>()(
       name: "ezyview.workspace",
       version: 1,
       storage: workspaceStorage,
-      partialize: (s): PersistedWorkspace & { pineScripts: Record<string, PineScriptRecord>; eventOptions: EventOptions } => ({
+      partialize: (s): PersistedWorkspace & { pineScripts: Record<string, PineScriptRecord>; eventOptions: EventOptions; chartTemplates: ChartTemplate[] } => ({
         layouts: s.layouts,
         activeLayoutId: s.activeLayoutId,
         magnet: s.magnet,
@@ -652,6 +697,7 @@ export const useWorkspace = create<WorkspaceStore>()(
         replaySpeed: s.replaySpeed,
         pineScripts: s.pineScripts,
         eventOptions: s.eventOptions,
+        chartTemplates: s.chartTemplates,
       }),
       merge: (persisted, current) => {
         const raw = (persisted ?? {}) as Record<string, unknown>;
@@ -662,6 +708,7 @@ export const useWorkspace = create<WorkspaceStore>()(
           // (and any malformed entry) into a valid, possibly empty map.
           pineScripts: restorePineScripts(raw.pineScripts),
           eventOptions: restoreEventOptions(raw.eventOptions),
+          chartTemplates: restoreTemplates(raw.chartTemplates),
         };
       },
     },
