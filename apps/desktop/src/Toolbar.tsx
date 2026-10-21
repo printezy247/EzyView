@@ -7,6 +7,7 @@ import { CommandPalette } from "./CommandPalette";
 import { buildNavCommands } from "./commandRegistry";
 import type { CommandGroup } from "./commandRegistry";
 import { RESOLUTION_GROUPS, resolutionName } from "./data";
+import type { DockTabId } from "./RightDock";
 import { Menu } from "./Menu";
 import type { MenuEntry } from "./Menu";
 import { SymbolSearch } from "./SymbolSearch";
@@ -48,12 +49,12 @@ export const CHART_TYPES: { id: ChartType; label: string }[] = [
 ];
 
 /**
- * Chart-hosted panels. The three right-hand panels (watchlist, depth, object
- * tree) are tabs of one dock, so they share the `dock` id; `trading` is the
- * bottom strip. Journal/Fundamentals/Options/Strategies are routes, not panels.
+ * Chart-hosted panels. The right-hand panels are tabs of one dock (see
+ * `RightDock`), so they share the `dock` id; `trading` is the bottom strip.
+ * Journal/Research/Strategies are routes, not panels.
  */
 export type PanelId = "dock" | "trading";
-export type DockTabId = "watchlist" | "depth" | "objects";
+export type { DockTabId } from "./RightDock";
 
 const MAGNET_MODES: { id: MagnetMode; label: string }[] = [
   { id: "off", label: "Magnet off" },
@@ -268,6 +269,7 @@ export function Toolbar(props: Props) {
     { kind: "label", id: "panels", label: "Panels" },
     dockTab("watchlist", "Watchlist"),
     dockTab("objects", "Object tree"),
+    dockTab("tape", "Time & sales"),
     { kind: "separator", id: "s-drawing" },
     { kind: "label", id: "drawing", label: "Drawing" },
     ...MAGNET_MODES.map(

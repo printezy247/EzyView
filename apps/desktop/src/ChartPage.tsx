@@ -6,7 +6,7 @@ import { ChartCommandInput } from "./ChartCommandInput";
 import { DrawingToolbar } from "./DrawingToolbar";
 import { ReplayBar } from "./ReplayBar";
 import { RightDock } from "./RightDock";
-import type { DockTabId } from "./Toolbar";
+import type { DockTabId } from "./RightDock";
 import { DepthOfMarket } from "./DepthOfMarket";
 import { TradingPanel } from "./TradingPanel";
 import { Watchlist } from "./Watchlist";
@@ -14,6 +14,7 @@ import { activeChartOf, cellCount } from "./layout";
 import type { Layout } from "./store";
 import type { GridMode } from "./layout";
 import { ObjectTree } from "./ObjectTree";
+import { TimeAndSales } from "./TimeAndSales";
 import { loadHistory } from "./data";
 import { useWorkspace } from "./store";
 import type { ChartState } from "./store";
@@ -283,7 +284,7 @@ export function ChartPage({ dockTab, onSelectDockTab, onSetDockTab, tradingOpen,
 
         <RightDock
           active={dockTab}
-          onSelect={(id) => onSetDockTab(id as DockTabId | null)}
+          onSelect={onSetDockTab}
           tabs={[
             {
               id: "watchlist",
@@ -303,6 +304,12 @@ export function ChartPage({ dockTab, onSelectDockTab, onSetDockTab, tradingOpen,
               hint: "Drawings and indicators on this chart",
               badge: state.drawings.length,
               render: () => <ObjectTree onClose={() => onSelectDockTab("objects")} />,
+            },
+            {
+              id: "tape",
+              label: "Tape",
+              hint: "Time & sales — recent prints for the active symbol",
+              render: () => <TimeAndSales />,
             },
           ]}
         />

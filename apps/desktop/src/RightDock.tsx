@@ -8,8 +8,15 @@ import type { ReactNode } from "react";
  * the chart gets a stable width.
  */
 
+/**
+ * The right-dock tabs. Declared here rather than in the toolbar so every
+ * consumer (chart page, menu host, toolbar) imports one definition — a new tab
+ * is added in the dock's tab list below and the type follows.
+ */
+export type DockTabId = "watchlist" | "depth" | "objects" | "tape";
+
 export interface DockTab {
-  id: string;
+  id: DockTabId;
   label: string;
   /** Hover hint for the tab. */
   hint?: string;
@@ -21,8 +28,8 @@ export interface DockTab {
 
 interface Props {
   tabs: DockTab[];
-  active: string | null;
-  onSelect: (id: string | null) => void;
+  active: DockTabId | null;
+  onSelect: (id: DockTabId | null) => void;
   /** Panel width in px; the caller owns it so a resize handle can change it. */
   width?: number;
 }

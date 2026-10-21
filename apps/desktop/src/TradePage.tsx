@@ -8,14 +8,16 @@ import { DepthOfMarket } from "./DepthOfMarket";
 import { precisionFor, market } from "./data";
 import { useTrading } from "./trading";
 import { Button, rowClass } from "./ui";
+import { CurrencyConverter } from "./CurrencyConverter";
 import { useEffect } from "react";
 
-type Tab = "ticket" | "blotter" | "depth";
+type Tab = "ticket" | "blotter" | "depth" | "fx";
 
 const TABS: { id: Tab; label: string; hint: string }[] = [
   { id: "ticket", label: "Order ticket", hint: "Place a market or pending order" },
   { id: "blotter", label: "Blotter", hint: "Positions, working orders and deal history" },
   { id: "depth", label: "Depth", hint: "Depth of market around the current price" },
+  { id: "fx", label: "Converter", hint: "Convert an amount between currencies" },
 ];
 
 /**
@@ -93,6 +95,11 @@ export function TradePage() {
         {tab === "depth" && (
           <div className="mx-auto w-full max-w-md overflow-y-auto p-4">
             <DepthOfMarket symbol={state.symbol} precision={precisionFor(last)} />
+          </div>
+        )}
+        {tab === "fx" && (
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <CurrencyConverter />
           </div>
         )}
       </div>

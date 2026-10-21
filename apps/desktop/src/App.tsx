@@ -20,6 +20,7 @@ import { TradePage } from "./TradePage";
 import { AlertsPage } from "./AlertsPage";
 import { SettingsPage } from "./SettingsPage";
 import { HotkeySheet } from "./HotkeySheet";
+import { MarketClock } from "./MarketClockBar";
 import { useWorkspace } from "./store";
 import { activeChartOf } from "./layout";
 import { themeWindowColor } from "@ezyview/brand";
@@ -247,6 +248,7 @@ export default function App() {
             {state.drawings.length} drawing{state.drawings.length === 1 ? "" : "s"}
           </span>
           <span className="ml-auto flex items-center gap-3">
+            <MarketClock />
             <Link
               to="/settings"
               title="Settings — MT5 connection, broker logins, safety rails"

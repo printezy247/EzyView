@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router";
 import { ChartContextMenu } from "./ChartContextMenu";
+import type { DockTabId } from "./RightDock";
 import { buildChartMenu } from "./chartMenu";
 import type { ChartMenuActions } from "./chartMenu";
 import { brokerFeed, precisionFor } from "./data";
@@ -25,7 +26,7 @@ interface Props {
   request: ChartMenuRequest;
   tradingOpen: boolean;
   /** Which dock tab is visible, or null when the dock is closed. */
-  dockTab: "watchlist" | "depth" | "objects" | null;
+  dockTab: DockTabId | null;
   /** Toggle a docked panel ("objects", "trading", ...). */
   onOpenDockTab: (id: "objects") => void;
   onToggleTrading: () => void;
