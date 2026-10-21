@@ -24,6 +24,16 @@ interface Props {
   symbol: string;
 }
 
+/**
+ * Make the live script name safe for a download filename: strip path
+ * separators and NUL, trim, and fall back when nothing valid remains.
+ */
+export const pineExportFilename = (name: string): string => {
+  // Filter, not a regex: a NUL in a character class trips no-control-regex.
+  const cleaned = [...name].filter((ch) => ch !== "/" && ch !== "\\" && ch !== "\u0000").join("").trim();
+  return cleaned || "script";
+};
+
 const STARTER = `//@version=6
 indicator("My Script", overlay=true)
 len = input.int(14, "Length")
@@ -234,7 +244,7 @@ export function PineEditor({ onClose, bars, symbol }: Props) {
     const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${name}.pine.json`;
+    a.download = `${pineExportFilename(name)}.pine.json`;
     a.click();
     URL.revokeObjectURL(url);
   };

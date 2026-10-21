@@ -522,10 +522,7 @@ export const useWorkspace = create<WorkspaceStore>()(
           // changed head archives the one it replaces (newest first, capped).
           const versions =
             existing && existing.source !== source
-              ? [
-                  { source: existing.source, savedAt: Math.floor(Date.now() / 1000) },
-                  ...(existing.versions ?? []),
-                ].slice(0, MAX_PINE_VERSIONS)
+              ? archiveVersion(existing.versions, existing.source)
               : existing?.versions;
           return {
             pineScripts: {
@@ -556,7 +553,15 @@ export const useWorkspace = create<WorkspaceStore>()(
           return {
             pineScripts: {
               ...s.pineScripts,
-              [id]: { ...existing, source: entry.source },
+              [id]: {
+                ...existing,
+                // The current head exists nowhere else — archive it before the
+                // restore overwrites it (same prepend+cap as a save).
+                ...(existing.source !== entry.source
+                  ? { versions: archiveVersion(existing.versions, existing.source) }
+                  : {}),
+                source: entry.source,
+              },
             },
           };
         }),
@@ -572,7 +577,24 @@ export const useWorkspace = create<WorkspaceStore>()(
         set((s) => {
           if (!result) return {};
           const existing = s.pineScripts[id];
-          return { pineScripts: { ...s.pineScripts, [id]: { ...existing, ...result, id } } };
+          // A run writes the live buffer into the record; archive the head it
+          // replaces so a later same-source save cannot destroy it.
+          const versions =
+            existing && existing.source !== result.source
+              ? archiveVersion(existing.versions, existing.source)
+              : existing?.versions;
+          return {
+            pineScripts: {
+              ...s.pineScripts,
+              [id]: {
+                ...existing,
+                ...result,
+                id,
+                // Spread so a pre-versioning record stays without the key.
+                ...(versions !== undefined ? { versions } : {}),
+              },
+            },
+          };
         }),
 
       setReplay: (barIndex) => set({ replayBar: barIndex }),
@@ -619,6 +641,17 @@ export const useWorkspace = create<WorkspaceStore>()(
   ),
 );
 
+/** Prepend a superseded head to the archive: newest first, capped. */
+function archiveVersion(
+  versions: PineScriptVersion[] | undefined,
+  prevSource: string,
+): PineScriptVersion[] {
+  return [
+    { source: prevSource, savedAt: Math.floor(Date.now() / 1000) },
+    ...(versions ?? []),
+  ].slice(0, MAX_PINE_VERSIONS);
+}
+
 /**
  * Rebuild the saved-scripts map from a storage blob. Blobs written before
  * versioning lack `versions`/`inputs` (left absent, not invented), and any
@@ -642,7 +675,10 @@ function restorePineScripts(raw: unknown): Record<string, PineScriptRecord> {
       id: rec.id,
       name: rec.name,
       source: rec.source,
-      options: rec.options ?? null,
+      options:
+        typeof rec.options === "object" && rec.options !== null && !Array.isArray(rec.options)
+          ? rec.options
+          : null,
       plots: Array.isArray(rec.plots) ? rec.plots : [],
       orders: Array.isArray(rec.orders) ? rec.orders : [],
       error: typeof rec.error === "string" ? rec.error : null,

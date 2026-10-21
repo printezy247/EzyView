@@ -150,18 +150,52 @@ describe("pine script versions", () => {
     expect(versions[19]?.source).toBe("s5"); // oldest kept; s0..s4 evicted
   });
 
-  it("restorePineScriptVersion sets source from the entry and keeps the list", () => {
+  it("restorePineScriptVersion archives the current head, then sets source from the entry", () => {
     useWorkspace.getState().savePineScript("ver3", "R", "one");
     useWorkspace.getState().savePineScript("ver3", "R", "two");
     useWorkspace.getState().savePineScript("ver3", "R", "three");
-    const before = useWorkspace.getState().pineScripts["ver3"]?.versions;
-    expect(before?.map((v) => v.source)).toEqual(["two", "one"]);
+    expect(useWorkspace.getState().pineScripts["ver3"]?.versions?.map((v) => v.source)).toEqual(["two", "one"]);
+    // Restore "one": head "three" is archived (it existed nowhere else), and
+    // the old entries stay so flip-back is possible.
     useWorkspace.getState().restorePineScriptVersion("ver3", 1);
-    expect(useWorkspace.getState().pineScripts["ver3"]?.source).toBe("one");
-    // Restoring does not delete entries — flip back is possible.
-    expect(useWorkspace.getState().pineScripts["ver3"]?.versions).toEqual(before);
+    const after = useWorkspace.getState().pineScripts["ver3"];
+    expect(after?.source).toBe("one");
+    expect(after?.versions?.map((v) => v.source)).toEqual(["three", "two", "one"]);
+    // Flip back to "three": head "one" is archived the same way. The list
+    // keeps every prior entry (restore never deletes), so "one" appears twice.
     useWorkspace.getState().restorePineScriptVersion("ver3", 0);
-    expect(useWorkspace.getState().pineScripts["ver3"]?.source).toBe("two");
+    const back = useWorkspace.getState().pineScripts["ver3"];
+    expect(back?.source).toBe("three");
+    expect(back?.versions?.map((v) => v.source)).toEqual(["one", "three", "two", "one"]);
+  });
+
+  it("a run-result that supersedes the head archives it; a later same-source save is a no-op", () => {
+    // Edit → "Add to chart" (run) → Save must not lose the pre-edit head:
+    // the run writes the live buffer into the record via setPineResult.
+    useWorkspace.getState().savePineScript("run1", "R", "head-a");
+    useWorkspace.getState().setPineResult("run1", pineRecord({ id: "run1", source: "head-b" }));
+    const runVersions = useWorkspace.getState().pineScripts["run1"]?.versions ?? [];
+    expect(runVersions).toHaveLength(1);
+    expect(runVersions[0]?.source).toBe("head-a");
+    // Saving the same source afterwards archives nothing more (no double entry).
+    useWorkspace.getState().savePineScript("run1", "R", "head-b");
+    const savedVersions = useWorkspace.getState().pineScripts["run1"]?.versions ?? [];
+    expect(savedVersions).toHaveLength(1);
+    expect(savedVersions[0]?.source).toBe("head-a");
+  });
+
+  it("no-op restore paths do not notify subscribers", () => {
+    useWorkspace.getState().savePineScript("notify1", "N", "src");
+    useWorkspace.getState().setPineResult("notify2", pineRecord({ id: "notify2", source: "legacy" }));
+    let notified = 0;
+    const unsub = useWorkspace.subscribe(() => {
+      notified++;
+    });
+    useWorkspace.getState().restorePineScriptVersion("no-such-id", 0);
+    useWorkspace.getState().restorePineScriptVersion("notify1", 9);
+    useWorkspace.getState().restorePineScriptVersion("notify2", 0); // pre-versioning record
+    unsub();
+    expect(notified).toBe(0);
   });
 
   it("restore is a no-op for an unknown id, out-of-range index, or a record without versions", () => {
@@ -202,6 +236,30 @@ describe("pine script persistence", () => {
     };
     const merged = persistOptions().merge!(oldBlob, useWorkspace.getState());
     expect(merged.pineScripts).toEqual({});
+  });
+
+  it("malformed options/plots/orders rehydrate to null / empty arrays", () => {
+    const blob = {
+      layouts: useWorkspace.getState().layouts,
+      activeLayoutId: useWorkspace.getState().activeLayoutId,
+      magnet: "off",
+      pineScripts: {
+        bad: {
+          id: "bad",
+          name: "N",
+          source: "src",
+          options: 42,
+          plots: "x",
+          orders: {},
+          error: null,
+        },
+      },
+    };
+    const merged = persistOptions().merge!(blob, useWorkspace.getState());
+    const rec = merged.pineScripts["bad"];
+    expect(rec?.options).toBeNull();
+    expect(rec?.plots).toEqual([]);
+    expect(rec?.orders).toEqual([]);
   });
 
   it("old records without versions or inputs rehydrate as valid records", () => {
