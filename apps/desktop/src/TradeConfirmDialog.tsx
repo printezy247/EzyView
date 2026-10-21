@@ -60,10 +60,10 @@ export function TradeConfirmDialog() {
     <Modal
       onClose={decline}
       labelledBy="trade-confirm-title"
-      className="w-[26rem] rounded-md border border-ev-line bg-ev-panel text-[12px] shadow-2xl"
+      className="w-[26rem] rounded-md border border-ev-line bg-ev-panel text-base shadow-2xl"
     >
       <div className="flex items-center justify-between border-b border-ev-raised px-4 py-2.5">
-        <h2 id="trade-confirm-title" className="flex items-center gap-2 text-sm font-semibold text-ev-strong">
+        <h2 id="trade-confirm-title" className="flex items-center gap-2 text-body font-semibold text-ev-strong">
           <ShieldAlert size={14} aria-hidden />
           {title}
         </h2>
@@ -112,7 +112,7 @@ export function TradeConfirmDialog() {
             {sending ? "Sending…" : pending.gate.dryRun ? "Validate (dry-run)" : real ? "Send to real account" : "Send"}
           </button>
         </div>
-        <p className="text-[11px] text-ev-faint">
+        <p className="text-dense text-ev-faint">
           This confirmation can be used once. Anything changed since the ticket was filled must be re-confirmed.
         </p>
       </div>

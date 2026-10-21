@@ -221,7 +221,7 @@ export default function App() {
           lastPrice={null}
         />
 
-        <footer className="flex h-6 shrink-0 items-center gap-4 border-t border-ev-raised bg-ev-chrome px-3 text-[11px] text-ev-muted">
+        <footer className="flex h-6 shrink-0 items-center gap-4 border-t border-ev-raised bg-ev-chrome px-3 text-dense text-ev-muted">
           <SourceToggle />
           <FeedStatus />
           <span>
@@ -327,10 +327,10 @@ function SourceToggle() {
         <Modal
           onClose={refuseRisk}
           labelledBy="real-source-title"
-          className="w-[24rem] rounded-md border border-ev-warn/40 bg-ev-panel text-[12px] shadow-2xl"
+          className="w-[24rem] rounded-md border border-ev-warn/40 bg-ev-panel text-base shadow-2xl"
         >
           <div className="space-y-3 p-4">
-            <h2 id="real-source-title" className="text-sm font-semibold text-ev-warn">
+            <h2 id="real-source-title" className="text-body font-semibold text-ev-warn">
               Real account detected — {maskLogin(risk.split("|")[1] ?? "")}
             </h2>
             <p className="text-ev-text">

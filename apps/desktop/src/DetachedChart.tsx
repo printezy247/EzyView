@@ -30,7 +30,7 @@ export function DetachedChart({ symbol, resolution: initial }: Props) {
 
   return (
     <div className="flex h-full flex-col bg-ev-bg text-ev-text">
-      <header className="flex h-9 shrink-0 items-center gap-3 border-b border-ev-raised px-3 text-xs">
+      <header className="flex h-9 shrink-0 items-center gap-3 border-b border-ev-raised px-3 text-base">
         <span className="font-medium text-ev-strong">{symbol}</span>
         <div role="group" aria-label="Interval" className="flex rounded border border-ev-line">
           {PICKER_RESOLUTIONS.map((r) => (

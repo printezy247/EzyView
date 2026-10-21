@@ -129,12 +129,12 @@ export function Menu({ label, caption, entries, icon, badge, triggerActive, alig
             setOpen(true);
           }
         }}
-        className={`flex items-center gap-1 rounded px-2 py-1 text-xs ${triggerTone}`}
+        className={`flex items-center gap-1 rounded px-2 py-1 text-base ${triggerTone}`}
       >
         {icon}
         {label}
         {badge !== undefined && badge > 0 && (
-          <span className="rounded bg-ev-accent px-1 text-[11px] leading-4 text-white">{badge}</span>
+          <span className="rounded bg-ev-accent px-1 text-dense leading-4 text-white">{badge}</span>
         )}
         <ChevronDown size={12} aria-hidden />
       </button>
@@ -167,7 +167,7 @@ export function MenuItems({ entries, onPick }: { entries: MenuEntry[]; onPick: (
         }
         if (entry.kind === "label") {
           return (
-            <div key={entry.id} className="px-3 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wider text-ev-faint">
+            <div key={entry.id} className="px-3 pb-1 pt-2 text-dense font-medium uppercase tracking-wider text-ev-faint">
               {entry.label}
             </div>
           );
@@ -186,7 +186,7 @@ export function MenuItems({ entries, onPick }: { entries: MenuEntry[]; onPick: (
             data-menu-item
             disabled={disabled}
             onClick={() => onPick(entry)}
-            className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs ${
+            className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-base ${
               on ? "text-ev-strong" : "text-ev-muted"
             } hover:bg-ev-raised hover:text-ev-strong disabled:pointer-events-none disabled:opacity-40`}
           >
@@ -195,7 +195,7 @@ export function MenuItems({ entries, onPick }: { entries: MenuEntry[]; onPick: (
             </span>
             <span className="flex-1">{entry.label}</span>
             {entry.kind === "action" && entry.hint !== undefined && (
-              <span className="text-[11px] text-ev-faint">{entry.hint}</span>
+              <span className="text-dense text-ev-faint">{entry.hint}</span>
             )}
           </button>
         );

@@ -395,7 +395,7 @@ export function Toolbar(props: Props) {
       />
       {(props.chartType === "renko" || props.chartType === "kagi" || props.chartType === "pnf") && (
         <label
-          className="ml-1 flex items-center gap-1 text-[11px] text-ev-muted"
+          className="ml-1 flex items-center gap-1 text-dense text-ev-muted"
           title={`${props.chartType === "kagi" ? "Reversal amount" : "Box size"}; leave empty to size it from the average true range`}
         >
           {props.chartType === "kagi" ? "Reversal" : "Box"}
@@ -410,7 +410,7 @@ export function Toolbar(props: Props) {
               const v = Number(e.target.value);
               props.onBoxSize(e.target.value === "" || !(v > 0) ? null : v);
             }}
-            className="w-16 rounded border border-ev-line bg-ev-panel px-1.5 py-0.5 text-[11px] text-ev-text placeholder:text-ev-faint"
+            className="w-16 rounded border border-ev-line bg-ev-panel px-1.5 py-0.5 text-dense text-ev-text placeholder:text-ev-faint"
           />
         </label>
       )}
@@ -432,18 +432,18 @@ export function Toolbar(props: Props) {
       </nav>
 
       {props.replayActive && (
-        <span className="ml-2 rounded bg-ev-accent/15 px-1.5 py-0.5 text-[11px] font-medium text-ev-accent-text">Replay on</span>
+        <span className="ml-2 rounded bg-ev-accent/15 px-1.5 py-0.5 text-dense font-medium text-ev-accent-text">Replay on</span>
       )}
 
       <button
         type="button"
         onClick={() => setPaletteOpen(true)}
         aria-keyshortcuts="Control+K"
-        className="ml-auto flex h-6 w-56 items-center gap-2 rounded border border-ev-line px-2 text-[11px] text-ev-muted hover:border-ev-dim hover:text-ev-strong"
+        className="ml-auto flex h-6 w-56 items-center gap-2 rounded border border-ev-line px-2 text-dense text-ev-muted hover:border-ev-dim hover:text-ev-strong"
       >
         <Search size={12} aria-hidden />
         <span className="flex-1 text-left">Search features</span>
-        <kbd className="text-[11px] text-ev-faint">{PALETTE_KEY}</kbd>
+        <kbd className="text-dense text-ev-faint">{PALETTE_KEY}</kbd>
       </button>
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} groups={groups} />

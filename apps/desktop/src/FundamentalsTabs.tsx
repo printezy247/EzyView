@@ -87,9 +87,9 @@ export function useLoad<T>(load: () => Promise<T>, key: string): { data: T | nul
   return state;
 }
 
-export const Empty = ({ text }: { text: string }) => <p className="p-3 text-[11px] text-ev-muted">{text}</p>;
+export const Empty = ({ text }: { text: string }) => <p className="p-3 text-dense text-ev-muted">{text}</p>;
 export const Failed = ({ text }: { text: string }) => (
-  <p role="alert" className="p-3 text-[11px] text-ev-down">
+  <p role="alert" className="p-3 text-dense text-ev-down">
     Could not load: {text}
   </p>
 );
@@ -120,7 +120,7 @@ export function CalendarTab({ src }: { src: Src }) {
 
   const input = inputClass("h-6 w-auto");
   return (
-    <div className="text-[11px]">
+    <div className="text-dense">
       <div className="sticky top-0 flex flex-wrap items-center gap-2 bg-ev-bg px-3 py-1.5">
         <label className="text-ev-muted" htmlFor="impact">
           Impact
@@ -243,7 +243,7 @@ export function NewsTab({ symbol, src }: { symbol: string; src: Src }) {
       {rows.length === 0 ? (
         <Empty text={searching ? "No news match." : "No recent news."} />
       ) : (
-        <ul className="divide-y divide-ev-raised text-[11px]">
+        <ul className="divide-y divide-ev-raised text-dense">
           {rows.map((n) => (
             <li key={n.id} className="flex items-center gap-3 px-3 py-1.5">
               <span className="w-24 shrink-0 text-ev-muted">{when(n.time)}</span>
@@ -279,7 +279,7 @@ export function EarningsTab({ symbol, src }: { symbol: string; src: Src }) {
   if (data.earnings.length === 0 && Object.keys(data.profile).length === 0)
     return <Empty text={`No earnings or company profile for ${tickerOf(symbol)} (stocks only).`} />;
   return (
-    <div className="flex gap-6 p-3 text-[11px]">
+    <div className="flex gap-6 p-3 text-dense">
       <table className="flex-1">
         <thead className="text-left text-ev-muted">
           <tr>

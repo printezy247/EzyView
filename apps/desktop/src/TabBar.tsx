@@ -34,8 +34,8 @@ export function TabBar() {
               aria-current={active ? "true" : undefined}
               className={
                 active
-                  ? "flex items-center gap-1.5 rounded-t px-2.5 py-1 text-xs font-medium text-ev-strong"
-                  : "flex items-center gap-1.5 rounded px-2.5 py-1 text-xs text-ev-muted hover:text-ev-strong"
+                  ? "flex items-center gap-1.5 rounded-t px-2.5 py-1 text-base font-medium text-ev-strong"
+                  : "flex items-center gap-1.5 rounded px-2.5 py-1 text-base text-ev-muted hover:text-ev-strong"
               }
             >
               {layout.name}

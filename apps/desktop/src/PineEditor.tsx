@@ -283,10 +283,10 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
   return (
     <section
       aria-label="Pine editor"
-      className="flex min-h-0 flex-1 flex-col border-t border-ev-raised bg-ev-bg text-[11px]"
+      className="flex min-h-0 flex-1 flex-col border-t border-ev-raised bg-ev-bg text-dense"
     >
       <div className="flex items-center justify-between border-b border-ev-raised px-4 py-2.5">
-        <h2 id="pine-editor-title" className="text-sm font-semibold text-ev-strong">Pine Editor — {symbol}</h2>
+        <h2 id="pine-editor-title" className="text-body font-semibold text-ev-strong">Pine Editor — {symbol}</h2>
         <button type="button" onClick={onClose} className="text-ev-muted hover:text-ev-strong" aria-label="Close">
           <X size={16} aria-hidden />
         </button>
@@ -297,20 +297,20 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
           aria-label="Script name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-48 rounded bg-ev-bg px-2.5 py-1.5 text-sm text-ev-strong outline-none placeholder:text-ev-muted"
+          className="w-48 rounded bg-ev-bg px-2.5 py-1.5 text-body text-ev-strong outline-none placeholder:text-ev-muted"
           placeholder="Script name"
         />
         <button
           type="button"
           onClick={() => savePineScript(scriptId, name, source)}
-          className="flex items-center gap-1 rounded bg-ev-line px-2.5 py-1.5 text-xs text-ev-strong hover:bg-ev-line-strong"
+          className="flex items-center gap-1 rounded bg-ev-line px-2.5 py-1.5 text-base text-ev-strong hover:bg-ev-line-strong"
         >
           <Save size={13} aria-hidden /> Save
         </button>
         <button
           type="button"
           onClick={run}
-          className="flex items-center gap-1 rounded bg-ev-accent px-2.5 py-1.5 text-xs font-medium text-white hover:bg-ev-accent-hover"
+          className="flex items-center gap-1 rounded bg-ev-accent px-2.5 py-1.5 text-base font-medium text-white hover:bg-ev-accent-hover"
         >
           <Play size={13} aria-hidden /> Add to chart
         </button>
@@ -333,7 +333,7 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
               setResult(null);
               refreshMarkers();
             }}
-            className="rounded bg-ev-bg px-2 py-1.5 text-xs text-ev-strong outline-none"
+            className="rounded bg-ev-bg px-2 py-1.5 text-base text-ev-strong outline-none"
           >
             <option value="">Versions…</option>
             {/* Newest first; the archive is prepend-ordered in the store. */}
@@ -347,14 +347,14 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
         <button
           type="button"
           onClick={exportScript}
-          className="flex items-center gap-1 rounded bg-ev-line px-2.5 py-1.5 text-xs text-ev-strong hover:bg-ev-line-strong"
+          className="flex items-center gap-1 rounded bg-ev-line px-2.5 py-1.5 text-base text-ev-strong hover:bg-ev-line-strong"
         >
           <Download size={13} aria-hidden /> Export
         </button>
         <button
           type="button"
           onClick={() => importInput.current?.click()}
-          className="flex items-center gap-1 rounded bg-ev-line px-2.5 py-1.5 text-xs text-ev-strong hover:bg-ev-line-strong"
+          className="flex items-center gap-1 rounded bg-ev-line px-2.5 py-1.5 text-base text-ev-strong hover:bg-ev-line-strong"
         >
           <Upload size={13} aria-hidden /> Import
         </button>
@@ -387,7 +387,7 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
                 setResult(null);
                 refreshMarkers();
               }}
-              className={`rounded px-2 py-1 text-xs ${
+              className={`rounded px-2 py-1 text-base ${
                 s.id === scriptId ? "bg-ev-accent text-white" : "bg-ev-line text-ev-muted hover:bg-ev-line-strong"
               }`}
             >
@@ -420,12 +420,12 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
       <div ref={host} className="min-h-0 flex-1" />
 
       {error && (
-        <div role="alert" className="border-t border-ev-line bg-ev-down/15 px-4 py-2 text-xs text-ev-down">
+        <div role="alert" className="border-t border-ev-line bg-ev-down/15 px-4 py-2 text-base text-ev-down">
           {error}
         </div>
       )}
       {record?.plots.length ? (
-        <div className="flex flex-wrap items-center gap-3 border-t border-ev-raised px-4 py-2 text-xs text-ev-muted">
+        <div className="flex flex-wrap items-center gap-3 border-t border-ev-raised px-4 py-2 text-base text-ev-muted">
           <TrendingUp size={13} aria-hidden />
           <span>
             {record.plots.length} plot{record.plots.length === 1 ? "" : "s"}
@@ -527,7 +527,7 @@ function OptimizePanel({
   };
 
   return (
-    <div className="border-t border-ev-raised px-4 py-2 text-xs">
+    <div className="border-t border-ev-raised px-4 py-2 text-base">
       <div className="mb-1.5 flex items-center gap-3 text-ev-muted">
         <span className="font-semibold uppercase tracking-wider text-ev-faint">Optimize</span>
         <button
@@ -587,9 +587,9 @@ function OptimizePanel({
               Apply best
             </button>
           </div>
-          <table className="w-full text-left tabular-nums">
+          <table className="w-full text-left num">
             <thead>
-              <tr className="text-[11px] uppercase tracking-wider text-ev-faint">
+              <tr className="text-dense uppercase tracking-wider text-ev-faint">
                 <th scope="col" className="py-0.5 font-semibold">Params</th>
                 <th scope="col" className="py-0.5 font-semibold">Net PnL</th>
                 <th scope="col" className="py-0.5 font-semibold">Win rate</th>
@@ -623,7 +623,7 @@ function StrategyTester({ result, inputs }: { result: BacktestResult; inputs?: R
   const recent = result.trades.toReversed().slice(0, 5);
   const inputEntries = Object.entries(inputs ?? {});
   return (
-    <div className="border-t border-ev-raised px-4 py-2 text-xs">
+    <div className="border-t border-ev-raised px-4 py-2 text-base">
       <EquityCurve equity={result.equity} />
       <div className="mb-1.5 flex items-center gap-4 text-ev-muted">
         <span className="font-semibold uppercase tracking-wider text-ev-faint">Strategy Tester</span>
@@ -651,9 +651,9 @@ function StrategyTester({ result, inputs }: { result: BacktestResult; inputs?: R
           ))}
         </div>
       )}
-      <table className="w-full text-left tabular-nums">
+      <table className="w-full text-left num">
         <thead>
-          <tr className="text-[11px] uppercase tracking-wider text-ev-faint">
+          <tr className="text-dense uppercase tracking-wider text-ev-faint">
             <th scope="col" className="py-0.5 font-semibold">Side</th>
             <th scope="col" className="py-0.5 font-semibold">Entry</th>
             <th scope="col" className="py-0.5 font-semibold">Exit</th>

@@ -16,8 +16,8 @@ const ORDER_TYPES: { id: OrderType; label: string }[] = [
 ];
 
 const INPUT =
-  "w-full rounded bg-ev-panel px-2 py-1 text-xs text-ev-strong outline-none placeholder:text-ev-faint focus:ring-1 focus:ring-ev-accent";
-const LABEL = "block text-[11px] uppercase tracking-wider text-ev-muted";
+  "w-full rounded bg-ev-panel px-2 py-1 text-base text-ev-strong outline-none placeholder:text-ev-faint focus:ring-1 focus:ring-ev-accent";
+const LABEL = "block text-dense uppercase tracking-wider text-ev-muted";
 
 /**
  * Order ticket for the active symbol.
@@ -110,8 +110,8 @@ export function OrderTicket({ symbol }: Props) {
   return (
     <div className="flex min-h-0 w-64 shrink-0 flex-col gap-3 overflow-y-auto border-r border-ev-raised px-3 py-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-ev-muted">Order</h2>
-        <span className="text-[11px] text-ev-faint">{ticker}</span>
+        <h2 className="text-base font-semibold uppercase tracking-wider text-ev-muted">Order</h2>
+        <span className="text-dense text-ev-faint">{ticker}</span>
       </div>
 
       <div className="grid grid-cols-2 gap-1">
@@ -120,8 +120,8 @@ export function OrderTicket({ symbol }: Props) {
           onClick={() => setSide("buy")}
           className={
             side === "buy"
-              ? "rounded bg-ev-up-solid py-1.5 text-xs font-semibold text-white"
-              : "rounded bg-ev-panel py-1.5 text-xs font-medium text-ev-muted hover:text-ev-strong"
+              ? "rounded bg-ev-up-solid py-1.5 text-base font-semibold text-white"
+              : "rounded bg-ev-panel py-1.5 text-base font-medium text-ev-muted hover:text-ev-strong"
           }
         >
           Buy
@@ -131,8 +131,8 @@ export function OrderTicket({ symbol }: Props) {
           onClick={() => setSide("sell")}
           className={
             side === "sell"
-              ? "rounded bg-ev-down-solid py-1.5 text-xs font-semibold text-white"
-              : "rounded bg-ev-panel py-1.5 text-xs font-medium text-ev-muted hover:text-ev-strong"
+              ? "rounded bg-ev-down-solid py-1.5 text-base font-semibold text-white"
+              : "rounded bg-ev-panel py-1.5 text-base font-medium text-ev-muted hover:text-ev-strong"
           }
         >
           Sell
@@ -149,8 +149,8 @@ export function OrderTicket({ symbol }: Props) {
               onClick={() => setType(o.id)}
               className={
                 type === o.id
-                  ? "flex-1 rounded bg-ev-raised px-1 py-1 text-xs font-medium text-ev-strong"
-                  : "flex-1 rounded px-1 py-1 text-xs text-ev-muted hover:text-ev-strong"
+                  ? "flex-1 rounded bg-ev-raised px-1 py-1 text-base font-medium text-ev-strong"
+                  : "flex-1 rounded px-1 py-1 text-base text-ev-muted hover:text-ev-strong"
               }
             >
               {o.label}
@@ -217,7 +217,7 @@ export function OrderTicket({ symbol }: Props) {
         </div>
       </div>
 
-      <dl className="space-y-1 border-t border-ev-raised pt-2 text-[11px]">
+      <dl className="space-y-1 border-t border-ev-raised pt-2 text-dense">
         <Row label="Reference" value={last === null ? "—" : last.toFixed(precision)} />
         <Row label="Value" value={value === null ? "—" : value.toLocaleString(undefined, { maximumFractionDigits: 2 })} />
         <Row
@@ -232,13 +232,13 @@ export function OrderTicket({ symbol }: Props) {
       {error && (
         <p
           role="alert"
-          className="rounded border border-ev-down/40 bg-ev-down/10 px-2 py-1.5 text-[11px] leading-snug text-ev-down"
+          className="rounded border border-ev-down/40 bg-ev-down/10 px-2 py-1.5 text-dense leading-snug text-ev-down"
         >
           {error}
         </p>
       )}
       {note && !error && (
-        <p role="status" className="rounded border border-ev-line bg-ev-raised/40 px-2 py-1.5 text-[11px] leading-snug text-ev-muted">
+        <p role="status" className="rounded border border-ev-line bg-ev-raised/40 px-2 py-1.5 text-dense leading-snug text-ev-muted">
           {note}
         </p>
       )}
@@ -250,14 +250,14 @@ export function OrderTicket({ symbol }: Props) {
           void send();
         }}
         disabled={!ready}
-        className={`rounded py-2 text-xs font-semibold text-white transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+        className={`rounded py-2 text-base font-semibold text-white transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
           side === "buy" ? "bg-ev-up-solid hover:bg-ev-up" : "bg-ev-down-solid hover:bg-ev-down"
         }`}
       >
         {side === "buy" ? "Buy" : "Sell"} {type === "market" ? "at market" : type}
       </button>
 
-      <p className="text-[11px] leading-relaxed text-ev-faint">
+      <p className="text-dense leading-relaxed text-ev-faint">
         {source === "mt5"
           ? `Broker order — sent straight to MT5 (${tradeMode === "real" ? "REAL money" : "demo account"}).`
           : "Paper account — virtual funds, no real order reaches a venue."}
@@ -270,7 +270,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-2">
       <dt className="text-ev-muted">{label}</dt>
-      <dd className="tabular-nums text-ev-text">{value}</dd>
+      <dd className="num text-ev-text">{value}</dd>
     </div>
   );
 }

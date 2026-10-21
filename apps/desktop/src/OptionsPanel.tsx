@@ -58,7 +58,7 @@ export function OptionsPanel({ symbol, onClose }: Props) {
 
   const input = inputClass("h-6 w-auto");
   return (
-    <section aria-label="Options" className="flex min-h-0 flex-1 flex-col border-t border-ev-raised bg-ev-bg text-[11px]">
+    <section aria-label="Options" className="flex min-h-0 flex-1 flex-col border-t border-ev-raised bg-ev-bg text-dense">
       <header className="flex h-8 shrink-0 items-center gap-2 border-b border-ev-raised px-3">
         <span className="font-medium text-ev-strong">
           {tickerOf(symbol)} options{spot !== null && <span className="ml-1 font-normal text-ev-muted">spot {f(spot)}</span>}

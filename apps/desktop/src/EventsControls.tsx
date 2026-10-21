@@ -39,7 +39,7 @@ export function EventsControls({ layout }: { layout: "bar" | "panel" }) {
       <ul className="space-y-1.5" aria-label="Chart events">
         {EVENT_SWITCHES.map(({ key, label, description }) => (
           <li key={key} className={key === "high" || key === "medium" || key === "low" ? "ml-5" : ""}>
-            <label className="flex items-start gap-2 text-[12px] text-ev-text">
+            <label className="flex items-start gap-2 text-base text-ev-text">
               <input
                 type="checkbox"
                 className="mt-0.5"
@@ -49,7 +49,7 @@ export function EventsControls({ layout }: { layout: "bar" | "panel" }) {
               />
               <span>
                 <span className="text-ev-strong">{label}</span>
-                <span className="block text-[11px] text-ev-muted">{description}</span>
+                <span className="block text-dense text-ev-muted">{description}</span>
               </span>
             </label>
           </li>
@@ -60,7 +60,7 @@ export function EventsControls({ layout }: { layout: "bar" | "panel" }) {
 
   return (
     <div role="group" aria-label="Chart events" className="flex items-center gap-0.5">
-      <span className="mr-1 text-[11px] text-ev-faint">Events</span>
+      <span className="mr-1 text-dense text-ev-faint">Events</span>
       {EVENT_SWITCHES.map(({ key, label, description }) => {
         const on = eventSwitchOn(options, key);
         const disabled = eventSwitchDisabled(options, key);
@@ -72,7 +72,7 @@ export function EventsControls({ layout }: { layout: "bar" | "panel" }) {
             disabled={disabled}
             title={`${description} (${on ? "on" : "off"})`}
             onClick={() => toggleEventSwitch(options, key)}
-            className={`rounded px-1.5 py-0.5 text-[11px] disabled:opacity-40 ${
+            className={`rounded px-1.5 py-0.5 text-dense disabled:opacity-40 ${
               on ? "bg-ev-accent/15 font-medium text-ev-accent-text" : "text-ev-muted hover:text-ev-strong"
             }`}
           >

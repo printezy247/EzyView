@@ -127,12 +127,12 @@ export function CommandPalette({ open, onClose, groups }: Props) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search features — e.g. options, rsi, dark theme"
-            className="h-11 flex-1 bg-transparent text-sm text-ev-strong placeholder:text-ev-faint focus:outline-none"
+            className="h-11 flex-1 bg-transparent text-body text-ev-strong placeholder:text-ev-faint focus:outline-none"
           />
-          <kbd className="rounded border border-ev-line px-1.5 text-[11px] text-ev-muted">Esc</kbd>
+          <kbd className="rounded border border-ev-line px-1.5 text-dense text-ev-muted">Esc</kbd>
         </div>
         <ul id={listId} role="listbox" aria-label="Features" className="max-h-[50vh] overflow-y-auto py-1">
-          {results.length === 0 && <li className="px-4 py-3 text-xs text-ev-muted">No feature matches “{query}”.</li>}
+          {results.length === 0 && <li className="px-4 py-3 text-base text-ev-muted">No feature matches “{query}”.</li>}
           {results.map((c, i) => (
             <li
               key={c.key}
@@ -141,14 +141,14 @@ export function CommandPalette({ open, onClose, groups }: Props) {
               aria-selected={i === active}
               onMouseEnter={() => setActive(i)}
               onClick={() => run(c)}
-              className={`flex cursor-pointer items-center gap-3 px-4 py-2 text-xs ${
+              className={`flex cursor-pointer items-center gap-3 px-4 py-2 text-base ${
                 i === active ? "bg-ev-raised text-ev-strong" : "text-ev-muted"
               }`}
             >
-              <span className="w-20 shrink-0 text-[11px] uppercase tracking-wider text-ev-faint">{c.group}</span>
+              <span className="w-20 shrink-0 text-dense uppercase tracking-wider text-ev-faint">{c.group}</span>
               <span className="flex-1">{c.label}</span>
               {c.on && <Check size={12} aria-label="on" className="text-ev-accent-text" />}
-              {c.hint && <kbd className="text-[11px] text-ev-faint">{c.hint}</kbd>}
+              {c.hint && <kbd className="text-dense text-ev-faint">{c.hint}</kbd>}
             </li>
           ))}
         </ul>

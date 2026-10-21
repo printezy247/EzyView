@@ -57,10 +57,10 @@ export function TradingPanel({ symbol }: Props) {
 
   return (
     <section aria-label="Trading" className="flex h-56 shrink-0 flex-col border-t border-ev-raised bg-ev-bg">
-      <header className="flex h-8 shrink-0 items-center gap-3 border-b border-ev-raised px-3 text-[11px]">
+      <header className="flex h-8 shrink-0 items-center gap-3 border-b border-ev-raised px-3 text-dense">
         <span className="font-semibold uppercase tracking-wider text-ev-muted">Trading</span>
 
-        <dl className="flex items-center gap-3 tabular-nums">
+        <dl className="flex items-center gap-3 num">
           <Fact label="Balance" value={account ? money(account.balance) : "—"} />
           <Fact label="Equity" value={account ? money(account.equity) : "—"} />
           <Fact label="Margin" value={account ? money(account.margin) : "—"} />
@@ -78,7 +78,7 @@ export function TradingPanel({ symbol }: Props) {
             type="button"
             onClick={() => void closeAll()}
             disabled={openPositions === 0}
-            className="rounded px-2 py-0.5 text-[11px] text-ev-muted hover:bg-ev-raised hover:text-ev-strong disabled:opacity-40"
+            className="rounded px-2 py-0.5 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong disabled:opacity-40"
           >
             Close all
           </button>
@@ -87,13 +87,13 @@ export function TradingPanel({ symbol }: Props) {
               type="button"
               title="Reset the paper account to its starting balance"
               onClick={() => void reset()}
-              className="rounded px-2 py-0.5 text-[11px] text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+              className="rounded px-2 py-0.5 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
             >
               Reset
             </button>
           )}
           {source === "mt5" && (
-            <span className="rounded bg-ev-accent/15 px-1.5 py-0.5 text-[11px] text-ev-accent-text">broker</span>
+            <span className="rounded bg-ev-accent/15 px-1.5 py-0.5 text-dense text-ev-accent-text">broker</span>
           )}
         </div>
       </header>
@@ -110,16 +110,16 @@ export function TradingPanel({ symbol }: Props) {
                 onClick={() => setTab(t.id)}
                 className={
                   tab === t.id
-                    ? "border-b-2 border-ev-accent px-2 py-1 text-[11px] font-medium text-ev-strong"
-                    : "border-b-2 border-transparent px-2 py-1 text-[11px] text-ev-muted hover:text-ev-strong"
+                    ? "border-b-2 border-ev-accent px-2 py-1 text-dense font-medium text-ev-strong"
+                    : "border-b-2 border-transparent px-2 py-1 text-dense text-ev-muted hover:text-ev-strong"
                 }
               >
                 {t.label}
                 {t.id === "positions" && openPositions > 0 && (
-                  <span className="ml-1 rounded bg-ev-accent px-1 text-[11px] text-white">{openPositions}</span>
+                  <span className="ml-1 rounded bg-ev-accent px-1 text-dense text-white">{openPositions}</span>
                 )}
                 {t.id === "orders" && orders.length > 0 && (
-                  <span className="ml-1 rounded bg-ev-dim px-1 text-[11px] text-ev-strong">{orders.length}</span>
+                  <span className="ml-1 rounded bg-ev-dim px-1 text-dense text-ev-strong">{orders.length}</span>
                 )}
               </button>
             ))}
@@ -137,28 +137,28 @@ export function TradingPanel({ symbol }: Props) {
                     <span className={p.side === "long" ? "text-ev-up" : "text-ev-down"}>
                       {p.side.toUpperCase()}
                     </span>,
-                    <span className="tabular-nums">{fmtQty(p.qty)}</span>,
-                    <span className="tabular-nums">{p.entryPrice.toFixed(precision)}</span>,
-                    <span className="tabular-nums">{p.markPrice.toFixed(precision)}</span>,
-                    <span className={`tabular-nums ${pnlClass(p.unrealizedPnl)}`}>{signed(p.unrealizedPnl)}</span>,
-                    <span className="tabular-nums text-ev-muted">
+                    <span className="num">{fmtQty(p.qty)}</span>,
+                    <span className="num">{p.entryPrice.toFixed(precision)}</span>,
+                    <span className="num">{p.markPrice.toFixed(precision)}</span>,
+                    <span className={`num ${pnlClass(p.unrealizedPnl)}`}>{signed(p.unrealizedPnl)}</span>,
+                    <span className="num text-ev-muted">
                       {p.margin === undefined ? "—" : money(p.margin)}
                     </span>,
                     <div className="flex justify-end gap-1">
                       <button
                         type="button"
                         onClick={() => void close(p.symbol)}
-                        className="rounded border border-ev-line px-1.5 py-0.5 text-[11px] text-ev-muted hover:border-ev-down hover:text-ev-down"
+                        className="rounded border border-ev-line px-1.5 py-0.5 text-dense text-ev-muted hover:border-ev-down hover:text-ev-down"
                       >
                         Close
                       </button>
                       {p.stopLoss !== undefined && (
-                        <span className="rounded border border-ev-down/40 px-1.5 py-0.5 text-[11px] text-ev-down">
+                        <span className="rounded border border-ev-down/40 px-1.5 py-0.5 text-dense text-ev-down">
                           SL {p.stopLoss.toFixed(precision)}
                         </span>
                       )}
                       {p.takeProfit !== undefined && (
-                        <span className="rounded border border-ev-up/40 px-1.5 py-0.5 text-[11px] text-ev-up">
+                        <span className="rounded border border-ev-up/40 px-1.5 py-0.5 text-dense text-ev-up">
                           TP {p.takeProfit.toFixed(precision)}
                         </span>
                       )}
@@ -180,14 +180,14 @@ export function TradingPanel({ symbol }: Props) {
                       {o.side.toUpperCase()}
                     </span>,
                     <span className="uppercase text-ev-text">{o.type}</span>,
-                    <span className="tabular-nums">{fmtQty(o.qty)}</span>,
-                    <span className="tabular-nums">{o.price?.toFixed(precision) ?? "market"}</span>,
-                    <span className="tabular-nums text-ev-muted">{clock(o.time)}</span>,
+                    <span className="num">{fmtQty(o.qty)}</span>,
+                    <span className="num">{o.price?.toFixed(precision) ?? "market"}</span>,
+                    <span className="num text-ev-muted">{clock(o.time)}</span>,
                     <div className="flex justify-end">
                       <button
                         type="button"
                         onClick={() => void cancel(o.id)}
-                        className="rounded border border-ev-line px-1.5 py-0.5 text-[11px] text-ev-muted hover:border-ev-down hover:text-ev-down"
+                        className="rounded border border-ev-line px-1.5 py-0.5 text-dense text-ev-muted hover:border-ev-down hover:text-ev-down"
                       >
                         Cancel
                       </button>
@@ -206,14 +206,14 @@ export function TradingPanel({ symbol }: Props) {
                   .map((d) => ({
                     key: d.id,
                     cells: [
-                      <span className="tabular-nums text-ev-muted">{clock(d.time)}</span>,
+                      <span className="num text-ev-muted">{clock(d.time)}</span>,
                       <span className="font-medium text-ev-strong">{d.symbol}</span>,
                       <span className={d.side === "buy" ? "text-ev-up" : "text-ev-down"}>
                         {d.side.toUpperCase()}
                       </span>,
-                      <span className="tabular-nums">{fmtQty(d.qty)}</span>,
-                      <span className="tabular-nums">{d.price.toFixed(precision)}</span>,
-                      <span className={`tabular-nums ${pnlClass(d.pnl)}`}>{signed(d.pnl)}</span>,
+                      <span className="num">{fmtQty(d.qty)}</span>,
+                      <span className="num">{d.price.toFixed(precision)}</span>,
+                      <span className={`num ${pnlClass(d.pnl)}`}>{signed(d.pnl)}</span>,
                     ],
                   }))}
               />
@@ -246,12 +246,12 @@ interface Row {
 
 function Table({ head, rows, empty }: { head: string[]; rows: Row[]; empty: string }) {
   if (rows.length === 0) {
-    return <p className="px-4 py-6 text-xs text-ev-faint">{empty}</p>;
+    return <p className="px-4 py-6 text-base text-ev-faint">{empty}</p>;
   }
   return (
-    <table className="w-full border-collapse text-[11px]">
+    <table className="w-full border-collapse text-dense">
       <thead className="sticky top-0 bg-ev-bg">
-        <tr className="text-[11px] uppercase tracking-wider text-ev-faint">
+        <tr className="text-dense uppercase tracking-wider text-ev-faint">
           {head.map((label) => (
             <th scope="col" key={label} className="border-b border-ev-raised px-3 py-1.5 text-left font-medium">
               {label}

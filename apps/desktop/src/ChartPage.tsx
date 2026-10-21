@@ -435,7 +435,7 @@ function ChartGrid({
 
 function Readout({ symbol, time }: { symbol: string; time: number | null }) {
   return (
-    <div className="pointer-events-none absolute left-2 top-2 z-10 text-[11px] text-ev-muted">
+    <div className="pointer-events-none absolute left-2 top-2 z-10 text-dense text-ev-muted">
       <span className="font-medium text-ev-strong">{symbol}</span>
       {time !== null && <span className="ml-2">{new Date(time * 1000).toLocaleString()}</span>}
     </div>
@@ -464,7 +464,7 @@ const TOOL_HINTS: Record<string, string> = {
 
 function ToolHint({ tool }: { tool: string }) {
   return (
-    <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded border border-ev-line bg-ev-panel px-2.5 py-1 text-[11px] text-ev-text shadow-lg">
+    <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded border border-ev-line bg-ev-panel px-2.5 py-1 text-dense text-ev-text shadow-lg">
       {TOOL_HINTS[tool] ?? "Click to place"} · Esc to cancel
     </div>
   );

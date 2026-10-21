@@ -124,7 +124,7 @@ export function JournalPanel({ onClose }: Props) {
 
   return (
     <section aria-label="Trading journal" className="flex min-h-0 flex-1 flex-col border-t border-ev-raised bg-ev-bg">
-      <header className="flex h-8 shrink-0 items-center gap-3 border-b border-ev-raised px-3 text-[11px]">
+      <header className="flex h-8 shrink-0 items-center gap-3 border-b border-ev-raised px-3 text-dense">
         <span className="font-semibold uppercase tracking-wider text-ev-muted">Journal</span>
 
         <nav aria-label="Journal views" className="flex items-center gap-0.5">
@@ -144,7 +144,7 @@ export function JournalPanel({ onClose }: Props) {
           ))}
         </nav>
 
-        <dl className="flex items-center gap-3 tabular-nums">
+        <dl className="flex items-center gap-3 num">
           <Fact label="Net" value={money(stats.netPnl)} tone={stats.netPnl >= 0 ? "text-ev-up" : "text-ev-down"} />
           <Fact label="Trades" value={String(stats.trades)} />
           <Fact label="Win rate" value={stats.trades === 0 ? "—" : `${Math.round(stats.winRate * 100)}%`} />
@@ -156,7 +156,7 @@ export function JournalPanel({ onClose }: Props) {
             Import history
           </button>
           {lastImport !== null && (
-            <span className="text-[11px] text-ev-up">
+            <span className="text-dense text-ev-up">
               {lastImport === 0 ? "nothing new" : `+${lastImport}`}
             </span>
           )}
@@ -194,13 +194,13 @@ export function JournalPanel({ onClose }: Props) {
               }}
               placeholder="What did you see? Plan, execution, feeling…"
               aria-label="Journal note"
-              className="min-h-0 flex-1 resize-none rounded border border-ev-line bg-ev-panel p-2 text-xs text-ev-text focus:border-ev-accent"
+              className="min-h-0 flex-1 resize-none rounded border border-ev-line bg-ev-panel p-2 text-base text-ev-text focus:border-ev-accent"
             />
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setShot(captureChart())}
-                className={`flex items-center gap-1 rounded border px-2 py-1 text-[11px] hover:text-ev-strong ${
+                className={`flex items-center gap-1 rounded border px-2 py-1 text-dense hover:text-ev-strong ${
                   shot ? "border-ev-accent text-ev-strong" : "border-ev-line text-ev-muted"
                 }`}
               >
@@ -211,7 +211,7 @@ export function JournalPanel({ onClose }: Props) {
                 type="button"
                 onClick={submit}
                 disabled={!text.trim() && !shot}
-                className="ml-auto rounded bg-ev-accent px-3 py-1 text-[11px] font-medium text-white hover:bg-ev-accent-hover disabled:opacity-40"
+                className="ml-auto rounded bg-ev-accent px-3 py-1 text-dense font-medium text-white hover:bg-ev-accent-hover disabled:opacity-40"
               >
                 Add note
               </button>
@@ -225,14 +225,14 @@ export function JournalPanel({ onClose }: Props) {
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Filter by symbol, tag or text"
                 aria-label="Filter journal"
-                className="w-64 rounded border border-ev-line bg-ev-panel px-2 py-0.5 text-[11px] text-ev-text focus:border-ev-accent"
+                className="w-64 rounded border border-ev-line bg-ev-panel px-2 py-0.5 text-dense text-ev-text focus:border-ev-accent"
               />
               <span className={`${chip} text-ev-muted`}>{rows.length} items</span>
             </nav>
 
             <div className="min-h-0 flex-1 overflow-auto">
               {rows.length === 0 ? (
-                <p className="px-4 py-6 text-xs text-ev-faint">
+                <p className="px-4 py-6 text-base text-ev-faint">
                   Nothing here yet — take a note, import your closed trades, or add a manual entry.
                 </p>
               ) : (
@@ -285,27 +285,27 @@ function Fact({ label, value, tone }: { label: string; value: string; tone?: str
 function TradeRow({ entry, onDelete }: { entry: JournalEntry; onDelete: () => void }) {
   const pnl = entry.pnl;
   return (
-    <div className="flex items-center gap-3 text-[11px]">
+    <div className="flex items-center gap-3 text-dense">
       <span className="w-32 shrink-0 text-ev-muted">{clock(entry.exitTime ?? entry.entryTime)}</span>
       <span className="w-20 shrink-0 font-medium text-ev-strong">{entry.symbol}</span>
       <span className={entry.side === "long" ? "w-12 text-ev-up" : "w-12 text-ev-down"}>
         {entry.side.toUpperCase()}
       </span>
-      <span className="w-16 shrink-0 tabular-nums text-ev-text">{entry.qty}</span>
-      <span className="w-40 shrink-0 tabular-nums text-ev-muted">
+      <span className="w-16 shrink-0 num text-ev-text">{entry.qty}</span>
+      <span className="w-40 shrink-0 num text-ev-muted">
         {entry.entryPrice}
         {entry.exitPrice !== undefined ? ` → ${entry.exitPrice}` : ""}
       </span>
       {pnl === undefined ? (
-        <span className="rounded border border-ev-dim px-1.5 py-0.5 text-[11px] text-ev-muted">open</span>
+        <span className="rounded border border-ev-dim px-1.5 py-0.5 text-dense text-ev-muted">open</span>
       ) : (
-        <span className={`tabular-nums ${pnl >= 0 ? "text-ev-up" : "text-ev-down"}`}>
+        <span className={`num ${pnl >= 0 ? "text-ev-up" : "text-ev-down"}`}>
           {pnl >= 0 ? "+" : ""}
           {money(pnl)}
         </span>
       )}
-      {entry.emotion && <span className="rounded bg-ev-raised px-1.5 py-0.5 text-[11px] text-ev-muted">{entry.emotion}</span>}
-      {entry.source && <span className="rounded bg-ev-raised px-1.5 py-0.5 text-[11px] text-ev-muted">{entry.source}</span>}
+      {entry.emotion && <span className="rounded bg-ev-raised px-1.5 py-0.5 text-dense text-ev-muted">{entry.emotion}</span>}
+      {entry.source && <span className="rounded bg-ev-raised px-1.5 py-0.5 text-dense text-ev-muted">{entry.source}</span>}
       <button
         type="button"
         aria-label={`Delete trade ${entry.symbol}`}
@@ -328,7 +328,7 @@ function NoteRow({
   onPreview: (url: string) => void;
 }) {
   return (
-    <div className="flex items-center gap-3 text-[11px]">
+    <div className="flex items-center gap-3 text-dense">
       <span className="w-32 shrink-0 text-ev-muted">{clock(note.time)}</span>
       <span className="text-ev-text">
         {note.text || <span className="italic text-ev-faint">(screenshot only)</span>}

@@ -34,12 +34,12 @@ export function JournalStatsView({ entries }: Props) {
       </div>
 
       <section>
-        <h3 className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-ev-faint">Equity</h3>
+        <h3 className="mb-1 text-dense font-semibold uppercase tracking-wider text-ev-faint">Equity</h3>
         <EquityPolyline points={stats.equitySeries} />
       </section>
 
       <section>
-        <h3 className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-ev-faint">R distribution</h3>
+        <h3 className="mb-1 text-dense font-semibold uppercase tracking-wider text-ev-faint">R distribution</h3>
         <RHistogram buckets={stats.rDistribution} closed={stats.trades} />
       </section>
 
@@ -58,8 +58,8 @@ export function JournalStatsView({ entries }: Props) {
 function Card({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
     <div className="min-w-28 rounded border border-ev-line bg-ev-panel px-3 py-2">
-      <div className="text-[10px] uppercase tracking-wider text-ev-faint">{label}</div>
-      <div className={`mt-0.5 text-sm tabular-nums ${tone ?? "text-ev-strong"}`}>{value}</div>
+      <div className="text-micro uppercase tracking-wider text-ev-faint">{label}</div>
+      <div className={`mt-0.5 text-body num ${tone ?? "text-ev-strong"}`}>{value}</div>
     </div>
   );
 }
@@ -67,7 +67,7 @@ function Card({ label, value, tone }: { label: string; value: string; tone?: str
 /** Plain SVG polyline of cumulative net P&L; no charting library on purpose. */
 function EquityPolyline({ points }: { points: readonly { time: number; equity: number }[] }) {
   if (points.length === 0) {
-    return <p className="rounded border border-ev-line bg-ev-panel px-3 py-4 text-xs text-ev-faint">No closed trades yet.</p>;
+    return <p className="rounded border border-ev-line bg-ev-panel px-3 py-4 text-base text-ev-faint">No closed trades yet.</p>;
   }
 
   const W = 480;
@@ -100,7 +100,7 @@ function EquityPolyline({ points }: { points: readonly { time: number; equity: n
 /** Six fixed buckets from computeStats; losses red, wins green. */
 function RHistogram({ buckets, closed }: { buckets: readonly { label: string; count: number }[]; closed: number }) {
   const hint = (
-    <p className="rounded border border-ev-line bg-ev-panel px-3 py-4 text-xs text-ev-faint">No planned-risk trades yet — set planned risk on a closed trade to see R multiples.</p>
+    <p className="rounded border border-ev-line bg-ev-panel px-3 py-4 text-base text-ev-faint">No planned-risk trades yet — set planned risk on a closed trade to see R multiples.</p>
   );
   // [] = nothing closed yet; six zero bars = closed trades without planned risk.
   if (buckets.length === 0) return hint;
@@ -113,12 +113,12 @@ function RHistogram({ buckets, closed }: { buckets: readonly { label: string; co
       <div className="flex h-32 items-end gap-2 rounded border border-ev-line bg-ev-panel px-3 pt-2 pb-1">
         {buckets.map((bucket, i) => (
           <div key={bucket.label} className="flex h-full flex-1 flex-col items-center gap-1">
-            <span className="text-[10px] tabular-nums text-ev-muted">{bucket.count}</span>
+            <span className="text-micro num text-ev-muted">{bucket.count}</span>
             <div
               className={`w-full max-w-16 rounded-t ${i < 3 ? "bg-ev-down" : "bg-ev-up"} ${bucket.count === 0 ? "opacity-25" : "opacity-80"}`}
               style={{ height: `${Math.round((bucket.count / maxCount) * 100)}%`, minHeight: bucket.count === 0 ? 2 : 4 }}
             />
-            <span className="text-[10px] tabular-nums text-ev-faint">{bucket.label}</span>
+            <span className="text-micro num text-ev-faint">{bucket.label}</span>
           </div>
         ))}
       </div>
@@ -129,13 +129,13 @@ function RHistogram({ buckets, closed }: { buckets: readonly { label: string; co
 function BreakdownTable({ title, rows }: { title: string; rows: readonly { label: string; trades: number; net: number }[] }) {
   return (
     <div className="min-w-0">
-      <h3 className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-ev-faint">{title}</h3>
+      <h3 className="mb-1 text-dense font-semibold uppercase tracking-wider text-ev-faint">{title}</h3>
       {rows.length === 0 ? (
-        <p className="rounded border border-ev-line bg-ev-panel px-3 py-3 text-xs text-ev-faint">Nothing to break down yet.</p>
+        <p className="rounded border border-ev-line bg-ev-panel px-3 py-3 text-base text-ev-faint">Nothing to break down yet.</p>
       ) : (
-        <table className="w-full rounded border border-ev-line bg-ev-panel text-xs">
+        <table className="w-full rounded border border-ev-line bg-ev-panel text-base">
           <thead>
-            <tr className="border-b border-ev-line text-left text-[10px] uppercase tracking-wider text-ev-faint">
+            <tr className="border-b border-ev-line text-left text-micro uppercase tracking-wider text-ev-faint">
               <th className="px-2 py-1 font-medium">Label</th>
               <th className="px-2 py-1 text-right font-medium">Trades</th>
               <th className="px-2 py-1 text-right font-medium">Net</th>
@@ -145,8 +145,8 @@ function BreakdownTable({ title, rows }: { title: string; rows: readonly { label
             {rows.map((row) => (
               <tr key={row.label} className="border-b border-ev-panel last:border-0">
                 <td className="max-w-32 truncate px-2 py-1 text-ev-text">{row.label}</td>
-                <td className="px-2 py-1 text-right tabular-nums text-ev-muted">{row.trades}</td>
-                <td className={`px-2 py-1 text-right tabular-nums ${row.net >= 0 ? "text-ev-up" : "text-ev-down"}`}>
+                <td className="px-2 py-1 text-right num text-ev-muted">{row.trades}</td>
+                <td className={`px-2 py-1 text-right num ${row.net >= 0 ? "text-ev-up" : "text-ev-down"}`}>
                   {row.net >= 0 ? "+" : ""}
                   {money(row.net)}
                 </td>
