@@ -15,7 +15,7 @@ export interface ShareTarget {
 }
 
 const MAX_LENGTH = 512;
-/** Optional `EXCHANGE:` prefix, as in the default `BINANCE:BTCUSDT`. */
+/** Optional `EXCHANGE:` prefix, as in the default `OANDA:XAUUSD`. */
 const SYMBOL = /^([A-Z0-9_.-]{1,20}:)?[A-Z0-9.-]{1,20}$/;
 const RESOLUTIONS: ReadonlySet<string> = new Set(RESOLUTION_GROUPS.flatMap((g) => g.items));
 
