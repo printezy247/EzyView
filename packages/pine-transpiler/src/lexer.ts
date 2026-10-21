@@ -1,3 +1,15 @@
+/** Thrown for any syntax error, carrying the source position. */
+export class PineSyntaxError extends Error {
+  constructor(
+    message: string,
+    readonly line: number,
+    readonly col: number,
+  ) {
+    super(`Pine syntax error at ${line}:${col} — ${message}`);
+    this.name = "PineSyntaxError";
+  }
+}
+
 export type TokenType =
   | "number"
   | "string"
@@ -137,7 +149,9 @@ export function lex(source: string): Token[] {
       }
       // Hex literals, e.g. 0xff.
       const raw = source.slice(start, i);
-      push("number", raw, Number(raw));
+      const value = Number(raw);
+      if (!Number.isFinite(value)) throw new PineSyntaxError("number literal must be finite", line, col);
+      push("number", raw, value);
       continue;
     }
 

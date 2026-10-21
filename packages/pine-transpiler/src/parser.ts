@@ -2,17 +2,8 @@ import { lex } from "./lexer.js";
 import type { Token } from "./lexer.js";
 import type { Block, Loc, Node, Script } from "./ast.js";
 
-/** Thrown for any syntax error, carrying the source position. */
-export class PineSyntaxError extends Error {
-  constructor(
-    message: string,
-    readonly line: number,
-    readonly col: number,
-  ) {
-    super(`Pine syntax error at ${line}:${col} — ${message}`);
-    this.name = "PineSyntaxError";
-  }
-}
+import { PineSyntaxError } from "./lexer.js";
+export { PineSyntaxError };
 
 /**
  * Recursive-descent parser for the Pine v5/v6 subset EzyView supports.

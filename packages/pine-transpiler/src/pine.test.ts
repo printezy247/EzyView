@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { lex } from "./lexer.js";
 import { parse, PineSyntaxError } from "./parser.js";
-import { transpile } from "./transpile.js";
+import { transpile, PineUnsupportedError } from "./transpile.js";
 import { runPine } from "./evaluate.js";
 import { color } from "./runtime.js";
 import type { Context, PineValue } from "./runtime.js";
@@ -438,5 +438,60 @@ describe("derived series and bare cross helpers", () => {
     const namespaced = runPine("plot(ta.crossunder(close, open) ? 1 : 0)", ctx);
     expect(values(bare.plots[0]!.values)).toEqual([0, 0, 1, 0]);
     expect(values(bare.plots[0]!.values)).toEqual(values(namespaced.plots[0]!.values));
+  });
+});
+
+describe("sandbox (Phase A)", () => {
+  it("rejects dangerous global identifiers", () => {
+    for (const name of [
+      "globalThis", "window", "document", "fetch", "XMLHttpRequest", "WebSocket",
+      "Function", "eval", "constructor", "process", "require", "module", "exports",
+      "setTimeout", "setInterval", "Promise", "Reflect", "Proxy",
+    ]) {
+      expect(() => transpile(name)).toThrow(PineUnsupportedError);
+    }
+  });
+
+  it("rejects dangerous member access", () => {
+    for (const m of ["constructor", "__proto__", "prototype", "then", "call", "apply", "bind", "toString", "valueOf"]) {
+      expect(() => transpile(`close.${m}`)).toThrow(PineUnsupportedError);
+    }
+  });
+
+  it("rejects a zero for-loop step at transpile time", () => {
+    expect(() => transpile("for i = 0 to 10 by 0\n  x = i")).toThrow(PineUnsupportedError);
+  });
+
+  it("caps for-loop iterations at runtime", () => {
+    const src = "float total = 0\nfor i = 0 to 200000\n  total := total + 1\nplot(total)";
+    expect(() => runPine(src, makeContext(1))).toThrow(/too many iterations/);
+  });
+
+  it("caps while-loop iterations at runtime", () => {
+    const src = "float total = 0\nwhile true\n  total := total + 1\nplot(total)";
+    expect(() => runPine(src, makeContext(1))).toThrow(/too many iterations/);
+  });
+
+  it("validates the run context", () => {
+    expect(() => runPine("plot(close)", { ...makeContext(3), close: [] } as Context)).toThrow(/non-empty/);
+    const mismatched = makeContext(3);
+    mismatched.high = [1, 2];
+    expect(() => runPine("plot(close)", mismatched)).toThrow(/equal length/);
+    const nonFinite = makeContext(3);
+    nonFinite.close[0] = Number.NaN;
+    expect(() => runPine("plot(close)", nonFinite)).toThrow(/finite/);
+    const tooBig = makeContext(5001);
+    expect(() => runPine("plot(close)", tooBig)).toThrow(/5000/);
+  });
+
+  it("shadows host globals inside the evaluator", () => {
+    // `fetch` is rejected at transpile time, so runPine throws before eval.
+    expect(() => runPine("plot(fetch)", makeContext(1))).toThrow(PineUnsupportedError);
+  });
+});
+
+describe("lexer finite numbers", () => {
+  it("rejects non-finite number literals", () => {
+    expect(() => lex("1e10000")).toThrow(PineSyntaxError);
   });
 });
