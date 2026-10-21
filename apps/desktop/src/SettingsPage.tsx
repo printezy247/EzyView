@@ -3,9 +3,10 @@ import { activeChartOf } from "./layout";
 import { useWorkspace } from "./store";
 import { useMt5 } from "./mt5";
 import { useApiKeys } from "./apiKeys";
+import { DiagnosticsTab } from "./DiagnosticsTab";
 import { AuditTab, BrokerTab, ConnectionTab, SafetyTab } from "./Mt5Setup";
 
-type Tab = "connection" | "broker" | "safety" | "audit" | "data" | "appearance";
+type Tab = "connection" | "broker" | "safety" | "audit" | "data" | "appearance" | "diagnostics";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "connection", label: "Connection" },
@@ -14,6 +15,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "audit", label: "Audit" },
   { id: "data", label: "Data" },
   { id: "appearance", label: "Appearance" },
+  { id: "diagnostics", label: "Diagnostics" },
 ];
 
 /**
@@ -78,6 +80,7 @@ export function SettingsPage() {
             </button>
           </>
         )}
+        {tab === "diagnostics" && <DiagnosticsTab />}
         {tab === "appearance" && (
           <>
             <p className="mb-3 text-[11px] text-ev-muted">Colour theme for the shell and the active chart.</p>

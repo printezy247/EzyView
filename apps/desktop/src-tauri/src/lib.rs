@@ -36,6 +36,53 @@ fn write_snapshot(app: AppHandle, json: String) -> Result<(), String> {
     std::fs::rename(&tmp, dir.join("workspace-snapshot.json")).map_err(|e| e.to_string())
 }
 
+const LOG_CAP: usize = 256 * 1024;
+
+/// Keep the newest `LOG_CAP` bytes, cutting at a line start (and a char boundary).
+fn trim_log(text: &str) -> String {
+    if text.len() <= LOG_CAP {
+        return text.to_string();
+    }
+    let mut start = text.len() - LOG_CAP;
+    while !text.is_char_boundary(start) {
+        start += 1;
+    }
+    let tail = &text[start..];
+    match tail.find('\n') {
+        Some(i) => tail[i + 1..].to_string(),
+        None => tail.to_string(),
+    }
+}
+
+fn log_path(app: &AppHandle) -> Result<std::path::PathBuf, String> {
+    use tauri::Manager;
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir.join("crash.log"))
+}
+
+/// Append a crash block to the local log (capped); nothing leaves the machine.
+#[tauri::command]
+fn append_log(app: AppHandle, text: String) -> Result<(), String> {
+    let path = log_path(&app)?;
+    let existing = std::fs::read_to_string(&path).unwrap_or_default();
+    std::fs::write(&path, trim_log(&format!("{existing}{text}"))).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn read_log(app: AppHandle) -> Result<String, String> {
+    Ok(std::fs::read_to_string(log_path(&app)?).unwrap_or_default())
+}
+
+#[tauri::command]
+fn clear_log(app: AppHandle) -> Result<(), String> {
+    match std::fs::remove_file(log_path(&app)?) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
 /// A bare file name for the save dialog's default: no separators, no traversal.
 fn is_plain_file_name(name: &str) -> bool {
     !name.is_empty() && name.len() <= 200 && name != ".." && !name.contains(['/', '\\', '\0'])
@@ -134,7 +181,31 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_sql::Builder::default().build())
-        .invoke_handler(tauri::generate_handler![open_chart_window, api_key_get, api_key_set, save_file, write_snapshot])
+        .setup(|app| {
+            // Rust panics (release builds abort) land in the same local log.
+            use tauri::Manager;
+            if let Ok(dir) = app.path().app_data_dir() {
+                let path = dir.join("crash.log");
+                std::panic::set_hook(Box::new(move |info| {
+                    use std::io::Write;
+                    let _ = std::fs::create_dir_all(&dir);
+                    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&path) {
+                        let _ = writeln!(f, "[rust panic] {info}");
+                    }
+                }));
+            }
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            open_chart_window,
+            api_key_get,
+            api_key_set,
+            save_file,
+            write_snapshot,
+            append_log,
+            read_log,
+            clear_log
+        ])
         .run(tauri::generate_context!())
         .expect("error while running EzyView");
 }
@@ -147,6 +218,16 @@ mod tests {
     fn rejects_unknown_key_names() {
         assert!(api_key_get("../etc".into()).is_err());
         assert!(api_key_set("github".into(), "x".into()).is_err());
+    }
+
+    #[test]
+    fn trim_log_keeps_the_newest_whole_lines() {
+        assert_eq!(trim_log("a\nb\n"), "a\nb\n");
+        let big = format!("old\n{}new\n", "x\n".repeat(LOG_CAP));
+        let out = trim_log(&big);
+        assert!(out.len() <= LOG_CAP);
+        assert!(out.ends_with("new\n"));
+        assert!(!out.starts_with("old"));
     }
 
     #[test]
