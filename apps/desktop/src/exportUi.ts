@@ -1,7 +1,9 @@
 import type { ExportSource } from "./exportBridge";
 import { candlesToCsv, candlesToJson } from "./chartDataExport";
 import type { Layout } from "./layout";
+import { embedSnippet } from "./embedSnippet";
 import { buildShareLink } from "./shareLink";
+import { printPng, svgFromPng } from "./svgExport";
 import { exportLayoutJson } from "./layoutShare";
 
 /**
@@ -133,4 +135,28 @@ export function chartShareLink(source: ExportSource): string {
 /** Copy the focused chart's share link. */
 export function copyChartLink(source: ExportSource): void {
   void copyText(chartShareLink(source), "chart-link.txt");
+}
+
+/** Copy an iframe embed snippet that points at the chart's share link. */
+export function copyChartEmbed(source: ExportSource): void {
+  void copyText(embedSnippet({ src: chartShareLink(source) }), "chart-embed.html");
+}
+
+const imageMeta = (source: ExportSource) => {
+  const { symbol, resolution } = source.meta();
+  return { title: "EzyView chart", symbol, resolution };
+};
+
+/** Save the focused chart as a standalone SVG wrapping the PNG capture. */
+export function saveChartSvg(source: ExportSource): void {
+  const png = source.getPng();
+  if (!png) return;
+  const blob = new Blob([svgFromPng(png, imageMeta(source))], { type: "image/svg+xml" });
+  downloadBlob(blob, chartPngFilename(source.meta()).replace(/\.png$/, ".svg"));
+}
+
+/** Open the print dialog for the focused chart (Save as PDF). */
+export function printChart(source: ExportSource): void {
+  const png = source.getPng();
+  if (png) printPng(png, `${source.meta().symbol} ${source.meta().resolution}`);
 }
