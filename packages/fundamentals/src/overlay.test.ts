@@ -110,6 +110,28 @@ describe("fundamentalOverlays", () => {
     expect(lowered.lines).toEqual([T0 + 100, T0 + 200, T0 + 300]);
   });
 
+  it("honours an exact impact set, overriding minImpact", () => {
+    const events = [
+      event({ title: "NFP", impact: "high", time: T0 + 1 }),
+      event({ title: "CPI", impact: "medium", time: T0 + 2 }),
+      event({ title: "Minutes", impact: "low", time: T0 + 3 }),
+    ];
+    const out = fundamentalOverlays([], events, { impacts: ["medium", "low"] });
+    expect(out.markers.map((m) => m.title)).toEqual(["CPI", "Minutes"]);
+    expect(out.lines).toEqual([T0 + 2, T0 + 3]);
+    expect(fundamentalOverlays([], events, { impacts: [] })).toEqual({ markers: [], lines: [] });
+  });
+
+  it("can turn earnings or economic events off independently", () => {
+    const earnings = [earning({ symbol: "AAPL", time: T0 })];
+    const events = [event({ title: "NFP", time: T0 + 1 })];
+    const noEarnings = fundamentalOverlays(earnings, events, { showEarnings: false });
+    expect(noEarnings.markers.map((m) => m.kind)).toEqual(["event"]);
+    const noEvents = fundamentalOverlays(earnings, events, { showEvents: false });
+    expect(noEvents.markers.map((m) => m.kind)).toEqual(["earnings"]);
+    expect(noEvents.lines).toEqual([]);
+  });
+
   it("drops earnings rows without a finite time", () => {
     const earnings = [
       earning({ symbol: "NASDAQ:AAPL", time: Number.NaN }),

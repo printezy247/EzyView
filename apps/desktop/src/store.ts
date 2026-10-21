@@ -9,6 +9,8 @@ import { catalog, getIndicator } from "@ezyview/indicators";
 import type { IndicatorDef } from "@ezyview/indicators";
 import type { PinePlot, PineOrder, ScriptOptions } from "@ezyview/pine-transpiler";
 import { DEFAULT_SYMBOL } from "./data";
+import { DEFAULT_EVENT_OPTIONS, restoreEventOptions } from "./eventOptions";
+import type { EventOptions } from "./eventOptions";
 import { activeChartOf, restoreWorkspace, setActiveChart, setGrid, updateChart } from "./layout";
 import type { ActiveIndicator, ChartState, GridMode, Layout, PersistedWorkspace, ReplaySpeed } from "./layout";
 import { readDetached } from "./windows";
@@ -112,8 +114,8 @@ interface WorkspaceStore {
   magnet: MagnetMode;
   /** Mirror the crosshair time across every cell of the active layout. */
   crosshairSync: boolean;
-  /** Earnings markers + macro event lines on the chart. */
-  showEvents: boolean;
+  /** Which chart events to draw (earnings, economic, impact levels). */
+  eventOptions: EventOptions;
   /** Replay play speed (× 500 ms/bar). */
   replaySpeed: ReplaySpeed;
 
@@ -164,7 +166,7 @@ interface WorkspaceStore {
   setActiveTool(tool: DrawingToolId | null): void;
   setMagnet(mode: MagnetMode): void;
   setCrosshairSync(on: boolean): void;
-  setShowEvents(on: boolean): void;
+  setEventOptions(patch: Partial<Omit<EventOptions, "impacts">> & { impacts?: Partial<EventOptions["impacts"]> }): void;
   setReplaySpeed(speed: ReplaySpeed): void;
   /** Reorder the layout tabs alphabetically, or oldest-first. */
   sortLayouts(by: "name" | "date"): void;
@@ -262,7 +264,7 @@ export const useWorkspace = create<WorkspaceStore>()(
       replayBar: null,
       magnet: "off",
       crosshairSync: false,
-      showEvents: true,
+      eventOptions: DEFAULT_EVENT_OPTIONS,
       replaySpeed: 1,
       drawingUndo: [],
       drawingRedo: [],
@@ -616,7 +618,14 @@ export const useWorkspace = create<WorkspaceStore>()(
       setReplay: (barIndex) => set({ replayBar: barIndex }),
 
       setCrosshairSync: (on) => set({ crosshairSync: on }),
-      setShowEvents: (on) => set({ showEvents: on }),
+      setEventOptions: (patch) =>
+        set((s) => ({
+          eventOptions: {
+            ...s.eventOptions,
+            ...patch,
+            impacts: { ...s.eventOptions.impacts, ...patch.impacts },
+          },
+        })),
       setReplaySpeed: (speed) => set({ replaySpeed: speed }),
 
       sortLayouts: (by) =>
@@ -635,13 +644,14 @@ export const useWorkspace = create<WorkspaceStore>()(
       name: "ezyview.workspace",
       version: 1,
       storage: workspaceStorage,
-      partialize: (s): PersistedWorkspace & { pineScripts: Record<string, PineScriptRecord> } => ({
+      partialize: (s): PersistedWorkspace & { pineScripts: Record<string, PineScriptRecord>; eventOptions: EventOptions } => ({
         layouts: s.layouts,
         activeLayoutId: s.activeLayoutId,
         magnet: s.magnet,
         crosshairSync: s.crosshairSync,
         replaySpeed: s.replaySpeed,
         pineScripts: s.pineScripts,
+        eventOptions: s.eventOptions,
       }),
       merge: (persisted, current) => {
         const raw = (persisted ?? {}) as Record<string, unknown>;
@@ -651,6 +661,7 @@ export const useWorkspace = create<WorkspaceStore>()(
           // Old blobs predate the key entirely; restorePineScripts turns that
           // (and any malformed entry) into a valid, possibly empty map.
           pineScripts: restorePineScripts(raw.pineScripts),
+          eventOptions: restoreEventOptions(raw.eventOptions),
         };
       },
     },

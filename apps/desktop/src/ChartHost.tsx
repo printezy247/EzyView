@@ -10,6 +10,7 @@ import { THEME_OF, uid as newId, useWorkspace } from "./store";
 import type { ActiveIndicator, PineScriptRecord } from "./store";
 import type { ChartThemeName, CrosshairModeName, PriceScaleModeName } from "./layout";
 import { brokerFeed, loadHistory, quoteOf, RESOLUTION_SECONDS, tickerOf } from "./data";
+import { barsNeeded, rangeStart } from "./chartView";
 import { mergeQuote } from "./liveBars";
 import { summarizeChart } from "./chartSummary";
 import { EMPTY_FUNDAMENTAL_EVENTS } from "./fundamentalEvents";
@@ -284,7 +285,45 @@ export function ChartHost(props: Props) {
       // Replay-visible bars only; historyRef holds the full loaded history.
       getCandles: () => shownRef.current,
       meta: () => ({ symbol: propsRef.current.symbol, resolution: propsRef.current.resolution }),
+      view: {
+        showRange: async (preset) => {
+          const history = historyRef.current;
+          const chart = chartRef.current;
+          if (!chart || history.length === 0) return;
+          const last = history[history.length - 1]!.time;
+          const from = rangeStart(preset, last);
+          if (from === null) {
+            chart.fitContent();
+            return;
+          }
+          await ensureHistory(from);
+          const step = RESOLUTION_SECONDS[propsRef.current.resolution];
+          chart.setVisibleTimeRange(from, last + step * 3);
+        },
+        goTo: async (time) => {
+          const step = RESOLUTION_SECONDS[propsRef.current.resolution];
+          await ensureHistory(time - step * 60);
+          chartRef.current?.scrollToTime(time);
+        },
+        reset: () => chartRef.current?.resetView(),
+        autoScale: () => chartRef.current?.autoScalePrice(),
+      },
     });
+    // Load enough history to reach back to `from` (capped); a symbol or
+    // interval change mid-load drops the result.
+    async function ensureHistory(from: number): Promise<void> {
+      const { symbol, resolution } = propsRef.current;
+      const history = historyRef.current;
+      if (history.length === 0 || history[0]!.time <= from) return;
+      const need = barsNeeded(from, history[history.length - 1]!.time, RESOLUTION_SECONDS[resolution]);
+      if (need <= history.length) return;
+      const more = await loadHistory(symbol, resolution, need);
+      if (propsRef.current.symbol !== symbol || propsRef.current.resolution !== resolution) return;
+      if (more.length <= historyRef.current.length) return;
+      historyRef.current = more;
+      chartRef.current?.setData(more);
+      setShown(more);
+    }
   }, [props.chartIndex]);
 
   useEffect(() => {

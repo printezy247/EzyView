@@ -19,6 +19,8 @@ import { useWorkspace } from "./store";
 import type { ChartState } from "./store";
 import { useTrading, useTradingTicks } from "./trading";
 import { useApiKeys } from "./apiKeys";
+import { ChartBottomBar } from "./ChartBottomBar";
+import { eventsActive } from "./eventOptions";
 import { EMPTY_FUNDAMENTAL_EVENTS, fetchFundamentalEvents } from "./fundamentalEvents";
 import { publishCrosshair, subscribeCrosshair } from "./crosshairBus";
 import type { CrosshairMessage } from "./crosshairBus";
@@ -51,7 +53,7 @@ export function ChartPage({ watchlistOpen, domOpen, objectsOpen, tradingOpen, on
 
   const watchlist = useWorkspace((s) => s.watchlist);
   const symbols = watchlist.map((w) => w.symbol);
-  const showEvents = useWorkspace((s) => s.showEvents);
+  const eventOptions = useWorkspace((s) => s.eventOptions);
   const apiKeys = useApiKeys((s) => s.keys);
   const [commandOpen, setCommandOpen] = useState(false);
   const [fundamentalEvents, setFundamentalEvents] = useState<FundamentalEventOverlay>(EMPTY_FUNDAMENTAL_EVENTS);
@@ -117,19 +119,19 @@ export function ChartPage({ watchlistOpen, domOpen, objectsOpen, tradingOpen, on
   // resolves live providers from saved API keys and falls back to demo data;
   // any fetch failure degrades to an empty overlay (no toast).
   useEffect(() => {
-    if (!showEvents) {
+    if (!eventsActive(eventOptions)) {
       setFundamentalEvents(EMPTY_FUNDAMENTAL_EVENTS);
       return;
     }
     let cancelled = false;
     const sources = buildSources(apiKeys);
-    void fetchFundamentalEvents(sources, state.symbol, Date.now() / 1000).then((overlay) => {
+    void fetchFundamentalEvents(sources, state.symbol, Date.now() / 1000, eventOptions).then((overlay) => {
       if (!cancelled) setFundamentalEvents(overlay);
     });
     return () => {
       cancelled = true;
     };
-  }, [showEvents, state.symbol, apiKeys]);
+  }, [eventOptions, state.symbol, apiKeys]);
 
   // Escape clears the armed drawing tool, like TradingView.
   // Undo/redo: Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z. "/" or Ctrl+K opens commands.
@@ -245,6 +247,8 @@ export function ChartPage({ watchlistOpen, domOpen, objectsOpen, tradingOpen, on
         {domOpen && <DepthOfMarket symbol={state.symbol} precision={2} />}
         <RightRail panels={{ watchlist: watchlistOpen, depth: domOpen, objects: objectsOpen, trading: tradingOpen }} onToggle={onToggle} />
       </div>
+
+      <ChartBottomBar />
 
       {tradingOpen && <TradingPanel symbol={state.symbol} />}
 

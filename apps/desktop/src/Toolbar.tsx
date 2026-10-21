@@ -188,8 +188,6 @@ export function Toolbar(props: Props) {
   const setMagnet = useWorkspace((s) => s.setMagnet);
   const crosshairSync = useWorkspace((s) => s.crosshairSync);
   const setCrosshairSync = useWorkspace((s) => s.setCrosshairSync);
-  const showEvents = useWorkspace((s) => s.showEvents);
-  const setShowEvents = useWorkspace((s) => s.setShowEvents);
 
   const panel = (id: PanelId, label: string) => toggle(id, label, props.panels[id], () => props.onTogglePanel(id));
 
@@ -435,20 +433,6 @@ export function Toolbar(props: Props) {
       {props.replayActive && (
         <span className="ml-2 rounded bg-ev-accent/15 px-1.5 py-0.5 text-[11px] font-medium text-ev-accent-text">Replay on</span>
       )}
-
-      <button
-        type="button"
-        aria-pressed={showEvents}
-        title="Earnings markers and macro event lines"
-        onClick={() => setShowEvents(!showEvents)}
-        className={
-          showEvents
-            ? "ml-2 rounded bg-ev-accent/15 px-1.5 py-0.5 text-[11px] font-medium text-ev-accent-text"
-            : "ml-2 rounded px-1.5 py-0.5 text-[11px] text-ev-muted hover:text-ev-strong"
-        }
-      >
-        Events
-      </button>
 
       <button
         type="button"

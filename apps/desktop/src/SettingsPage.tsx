@@ -3,6 +3,7 @@ import { activeChartOf } from "./layout";
 import { useWorkspace } from "./store";
 import { useMt5 } from "./mt5";
 import { useApiKeys } from "./apiKeys";
+import { EventsControls } from "./EventsControls";
 import { DesktopTab } from "./DesktopTab";
 import { DiagnosticsTab } from "./DiagnosticsTab";
 import { AuditTab, BrokerTab, ConnectionTab, SafetyTab } from "./Mt5Setup";
@@ -105,6 +106,11 @@ export function SettingsPage() {
                 </button>
               ))}
             </div>
+            <h2 className="mb-1 mt-5 text-[11px] font-medium uppercase tracking-wider text-ev-faint">Chart events</h2>
+            <p className="mb-2 text-[11px] text-ev-muted">
+              What to draw on the chart. The same switches sit in the bar under the chart.
+            </p>
+            <EventsControls layout="panel" />
           </>
         )}
       </div>

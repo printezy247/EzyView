@@ -24,6 +24,12 @@ export interface FundamentalMarker {
 export interface OverlayOptions {
   /** Lowest impact included as an event marker + line. Default `"high"`. */
   minImpact?: Impact;
+  /** Exact impacts to include; when set it replaces the `minImpact` rule (empty = no events). */
+  impacts?: readonly Impact[];
+  /** Include earnings dots. Default true. */
+  showEarnings?: boolean;
+  /** Include economic-event markers and lines. Default true. */
+  showEvents?: boolean;
   /** Reserved for future date filtering (pass-through, unused in v1). */
   now?: EpochSeconds;
 }
@@ -86,13 +92,14 @@ export function fundamentalOverlays(
     markers.push(m);
   };
 
-  for (const row of earnings) {
+  for (const row of opts.showEarnings === false ? [] : earnings) {
     if (Number.isFinite(row.time)) push({ time: row.time, title: row.symbol, kind: "earnings" });
   }
 
   const lineSet = new Set<number>();
-  for (const ev of events) {
-    if (IMPACT_RANK[ev.impact] < IMPACT_RANK[minImpact]) continue;
+  const allowed = opts.impacts ? new Set<Impact>(opts.impacts) : null;
+  for (const ev of opts.showEvents === false ? [] : events) {
+    if (allowed ? !allowed.has(ev.impact) : IMPACT_RANK[ev.impact] < IMPACT_RANK[minImpact]) continue;
     lineSet.add(ev.time);
     push({ time: ev.time, title: ev.title, kind: "event", impact: ev.impact });
   }
