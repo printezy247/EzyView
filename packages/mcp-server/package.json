@@ -13,6 +13,7 @@
     "@ezyview/data-adapters": "*",
     "@ezyview/fundamentals": "*",
     "@ezyview/indicators": "*",
+    "@ezyview/journal": "*",
     "@ezyview/options": "*"
   },
   "devDependencies": {

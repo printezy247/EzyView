@@ -20,6 +20,22 @@ async fn open_chart_window(app: AppHandle, query: String) -> Result<(), String> 
     Ok(())
 }
 
+/// Write the workspace snapshot MCP clients read. The file name is fixed, so
+/// the webview chooses contents only; the write is atomic (temp + rename) so a
+/// reader never sees half a file.
+#[tauri::command]
+fn write_snapshot(app: AppHandle, json: String) -> Result<(), String> {
+    use tauri::Manager;
+    if json.len() > 20 * 1024 * 1024 {
+        return Err("snapshot too large".into());
+    }
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let tmp = dir.join("workspace-snapshot.json.tmp");
+    std::fs::write(&tmp, json).map_err(|e| e.to_string())?;
+    std::fs::rename(&tmp, dir.join("workspace-snapshot.json")).map_err(|e| e.to_string())
+}
+
 /// A bare file name for the save dialog's default: no separators, no traversal.
 fn is_plain_file_name(name: &str) -> bool {
     !name.is_empty() && name.len() <= 200 && name != ".." && !name.contains(['/', '\\', '\0'])
@@ -118,7 +134,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_sql::Builder::default().build())
-        .invoke_handler(tauri::generate_handler![open_chart_window, api_key_get, api_key_set, save_file])
+        .invoke_handler(tauri::generate_handler![open_chart_window, api_key_get, api_key_set, save_file, write_snapshot])
         .run(tauri::generate_context!())
         .expect("error while running EzyView");
 }

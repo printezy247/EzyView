@@ -3,8 +3,11 @@ import type { Resolution } from "@ezyview/data-adapters";
 import { DemoCalendarAdapter, DemoFundamentalsAdapter, runScreener, scanUniverse } from "@ezyview/fundamentals";
 import type { ScreenerField } from "@ezyview/fundamentals";
 import { getIndicator, catalog } from "@ezyview/indicators";
+import { composeReview, computeStats, dateKey, reviewWindow } from "@ezyview/journal";
+import type { JournalEntry, JournalNote } from "@ezyview/journal";
 import { buildChain, greeks, impliedVol, price } from "@ezyview/options";
 import type { OptionRight } from "@ezyview/options";
+import { loadSnapshot } from "./snapshot.js";
 
 /** Protocol revision we speak; clients negotiate down to it. */
 export const PROTOCOL_VERSION = "2025-06-18";
@@ -203,6 +206,64 @@ const TOOLS: Tool[] = [
     run: async (a) => {
       const symbol = str(a, "symbol");
       return { earnings: await fundamentals.getEarnings(symbol), profile: await fundamentals.getProfile(symbol) };
+    },
+  },
+  {
+    name: "get_workspace",
+    description:
+      "The user's EzyView layouts: each chart's symbol, interval, chart type, indicator ids and drawings. Read from the desktop app's workspace snapshot.",
+    inputSchema: object({}),
+    run: async () => {
+      const snap = await loadSnapshot();
+      return { updatedAt: snap.updatedAt, layouts: snap.layouts };
+    },
+  },
+  {
+    name: "list_alerts",
+    description: "The user's price alerts (condition, state, symbol) and watchlist, from the desktop app's snapshot.",
+    inputSchema: object({ symbol: { type: "string" } }),
+    run: async (a) => {
+      const snap = await loadSnapshot();
+      const symbol = typeof a.symbol === "string" && a.symbol !== "" ? a.symbol : null;
+      const matches = (row: unknown) => symbol === null || (row as { symbol?: string }).symbol === symbol;
+      return { alerts: snap.alerts.filter(matches), watchlist: snap.watchlist.filter(matches) };
+    },
+  },
+  {
+    name: "get_journal",
+    description:
+      "Trading journal entries and notes with aggregate stats (win rate, net P&L, expectancy). Optional symbol filter and limit (newest first).",
+    inputSchema: object({ symbol: { type: "string" }, limit: { type: "number" } }),
+    run: async (a) => {
+      const snap = await loadSnapshot();
+      const symbol = typeof a.symbol === "string" && a.symbol !== "" ? a.symbol : null;
+      const limit = num(a, "limit", 50);
+      const entries = (snap.journal.entries as JournalEntry[])
+        .filter((e) => symbol === null || e.symbol === symbol)
+        .toSorted((x, y) => y.entryTime - x.entryTime);
+      return { stats: computeStats(entries), entries: entries.slice(0, limit), notes: snap.journal.notes.slice(0, limit) };
+    },
+  },
+  {
+    name: "journal_review_pack",
+    description:
+      "Everything needed to write a daily or weekly trading review: the app's deterministic summary, stats, trades and notes for the window containing the given date (YYYY-MM-DD, default today). Write the narrative yourself from this data.",
+    inputSchema: object({ period: { type: "string", enum: ["daily", "weekly"] }, date: { type: "string" } }),
+    run: async (a) => {
+      const snap = await loadSnapshot();
+      const period = a.period === "weekly" ? "weekly" : "daily";
+      const key = typeof a.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(a.date) ? a.date : dateKey(Date.now() / 1000);
+      const { start, end } = reviewWindow(key, period);
+      const entries = (snap.journal.entries as JournalEntry[]).filter((e) => e.entryTime >= start && e.entryTime < end);
+      const notes = (snap.journal.notes as JournalNote[]).filter((n) => n.time >= start && n.time < end);
+      return {
+        period,
+        date: key,
+        summary: composeReview(snap.journal.entries as JournalEntry[], snap.journal.notes as JournalNote[], start, end),
+        stats: computeStats(entries),
+        entries,
+        notes,
+      };
     },
   },
 ];
