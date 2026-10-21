@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Play, Save, Trash2, X, TrendingUp } from "lucide-react";
+import { Download, Play, Save, Trash2, Upload, X, TrendingUp } from "lucide-react";
 // Type-only: Monaco itself is dynamically imported so it stays out of the
 // initial bundle. Types are erased by the compiler, so this costs nothing.
 import type * as Monaco from "monaco-editor";
@@ -15,6 +15,7 @@ import type {
 import { useWorkspace, uid } from "./store";
 import type { PineScriptRecord } from "./store";
 import { parseParamValues } from "./pineOptimize";
+import { exportScriptJson, parseScriptJson } from "./pineShare";
 
 interface Props {
   onClose: () => void;
@@ -81,9 +82,14 @@ export function PineEditor({ onClose, bars, symbol }: Props) {
   // Best combo from the Optimize panel, merged into the next run's inputs so
   // the tester reflects the applied grid point without re-running the grid.
   const [appliedBest, setAppliedBest] = useState<Record<string, number> | null>(null);
+  // Transient value of the versions select; cleared on pick so the same
+  // entry can be restored again after further edits.
+  const [versionChoice, setVersionChoice] = useState("");
+  const importInput = useRef<HTMLInputElement | null>(null);
 
   const scripts = useWorkspace((s) => s.pineScripts);
   const savePineScript = useWorkspace((s) => s.savePineScript);
+  const restorePineScriptVersion = useWorkspace((s) => s.restorePineScriptVersion);
   const deletePineScript = useWorkspace((s) => s.deletePineScript);
   const setPineResult = useWorkspace((s) => s.setPineResult);
   const record: PineScriptRecord | undefined = scripts[scriptId];
@@ -222,6 +228,35 @@ export function PineEditor({ onClose, bars, symbol }: Props) {
     }
   }, [bars, name, scriptId, source, appliedBest, setPineResult, refreshMarkers]);
 
+  /** Download the live buffer as a share file; the name seeds the filename. */
+  const exportScript = (): void => {
+    const json = exportScriptJson({ name, source });
+    const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${name}.pine.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  /** Import a share file as a new script and switch the editor onto it. */
+  const importScriptFile = async (file: File): Promise<void> => {
+    try {
+      const parsed = parseScriptJson(await file.text());
+      const id = uid();
+      savePineScript(id, parsed.name, parsed.source);
+      setScriptId(id);
+      setName(parsed.name);
+      setSource(parsed.source);
+      editor.current?.setValue(parsed.source);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const versions = record?.versions ?? [];
+
   return (
     <section
       aria-label="Pine editor"
@@ -256,6 +291,56 @@ export function PineEditor({ onClose, bars, symbol }: Props) {
         >
           <Play size={13} aria-hidden /> Add to chart
         </button>
+        {versions.length > 0 && (
+          <select
+            aria-label="Script versions"
+            value={versionChoice}
+            onChange={(e) => {
+              const index = Number(e.target.value);
+              setVersionChoice(""); // reset so the same entry can be picked again
+              const entry = record?.versions?.[index];
+              if (!entry) return;
+              restorePineScriptVersion(scriptId, index);
+              setSource(entry.source);
+              editor.current?.setValue(entry.source);
+            }}
+            className="rounded bg-ev-bg px-2 py-1.5 text-xs text-ev-strong outline-none"
+          >
+            <option value="">Versions…</option>
+            {/* Newest first; the archive is prepend-ordered in the store. */}
+            {versions.map((v, i) => (
+              <option key={`${v.savedAt}-${i}`} value={String(i)}>
+                v{versions.length - i} · {new Date(v.savedAt * 1000).toLocaleString()}
+              </option>
+            ))}
+          </select>
+        )}
+        <button
+          type="button"
+          onClick={exportScript}
+          className="flex items-center gap-1 rounded bg-ev-line px-2.5 py-1.5 text-xs text-ev-strong hover:bg-ev-line-strong"
+        >
+          <Download size={13} aria-hidden /> Export
+        </button>
+        <button
+          type="button"
+          onClick={() => importInput.current?.click()}
+          className="flex items-center gap-1 rounded bg-ev-line px-2.5 py-1.5 text-xs text-ev-strong hover:bg-ev-line-strong"
+        >
+          <Upload size={13} aria-hidden /> Import
+        </button>
+        <input
+          ref={importInput}
+          type="file"
+          accept=".json,application/json"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            // Reset so importing the same file again re-fires the change event.
+            e.target.value = "";
+            if (file) void importScriptFile(file);
+          }}
+        />
         <div className="ml-auto flex items-center gap-1">
           {Object.values(scripts).map((s) => (
             <button

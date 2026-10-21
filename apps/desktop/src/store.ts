@@ -15,6 +15,12 @@ import { readDetached } from "./windows";
 
 export type { ActiveIndicator, ChartState, GridMode, Layout } from "./layout";
 
+/** One archived head of a Pine script; `savedAt` is epoch seconds. */
+export interface PineScriptVersion {
+  source: string;
+  savedAt: number;
+}
+
 /** A saved Pine script plus the outcome of the most recent run. */
 export interface PineScriptRecord {
   id: string;
@@ -25,6 +31,11 @@ export interface PineScriptRecord {
   orders: PineOrder[];
   /** Transpile or runtime error message, if the last run failed. */
   error: string | null;
+  /**
+   * Archived previous sources, newest first, capped at 20. Absent on records
+   * saved before versioning existed; restores are no-ops there.
+   */
+  versions?: PineScriptVersion[];
   /**
    * Scalar `input.*` values from the last successful run, keyed as the
    * runtime keys them (declaration order / `id` kwarg). Absent on records
@@ -48,6 +59,9 @@ export interface WatchEntry {
 }
 
 const LAYOUT_COLORS = ["#2962ff", "#ff9800", "#4caf50", "#e91e63", "#00bcd4", "#9c27b0"];
+
+/** How many superseded sources a script keeps in its version list. */
+const MAX_PINE_VERSIONS = 20;
 
 export const uid = (): string => Math.random().toString(36).slice(2, 10);
 
@@ -162,8 +176,10 @@ interface WorkspaceStore {
   removeFromWatchlist(symbol: string): void;
   updateWatchPrice(symbol: string, price: number, changePct: number | null): void;
 
-  /** Save a Pine script's source under its name. */
+  /** Save a Pine script's source under its name; a changed source archives the old head. */
   savePineScript(id: string, name: string, source: string): void;
+  /** Replace a script's source with version `index` (newest-first); the list is kept. */
+  restorePineScriptVersion(id: string, index: number): void;
   deletePineScript(id: string): void;
   /** Result of the last script run, for the tester panel. */
   setPineResult(id: string, result: PineScriptRecord | null): void;
@@ -502,6 +518,15 @@ export const useWorkspace = create<WorkspaceStore>()(
       savePineScript: (id, name, source) =>
         set((s) => {
           const existing = s.pineScripts[id];
+          // Re-saving the same source must not spam the history: only a
+          // changed head archives the one it replaces (newest first, capped).
+          const versions =
+            existing && existing.source !== source
+              ? [
+                  { source: existing.source, savedAt: Math.floor(Date.now() / 1000) },
+                  ...(existing.versions ?? []),
+                ].slice(0, MAX_PINE_VERSIONS)
+              : existing?.versions;
           return {
             pineScripts: {
               ...s.pineScripts,
@@ -516,7 +541,22 @@ export const useWorkspace = create<WorkspaceStore>()(
                 error: existing?.error ?? null,
                 // Spread so a record without the snapshot stays without it.
                 ...(existing?.inputs !== undefined ? { inputs: existing.inputs } : {}),
+                ...(versions !== undefined ? { versions } : {}),
               },
+            },
+          };
+        }),
+
+      restorePineScriptVersion: (id, index) =>
+        set((s) => {
+          const existing = s.pineScripts[id];
+          const entry = existing?.versions?.[index];
+          // Unknown id, out-of-range index, or a pre-versioning record: no-op.
+          if (!existing || !entry) return s;
+          return {
+            pineScripts: {
+              ...s.pineScripts,
+              [id]: { ...existing, source: entry.source },
             },
           };
         }),
@@ -557,20 +597,63 @@ export const useWorkspace = create<WorkspaceStore>()(
       name: "ezyview.workspace",
       version: 1,
       storage: workspaceStorage,
-      partialize: (s): PersistedWorkspace => ({
+      partialize: (s): PersistedWorkspace & { pineScripts: Record<string, PineScriptRecord> } => ({
         layouts: s.layouts,
         activeLayoutId: s.activeLayoutId,
         magnet: s.magnet,
         crosshairSync: s.crosshairSync,
         replaySpeed: s.replaySpeed,
+        pineScripts: s.pineScripts,
       }),
-      merge: (persisted, current) => ({
-        ...current,
-        ...restoreWorkspace(persisted, current, defaultChartState(), getIndicator),
-      }),
+      merge: (persisted, current) => {
+        const raw = (persisted ?? {}) as Record<string, unknown>;
+        return {
+          ...current,
+          ...restoreWorkspace(persisted, current, defaultChartState(), getIndicator),
+          // Old blobs predate the key entirely; restorePineScripts turns that
+          // (and any malformed entry) into a valid, possibly empty map.
+          pineScripts: restorePineScripts(raw.pineScripts),
+        };
+      },
     },
   ),
 );
+
+/**
+ * Rebuild the saved-scripts map from a storage blob. Blobs written before
+ * versioning lack `versions`/`inputs` (left absent, not invented), and any
+ * entry missing the required id/name/source strings is dropped rather than
+ * throwing — a corrupt save must never brick startup.
+ */
+function restorePineScripts(raw: unknown): Record<string, PineScriptRecord> {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return {};
+  const out: Record<string, PineScriptRecord> = {};
+  for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) continue;
+    const rec = value as Partial<PineScriptRecord>;
+    if (typeof rec.id !== "string" || typeof rec.name !== "string" || typeof rec.source !== "string") continue;
+    const versions = Array.isArray(rec.versions)
+      ? rec.versions.filter(
+          (v): v is PineScriptVersion =>
+            typeof v === "object" && v !== null && typeof v.source === "string" && typeof v.savedAt === "number",
+        )
+      : undefined;
+    out[id] = {
+      id: rec.id,
+      name: rec.name,
+      source: rec.source,
+      options: rec.options ?? null,
+      plots: Array.isArray(rec.plots) ? rec.plots : [],
+      orders: Array.isArray(rec.orders) ? rec.orders : [],
+      error: typeof rec.error === "string" ? rec.error : null,
+      ...(rec.inputs !== undefined && typeof rec.inputs === "object" && rec.inputs !== null
+        ? { inputs: rec.inputs }
+        : {}),
+      ...(versions !== undefined ? { versions } : {}),
+    };
+  }
+  return out;
+}
 
 /** Deep copy for "Duplicate layout"; indicator defs are shared, not cloned, as they hold functions. */
 function structuredCloneLayout(layout: Layout): Layout {

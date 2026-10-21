@@ -124,6 +124,110 @@ describe("pine script inputs snapshot", () => {
   });
 });
 
+describe("pine script versions", () => {
+  it("save with the same source is a version no-op; a changed source prepends the old head", () => {
+    useWorkspace.getState().savePineScript("ver1", "V", "head-a");
+    expect(useWorkspace.getState().pineScripts["ver1"]?.versions ?? []).toHaveLength(0);
+    // Same source again (even with a new name): nothing archived.
+    useWorkspace.getState().savePineScript("ver1", "Renamed", "head-a");
+    expect(useWorkspace.getState().pineScripts["ver1"]?.versions ?? []).toHaveLength(0);
+    expect(useWorkspace.getState().pineScripts["ver1"]?.name).toBe("Renamed");
+    // Changed source: the superseded head is archived, newest first.
+    useWorkspace.getState().savePineScript("ver1", "Renamed", "head-b");
+    const versions = useWorkspace.getState().pineScripts["ver1"]?.versions ?? [];
+    expect(versions).toHaveLength(1);
+    expect(versions[0]?.source).toBe("head-a");
+    expect(versions[0]?.savedAt).toBeGreaterThan(1_600_000_000); // epoch seconds, not ms
+    expect(useWorkspace.getState().pineScripts["ver1"]?.source).toBe("head-b");
+  });
+
+  it("caps the version list at 20, newest first", () => {
+    useWorkspace.getState().savePineScript("ver2", "Cap", "s0");
+    for (let i = 1; i <= 25; i++) useWorkspace.getState().savePineScript("ver2", "Cap", `s${i}`);
+    const versions = useWorkspace.getState().pineScripts["ver2"]?.versions ?? [];
+    expect(versions).toHaveLength(20);
+    expect(versions[0]?.source).toBe("s24"); // most recently superseded head
+    expect(versions[19]?.source).toBe("s5"); // oldest kept; s0..s4 evicted
+  });
+
+  it("restorePineScriptVersion sets source from the entry and keeps the list", () => {
+    useWorkspace.getState().savePineScript("ver3", "R", "one");
+    useWorkspace.getState().savePineScript("ver3", "R", "two");
+    useWorkspace.getState().savePineScript("ver3", "R", "three");
+    const before = useWorkspace.getState().pineScripts["ver3"]?.versions;
+    expect(before?.map((v) => v.source)).toEqual(["two", "one"]);
+    useWorkspace.getState().restorePineScriptVersion("ver3", 1);
+    expect(useWorkspace.getState().pineScripts["ver3"]?.source).toBe("one");
+    // Restoring does not delete entries — flip back is possible.
+    expect(useWorkspace.getState().pineScripts["ver3"]?.versions).toEqual(before);
+    useWorkspace.getState().restorePineScriptVersion("ver3", 0);
+    expect(useWorkspace.getState().pineScripts["ver3"]?.source).toBe("two");
+  });
+
+  it("restore is a no-op for an unknown id, out-of-range index, or a record without versions", () => {
+    useWorkspace.getState().restorePineScriptVersion("no-such-id", 0);
+    expect(useWorkspace.getState().pineScripts["no-such-id"]).toBeUndefined();
+    useWorkspace.getState().savePineScript("ver4", "R", "stay");
+    useWorkspace.getState().restorePineScriptVersion("ver4", 5);
+    expect(useWorkspace.getState().pineScripts["ver4"]?.source).toBe("stay");
+    // Pre-versioning record shape: no versions key at all.
+    useWorkspace.getState().setPineResult("ver5", pineRecord({ id: "ver5", source: "legacy" }));
+    useWorkspace.getState().restorePineScriptVersion("ver5", 0);
+    expect(useWorkspace.getState().pineScripts["ver5"]?.source).toBe("legacy");
+    expect(useWorkspace.getState().pineScripts["ver5"]?.versions).toBeUndefined();
+  });
+});
+
+/** The persist middleware's partialize/merge hooks, under test directly. */
+const persistOptions = () => useWorkspace.persist.getOptions();
+
+describe("pine script persistence", () => {
+  it("partialize keeps scripts+versions and they survive a storage round-trip", () => {
+    useWorkspace.getState().savePineScript("per1", "P", "v1");
+    useWorkspace.getState().savePineScript("per1", "P", "v2");
+    const persisted = persistOptions().partialize!(useWorkspace.getState());
+    // Storage is JSON: the persisted slice must survive encode/decode.
+    const wire = JSON.parse(JSON.stringify(persisted)) as unknown;
+    const merged = persistOptions().merge!(wire, useWorkspace.getState());
+    expect(merged.pineScripts["per1"]?.source).toBe("v2");
+    expect(merged.pineScripts["per1"]?.versions?.[0]?.source).toBe("v1");
+  });
+
+  it("an old blob without pineScripts rehydrates without throwing", () => {
+    const oldBlob = {
+      layouts: useWorkspace.getState().layouts,
+      activeLayoutId: useWorkspace.getState().activeLayoutId,
+      magnet: "off",
+      // Pre-Task-5 shape: no pineScripts key at all.
+    };
+    const merged = persistOptions().merge!(oldBlob, useWorkspace.getState());
+    expect(merged.pineScripts).toEqual({});
+  });
+
+  it("old records without versions or inputs rehydrate as valid records", () => {
+    const oldBlob = {
+      layouts: useWorkspace.getState().layouts,
+      activeLayoutId: useWorkspace.getState().activeLayoutId,
+      magnet: "off",
+      pineScripts: {
+        legacy: { id: "legacy", name: "Old", source: "src", options: null, plots: [], orders: [], error: null },
+      },
+    };
+    const merged = persistOptions().merge!(oldBlob, useWorkspace.getState());
+    const rec = merged.pineScripts["legacy"];
+    expect(rec?.source).toBe("src");
+    expect(rec?.versions).toBeUndefined(); // absent, not invented
+    expect(rec?.inputs).toBeUndefined();
+    // A garbage entry is dropped; the valid one survives.
+    const messy = persistOptions().merge!(
+      { ...oldBlob, pineScripts: { ...oldBlob.pineScripts, broken: 42, "": null } },
+      useWorkspace.getState(),
+    );
+    expect(messy.pineScripts["legacy"]?.source).toBe("src");
+    expect(Object.keys(messy.pineScripts)).toEqual(["legacy"]);
+  });
+});
+
 describe("undo/redo drawings", () => {
   it("restores drawings byte-for-byte", () => {
     const s = useWorkspace.getState();
