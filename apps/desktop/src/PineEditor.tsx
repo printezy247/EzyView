@@ -87,6 +87,11 @@ export function PineEditor({ onClose, bars, symbol }: Props) {
   const deletePineScript = useWorkspace((s) => s.deletePineScript);
   const setPineResult = useWorkspace((s) => s.setPineResult);
   const record: PineScriptRecord | undefined = scripts[scriptId];
+  // A script switch starts from a clean optimize slate: the previous script's
+  // applied combo must not seed the next script's runs.
+  useEffect(() => {
+    setAppliedBest(null);
+  }, [scriptId]);
   // Numeric slice of the last run's input snapshot — the keys the Optimize
   // panel offers (bool/string inputs are not grid-able).
   const numericInputs: Record<string, number> = {};
@@ -312,6 +317,9 @@ export function PineEditor({ onClose, bars, symbol }: Props) {
       {result && result.trades.length > 0 && <StrategyTester result={result} inputs={record?.inputs} />}
       {Object.keys(numericInputs).length > 0 && (
         <OptimizePanel
+          // Remount on script change so the previous script's grid rows and
+          // outcome table do not linger on the new script's panel.
+          key={scriptId}
           source={source}
           bars={bars}
           baseInputs={numericInputs}
@@ -386,6 +394,9 @@ function OptimizePanel({
     if (next.capped) notes.push(`capped at ${DEFAULT_MAX_COMBOS}`);
     const failed = expected - next.runs.length;
     if (failed > 0) notes.push(`${failed} combo${failed === 1 ? "" : "s"} failed`);
+    // A wholly-failing grid would otherwise report only the count; surface
+    // the first thrown message so the script's breakage is visible.
+    if (next.firstFailure) notes.push(next.firstFailure);
     setRunHint(notes.length > 0 ? notes.join(" · ") : null);
   };
 

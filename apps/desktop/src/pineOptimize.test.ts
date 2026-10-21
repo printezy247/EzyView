@@ -26,6 +26,21 @@ describe("parseParamValues", () => {
     expect(parseParamValues("50..10 step 10")).toBeNull();
   });
 
+  it("rejects a range whose step count exceeds the 10k cap", () => {
+    // 10_001 values — one over the cap. Cheap to build when the guard is
+    // missing, so this fails fast rather than hanging.
+    expect(parseParamValues("0..10000 step 1")).toBeNull();
+  });
+
+  it("rejects a pathological range without building it", () => {
+    // 1e9 elements — would OOM/hang if the cap were checked after generation.
+    expect(parseParamValues("0..1000000 step 0.001")).toBeNull();
+  });
+
+  it("still accepts a range of exactly 10_000 values", () => {
+    expect(parseParamValues("0..9999 step 1")).toHaveLength(10_000);
+  });
+
   it("parses a comma list, including negatives and floats", () => {
     expect(parseParamValues("1,2,3")).toEqual([1, 2, 3]);
     expect(parseParamValues(" 1 , 2 ")).toEqual([1, 2]);

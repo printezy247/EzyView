@@ -27,6 +27,14 @@ function makeContext(n = 30): Context {
 const values = (v: PineValue[]): (number | undefined)[] =>
   v.map((x) => (typeof x === "number" ? x : undefined));
 
+/** SMA of close over a fresh uptrend context, with `seed` under positional key "0". */
+const smaWithSeededLength = (seed: number): (number | undefined)[] => {
+  const ctx = makeContext(12);
+  ctx.inputs["0"] = seed;
+  const out = runPine("plot(ta.sma(close, input.int(3)))", ctx);
+  return values(out.plots[0]!.values);
+};
+
 describe("lexer", () => {
   it("emits newline tokens, which Pine uses as statement separators", () => {
     const tokens = lex("a = 1\nb = 2");
@@ -244,11 +252,38 @@ describe("evaluate", () => {
   });
 
   it("reads inputs", () => {
-    const ctx = makeContext(3);
+    const ctx = makeContext(6);
     ctx.inputs["0"] = 5;
     const out = runPine("plot(ta.sma(close, input.int(3)))", ctx);
-    // Input overrides the default length of 3 with 5.
-    expect(values(out.plots[0]!.values)[4]).toBeUndefined();
+    // Seeded length 5: the SMA warms up over the first four bars, so index 2
+    // stays na (the default of 3 would have resolved there) and index 4 is
+    // the mean of the first five closes.
+    const vals = values(out.plots[0]!.values);
+    expect(vals[2]).toBeUndefined();
+    expect(vals[4]).toBeCloseTo(102.5);
+  });
+
+  it("keys positional inputs by call site — one key per site after a run", () => {
+    const ctx = makeContext(6);
+    runPine('plot(input.int(3))\nplot(input.int(7, title="Second"))', ctx);
+    // One key per input call site in source order, never one per bar.
+    expect(Object.keys(ctx.inputs).toSorted()).toEqual(["0", "1"]);
+    expect(ctx.inputs["0"]).toBe(3);
+    expect(ctx.inputs["1"]).toBe(7);
+  });
+
+  it("lets a seeded positional input change results", () => {
+    expect(smaWithSeededLength(5)).not.toEqual(smaWithSeededLength(9));
+  });
+
+  it("still keys an input by id= when given", () => {
+    const ctx = makeContext(3);
+    ctx.inputs["len"] = 2;
+    const out = runPine('plot(ta.sma(close, input.int(3, id="len")))', ctx);
+    // Seeded length 2 resolves one bar earlier than the default 3 would.
+    const vals = values(out.plots[0]!.values);
+    expect(vals[1]).toBeDefined();
+    expect(vals[1]).toBeCloseTo(101);
   });
 
   it("propagates na through arithmetic", () => {

@@ -19,6 +19,8 @@ export interface OptimizationResult {
   best: OptimizeRun | null;
   /** True when the cartesian product exceeded `maxCombos` and generation stopped early. */
   capped: boolean;
+  /** Message of the first combo whose runner threw, when any did. */
+  firstFailure?: string;
 }
 
 export interface OptimizeOptions {
@@ -52,11 +54,14 @@ export function optimizePine(
   const { combos, capped } = cartesian(specs, maxCombos);
 
   const runs: OptimizeRun[] = [];
+  let firstFailure: string | undefined;
   for (const inputs of combos) {
     try {
       runs.push({ inputs, result: run(inputs) });
-    } catch {
-      // A combo that blows up inside the script is skipped, not fatal.
+    } catch (e) {
+      // A combo that blows up inside the script is skipped, not fatal — but
+      // the first message is kept so a wholly-failing grid is diagnosable.
+      firstFailure ??= e instanceof Error ? e.message : String(e);
     }
   }
 
@@ -70,7 +75,7 @@ export function optimizePine(
     return aj < bj ? -1 : aj > bj ? 1 : 0;
   });
 
-  return { runs, best: runs[0] ?? null, capped };
+  return { runs, best: runs[0] ?? null, capped, firstFailure };
 }
 
 /**

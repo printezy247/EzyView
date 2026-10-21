@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { DEFAULT_MAX_COMBOS, optimizePine } from "./optimize.js";
 import type { ParamSpec } from "./optimize.js";
+import { backtest } from "./backtest.js";
 import type { BacktestResult, Trade } from "./backtest.js";
+import { runPine } from "./evaluate.js";
+import type { Context } from "./runtime.js";
 
 /** Minimal BacktestResult; tests override only the fields ranking reads. */
 function fakeResult(partial: Partial<BacktestResult> = {}): BacktestResult {
@@ -148,6 +151,45 @@ describe("optimizePine", () => {
 
     expect(out.runs.map((r) => r.inputs)).toEqual([{ a: 3 }, { a: 1 }]);
     expect(out.best?.inputs).toEqual({ a: 3 });
+  });
+
+  it("captures the first runner failure's message", () => {
+    const out = optimizePine(
+      (inputs) => {
+        if (inputs.a === 1) throw new Error("boom");
+        return fakeResult();
+      },
+      [{ key: "a", values: [1, 2] }],
+    );
+
+    expect(out.firstFailure).toBe("boom");
+  });
+
+  it("drives distinct results through the real runPine + backtest", () => {
+    // A zig-zag close so the crossover fires at length-dependent bars: SMA(2)
+    // and SMA(3) enter on different bars, hence different trade PnL.
+    const close = [10, 10, 12, 11, 13, 12, 14, 13, 15, 14];
+    const source = `strategy("S")
+len = input.int(2, "Length")
+longCondition = ta.crossover(close, ta.sma(close, len))
+if longCondition
+  strategy.entry("Long", strategy.long)`;
+    const out = optimizePine((inputs) => {
+      const ctx: Context = {
+        open: close,
+        high: close,
+        low: close,
+        close,
+        volume: close.map(() => 1000),
+        barIndex: close.length - 1,
+        inputs: { ...inputs },
+      };
+      return backtest(runPine(source, ctx).orders, { close });
+    }, [{ key: "0", values: [2, 3] }]);
+
+    expect(out.runs).toHaveLength(2);
+    const pnls = out.runs.map((r) => r.result.totalPnl);
+    expect(pnls[0]).not.toBe(pnls[1]);
   });
 
   it("yields no runs when a spec has an empty values list", () => {

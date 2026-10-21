@@ -307,6 +307,7 @@ function bgcolorCall(
 /** `input.int()` / `input.float()` / `input.bool()` / `input.string()`. */
 function inputCall(
   inputs: Record<string, PineValue>,
+  site: number,
   kwargs: Kwargs,
   defval?: PineValue,
   title?: string,
@@ -315,15 +316,24 @@ function inputCall(
   active?: PineValue,
   id?: string,
 ): PineValue {
-  // Pine keys an input by `id` when given, else by declaration order.
-  const key = id ?? optStr(kwargs, "id") ?? String(Object.keys(inputs).length);
+  // Pine keys an input by `id` when given, else by declaration order. The
+  // emitter assigns each call site a compile-time index, so the positional
+  // key is stable across bars — seeding `ctx.inputs["0"]` (the optimizer's
+  // mechanism) lands on the same key the script reads.
+  const key = id ?? optStr(kwargs, "id") ?? String(site);
   if (!(key in inputs)) inputs[key] = defval ?? kwargs.defval ?? NA;
   return inputs[key] ?? NA;
 }
 
 /** Bare `input(…)` — the v4 name, equivalent to `input.int`. */
-function inputScalar(inputs: Record<string, PineValue>, kwargs: Kwargs, defval?: PineValue, title?: string): PineValue {
-  return inputCall(inputs, kwargs, defval, title);
+function inputScalar(
+  inputs: Record<string, PineValue>,
+  site: number,
+  kwargs: Kwargs,
+  defval?: PineValue,
+  title?: string,
+): PineValue {
+  return inputCall(inputs, site, kwargs, defval, title);
 }
 
 /**

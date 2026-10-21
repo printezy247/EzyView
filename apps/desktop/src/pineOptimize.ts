@@ -3,8 +3,9 @@
  *
  * Two forms are accepted: an inclusive step range `10..50 step 10`, and a
  * comma list `1,2,3`. Empty text means "skip this row" and parses to an empty
- * array; anything that is neither form — or a non-positive step / reversed
- * range — is rejected as null so the panel can flag the row.
+ * array; anything that is neither form — a non-positive step, a reversed
+ * range, or a range whose step count exceeds 10_000 — is rejected as null so
+ * the panel can flag the row.
  */
 export function parseParamValues(text: string): number[] | null {
   const t = text.trim();
@@ -18,6 +19,9 @@ export function parseParamValues(text: string): number[] | null {
     if (!(step > 0) || stop < start) return null;
     // Count-based so the stop test never trips on float drift (0.30000000004).
     const steps = Math.floor((stop - start) / step + 1e-9);
+    // Cap before building: `0..1000000 step 0.001` would mint a billion
+    // elements and hang long before the optimizer's own combo budget applies.
+    if (steps + 1 > 10_000) return null;
     const out: number[] = [];
     for (let i = 0; i <= steps; i++) {
       out.push(Math.round((start + i * step) * 1e10) / 1e10);

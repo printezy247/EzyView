@@ -115,6 +115,21 @@ class Emitter {
     return this.plotSiteCount++;
   }
 
+  /**
+   * Stable id per `input()` call site, same idea as {@link plotSiteCount}.
+   *
+   * The runtime keys a positional input by this compile-time index rather
+   * than by `inputs.length` at call time — the body runs once per bar, so a
+   * runtime count would mint a fresh key on every iteration and defeat both
+   * the per-site dedupe and the optimizer's seeded overrides.
+   */
+  private inputSiteCount = 0;
+
+  /** Reserve the next input call site's id. */
+  private nextInputSite(): number {
+    return this.inputSiteCount++;
+  }
+
   line(text: string): void {
     this.lines.push("  ".repeat(this.depth) + text);
   }
@@ -323,7 +338,7 @@ class Emitter {
     const orderCall = (fn: string): string =>
       `${fn}(barIndex, orders, ${opts}${posArgs.length ? `, ${posArgs.join(", ")}` : ""})`;
     const inputEmit = (fn: string): string =>
-      `${fn}(inputs, ${opts}${posArgs.length ? `, ${posArgs.join(", ")}` : ""})`;
+      `${fn}(inputs, ${this.nextInputSite()}, ${opts}${posArgs.length ? `, ${posArgs.join(", ")}` : ""})`;
 
     if (callee.kind === "MemberExpr") {
       const obj = callee.object;
