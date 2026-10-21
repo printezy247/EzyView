@@ -21,6 +21,7 @@ const actions = () => ({
   removeIndicator: vi.fn(),
   toggleEvent: vi.fn(),
   openSettings: vi.fn(),
+  openLinkGroup: vi.fn(),
 });
 
 const ctx = (over: Partial<ChartMenuContext> = {}): ChartMenuContext => ({
@@ -34,6 +35,7 @@ const ctx = (over: Partial<ChartMenuContext> = {}): ChartMenuContext => ({
   indicators: [],
   templates: [],
   eventOptions: DEFAULT_EVENT_OPTIONS,
+  linkGroup: null,
   actions: actions(),
   ...over,
 });
@@ -82,7 +84,7 @@ describe("buildChartMenu", () => {
       ctx({ mt5: true, hasClipboard: true, templates: [{ id: "t1", name: "Clean" }], indicators: [{ uid: "u1", name: "RSI" }], actions: a }),
     );
     const run = (id: string) => (find(menu, id) as { onSelect: () => void }).onSelect();
-    for (const id of ["reset", "copy-price", "paste", "add-alert", "sell-limit", "buy-stop", "add-order", "cursor-lock", "table", "object-tree", "save-template", "settings"]) run(id);
+    for (const id of ["reset", "copy-price", "paste", "add-alert", "sell-limit", "buy-stop", "add-order", "cursor-lock", "table", "object-tree", "save-template", "settings", "link-group"]) run(id);
     run("template-t1");
     run("template-del-t1");
     run("remove-ind-u1");

@@ -75,6 +75,11 @@ export interface ChartState {
    * the kind of context a chart is harder to read without.
    */
   showSessionBreaks?: boolean;
+  /**
+   * Link group name. Cells in the same group share their symbol, interval and
+   * crosshair. Absent or blank = the cell is on its own.
+   */
+  linkGroup?: string;
 }
 
 /** How a layout splits its chart area. */

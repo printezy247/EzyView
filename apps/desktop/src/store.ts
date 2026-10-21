@@ -15,6 +15,8 @@ import { applyTemplate, restoreTemplates, templateFromChart } from "./chartTempl
 import type { ChartTemplate } from "./chartTemplates";
 import { pasteAt } from "./drawingClipboard";
 import { activeChartOf, restoreWorkspace, setActiveChart, setGrid, updateChart } from "./layout";
+import { withLinkedUpdate } from "./linkGroups";
+import type { LinkPatch } from "./linkGroups";
 import { isDensity, resolveAppTheme } from "./layout";
 import type {
   ActiveIndicator,
@@ -158,6 +160,12 @@ interface WorkspaceStore {
   setActiveLayout(id: string): void;
   /** Patch the focused chart cell. */
   updateActive(patch: Partial<ChartState>): void;
+  /** Set the focused cell's symbol, and every cell in its link group. */
+  setSymbol(symbol: string): void;
+  /** Set the focused cell's interval, and every cell in its link group. */
+  setResolution(resolution: ChartState["resolution"]): void;
+  /** Put the focused cell into a link group, or clear it with an empty name. */
+  setLinkGroup(group: string): void;
   setGrid(grid: GridMode): void;
   setActiveChart(index: number): void;
 
@@ -248,6 +256,20 @@ function editChart(s: WorkspaceStore, fn: (chart: ChartState) => ChartState): Pa
 }
 
 /**
+ * Apply a linked change — symbol or interval — to the focused cell and to
+ * every cell in its link group.
+ *
+ * Only the linked fields travel. A cell's theme, watermark or volume setting
+ * stays its own, because "these two charts show the same thing" is not
+ * "these two charts are configured identically".
+ */
+function applyToGroup(layout: Layout, patch: LinkPatch): Layout {
+  const charts = withLinkedUpdate(layout.charts, layout.activeChart, patch);
+  if (charts === layout.charts) return layout;
+  return { ...layout, charts };
+}
+
+/**
  * Keep price alerts bound to a horizontal line in step with the line: moving
  * the anchor re-arms the alert's level. Only price-carrying conditions can
  * follow; channel/moving conditions are left alone.
@@ -332,7 +354,26 @@ export const useWorkspace = create<WorkspaceStore>()(
 
       setActiveLayout: (id) => set({ activeLayoutId: id, activeTool: null, selectedDrawingId: null }),
 
+      // Per-cell settings. The linked fields (symbol, interval) have their own
+      // actions below, because they propagate to the cell's link group.
       updateActive: (patch) => set((s) => editChart(s, (c) => ({ ...c, ...patch }))),
+
+      // The focused cell's symbol, and every cell in its link group.
+      setSymbol: (symbol) => set((s) => editActive(s, (l) => applyToGroup(l, { symbol }))),
+
+      // The focused cell's interval, and every cell in its link group.
+      setResolution: (resolution) => set((s) => editActive(s, (l) => applyToGroup(l, { resolution }))),
+
+      // Putting a cell into a group, or taking it out.
+      setLinkGroup: (group) =>
+        set((s) => {
+          const layout = get().activeLayout();
+          const index = layout.activeChart;
+          const name = group?.trim() ? group.trim() : undefined;
+          const charts = layout.charts.map((c, i) => (i === index ? { ...c, linkGroup: name } : c));
+          const next = { ...layout, charts };
+          return { layouts: s.layouts.map((l) => (l.id === layout.id ? next : l)), dirty: { ...s.dirty, [layout.id]: true } };
+        }),
 
       setGrid: (grid) => set((s) => editActive(s, (l) => setGrid(l, grid))),
 

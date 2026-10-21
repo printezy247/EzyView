@@ -44,6 +44,8 @@ export default function App() {
   const state = activeChartOf(layout);
   const setGrid = useWorkspace((s) => s.setGrid);
   const updateActive = useWorkspace((s) => s.updateActive);
+  const setSymbol = useWorkspace((s) => s.setSymbol);
+  const setResolution = useWorkspace((s) => s.setResolution);
   const alerts = useWorkspace((s) => s.alerts);
   const addAlert = useWorkspace((s) => s.addAlert);
   const removeAlert = useWorkspace((s) => s.removeAlert);
@@ -132,7 +134,7 @@ export default function App() {
     void getMt5()
       .data.searchSymbols("")
       .then(([first]) => {
-        if (!cancelled && first) updateActive({ symbol: first.symbol });
+        if (!cancelled && first) setSymbol(first.symbol);
       });
     return () => {
       cancelled = true;
@@ -161,8 +163,8 @@ export default function App() {
             showVolumeProfile={state.showVolumeProfile ?? false}
             showGrid={state.showGrid}
             indicatorCount={state.indicators.length}
-            onSymbol={(symbol) => updateActive({ symbol })}
-            onResolution={(resolution) => updateActive({ resolution })}
+            onSymbol={(symbol) => setSymbol(symbol)}
+            onResolution={(resolution) => setResolution(resolution)}
             onChartType={(chartType) => updateActive({ chartType })}
             onToggleVolume={() => updateActive({ showVolume: !state.showVolume })}
             onToggleVolumeProfile={() => updateActive({ showVolumeProfile: !state.showVolumeProfile })}

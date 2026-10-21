@@ -11,10 +11,12 @@ import { DepthOfMarket } from "./DepthOfMarket";
 import { TradingPanel } from "./TradingPanel";
 import { Watchlist } from "./Watchlist";
 import { activeChartOf, cellCount } from "./layout";
+import { groupsInUse, linkGroupOf } from "./linkGroups";
 import type { Layout } from "./store";
 import type { GridMode } from "./layout";
 import { ObjectTree } from "./ObjectTree";
 import { TimeAndSales } from "./TimeAndSales";
+import { LinkGroupDialog } from "./LinkGroupDialog";
 import { sessionForSymbol } from "./sessionFor";
 import { loadHistory } from "./data";
 import { useWorkspace } from "./store";
@@ -54,6 +56,7 @@ interface ChartPageProps {
 export function ChartPage({ dockTab, onSelectDockTab, onSetDockTab, tradingOpen, onToggleTrading, onOpenAlerts, onOpenHotkeys }: ChartPageProps) {
   const layout = useWorkspace((s) => s.activeLayout());
   const state = activeChartOf(layout);
+  const setLinkGroup = useWorkspace((s) => s.setLinkGroup);
   const setActiveChart = useWorkspace((s) => s.setActiveChart);
   const updateActive = useWorkspace((s) => s.updateActive);
   const activeTool = useWorkspace((s) => s.activeTool);
@@ -97,6 +100,7 @@ export function ChartPage({ dockTab, onSelectDockTab, onSetDockTab, tradingOpen,
   const [menu, setMenu] = useState<ChartMenuRequest | null>(null);
   const [tableOpen, setTableOpen] = useState(false);
   const [nameOpen, setNameOpen] = useState(false);
+  const [linkGroupOpen, setLinkGroupOpen] = useState(false);
   const saveChartTemplate = useWorkspace((s) => s.saveChartTemplate);
   const onCellContextMenu = useCallback(
     (index: number, info: { clientX: number; clientY: number; time: number; price: number }) => {
@@ -360,11 +364,21 @@ export function ChartPage({ dockTab, onSelectDockTab, onSetDockTab, tradingOpen,
           onToggleTrading={onToggleTrading}
           onOpenTable={() => setTableOpen(true)}
           onSaveTemplate={() => setNameOpen(true)}
+          onOpenLinkGroup={() => setLinkGroupOpen(true)}
           onClose={() => setMenu(null)}
         />
       )}
       {tableOpen && <BarsTable onClose={() => setTableOpen(false)} />}
       {nameOpen && <TemplateNameDialog onSave={saveChartTemplate} onClose={() => setNameOpen(false)} />}
+      {linkGroupOpen && (
+        <LinkGroupDialog
+          open
+          current={linkGroupOf(state)}
+          available={groupsInUse(layout.charts)}
+          onPick={setLinkGroup}
+          onClose={() => setLinkGroupOpen(false)}
+        />
+      )}
 
       {tradingOpen && <TradingPanel symbol={state.symbol} />}
 
@@ -440,6 +454,9 @@ function ChartGrid({
 }: ChartGridProps) {
   const cells: ChartState[] = layout.charts.slice(0, cellCount(layout.grid));
   const multi = cells.length > 1;
+  // The focused cell's link group. When it has one, the crosshair mirror stays
+  // inside that group; when it has none, the mirror keeps reaching every cell.
+  const focusedGroup = linkGroupOf(cells[layout.activeChart] ?? {});
   const remoteFor = (symbol: string) =>
     remoteCrosshair && remoteCrosshair.symbol === symbol && remoteCrosshair.time !== null && remoteCrosshair.price !== null
       ? { time: remoteCrosshair.time, price: remoteCrosshair.price }
@@ -496,7 +513,10 @@ function ChartGrid({
                   ? null
                   : focused
                     ? remoteFor(chart.symbol)
-                    : (syncCrosshair ?? remoteFor(chart.symbol))
+                    : focusedGroup && linkGroupOf(chart) !== focusedGroup
+                      ? // A linked cell mirrors only into its own group.
+                        null
+                      : (syncCrosshair ?? remoteFor(chart.symbol))
               }
               onContextMenu={(info) => onContextMenu(index, info)}
               onCrosshairTime={focused ? onCrosshairTime : undefined}

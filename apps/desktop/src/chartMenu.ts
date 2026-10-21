@@ -27,6 +27,7 @@ export interface ChartMenuActions {
   removeIndicator(uid: string): void;
   toggleEvent(key: EventSwitchKey): void;
   openSettings(): void;
+  openLinkGroup(): void;
 }
 
 export interface ChartMenuContext {
@@ -43,6 +44,8 @@ export interface ChartMenuContext {
   indicators: { uid: string; name: string }[];
   templates: { id: string; name: string }[];
   eventOptions: EventOptions;
+  /** The focused cell's link group, or null when it is on its own. */
+  linkGroup: string | null;
   actions: ChartMenuActions;
 }
 
@@ -93,6 +96,7 @@ export function buildChartMenu(c: ChartMenuContext): MenuEntry[] {
     sep("s4"),
     action("table", "Table view", a.openTable),
     { kind: "toggle", id: "object-tree", label: "Object tree", checked: c.objectTreeOpen, onSelect: a.toggleObjectTree },
+    action("link-group", c.linkGroup ? `Link group “${c.linkGroup}”…` : "Link to a group…", a.openLinkGroup),
     sep("s5"),
     { kind: "label", id: "templates-label", label: "Chart template" },
     action("save-template", "Save current chart as template…", a.saveTemplate),

@@ -9,6 +9,7 @@ import { getActiveExportSource } from "./exportBridge";
 import { draftSideForPrice, useOrderDraft } from "./orderDraft";
 import { DEFAULT_DRAWING_STYLE } from "@ezyview/drawing-tools";
 import { uid, useWorkspace } from "./store";
+import { linkGroupOf } from "./linkGroups";
 
 /** Name of the vertical line "Lock vertical cursor line by time" drops on the chart. */
 const LOCK_NAME = "Cursor lock";
@@ -32,6 +33,8 @@ interface Props {
   onToggleTrading: () => void;
   onOpenTable: () => void;
   onSaveTemplate: () => void;
+  /** Open the link-group dialog for the focused cell. */
+  onOpenLinkGroup: () => void;
   onClose: () => void;
 }
 
@@ -40,7 +43,7 @@ interface Props {
  * store and the cursor position, and gives each one its action. Order items
  * only prefill the order ticket; they never send anything.
  */
-export function ChartMenuHost({ request, tradingOpen, dockTab, onOpenDockTab, onToggleTrading, onOpenTable, onSaveTemplate, onClose }: Props) {
+export function ChartMenuHost({ request, tradingOpen, dockTab, onOpenDockTab, onToggleTrading, onOpenTable, onSaveTemplate, onOpenLinkGroup, onClose }: Props) {
   const navigate = useNavigate();
   const ws = useWorkspace();
   const chart = ws.activeChart();
@@ -80,6 +83,7 @@ export function ChartMenuHost({ request, tradingOpen, dockTab, onOpenDockTab, on
     removeIndicator: ws.removeIndicator,
     toggleEvent: (key) => toggleEventSwitch(useWorkspace.getState().eventOptions, key),
     openSettings: () => navigate("/settings?tab=appearance"),
+    openLinkGroup: onOpenLinkGroup,
   };
 
   const entries = buildChartMenu({
@@ -93,6 +97,7 @@ export function ChartMenuHost({ request, tradingOpen, dockTab, onOpenDockTab, on
     indicators: chart.indicators.map((i) => ({ uid: i.uid, name: i.name ?? i.def.name })),
     templates: ws.chartTemplates.map((t) => ({ id: t.id, name: t.name })),
     eventOptions: ws.eventOptions,
+    linkGroup: linkGroupOf(chart),
     actions,
   });
 
