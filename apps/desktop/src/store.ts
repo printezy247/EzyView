@@ -662,6 +662,10 @@ function restorePineScripts(raw: unknown): Record<string, PineScriptRecord> {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return {};
   const out: Record<string, PineScriptRecord> = {};
   for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
+    // A literal "__proto__" key on `out` would fire Object.prototype's
+    // inherited setter and retarget the map's prototype instead of creating
+    // an own key — drop it like any other invalid entry.
+    if (id === "__proto__") continue;
     if (typeof value !== "object" || value === null || Array.isArray(value)) continue;
     const rec = value as Partial<PineScriptRecord>;
     if (typeof rec.id !== "string" || typeof rec.name !== "string" || typeof rec.source !== "string") continue;

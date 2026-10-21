@@ -284,6 +284,26 @@ describe("pine script persistence", () => {
     expect(messy.pineScripts["legacy"]?.source).toBe("src");
     expect(Object.keys(messy.pineScripts)).toEqual(["legacy"]);
   });
+
+  it("a __proto__ key is dropped without retargeting the map prototype", () => {
+    const blob = {
+      layouts: useWorkspace.getState().layouts,
+      activeLayoutId: useWorkspace.getState().activeLayoutId,
+      magnet: "off",
+      // JSON.parse defines an own "__proto__" data key (the setter never
+      // fires during parse) — exactly what a hand-edited blob looks like
+      // after a storage round-trip.
+      pineScripts: JSON.parse(
+        '{"ok":{"id":"ok","name":"N","source":"src","options":null,"plots":[],"orders":[],"error":null},' +
+          '"__proto__":{"id":"__proto__","name":"Evil","source":"evil","options":null,"plots":[],"orders":[],"error":null}}',
+      ) as Record<string, unknown>,
+    };
+    const merged = persistOptions().merge!(blob, useWorkspace.getState());
+    // The assignment must not have invoked Object.prototype.__proto__.
+    expect(Object.getPrototypeOf(merged.pineScripts)).toBe(Object.prototype);
+    expect(Object.keys(merged.pineScripts)).toEqual(["ok"]);
+    expect(merged.pineScripts["ok"]?.source).toBe("src");
+  });
 });
 
 describe("undo/redo drawings", () => {

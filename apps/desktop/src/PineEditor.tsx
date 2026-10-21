@@ -25,12 +25,21 @@ interface Props {
 }
 
 /**
- * Make the live script name safe for a download filename: strip path
- * separators and NUL, trim, and fall back when nothing valid remains.
+ * Make the live script name safe for a download filename: strip all C0
+ * control chars and the Windows-reserved set, trim, and fall back when
+ * nothing valid remains.
  */
 export const pineExportFilename = (name: string): string => {
-  // Filter, not a regex: a NUL in a character class trips no-control-regex.
-  const cleaned = [...name].filter((ch) => ch !== "/" && ch !== "\\" && ch !== "\u0000").join("").trim();
+  // Filter, not a regex: matching C0 controls in a character class trips
+  // no-control-regex.
+  const cleaned = [...name]
+    .filter((ch) => {
+      const code = ch.codePointAt(0) ?? 0;
+      if (code <= 0x1f) return false; // C0 controls, incl. NUL, \t, \r, \n
+      return !'<>:"/\\|?*'.includes(ch);
+    })
+    .join("")
+    .trim();
   return cleaned || "script";
 };
 
@@ -80,8 +89,9 @@ export function PineEditor({ onClose, bars, symbol }: Props) {
   // Marker updates need the Monaco API outside the mount effect (run button),
   // so it is stashed here alongside the editor it created.
   const monacoApi = useRef<typeof Monaco | null>(null);
-  // Position of the last failed run; cleared by the next successful one so
-  // debounced marker refreshes keep showing it until a clean run replaces it.
+  // Position of the last failed run; cleared by the next successful one and
+  // whenever a different document is loaded (switch/import/delete/restore),
+  // so a debounced refresh never stamps an old buffer's error onto a new one.
   const syntaxError = useRef<SyntaxLocation | null>(null);
   const lintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [scriptId, setScriptId] = useState<string>(() => uid());
@@ -259,7 +269,12 @@ export function PineEditor({ onClose, bars, symbol }: Props) {
       setName(parsed.name);
       setSource(parsed.source);
       editor.current?.setValue(parsed.source);
+      // The banner alone is not enough: the old document's syntax marker and
+      // backtest result must not be re-stamped onto the imported buffer.
+      syntaxError.current = null;
       setError(null);
+      setResult(null);
+      refreshMarkers();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -313,6 +328,12 @@ export function PineEditor({ onClose, bars, symbol }: Props) {
               restorePineScriptVersion(scriptId, index);
               setSource(entry.source);
               editor.current?.setValue(entry.source);
+              // Restored document: retire the failed-run marker and result of
+              // the version that was replaced, then re-lint what is now loaded.
+              syntaxError.current = null;
+              setError(null);
+              setResult(null);
+              refreshMarkers();
             }}
             className="rounded bg-ev-bg px-2 py-1.5 text-xs text-ev-strong outline-none"
           >
@@ -361,6 +382,12 @@ export function PineEditor({ onClose, bars, symbol }: Props) {
                 setName(s.name);
                 setSource(s.source);
                 editor.current?.setValue(s.source);
+                // New document, new slate: markers/results of the previous
+                // script must not describe this buffer.
+                syntaxError.current = null;
+                setError(null);
+                setResult(null);
+                refreshMarkers();
               }}
               className={`rounded px-2 py-1 text-xs ${
                 s.id === scriptId ? "bg-ev-accent text-white" : "bg-ev-line text-ev-text-2 hover:bg-ev-line-strong"
@@ -377,6 +404,12 @@ export function PineEditor({ onClose, bars, symbol }: Props) {
               setName("My Script");
               setSource(STARTER);
               editor.current?.setValue(STARTER);
+              // Fresh script: the deleted one's failure marker/result and
+              // banner do not belong on the starter buffer.
+              syntaxError.current = null;
+              setError(null);
+              setResult(null);
+              refreshMarkers();
             }}
             className="rounded bg-ev-line p-1.5 text-ev-text-2 hover:bg-ev-line-strong"
             aria-label="Delete script"
