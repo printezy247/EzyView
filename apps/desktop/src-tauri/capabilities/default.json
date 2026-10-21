@@ -12,6 +12,7 @@
     "sql:default",
     "dialog:default",
     "opener:default",
+    "core:window:allow-set-fullscreen",
     "notification:default"
   ]
 }

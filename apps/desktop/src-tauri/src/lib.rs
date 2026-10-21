@@ -5,19 +5,86 @@ static NEXT_WINDOW: AtomicU32 = AtomicU32::new(1);
 
 /// Open a chart in its own window so it can be moved to another monitor.
 /// `query` is the already-encoded query string, e.g. `?detached=BINANCE%3ABTCUSDT&res=1h`.
-#[tauri::command]
-async fn open_chart_window(app: AppHandle, query: String) -> Result<(), String> {
+fn spawn_chart_window(app: &AppHandle, query: &str) -> Result<tauri::WebviewWindow, String> {
     if !query.starts_with("?detached=") {
         return Err("unexpected window query".into());
     }
     let label = format!("chart-{}", NEXT_WINDOW.fetch_add(1, Ordering::Relaxed));
-    WebviewWindowBuilder::new(&app, label, WebviewUrl::App(format!("index.html{query}").into()))
+    WebviewWindowBuilder::new(app, label, WebviewUrl::App(format!("index.html{query}").into()))
         .title("EzyView chart")
         .inner_size(1100.0, 700.0)
         .min_inner_size(500.0, 350.0)
         .build()
-        .map_err(|e| e.to_string())?;
-    Ok(())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn open_chart_window(app: AppHandle, query: String) -> Result<(), String> {
+    spawn_chart_window(&app, &query).map(|_| ())
+}
+
+/// One chart window as it was when EzyView last quit: what it showed and where it sat.
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
+struct WindowRecord {
+    query: String,
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+}
+
+const WINDOWS_FILE: &str = "windows.json";
+const MAX_RESTORED_WINDOWS: usize = 8;
+
+/// Records worth reopening: a valid detached query, a sane size, capped in number.
+fn restorable(records: Vec<WindowRecord>) -> Vec<WindowRecord> {
+    records
+        .into_iter()
+        .filter(|r| r.query.starts_with("?detached=") && r.query.len() <= 512 && r.width >= 200 && r.height >= 150)
+        .take(MAX_RESTORED_WINDOWS)
+        .collect()
+}
+
+/// Remember every open chart window (symbol, interval, position, size) as the main window closes.
+fn save_chart_windows(app: &AppHandle) {
+    use tauri::Manager;
+    let mut records = Vec::new();
+    for (label, window) in app.webview_windows() {
+        if !label.starts_with("chart-") {
+            continue;
+        }
+        let (Ok(url), Ok(pos), Ok(size)) = (window.url(), window.outer_position(), window.outer_size()) else {
+            continue;
+        };
+        let Some(query) = url.query() else { continue };
+        records.push(WindowRecord { query: format!("?{query}"), x: pos.x, y: pos.y, width: size.width, height: size.height });
+    }
+    let Ok(dir) = app_data(app) else { return };
+    let path = dir.join(WINDOWS_FILE);
+    match serde_json::to_string(&records) {
+        Ok(json) if !records.is_empty() => {
+            let _ = std::fs::write(path, json);
+        }
+        _ => {
+            let _ = std::fs::remove_file(path);
+        }
+    }
+}
+
+/// Reopen the windows saved at last quit, each back on its monitor position.
+fn restore_chart_windows(app: &AppHandle) {
+    let Ok(dir) = app_data(app) else { return };
+    let path = dir.join(WINDOWS_FILE);
+    let Ok(text) = std::fs::read_to_string(&path) else { return };
+    // Consume the file first: a window that crashes on open must not loop forever.
+    let _ = std::fs::remove_file(&path);
+    let Ok(records) = serde_json::from_str::<Vec<WindowRecord>>(&text) else { return };
+    for record in restorable(records) {
+        if let Ok(window) = spawn_chart_window(app, &record.query) {
+            let _ = window.set_size(tauri::PhysicalSize::new(record.width, record.height));
+            let _ = window.set_position(tauri::PhysicalPosition::new(record.x, record.y));
+        }
+    }
 }
 
 /// Write the workspace snapshot MCP clients read. The file name is fixed, so
@@ -25,12 +92,10 @@ async fn open_chart_window(app: AppHandle, query: String) -> Result<(), String> 
 /// reader never sees half a file.
 #[tauri::command]
 fn write_snapshot(app: AppHandle, json: String) -> Result<(), String> {
-    use tauri::Manager;
     if json.len() > 20 * 1024 * 1024 {
         return Err("snapshot too large".into());
     }
-    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let dir = app_data(&app)?;
     let tmp = dir.join("workspace-snapshot.json.tmp");
     std::fs::write(&tmp, json).map_err(|e| e.to_string())?;
     std::fs::rename(&tmp, dir.join("workspace-snapshot.json")).map_err(|e| e.to_string())
@@ -122,7 +187,7 @@ fn relaunch_app(app: AppHandle) {
 fn factory_reset(app: AppHandle, window: tauri::WebviewWindow) -> Result<(), String> {
     window.clear_all_browsing_data().map_err(|e| e.to_string())?;
     let dir = app_data(&app)?;
-    for name in ["crash.log", "workspace-snapshot.json", SHELL_SETTINGS_FILE] {
+    for name in ["crash.log", "workspace-snapshot.json", WINDOWS_FILE, SHELL_SETTINGS_FILE] {
         match std::fs::remove_file(dir.join(name)) {
             Ok(()) => {}
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
@@ -315,7 +380,16 @@ pub fn run() {
                 }));
             }
             register_show_shortcut(app);
+            restore_chart_windows(app.handle());
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            use tauri::Manager;
+            if window.label() == "main" {
+                if let tauri::WindowEvent::CloseRequested { .. } = event {
+                    save_chart_windows(window.app_handle());
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             open_chart_window,
@@ -353,6 +427,20 @@ mod tests {
         assert!(out.len() <= LOG_CAP);
         assert!(out.ends_with("new\n"));
         assert!(!out.starts_with("old"));
+    }
+
+    #[test]
+    fn only_sane_chart_windows_are_restored() {
+        let rec = |query: &str, width: u32| WindowRecord { query: query.into(), x: -1920, y: 40, width, height: 700 };
+        let kept = restorable(vec![
+            rec("?detached=OANDA%3AXAUUSD&res=1h", 1100),
+            rec("?evil=1", 1100),
+            rec("?detached=X&res=1D", 50),
+        ]);
+        assert_eq!(kept.len(), 1);
+        assert_eq!(kept[0].x, -1920);
+        let many: Vec<_> = (0..20).map(|_| rec("?detached=X&res=1D", 800)).collect();
+        assert_eq!(restorable(many).len(), MAX_RESTORED_WINDOWS);
     }
 
     #[test]

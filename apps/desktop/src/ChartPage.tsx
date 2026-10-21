@@ -20,6 +20,8 @@ import type { ChartState } from "./store";
 import { useTrading, useTradingTicks } from "./trading";
 import { useApiKeys } from "./apiKeys";
 import { EMPTY_FUNDAMENTAL_EVENTS, fetchFundamentalEvents } from "./fundamentalEvents";
+import { publishCrosshair, subscribeCrosshair } from "./crosshairBus";
+import type { CrosshairMessage } from "./crosshairBus";
 import { setActiveExportSource } from "./exportBridge";
 
 interface ChartPageProps {
@@ -59,12 +61,17 @@ export function ChartPage({ watchlistOpen, domOpen, objectsOpen, tradingOpen, on
   // Focused cell's pointer position, mirrored into every other cell when on.
   const [syncCross, setSyncCross] = useState<{ time: number; price: number } | null>(null);
 
+  // Another window's pointer, mirrored onto cells showing the same symbol.
+  const [remoteCross, setRemoteCross] = useState<CrosshairMessage | null>(null);
+  useEffect(() => subscribeCrosshair((m) => setRemoteCross(m.time === null ? null : m)), []);
+
   const onCrosshairTime = useCallback((t: number | null) => setCrosshairTime(t), []);
 
   // Read at event time so the handler never re-subscribes on a toggle.
   const onCrosshairMove = useCallback((t: number | null, p: number | null) => {
     setCrosshairTime(t);
     const on = useWorkspace.getState().crosshairSync;
+    if (on) publishCrosshair(useWorkspace.getState().activeChart().symbol, t, p);
     if (!on || t === null || p === null) {
       // Same-ref no-op keeps an already-cleared mirror from re-rendering.
       setSyncCross((prev) => (prev === null ? prev : null));
@@ -197,6 +204,7 @@ export function ChartPage({ watchlistOpen, domOpen, objectsOpen, tradingOpen, on
             onCrosshairTime={onCrosshairTime}
             crosshairTime={crosshairTime}
             syncCrosshair={syncCross}
+            remoteCrosshair={remoteCross}
             syncOn={crosshairSync}
             onCrosshairMove={onCrosshairMove}
             onFocus={setActiveChart}
@@ -250,6 +258,8 @@ interface ChartGridProps {
   crosshairTime: number | null;
   /** Focused cell's pointer position, mirrored into the other cells. */
   syncCrosshair: { time: number; price: number } | null;
+  /** Crosshair from another EzyView window; used for cells on the same symbol. */
+  remoteCrosshair: CrosshairMessage | null;
   syncOn: boolean;
   onCrosshairMove: (t: number | null, p: number | null) => void;
   onFocus: (index: number) => void;
@@ -268,6 +278,7 @@ function ChartGrid({
   onCrosshairTime,
   crosshairTime,
   syncCrosshair,
+  remoteCrosshair,
   syncOn,
   onCrosshairMove,
   onFocus,
@@ -315,7 +326,13 @@ function ChartGrid({
               invertScale={chart.invertScale}
               timezone={chart.timezone}
               watermark={chart.watermark}
-              syncCrosshair={focused ? null : syncOn ? syncCrosshair : null}
+              syncCrosshair={
+                focused
+                  ? null
+                  : syncOn
+                    ? (syncCrosshair ?? (remoteCrosshair?.symbol === chart.symbol && remoteCrosshair.time !== null && remoteCrosshair.price !== null ? { time: remoteCrosshair.time, price: remoteCrosshair.price } : null))
+                    : null
+              }
               onCrosshairTime={focused ? onCrosshairTime : undefined}
               onCrosshairMove={focused ? onCrosshairMove : undefined}
             />

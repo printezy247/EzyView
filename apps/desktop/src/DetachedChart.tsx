@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Resolution } from "@ezyview/data-adapters";
 import { ChartHost } from "./ChartHost";
+import { publishCrosshair, subscribeCrosshair } from "./crosshairBus";
 import { PICKER_RESOLUTIONS, tickerOf } from "./data";
 
 interface Props {
@@ -11,6 +12,16 @@ interface Props {
 /** A single chart for a secondary window. It has no workspace of its own: pick an interval, nothing persists. */
 export function DetachedChart({ symbol, resolution: initial }: Props) {
   const [resolution, setResolution] = useState<Resolution>(initial);
+  // Mirror the main window's pointer when it is on this symbol; publish ours back.
+  const [remote, setRemote] = useState<{ time: number; price: number } | null>(null);
+  useEffect(
+    () =>
+      subscribeCrosshair((m) => {
+        if (m.symbol !== symbol) return;
+        setRemote(m.time === null || m.price === null ? null : { time: m.time, price: m.price });
+      }),
+    [symbol],
+  );
   document.title = `${tickerOf(symbol)} · EzyView`;
 
   return (
@@ -41,6 +52,8 @@ export function DetachedChart({ symbol, resolution: initial }: Props) {
           theme="dark"
           indicators={[]}
           drawings={[]}
+          syncCrosshair={remote}
+          onCrosshairMove={(t, p) => publishCrosshair(symbol, t, p)}
         />
       </div>
     </div>
