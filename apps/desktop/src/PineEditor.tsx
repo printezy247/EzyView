@@ -16,6 +16,7 @@ import { useWorkspace, uid } from "./store";
 import type { PineScriptRecord } from "./store";
 import { parseParamValues } from "./pineOptimize";
 import { exportScriptJson, parseScriptJson } from "./pineShare";
+import { sanitizeExportFilename } from "./exportUi";
 
 interface Props {
   onClose: () => void;
@@ -25,23 +26,11 @@ interface Props {
 }
 
 /**
- * Make the live script name safe for a download filename: strip all C0
- * control chars and the Windows-reserved set, trim, and fall back when
- * nothing valid remains.
+ * Make the live script name safe for a download filename. The rule now lives
+ * in exportUi.ts (shared with every Phase 8 export); "script" stays the Pine
+ * editor's fallback.
  */
-export const pineExportFilename = (name: string): string => {
-  // Filter, not a regex: matching C0 controls in a character class trips
-  // no-control-regex.
-  const cleaned = [...name]
-    .filter((ch) => {
-      const code = ch.codePointAt(0) ?? 0;
-      if (code <= 0x1f) return false; // C0 controls, incl. NUL, \t, \r, \n
-      return !'<>:"/\\|?*'.includes(ch);
-    })
-    .join("")
-    .trim();
-  return cleaned || "script";
-};
+export const pineExportFilename = (name: string): string => sanitizeExportFilename(name, "script");
 
 const STARTER = `//@version=6
 indicator("My Script", overlay=true)

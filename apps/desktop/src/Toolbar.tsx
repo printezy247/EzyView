@@ -1,14 +1,17 @@
 import type { Resolution } from "@ezyview/data-adapters";
 import type { ChartType } from "@ezyview/chart-engine";
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { ArrowLeftRight, CandlestickChart, Clock, Eye, FlaskConical, Search, Telescope } from "lucide-react";
+import { ArrowLeftRight, CandlestickChart, Clock, Eye, FlaskConical, Search, Share2, Telescope } from "lucide-react";
 import { CommandPalette } from "./CommandPalette";
 import type { CommandGroup } from "./CommandPalette";
 import { RESOLUTION_GROUPS, resolutionName } from "./data";
 import { Menu } from "./Menu";
 import type { MenuEntry } from "./Menu";
 import { SymbolSearch } from "./SymbolSearch";
+import { getActiveExportSource, getExportSourceVersion, subscribeExportSources } from "./exportBridge";
+import type { ExportSource } from "./exportBridge";
+import { saveChartPng } from "./exportUi";
 import { GRID_MODES } from "./layout";
 import type { ChartThemeName, CrosshairModeName, GridMode, PriceScaleModeName } from "./layout";
 import { useWorkspace } from "./store";
@@ -100,6 +103,33 @@ const toggle = (id: string, label: string, checked: boolean, onSelect: () => voi
   onSelect,
 });
 
+/** Bridge surface the Export menu drives; injectable so the builder stays testable. */
+export interface ExportMenuApi {
+  getActive: () => ExportSource | null;
+  savePng: (source: ExportSource) => void;
+}
+
+/**
+ * The Export menu's rows (Phase 8 starts with one). Actions only: the PNG
+ * entry is disabled until some chart cell has published an export source, and
+ * re-reads the bridge at click time so a stale render can't save nothing.
+ * The same array feeds the Ctrl+K palette through the groups below.
+ */
+export function buildExportEntries(api: ExportMenuApi): MenuEntry[] {
+  return [
+    {
+      kind: "action",
+      id: "save-png",
+      label: "Save chart image (PNG)",
+      disabled: api.getActive() === null,
+      onSelect: () => {
+        const source = api.getActive();
+        if (source) api.savePng(source);
+      },
+    },
+  ];
+}
+
 /**
  * The top bar is a quiet menu bar, not a row of buttons. Features are grouped
  * by intent, and every menu item is also reachable from the Ctrl+K palette:
@@ -108,12 +138,17 @@ const toggle = (id: string, label: string, checked: boolean, onSelect: () => voi
  *   Analysis                — research tools (fundamentals, options, replay, alerts)
  *   Trade                   — order ticket, depth of market, journal
  *   View                    — side panels, overlays, theme, windows
+ *   Export                  — save the focused chart (PNG first; formats grow later)
  */
 export function Toolbar(props: Props) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const pineActive = location.pathname === "/pine";
+  // Export registry changes (a chart cell mounts or focus moves) bump a
+  // version so this bar re-renders and the Export entry's disabled state
+  // tracks getActiveExportSource() instead of freezing at first paint.
+  useSyncExternalStore(subscribeExportSources, getExportSourceVersion, getExportSourceVersion);
 
   // Ctrl+Shift+K (Cmd+Shift+K on macOS) opens the feature search from anywhere.
   // Ctrl+K is reserved for the quick chart command input.
@@ -288,6 +323,8 @@ export function Toolbar(props: Props) {
     { kind: "action", id: "palette", label: "Search features…", hint: PALETTE_KEY, onSelect: () => setPaletteOpen(true) },
   ];
 
+  const exportEntries: MenuEntry[] = buildExportEntries({ getActive: getActiveExportSource, savePng: saveChartPng });
+
   const groups: CommandGroup[] = [
     { title: "Interval", entries: intervalEntries },
     { title: "Chart type", entries: typeEntries },
@@ -295,6 +332,7 @@ export function Toolbar(props: Props) {
     { title: "Analysis", entries: analysisEntries },
     { title: "Trade", entries: tradeEntries },
     { title: "View", entries: viewEntries.filter((e) => e.id !== "palette") },
+    { title: "Export", entries: exportEntries },
   ];
 
   const tradeOpen = props.panels.trading || props.panels.depth;
@@ -348,6 +386,7 @@ export function Toolbar(props: Props) {
         <Menu label="Analysis" icon={<Telescope size={13} aria-hidden />} triggerActive={analysisOpen} entries={analysisEntries} />
         <Menu label="Trade" icon={<ArrowLeftRight size={13} aria-hidden />} triggerActive={tradeOpen} entries={tradeEntries} />
         <Menu label="View" icon={<Eye size={13} aria-hidden />} entries={viewEntries} />
+        <Menu label="Export" icon={<Share2 size={13} aria-hidden />} entries={exportEntries} />
       </nav>
 
       {props.replayActive && (

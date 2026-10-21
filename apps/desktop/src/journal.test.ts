@@ -285,3 +285,13 @@ describe("clear", () => {
     expect(persisted()).toMatchObject({ entries: [], notes: [], savedReviews: [], propFirm: {} });
   });
 });
+
+describe("captureChart", () => {
+  // Phase 8 extracted the compositor into chartImage.ts; the delegate must
+  // keep the node-safe behaviour: no document, no snapshot, never a throw.
+  it("returns null in node instead of throwing", async () => {
+    const { captureChart } = await loadStore();
+    expect(typeof document).toBe("undefined");
+    expect(captureChart()).toBeNull();
+  });
+});

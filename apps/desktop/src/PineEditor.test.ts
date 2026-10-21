@@ -1,28 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { pineExportFilename } from "./PineEditor";
+import { sanitizeExportFilename } from "./exportUi";
 
+/**
+ * The sanitizer's cases moved with it to exportUi.test.ts (Phase 8 made it
+ * shared); this file keeps the Pine editor's wrapper itself pinned - same
+ * rule, "script" fallback.
+ */
 describe("pineExportFilename", () => {
-  it("strips path separators and NUL, then trims", () => {
-    expect(pineExportFilename("My Script")).toBe("My Script");
+  it("is the shared filename sanitizer with the script fallback", () => {
+    expect(pineExportFilename("My Script")).toBe(sanitizeExportFilename("My Script", "script"));
     expect(pineExportFilename("a/b")).toBe("ab");
-    expect(pineExportFilename("a\\b")).toBe("ab");
-    expect(pineExportFilename("a\u0000b")).toBe("ab");
-    expect(pineExportFilename("  spaced  ")).toBe("spaced");
-  });
-
-  it("strips every C0 control char and Windows-reserved filename char", () => {
-    expect(pineExportFilename("a<b>:c")).toBe("abc");
-    expect(pineExportFilename('a"b/c\\d|e?f*g')).toBe("abcdefg");
-    expect(pineExportFilename("a\r\nb")).toBe("ab"); // CR/LF survive JSON round-trips
-    expect(pineExportFilename("\ttab")).toBe("tab");
-    expect(pineExportFilename("a\u001fb")).toBe("ab"); // upper C0 bound
-    expect(pineExportFilename(" spaced \r\n ")).toBe("spaced"); // trim runs after stripping
-  });
-
-  it("falls back to 'script' when nothing valid remains", () => {
-    expect(pineExportFilename("")).toBe("script");
+    expect(pineExportFilename('<>:"/\\|?*')).toBe("script");
     expect(pineExportFilename("   ")).toBe("script");
-    expect(pineExportFilename("/\\")).toBe("script");
-    expect(pineExportFilename('<>:"/\\|?*\u0000\u001f')).toBe("script");
   });
 });
