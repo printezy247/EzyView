@@ -6,6 +6,7 @@ import { DetachedChart } from "./DetachedChart.js";
 import { installCrashCapture } from "./diagnostics.js";
 import { ErrorBoundary } from "./ErrorBoundary.js";
 import { parseShareLink } from "./shareLink.js";
+import { startAlertFeed } from "./alertFeed.js";
 import { startSnapshotSync } from "./snapshot.js";
 import { useWorkspace } from "./store.js";
 import { readDetached } from "./windows.js";
@@ -29,7 +30,10 @@ if (shared) {
 installCrashCapture();
 
 // Keep the MCP workspace snapshot current (main window only; no-op outside Tauri).
-if (!detached) startSnapshotSync();
+if (!detached) {
+  startSnapshotSync();
+  startAlertFeed();
+}
 
 // HashRouter survives Tauri's asset-protocol origins, where history routing
 // cannot: the path lives in the fragment and never touches the filesystem.

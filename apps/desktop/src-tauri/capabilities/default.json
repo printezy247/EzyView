@@ -11,6 +11,7 @@
     "shell:allow-open",
     "sql:default",
     "dialog:default",
-    "opener:default"
+    "opener:default",
+    "notification:default"
   ]
 }

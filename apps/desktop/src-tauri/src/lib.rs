@@ -36,6 +36,102 @@ fn write_snapshot(app: AppHandle, json: String) -> Result<(), String> {
     std::fs::rename(&tmp, dir.join("workspace-snapshot.json")).map_err(|e| e.to_string())
 }
 
+/// Shell settings the user can change in Settings → Desktop. They are read
+/// before the webview exists (they become environment variables WebKitGTK and
+/// GLib honour), so they live in a plain JSON file, not in the webview store.
+#[derive(serde::Serialize, serde::Deserialize, Default, Clone, Debug, PartialEq)]
+#[serde(default, rename_all = "camelCase")]
+struct ShellSettings {
+    /// `Some(false)` turns GPU compositing off (fixes blank/flickering windows on some drivers).
+    hardware_acceleration: Option<bool>,
+    /// `http://`, `https://` or `socks5://` proxy for the app's network traffic; empty = none.
+    proxy: String,
+}
+
+const SHELL_SETTINGS_FILE: &str = "shell-settings.json";
+
+fn valid_proxy(proxy: &str) -> bool {
+    proxy.is_empty()
+        || (proxy.len() <= 256
+            && ["http://", "https://", "socks5://"].iter().any(|p| proxy.starts_with(p))
+            && !proxy.chars().any(|c| c.is_whitespace() || c.is_control()))
+}
+
+/// Linux data folder before the app handle exists (mirrors Tauri's `app_data_dir`).
+#[cfg(target_os = "linux")]
+fn early_data_dir() -> Option<std::path::PathBuf> {
+    let base = std::env::var_os("XDG_DATA_HOME")
+        .map(std::path::PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|h| std::path::PathBuf::from(h).join(".local/share")))?;
+    Some(base.join("com.printezy247.ezyview"))
+}
+
+/// Apply saved shell settings before Tauri starts. Linux only: the variables
+/// are WebKitGTK / GLib specific. A missing or malformed file changes nothing.
+#[cfg(target_os = "linux")]
+fn apply_shell_settings_early() {
+    let Some(dir) = early_data_dir() else { return };
+    let Ok(text) = std::fs::read_to_string(dir.join(SHELL_SETTINGS_FILE)) else { return };
+    let Ok(settings) = serde_json::from_str::<ShellSettings>(&text) else { return };
+    if settings.hardware_acceleration == Some(false) {
+        std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+    }
+    if !settings.proxy.is_empty() && valid_proxy(&settings.proxy) {
+        for var in ["http_proxy", "https_proxy", "all_proxy"] {
+            std::env::set_var(var, &settings.proxy);
+        }
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn apply_shell_settings_early() {}
+
+fn app_data(app: &AppHandle) -> Result<std::path::PathBuf, String> {
+    use tauri::Manager;
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir)
+}
+
+#[tauri::command]
+fn get_shell_settings(app: AppHandle) -> Result<ShellSettings, String> {
+    let text = std::fs::read_to_string(app_data(&app)?.join(SHELL_SETTINGS_FILE)).unwrap_or_default();
+    Ok(serde_json::from_str(&text).unwrap_or_default())
+}
+
+#[tauri::command]
+fn set_shell_settings(app: AppHandle, settings: ShellSettings) -> Result<(), String> {
+    if !valid_proxy(&settings.proxy) {
+        return Err("proxy must be http://, https:// or socks5:// with no spaces".into());
+    }
+    let json = serde_json::to_string_pretty(&settings).map_err(|e| e.to_string())?;
+    std::fs::write(app_data(&app)?.join(SHELL_SETTINGS_FILE), json).map_err(|e| e.to_string())
+}
+
+/// Restart so saved shell settings take effect.
+#[tauri::command]
+fn relaunch_app(app: AppHandle) {
+    app.restart();
+}
+
+/// Factory reset: wipe the webview's local data (workspace, journal, layouts)
+/// and EzyView's own files, then restart. Keyring secrets are left alone and
+/// are removed from Settings → Data.
+#[tauri::command]
+fn factory_reset(app: AppHandle, window: tauri::WebviewWindow) -> Result<(), String> {
+    window.clear_all_browsing_data().map_err(|e| e.to_string())?;
+    let dir = app_data(&app)?;
+    for name in ["crash.log", "workspace-snapshot.json", SHELL_SETTINGS_FILE] {
+        match std::fs::remove_file(dir.join(name)) {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => return Err(e.to_string()),
+        }
+    }
+    app.restart();
+}
+
 const LOG_CAP: usize = 256 * 1024;
 
 /// Keep the newest `LOG_CAP` bytes, cutting at a line start (and a char boundary).
@@ -174,12 +270,36 @@ fn api_key_set(name: String, value: String) -> Result<(), String> {
     entry.set_password(value).map_err(|e| e.to_string())
 }
 
+/// Ctrl+Alt+E brings the main window to the front from anywhere. Registration
+/// can fail (another app owns the combo, Wayland): the app just runs without it.
+fn register_show_shortcut(app: &tauri::App) {
+    use tauri::Manager;
+    use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+    let combo = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyE);
+    let plugin = tauri_plugin_global_shortcut::Builder::new()
+        .with_handler(move |app, shortcut, event| {
+            if shortcut == &combo && event.state() == ShortcutState::Pressed {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.unminimize();
+                    let _ = window.set_focus();
+                }
+            }
+        })
+        .build();
+    if app.handle().plugin(plugin).is_ok() {
+        let _ = app.global_shortcut().register(combo);
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    apply_shell_settings_early();
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_sql::Builder::default().build())
         .setup(|app| {
             // Rust panics (release builds abort) land in the same local log.
@@ -194,6 +314,7 @@ pub fn run() {
                     }
                 }));
             }
+            register_show_shortcut(app);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -204,7 +325,11 @@ pub fn run() {
             write_snapshot,
             append_log,
             read_log,
-            clear_log
+            clear_log,
+            get_shell_settings,
+            set_shell_settings,
+            relaunch_app,
+            factory_reset
         ])
         .run(tauri::generate_context!())
         .expect("error while running EzyView");
@@ -228,6 +353,24 @@ mod tests {
         assert!(out.len() <= LOG_CAP);
         assert!(out.ends_with("new\n"));
         assert!(!out.starts_with("old"));
+    }
+
+    #[test]
+    fn proxy_values_are_checked() {
+        for ok in ["", "http://127.0.0.1:8080", "socks5://proxy.local:1080", "https://p.example"] {
+            assert!(valid_proxy(ok), "should accept {ok:?}");
+        }
+        for bad in ["ftp://x", "127.0.0.1:8080", "http://a b", "http://x\n", "javascript:alert(1)"] {
+            assert!(!valid_proxy(bad), "should reject {bad:?}");
+        }
+    }
+
+    #[test]
+    fn shell_settings_tolerate_missing_fields() {
+        let s: ShellSettings = serde_json::from_str(r#"{"proxy":"http://p:1"}"#).unwrap();
+        assert_eq!(s.hardware_acceleration, None);
+        assert_eq!(s.proxy, "http://p:1");
+        assert_eq!(serde_json::from_str::<ShellSettings>("{}").unwrap(), ShellSettings::default());
     }
 
     #[test]
