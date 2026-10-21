@@ -1,6 +1,7 @@
 import type { ExportSource } from "./exportBridge";
 import { candlesToCsv, candlesToJson } from "./chartDataExport";
 import type { Layout } from "./layout";
+import { buildShareLink } from "./shareLink";
 import { exportLayoutJson } from "./layoutShare";
 
 /**
@@ -104,4 +105,32 @@ export function pickTextFile(accept: string): Promise<string | null> {
     input.addEventListener("cancel", () => resolve(null));
     input.click();
   });
+}
+
+/**
+ * Copy text to the clipboard. The async clipboard API is absent on insecure
+ * origins and in some webviews; then the text downloads as a .txt instead so
+ * the user is never left with nothing. Never throws.
+ */
+export async function copyText(text: string, fallbackName: string): Promise<boolean> {
+  try {
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Permission denied or document not focused: fall through to the download.
+  }
+  downloadBlob(new Blob([text], { type: "text/plain;charset=utf-8" }), fallbackName);
+  return false;
+}
+
+/** Link that reopens this chart's symbol and interval in the app. */
+export function chartShareLink(source: ExportSource): string {
+  return buildShareLink(`${window.location.origin}${window.location.pathname}`, source.meta());
+}
+
+/** Copy the focused chart's share link. */
+export function copyChartLink(source: ExportSource): void {
+  void copyText(chartShareLink(source), "chart-link.txt");
 }

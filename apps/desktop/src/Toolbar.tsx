@@ -11,7 +11,7 @@ import type { MenuEntry } from "./Menu";
 import { SymbolSearch } from "./SymbolSearch";
 import { getActiveExportSource, getExportSourceVersion, subscribeExportSources } from "./exportBridge";
 import type { ExportSource } from "./exportBridge";
-import { pickTextFile, saveChartCsv, saveChartJson, saveChartPng, saveLayoutJson } from "./exportUi";
+import { copyChartLink, pickTextFile, saveChartCsv, saveChartJson, saveChartPng, saveLayoutJson } from "./exportUi";
 import { parseLayoutJson } from "./layoutShare";
 import { getIndicator } from "@ezyview/indicators";
 import { GRID_MODES } from "./layout";
@@ -111,6 +111,7 @@ export interface ExportMenuApi {
   savePng: (source: ExportSource) => void;
   saveCsv: (source: ExportSource) => void;
   saveJson: (source: ExportSource) => void;
+  copyLink: (source: ExportSource) => void;
   saveLayout: () => void;
   importLayout: () => void;
 }
@@ -136,6 +137,7 @@ export function buildExportEntries(api: ExportMenuApi): MenuEntry[] {
     action("save-png", "Save chart image (PNG)", api.savePng),
     action("save-csv", "Export chart data (CSV)", api.saveCsv),
     action("save-json", "Export chart data (JSON)", api.saveJson),
+    action("copy-link", "Copy chart link", api.copyLink),
     { kind: "separator", id: "s-layout" },
     { kind: "action", id: "save-layout", label: "Export layout (JSON)", onSelect: api.saveLayout },
     { kind: "action", id: "import-layout", label: "Import layout…", onSelect: api.importLayout },
@@ -340,6 +342,7 @@ export function Toolbar(props: Props) {
     savePng: saveChartPng,
     saveCsv: saveChartCsv,
     saveJson: saveChartJson,
+    copyLink: copyChartLink,
     saveLayout: () => saveLayoutJson(useWorkspace.getState().activeLayout()),
     importLayout: () => {
       void pickTextFile(".json,application/json").then((text) => {
