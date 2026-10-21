@@ -9,7 +9,8 @@ import type { PinePlot } from "@ezyview/pine-transpiler";
 import { THEME_OF, uid as newId, useWorkspace } from "./store";
 import type { ActiveIndicator, PineScriptRecord } from "./store";
 import type { ChartThemeName, CrosshairModeName, PriceScaleModeName } from "./layout";
-import { loadHistory, tickerOf } from "./data";
+import { brokerFeed, loadHistory, quoteOf, RESOLUTION_SECONDS, tickerOf } from "./data";
+import { mergeQuote } from "./liveBars";
 import { summarizeChart } from "./chartSummary";
 import { EMPTY_FUNDAMENTAL_EVENTS } from "./fundamentalEvents";
 import { registerExportSource } from "./exportBridge";
@@ -309,6 +310,42 @@ export function ChartHost(props: Props) {
     chartRef.current?.setData(bars);
     setShown(bars);
   }, [props.replayBar]);
+
+  // Live last bar: once a second, fold the feed's price into the newest candle
+  // (a new candle opens on a new period). Replay pauses it. The demo feed's
+  // quotes are not tied to its synthetic history, so the first live price is
+  // anchored to the last close; a broker feed needs no anchor.
+  useEffect(() => {
+    if (props.replayBar != null) return;
+    let cancelled = false;
+    let busy = false;
+    let anchor: number | null = null;
+    const step = RESOLUTION_SECONDS[props.resolution];
+    const timer = setInterval(() => {
+      if (busy || historyRef.current.length === 0) return;
+      busy = true;
+      void quoteOf(props.symbol)
+        .then((q) => {
+          const history = historyRef.current;
+          if (cancelled || !q || history.length === 0) return;
+          if (!brokerFeed() && anchor === null) anchor = history[history.length - 1]!.close - q.last;
+          const price = q.last + (brokerFeed() ? 0 : (anchor ?? 0));
+          const merged = mergeQuote(history, price, q.time || Math.floor(Date.now() / 1000), step);
+          if (merged === history) return;
+          historyRef.current = merged;
+          chartRef.current?.setData(merged);
+          setShown(merged);
+        })
+        .catch(() => {})
+        .finally(() => {
+          busy = false;
+        });
+    }, 1000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [props.symbol, props.resolution, props.replayBar]);
 
   useEffect(() => {
     const chart = chartRef.current;

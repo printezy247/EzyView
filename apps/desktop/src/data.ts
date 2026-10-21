@@ -75,8 +75,15 @@ export async function searchSymbols(query: string): Promise<SymbolInfo[]> {
 }
 
 /** One quote, from whichever feed the chart is on. */
+/** Demo symbols already ticking; the demo feed only moves while subscribed to. */
+const ticking = new Set<string>();
+
 export async function quoteOf(symbol: string): Promise<Quote | null> {
   if (brokerFeed()) return getMt5().data.getQuote(symbol);
+  if (!ticking.has(symbol)) {
+    ticking.add(symbol);
+    void market.subscribe([symbol], () => {});
+  }
   return market.getQuote(symbol);
 }
 
