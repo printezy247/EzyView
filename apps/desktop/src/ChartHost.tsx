@@ -88,6 +88,9 @@ export function ChartHost(props: Props) {
   const lastClickAtRef = useRef(0);
   // Full loaded history, so replay can reveal a prefix without a refetch.
   const historyRef = useRef<Candle[]>([]);
+  // "symbol|interval" the bars in historyRef belong to; live polling waits for
+  // it to match the props so a quote is never folded into another series.
+  const historyKeyRef = useRef<string | null>(null);
   // The replay-visible slice (what the chart shows), mirrored for the export
   // bridge — exporters must not see bars hidden behind a replay cursor.
   const shownRef = useRef<Candle[]>([]);
@@ -289,6 +292,8 @@ export function ChartHost(props: Props) {
       meta: () => ({ symbol: propsRef.current.symbol, resolution: propsRef.current.resolution }),
       view: {
         showRange: async (preset) => {
+          // Replay owns the visible bars; loading history under it would reveal the future.
+          if (propsRef.current.replayBar != null) return;
           const history = historyRef.current;
           const chart = chartRef.current;
           if (!chart || history.length === 0) return;
@@ -303,6 +308,7 @@ export function ChartHost(props: Props) {
           chart.setVisibleTimeRange(from, last + step * 3);
         },
         goTo: async (time) => {
+          if (propsRef.current.replayBar != null) return;
           const step = RESOLUTION_SECONDS[propsRef.current.resolution];
           await ensureHistory(time - step * 60);
           chartRef.current?.scrollToTime(time);
@@ -322,6 +328,7 @@ export function ChartHost(props: Props) {
       const more = await loadHistory(symbol, resolution, need);
       if (propsRef.current.symbol !== symbol || propsRef.current.resolution !== resolution) return;
       if (more.length <= historyRef.current.length) return;
+      if (propsRef.current.replayBar != null) return;
       historyRef.current = more;
       chartRef.current?.setData(more);
       setShown(more);
@@ -333,6 +340,7 @@ export function ChartHost(props: Props) {
     void loadHistory(props.symbol, props.resolution).then((candles: Candle[]) => {
       if (cancelled) return;
       historyRef.current = candles;
+      historyKeyRef.current = `${props.symbol}|${props.resolution}`;
       // A stale replay cursor from another symbol would index past the end.
       const cursor = useWorkspace.getState().replayBar;
       const bars = sliceForReplay(candles, cursor);
@@ -364,11 +372,13 @@ export function ChartHost(props: Props) {
     const step = RESOLUTION_SECONDS[props.resolution];
     const timer = setInterval(() => {
       if (busy || historyRef.current.length === 0) return;
+      if (historyKeyRef.current !== `${props.symbol}|${props.resolution}`) return;
       busy = true;
       void quoteOf(props.symbol)
         .then((q) => {
           const history = historyRef.current;
           if (cancelled || !q || history.length === 0) return;
+          if (historyKeyRef.current !== `${props.symbol}|${props.resolution}`) return;
           if (!brokerFeed() && anchor === null) anchor = history[history.length - 1]!.close - q.last;
           const price = q.last + (brokerFeed() ? 0 : (anchor ?? 0));
           const merged = mergeQuote(history, price, q.time || Math.floor(Date.now() / 1000), step);

@@ -16,7 +16,9 @@ const lit = "bg-ev-raised font-medium text-ev-strong";
  */
 export function ChartBottomBar() {
   useSyncExternalStore(subscribeExportSources, getExportSourceVersion, getExportSourceVersion);
-  const view = getActiveExportSource()?.view;
+  // Range and go-to would reveal bars hidden behind a replay cursor, so they wait.
+  const replaying = useWorkspace((s) => s.replayBar !== null);
+  const view = replaying ? undefined : getActiveExportSource()?.view;
   const priceScale = useWorkspace((s) => s.activeChart().priceScale ?? "normal");
   const timezone = useWorkspace((s) => s.activeChart().timezone);
   const updateActive = useWorkspace((s) => s.updateActive);
