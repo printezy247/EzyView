@@ -29,7 +29,11 @@
     "build:mcp": "npm run build -w @ezyview/mcp-server"
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.8",
     "@types/node": "^22.15.0",
+    "happy-dom": "^21.0.4",
     "oxfmt": "^0.3.0",
     "oxlint": "^1.68.0",
     "typescript": "^5.9.3",

@@ -11,8 +11,14 @@ const pkg = (name: string): string => fileURLToPath(new URL(`./packages/${name}/
 export default defineConfig({
   test: {
     include: ["packages/*/src/**/*.test.ts", "apps/desktop/src/**/*.test.{ts,tsx}"],
+    // The default is `node`; a test that needs a DOM opts in with a
+    // `@vitest-environment happy-dom` docblock. Keeping the default as `node`
+    // keeps the pure-logic tests fast and free of a DOM's surprises.
     environment: "node",
     globals: true,
+    // happy-dom does not implement these, and the components under test only
+    // need them to exist.
+    setupFiles: ["./vitest.setup.ts"],
   },
   resolve: {
     alias: {
