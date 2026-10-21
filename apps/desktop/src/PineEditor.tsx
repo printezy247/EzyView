@@ -169,6 +169,14 @@ export function PineEditor({ onClose, bars, symbol }: Props) {
       // A strategy's orders become fills; an indicator simply has none.
       const tested = backtest(scriptRun.orders, { close: ctx.close });
       setResult(tested);
+      // runPine mutates ctx.inputs in place; keep the scalar entries so the
+      // tester panel (and the optimizer) can show/apply what this run used.
+      const inputs: Record<string, number | string | boolean> = {};
+      for (const [key, value] of Object.entries(ctx.inputs)) {
+        if (typeof value === "number" || typeof value === "string" || typeof value === "boolean") {
+          inputs[key] = value;
+        }
+      }
       setPineResult(scriptId, {
         id: scriptId,
         name,
@@ -177,6 +185,7 @@ export function PineEditor({ onClose, bars, symbol }: Props) {
         plots: scriptRun.plots,
         orders: scriptRun.orders,
         error: null,
+        inputs,
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -280,16 +289,18 @@ export function PineEditor({ onClose, bars, symbol }: Props) {
         </div>
       ) : null}
 
-      {result && result.trades.length > 0 && <StrategyTester result={result} />}
+      {result && result.trades.length > 0 && <StrategyTester result={result} inputs={record?.inputs} />}
     </section>
   );
 }
 
-/** Backtest readout: headline metrics plus the most recent fills. */
-function StrategyTester({ result }: { result: BacktestResult }) {
+/** Backtest readout: equity curve, headline metrics, the input snapshot, recent fills. */
+function StrategyTester({ result, inputs }: { result: BacktestResult; inputs?: Record<string, number | string | boolean> }) {
   const recent = result.trades.toReversed().slice(0, 5);
+  const inputEntries = Object.entries(inputs ?? {});
   return (
     <div className="border-t border-ev-raised px-4 py-2 text-xs">
+      <EquityCurve equity={result.equity} />
       <div className="mb-1.5 flex items-center gap-4 text-ev-text-2">
         <span className="font-semibold uppercase tracking-wider text-ev-faint">Strategy Tester</span>
         <Metric label="Trades" value={String(result.trades.length)} />
@@ -306,6 +317,16 @@ function StrategyTester({ result }: { result: BacktestResult }) {
         <Metric label="Max DD" value={`${(result.maxDrawdown * 100).toFixed(2)}%`} tone="neg" />
         <Metric label="Final equity" value={result.finalEquity.toFixed(2)} />
       </div>
+      {inputEntries.length > 0 && (
+        <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+          <span className="text-ev-faint">Inputs</span>
+          {inputEntries.map(([key, value]) => (
+            <span key={key} className="rounded bg-ev-line px-1.5 py-0.5 text-ev-text-2">
+              {key}={String(value)}
+            </span>
+          ))}
+        </div>
+      )}
       <table className="w-full text-left tabular-nums">
         <thead>
           <tr className="text-[11px] uppercase tracking-wider text-ev-faint">
@@ -335,6 +356,58 @@ function StrategyTester({ result }: { result: BacktestResult }) {
         </tbody>
       </table>
     </div>
+  );
+}
+
+/**
+ * Inline equity polyline of per-bar cash (the JournalStatsView approach,
+ * smaller). Green when the curve ends flat-or-up vs its start, red otherwise.
+ * Single-point and flat arrays stay inside the viewBox — no divide-by-zero.
+ */
+function EquityCurve({ equity }: { equity: readonly number[] }) {
+  if (equity.length === 0) return null;
+  const W = 100;
+  const H = 40;
+  const min = Math.min(...equity);
+  const max = Math.max(...equity);
+  const span = max - min || 1; // flat curve: pin to the mid-line
+  const x = (i: number): number => (equity.length === 1 ? W / 2 : (i / (equity.length - 1)) * W);
+  const y = (v: number): number => ((max - v) / span) * H;
+  const coords =
+    equity.length === 1
+      ? `${x(0).toFixed(2)},${y(equity[0]!).toFixed(2)}`
+      : equity.map((v, i) => `${x(i).toFixed(2)},${y(v).toFixed(2)}`).join(" ");
+  const first = equity[0]!;
+  const last = equity[equity.length - 1]!;
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      className="mb-1.5 h-10 w-full"
+      role="img"
+      aria-label={`Equity curve ending at ${last.toFixed(2)}`}
+      preserveAspectRatio="none"
+    >
+      {equity.length === 1 ? (
+        // A lone point has no length; a short segment keeps it visible.
+        <line
+          x1={x(0) - 2}
+          y1={y(last)}
+          x2={x(0) + 2}
+          y2={y(last)}
+          stroke={last >= first ? "#3fb950" : "#f85149"}
+          strokeWidth={1.5}
+          vectorEffect="non-scaling-stroke"
+        />
+      ) : (
+        <polyline
+          points={coords}
+          fill="none"
+          stroke={last >= first ? "#3fb950" : "#f85149"}
+          strokeWidth={1.5}
+          vectorEffect="non-scaling-stroke"
+        />
+      )}
+    </svg>
   );
 }
 

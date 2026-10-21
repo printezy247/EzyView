@@ -25,6 +25,12 @@ export interface PineScriptRecord {
   orders: PineOrder[];
   /** Transpile or runtime error message, if the last run failed. */
   error: string | null;
+  /**
+   * Scalar `input.*` values from the last successful run, keyed as the
+   * runtime keys them (declaration order / `id` kwarg). Absent on records
+   * saved before this snapshot existed, or after a failed run.
+   */
+  inputs?: Record<string, number | string | boolean>;
 }
 
 /** A symbol tracked in the watchlist panel. */
@@ -499,7 +505,17 @@ export const useWorkspace = create<WorkspaceStore>()(
             pineScripts: {
               ...s.pineScripts,
               // Keep the last run's output when only the source changed.
-              [id]: { id, name, source, options: existing?.options ?? null, plots: existing?.plots ?? [], orders: existing?.orders ?? [], error: existing?.error ?? null },
+              [id]: {
+                id,
+                name,
+                source,
+                options: existing?.options ?? null,
+                plots: existing?.plots ?? [],
+                orders: existing?.orders ?? [],
+                error: existing?.error ?? null,
+                // Spread so a record without the snapshot stays without it.
+                ...(existing?.inputs !== undefined ? { inputs: existing.inputs } : {}),
+              },
             },
           };
         }),

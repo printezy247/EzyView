@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { useWorkspace } from "./store";
+import type { PineScriptRecord } from "./store";
 import type { Drawing } from "@ezyview/drawing-tools";
 
 const line = (id: string): Drawing => ({
@@ -79,6 +80,47 @@ describe("drawing selection and editing", () => {
     expect(s.activeChart().drawings[1]?.id).not.toBe("i1"); // remapped
     s.undoDrawing();
     expect(useWorkspace.getState().activeChart().drawings.length).toBe(1);
+  });
+});
+
+/** A Pine record as `setPineResult` expects it (the post-run shape). */
+const pineRecord = (over: Partial<PineScriptRecord> = {}): PineScriptRecord => ({
+  id: "p1",
+  name: "Script",
+  source: "src",
+  options: null,
+  plots: [],
+  orders: [],
+  error: null,
+  ...over,
+});
+
+describe("pine script inputs snapshot", () => {
+  it("setPineResult stores the scalar inputs map and it survives a JSON round-trip", () => {
+    const inputs = { len: 14, longs: true, mode: "fast" };
+    useWorkspace.getState().setPineResult("p1", pineRecord({ id: "p1", inputs }));
+    expect(useWorkspace.getState().pineScripts["p1"]?.inputs).toEqual(inputs);
+    // Persisted blobs are JSON — the snapshot must survive encode/decode.
+    const blob = JSON.parse(JSON.stringify(useWorkspace.getState().pineScripts["p1"])) as PineScriptRecord;
+    expect(blob.inputs).toEqual(inputs);
+  });
+
+  it("an old blob without inputs restores with inputs undefined", () => {
+    // Pre-Task-3 shape: no `inputs` key at all.
+    const oldBlob = JSON.parse(
+      JSON.stringify({ id: "p2", name: "Old", source: "src", options: null, plots: [], orders: [], error: null }),
+    ) as PineScriptRecord;
+    useWorkspace.getState().setPineResult("p2", oldBlob);
+    expect(useWorkspace.getState().pineScripts["p2"]?.inputs).toBeUndefined();
+  });
+
+  it("savePineScript keeps the last run's inputs snapshot", () => {
+    useWorkspace.getState().setPineResult("p3", pineRecord({ id: "p3", inputs: { len: 20 } }));
+    useWorkspace.getState().savePineScript("p3", "Renamed", "new src");
+    const saved = useWorkspace.getState().pineScripts["p3"];
+    expect(saved?.name).toBe("Renamed");
+    expect(saved?.source).toBe("new src");
+    expect(saved?.inputs).toEqual({ len: 20 });
   });
 });
 
