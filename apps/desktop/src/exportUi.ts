@@ -1,4 +1,5 @@
 import type { ExportSource } from "./exportBridge";
+import { candlesToCsv, candlesToJson } from "./chartDataExport";
 
 /**
  * Make a user-provided name safe for a download filename: strip all C0
@@ -57,4 +58,21 @@ export function saveChartPng(source: ExportSource): void {
   const png = source.getPng();
   if (!png) return;
   downloadDataUrl(png, chartPngFilename(source.meta()));
+}
+
+/** Save name for chart data: `chart-<symbol>-<resolution>.<ext>`. */
+export function chartDataFilename(meta: { symbol: string; resolution: string }, ext: "csv" | "json"): string {
+  return `${sanitizeExportFilename(`chart-${meta.symbol}-${meta.resolution}`, "chart")}.${ext}`;
+}
+
+/** Save the bars the user can see (replay-sliced) as CSV. */
+export function saveChartCsv(source: ExportSource): void {
+  const blob = new Blob([candlesToCsv(source.getCandles())], { type: "text/csv;charset=utf-8" });
+  downloadBlob(blob, chartDataFilename(source.meta(), "csv"));
+}
+
+/** Save the bars the user can see (replay-sliced) as JSON. */
+export function saveChartJson(source: ExportSource): void {
+  const blob = new Blob([candlesToJson(source.getCandles(), source.meta())], { type: "application/json" });
+  downloadBlob(blob, chartDataFilename(source.meta(), "json"));
 }

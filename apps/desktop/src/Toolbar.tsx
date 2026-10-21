@@ -11,7 +11,7 @@ import type { MenuEntry } from "./Menu";
 import { SymbolSearch } from "./SymbolSearch";
 import { getActiveExportSource, getExportSourceVersion, subscribeExportSources } from "./exportBridge";
 import type { ExportSource } from "./exportBridge";
-import { saveChartPng } from "./exportUi";
+import { saveChartCsv, saveChartJson, saveChartPng } from "./exportUi";
 import { GRID_MODES } from "./layout";
 import type { ChartThemeName, CrosshairModeName, GridMode, PriceScaleModeName } from "./layout";
 import { useWorkspace } from "./store";
@@ -107,6 +107,8 @@ const toggle = (id: string, label: string, checked: boolean, onSelect: () => voi
 export interface ExportMenuApi {
   getActive: () => ExportSource | null;
   savePng: (source: ExportSource) => void;
+  saveCsv: (source: ExportSource) => void;
+  saveJson: (source: ExportSource) => void;
 }
 
 /**
@@ -116,17 +118,20 @@ export interface ExportMenuApi {
  * The same array feeds the Ctrl+K palette through the groups below.
  */
 export function buildExportEntries(api: ExportMenuApi): MenuEntry[] {
-  return [
-    {
-      kind: "action",
-      id: "save-png",
-      label: "Save chart image (PNG)",
-      disabled: api.getActive() === null,
-      onSelect: () => {
-        const source = api.getActive();
-        if (source) api.savePng(source);
-      },
+  const action = (id: string, label: string, run: (source: ExportSource) => void): MenuEntry => ({
+    kind: "action",
+    id,
+    label,
+    disabled: api.getActive() === null,
+    onSelect: () => {
+      const source = api.getActive();
+      if (source) run(source);
     },
+  });
+  return [
+    action("save-png", "Save chart image (PNG)", api.savePng),
+    action("save-csv", "Export chart data (CSV)", api.saveCsv),
+    action("save-json", "Export chart data (JSON)", api.saveJson),
   ];
 }
 
@@ -323,7 +328,12 @@ export function Toolbar(props: Props) {
     { kind: "action", id: "palette", label: "Search features…", hint: PALETTE_KEY, onSelect: () => setPaletteOpen(true) },
   ];
 
-  const exportEntries: MenuEntry[] = buildExportEntries({ getActive: getActiveExportSource, savePng: saveChartPng });
+  const exportEntries: MenuEntry[] = buildExportEntries({
+    getActive: getActiveExportSource,
+    savePng: saveChartPng,
+    saveCsv: saveChartCsv,
+    saveJson: saveChartJson,
+  });
 
   const groups: CommandGroup[] = [
     { title: "Interval", entries: intervalEntries },
