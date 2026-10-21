@@ -305,8 +305,13 @@ export function ChartHost(props: Props) {
       let points: { time: number; price: number }[];
       if (cur.handle >= 0) {
         const want = { time: conv.time, price: conv.price };
-        const snapped = st.magnet === "off" ? want : snapToOhlc(want, historyRef.current, st.magnet);
+        const effectiveMagnet = e.ctrlKey || e.metaKey ? (st.magnet === "off" ? "weak" : "off") : st.magnet;
+        const snapped = effectiveMagnet === "off" ? want : snapToOhlc(want, historyRef.current, effectiveMagnet);
         points = setAnchor(target, cur.handle, snapped).points;
+        if (e.shiftKey && points.length === 2 && (target.tool === "trend_line" || target.tool === "ray" || target.tool === "extended_line")) {
+          const otherIdx = cur.handle === 0 ? 1 : 0;
+          points[cur.handle] = { time: snapped.time, price: points[otherIdx]!.price };
+        }
       } else {
         points = translateDrawing(target, conv.time - cur.startPoint.time, conv.price - cur.startPoint.price).points;
       }
@@ -451,6 +456,7 @@ export function ChartHost(props: Props) {
     let busy = false;
     let anchor: number | null = null;
     const step = RESOLUTION_SECONDS[props.resolution];
+    let rafId: number | null = null;
     const timer = setInterval(() => {
       if (busy || historyRef.current.length === 0) return;
       if (historyKeyRef.current !== `${props.symbol}|${props.resolution}`) return;
@@ -465,8 +471,17 @@ export function ChartHost(props: Props) {
           const merged = mergeQuote(history, price, q.time || Math.floor(Date.now() / 1000), step);
           if (merged === history) return;
           historyRef.current = merged;
-          chartRef.current?.setData(merged);
-          setShown(merged);
+          const applyLive = () => {
+            rafId = null;
+            if (cancelled) return;
+            chartRef.current?.setData(historyRef.current);
+            setShown(historyRef.current);
+          };
+          if (typeof requestAnimationFrame === "function") {
+            if (rafId === null) rafId = requestAnimationFrame(applyLive);
+          } else {
+            applyLive();
+          }
         })
         .catch(() => {})
         .finally(() => {
@@ -476,6 +491,7 @@ export function ChartHost(props: Props) {
     return () => {
       cancelled = true;
       clearInterval(timer);
+      if (rafId !== null && typeof cancelAnimationFrame === "function") cancelAnimationFrame(rafId);
     };
   }, [props.symbol, props.resolution, props.replayBar]);
 

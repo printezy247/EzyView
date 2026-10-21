@@ -3,21 +3,29 @@ import type { Resolution } from "@ezyview/data-adapters";
 import { ChartHost } from "./ChartHost";
 import { publishCrosshair, subscribeCrosshair } from "./crosshairBus";
 import { PICKER_RESOLUTIONS, tickerOf } from "./data";
+import { useWorkspace } from "./store";
 
 interface Props {
   symbol: string;
   resolution: Resolution;
 }
 
-/** A single chart for a secondary window. It has no workspace of its own: pick an interval, nothing persists. */
+/** A single chart for a secondary window. Syncs theme and matching chart layers from the workspace. */
 export function DetachedChart({ symbol, resolution: initial }: Props) {
   const [resolution, setResolution] = useState<Resolution>(initial);
+  const layout = useWorkspace((s) => s.activeLayout());
+  const appTheme = useWorkspace((s) => s.appTheme);
+  const matchingChart = layout.charts.find((c) => c.symbol === symbol) ?? layout.charts[0];
+  const chartTheme = appTheme === "auto" ? (matchingChart?.theme ?? "dark") : appTheme;
   // Mirror the main window's pointer when it is on this symbol; publish ours back.
   // Publish only while the pointer is really on this chart (a mirrored crosshair
   // fires move events too, and echoing them would loop between windows), and
   // never mirror over the user's own crosshair.
   const [hovering, setHovering] = useState(false);
   const [remote, setRemote] = useState<{ time: number; price: number } | null>(null);
+  useEffect(() => {
+    document.documentElement.dataset.theme = chartTheme;
+  }, [chartTheme]);
   useEffect(
     () =>
       subscribeCrosshair((m) => {
@@ -57,12 +65,12 @@ export function DetachedChart({ symbol, resolution: initial }: Props) {
         <ChartHost
           symbol={symbol}
           resolution={resolution}
-          chartType="candles"
-          showVolume
-          showGrid
-          theme="dark"
-          indicators={[]}
-          drawings={[]}
+          chartType={matchingChart?.chartType ?? "candles"}
+          showVolume={matchingChart?.showVolume ?? true}
+          showGrid={matchingChart?.showGrid ?? true}
+          theme={chartTheme}
+          indicators={matchingChart?.indicators ?? []}
+          drawings={matchingChart?.symbol === symbol ? matchingChart.drawings : []}
           syncCrosshair={hovering ? null : remote}
           onCrosshairMove={(t, p) => {
             if (hovering) publishCrosshair(symbol, t, p);

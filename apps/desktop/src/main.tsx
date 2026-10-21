@@ -33,7 +33,8 @@ installCrashCapture();
 // Keep the MCP workspace snapshot current (main window only; no-op outside Tauri).
 if (!detached) {
   startSnapshotSync();
-  startAlertFeed();
+  const stopAlerts = startAlertFeed();
+  window.addEventListener("beforeunload", () => stopAlerts());
   void checkOnStartup();
 }
 

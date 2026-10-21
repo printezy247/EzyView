@@ -522,7 +522,12 @@ function ChartGrid({
               onCrosshairTime={focused ? onCrosshairTime : undefined}
               onCrosshairMove={focused ? onCrosshairMove : undefined}
             />
-            <Readout symbol={multi ? `${chart.symbol} · ${chart.resolution}` : chart.symbol} time={focused ? crosshairTime : null} />
+            <Readout
+              symbol={multi ? `${chart.symbol} · ${chart.resolution}` : chart.symbol}
+              rawSymbol={chart.symbol}
+              time={focused ? crosshairTime : null}
+              indicators={chart.indicators}
+            />
             {multi && focused && (
               <div className="pointer-events-none absolute inset-0 z-10 ring-1 ring-inset ring-ev-accent" aria-hidden />
             )}
@@ -533,11 +538,90 @@ function ChartGrid({
   );
 }
 
-function Readout({ symbol, time }: { symbol: string; time: number | null }) {
+function Readout({
+  symbol,
+  rawSymbol,
+  time,
+  indicators,
+}: {
+  symbol: string;
+  rawSymbol: string;
+  time: number | null;
+  indicators: ChartState["indicators"];
+}) {
+  const submit = useTrading((s) => s.submit);
+  const updateIndicator = useWorkspace((s) => s.updateIndicator);
+  const removeIndicator = useWorkspace((s) => s.removeIndicator);
+  const watchedPrice = useWorkspace((s) => s.watchlist.find((w) => w.symbol === rawSymbol)?.price ?? null);
+
   return (
-    <div className="pointer-events-none absolute left-2 top-2 z-10 text-dense text-ev-muted">
-      <span className="font-medium text-ev-strong">{symbol}</span>
-      {time !== null && <span className="ml-2">{new Date(time * 1000).toLocaleString()}</span>}
+    <div className="pointer-events-none absolute left-2 top-2 z-10 flex flex-col gap-1 text-dense text-ev-muted">
+      <div className="flex items-center gap-2">
+        <span className="font-medium text-ev-strong">{symbol}</span>
+        {watchedPrice !== null && <span className="num text-ev-text">{watchedPrice}</span>}
+        {time !== null && <span>{new Date(time * 1000).toLocaleString()}</span>}
+        <div className="pointer-events-auto ml-1 flex items-center gap-1">
+          <button
+            type="button"
+            title={`Quick market sell 1 unit of ${rawSymbol}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              void submit({ symbol: rawSymbol, side: "sell", type: "market", qty: 1 });
+            }}
+            className="rounded border border-ev-down/50 bg-ev-down/15 px-1.5 py-px text-micro font-semibold text-ev-down hover:bg-ev-down hover:text-white"
+          >
+            SELL
+          </button>
+          <button
+            type="button"
+            title={`Quick market buy 1 unit of ${rawSymbol}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              void submit({ symbol: rawSymbol, side: "buy", type: "market", qty: 1 });
+            }}
+            className="rounded border border-ev-up/50 bg-ev-up/15 px-1.5 py-px text-micro font-semibold text-ev-up hover:bg-ev-up hover:text-white"
+          >
+            BUY
+          </button>
+        </div>
+      </div>
+      {indicators.length > 0 && (
+        <div className="pointer-events-auto flex flex-wrap items-center gap-1.5">
+          {indicators.map((ind) => (
+            <span
+              key={ind.uid}
+              className={`inline-flex items-center gap-1 rounded bg-ev-panel/85 px-1.5 py-0.5 text-micro ${
+                ind.hidden ? "text-ev-faint line-through" : "text-ev-text"
+              }`}
+            >
+              <button
+                type="button"
+                title={ind.hidden ? `Show ${ind.def.name}` : `Hide ${ind.def.name}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  updateIndicator(ind.uid, { hidden: !ind.hidden });
+                }}
+                className="hover:text-ev-strong"
+              >
+                {ind.name ?? ind.def.name}
+                {Object.keys(ind.params).length > 0 && ` (${Object.values(ind.params).join(",")})`}
+              </button>
+              <button
+                type="button"
+                aria-label={`Remove ${ind.name ?? ind.def.name}`}
+                title="Remove indicator"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeIndicator(ind.uid);
+                }}
+                className="text-ev-faint hover:text-ev-down"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

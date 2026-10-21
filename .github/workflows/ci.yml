@@ -22,6 +22,7 @@ jobs:
       - run: npm run test
       - run: npm run build:web
       - run: npm run build:mcp
+      - run: npm audit --audit-level=high || true
 
   desktop:
     name: tauri desktop build
@@ -45,6 +46,8 @@ jobs:
           workspaces: apps/desktop/src-tauri
       - run: npm ci
       - run: npm run build:desktop
+      - name: Rust unit tests
+        run: cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
 
   e2e:
     name: end-to-end smoke

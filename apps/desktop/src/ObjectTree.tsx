@@ -6,6 +6,7 @@ import { useWorkspace } from "./store";
 import type { ActiveIndicator } from "./store";
 import { DrawingProperties } from "./DrawingProperties";
 import { parseDrawings, serializeDrawings } from "./drawingsIO";
+import { saveBlob } from "./exportUi";
 
 interface Props {
   onClose: () => void;
@@ -34,20 +35,17 @@ export function ObjectTree({ onClose }: Props) {
   const selectedId = useWorkspace((s) => s.selectedDrawingId);
   const importDrawings = useWorkspace((s) => s.importDrawings);
   const updateIndicator = useWorkspace((s) => s.updateIndicator);
+  const updateIndicatorParams = useWorkspace((s) => s.updateIndicatorParams);
   const removeIndicator = useWorkspace((s) => s.removeIndicator);
   const fileRef = useRef<HTMLInputElement>(null);
   const [ioError, setIoError] = useState<string | null>(null);
+  const [expandedInd, setExpandedInd] = useState<string | null>(null);
 
   const empty = chart.indicators.length === 0 && chart.drawings.length === 0;
 
   const exportDrawings = () => {
     const blob = new Blob([serializeDrawings(chart.drawings)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `drawings-${chart.symbol}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    void saveBlob(blob, `drawings-${chart.symbol.replace(/[^A-Za-z0-9._-]/g, "-")}.json`);
     setIoError(null);
   };
 
@@ -62,7 +60,7 @@ export function ObjectTree({ onClose }: Props) {
   };
 
   return (
-    <aside aria-label="Object tree" className="flex w-56 shrink-0 flex-col border-l border-ev-raised bg-ev-bg">
+    <aside aria-label="Object tree" className="flex w-full min-w-0 flex-1 flex-col bg-ev-bg">
       <div className="flex items-center justify-between border-b border-ev-raised px-3 py-2">
         <h2 className="text-base font-semibold uppercase tracking-wider text-ev-muted">Object tree</h2>
         <button
@@ -89,14 +87,58 @@ export function ObjectTree({ onClose }: Props) {
         {chart.indicators.length > 0 && (
           <Section title="Indicators">
             {chart.indicators.map((i) => (
-              <Row
-                key={i.uid}
-                label={indicatorLabel(i)}
-                hidden={!!i.hidden}
-                onToggle={() => updateIndicator(i.uid, { hidden: !i.hidden })}
-                onRename={(name) => updateIndicator(i.uid, { name: name || undefined })}
-                onDelete={() => removeIndicator(i.uid)}
-              />
+              <div key={i.uid}>
+                <Row
+                  label={indicatorLabel(i)}
+                  hidden={!!i.hidden}
+                  selected={expandedInd === i.uid}
+                  onSelect={() => setExpandedInd((prev) => (prev === i.uid ? null : i.uid))}
+                  onToggle={() => updateIndicator(i.uid, { hidden: !i.hidden })}
+                  onRename={(name) => updateIndicator(i.uid, { name: name || undefined })}
+                  onDelete={() => removeIndicator(i.uid)}
+                />
+                {expandedInd === i.uid && i.def.params.length > 0 && (
+                  <div className="space-y-1 border-b border-ev-raised bg-ev-panel px-3 py-1.5 text-dense">
+                    {i.def.params.map((p) => (
+                      <label key={p.id} className="flex items-center justify-between gap-2 text-ev-muted">
+                        <span>{p.label}</span>
+                        {p.type === "int" || p.type === "float" ? (
+                          <input
+                            type="number"
+                            value={Number(i.params[p.id] ?? p.default)}
+                            min={p.min}
+                            max={p.max}
+                            step={p.type === "float" ? 0.1 : 1}
+                            onChange={(e) => {
+                              const val = Number(e.target.value);
+                              if (Number.isFinite(val)) updateIndicatorParams(i.uid, { [p.id]: val });
+                            }}
+                            className="w-16 rounded border border-ev-line bg-ev-bg px-1.5 py-0.5 text-right num text-ev-strong"
+                          />
+                        ) : p.type === "bool" ? (
+                          <input
+                            type="checkbox"
+                            checked={Boolean(i.params[p.id] ?? p.default)}
+                            onChange={(e) => updateIndicatorParams(i.uid, { [p.id]: e.target.checked })}
+                          />
+                        ) : (
+                          <select
+                            value={String(i.params[p.id] ?? p.default)}
+                            onChange={(e) => updateIndicatorParams(i.uid, { [p.id]: e.target.value })}
+                            className="rounded border border-ev-line bg-ev-bg px-1 py-0.5 text-ev-strong"
+                          >
+                            {["close", "open", "high", "low", "hl2", "hlc3", "ohlc4"].map((src) => (
+                              <option key={src} value={src}>
+                                {src}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
             ))}
           </Section>
         )}

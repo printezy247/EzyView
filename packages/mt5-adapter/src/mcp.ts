@@ -32,6 +32,16 @@ export class McpError extends Error {
 
 const DEFAULT_PROTOCOL = "2025-06-18";
 const NOTIFICATIONS = "notifications/initialized";
+const REQUEST_TIMEOUT_MS = 10_000;
+
+function isLoopbackUrl(rawUrl: string): boolean {
+  try {
+    const parsed = new URL(rawUrl);
+    return parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost" || parsed.hostname === "::1";
+  } catch {
+    return false;
+  }
+}
 
 interface JsonRpcMessage {
   jsonrpc: "2.0";
@@ -122,6 +132,9 @@ export class McpClient {
 
   private async request(message: JsonRpcMessage): Promise<JsonRpcMessage> {
     const url = this.cfg.url;
+    if (this.cfg.key && url.startsWith("http://") && !isLoopbackUrl(url)) {
+      throw new McpError("Refusing to send Bearer token over cleartext HTTP to a non-localhost host. Use https://.");
+    }
     const headers: Record<string, string> = {
       "content-type": "application/json",
       accept: "application/json, text/event-stream",
@@ -131,21 +144,32 @@ export class McpClient {
     if (this.sessionId) headers["mcp-session-id"] = this.sessionId;
 
     const fetchFn: FetchLike = this.cfg.fetchFn ?? ((input, init) => fetch(input, init));
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     let response: Response;
     try {
       response = await fetchFn(url, {
         method: "POST",
         headers,
         body: JSON.stringify(message),
+        signal: controller.signal,
       });
     } catch (err) {
       throw new McpError(err instanceof Error ? err.message : String(err));
+    } finally {
+      clearTimeout(timer);
     }
 
-    const session = response.headers.get("mcp-session-id");
-    if (session) this.sessionId = session;
+    const session = response.headers?.get?.("mcp-session-id");
+    if (session && session.length <= 256 && /^[\x21-\x7E]+$/.test(session)) {
+      this.sessionId = session;
+    }
 
     if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        this.sessionId = null;
+        this.ready = null;
+      }
       if (response.status === 401) {
         throw new McpError(
           "MetaTrader rejected the MCP key. Copy the current one from Tools → Options → MCP.",

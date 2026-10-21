@@ -253,6 +253,8 @@ fn is_plain_file_name(name: &str) -> bool {
     !name.is_empty() && name.len() <= 200 && name != ".." && !name.contains(['/', '\\', '\0'])
 }
 
+const MAX_SAVE_BYTES: usize = 50 * 1024 * 1024;
+
 /// Ask the user where to save, then write `bytes` there. The dialog runs in
 /// Rust so the webview never supplies a write path. `Ok(false)` = cancelled.
 #[tauri::command]
@@ -264,6 +266,9 @@ async fn save_file(
     bytes: Vec<u8>,
 ) -> Result<bool, String> {
     use tauri_plugin_dialog::DialogExt;
+    if bytes.len() > MAX_SAVE_BYTES {
+        return Err("file too large to save (max 50 MB)".into());
+    }
     if !is_plain_file_name(&default_name) {
         return Err("unexpected file name".into());
     }
@@ -339,6 +344,20 @@ fn api_key_set(name: String, value: String) -> Result<(), String> {
     entry.set_password(value).map_err(|e| e.to_string())
 }
 
+/// Wipe the standard provider keys from the OS keyring on explicit user request.
+#[tauri::command]
+fn clear_keyring_secrets() -> Result<(), String> {
+    for name in API_KEY_NAMES {
+        if let Ok(entry) = key_entry(name) {
+            match entry.delete_credential() {
+                Ok(()) | Err(keyring::Error::NoEntry) => {}
+                Err(e) => return Err(e.to_string()),
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Ctrl+Alt+E brings the main window to the front from anywhere. Registration
 /// can fail (another app owns the combo, Wayland): the app just runs without it.
 fn register_show_shortcut(app: &tauri::App) {
@@ -399,6 +418,7 @@ pub fn run() {
             open_chart_window,
             api_key_get,
             api_key_set,
+            clear_keyring_secrets,
             save_file,
             write_snapshot,
             append_log,

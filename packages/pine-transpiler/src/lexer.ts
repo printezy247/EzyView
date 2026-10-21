@@ -147,7 +147,19 @@ export function lex(source: string): Token[] {
         i++;
         col++;
       }
-      // Hex literals, e.g. 0xff.
+      // Scientific notation, e.g. 1e5, 1e+5, 1e-5, 1e10000
+      if (i < source.length && (source[i] === "e" || source[i] === "E")) {
+        i++;
+        col++;
+        if (i < source.length && (source[i] === "+" || source[i] === "-")) {
+          i++;
+          col++;
+        }
+        while (i < source.length && isDigit(source[i]!)) {
+          i++;
+          col++;
+        }
+      }
       const raw = source.slice(start, i);
       const value = Number(raw);
       if (!Number.isFinite(value)) throw new PineSyntaxError("number literal must be finite", line, col);

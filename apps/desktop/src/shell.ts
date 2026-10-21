@@ -55,8 +55,77 @@ export async function saveShellSettings(settings: ShellSettings): Promise<string
 
 export const relaunchApp = (): Promise<void> => invoke("relaunch_app");
 export const factoryReset = (): Promise<void> => invoke("factory_reset");
+export const clearKeyringSecrets = (): Promise<void> => invoke("clear_keyring_secrets");
 
 const NOTIFY_KEY = "ezyview.notify.v1";
+const SOUND_KEY = "ezyview.sound.v1";
+const VOLUME_KEY = "ezyview.volume.v1";
+
+export function alertSoundEnabled(): boolean {
+  try {
+    return localStorage.getItem(SOUND_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
+
+export function setAlertSoundEnabled(on: boolean): void {
+  try {
+    localStorage.setItem(SOUND_KEY, on ? "on" : "off");
+  } catch {
+    // ignore
+  }
+}
+
+export function alertSoundVolume(): number {
+  try {
+    const v = Number(localStorage.getItem(VOLUME_KEY) ?? "0.6");
+    return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.6;
+  } catch {
+    return 0.6;
+  }
+}
+
+export function setAlertSoundVolume(vol: number): void {
+  try {
+    const clamped = Math.min(1, Math.max(0, Number.isFinite(vol) ? vol : 0.6));
+    localStorage.setItem(VOLUME_KEY, String(clamped));
+  } catch {
+    // ignore
+  }
+}
+
+/** Synthesize a clean two-tone chime via Web Audio API when an alert fires. */
+export function playAlertChime(): void {
+  if (!alertSoundEnabled()) return;
+  try {
+    const AudioCtx =
+      typeof window !== "undefined"
+        ? (window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)
+        : undefined;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const vol = alertSoundVolume() * 0.25;
+    const now = ctx.currentTime;
+    const notes = [587.33, 880]; // D5 -> A5
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, now + i * 0.12);
+      gain.gain.setValueAtTime(0.0001, now + i * 0.12);
+      gain.gain.exponentialRampToValueAtTime(Math.max(0.001, vol), now + i * 0.12 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.12 + 0.22);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + i * 0.12);
+      osc.stop(now + i * 0.12 + 0.24);
+    });
+    setTimeout(() => void ctx.close().catch(() => {}), 600);
+  } catch {
+    // Web Audio unavailable or blocked by autoplay policy
+  }
+}
 
 export function nativeNotificationsEnabled(): boolean {
   try {
@@ -80,6 +149,7 @@ export function setNativeNotifications(on: boolean): void {
  * missing notification service must not break the alert feed.
  */
 export async function notifyNative(title: string, body: string): Promise<boolean> {
+  playAlertChime();
   if (!nativeNotificationsEnabled()) return false;
   try {
     if (inTauri()) {

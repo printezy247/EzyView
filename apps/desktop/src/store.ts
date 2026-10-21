@@ -604,9 +604,15 @@ export const useWorkspace = create<WorkspaceStore>()(
           if (alert.symbol !== symbol) return alert;
           const closes = history[alert.id] ?? [];
           const next = evaluateAlert(alert, closes, candle, barClosed);
-          history = pushHistory(history, alert.id, candle.close);
+          if (barClosed || closes.length === 0) {
+            history = pushHistory(history, alert.id, candle.close);
+          } else {
+            history = { ...history, [alert.id]: [...closes.slice(0, -1), candle.close] };
+          }
           if (!next) return alert;
-          if (next.state === "triggered" && alert.state !== "triggered") fired.push(next.id);
+          if (next.state === "triggered" && (alert.state !== "triggered" || next.triggeredAt !== alert.triggeredAt)) {
+            fired.push(next.id);
+          }
           return next;
         });
         // Keep the array identity when nothing fired or changed, so subscribers
@@ -804,15 +810,51 @@ export const useWorkspace = create<WorkspaceStore>()(
           chartTemplates: restoreTemplates(raw.chartTemplates),
           // Restore alerts, alertHistory, watchlist — they may be absent in
           // blobs written before this change; fall back to current state defaults.
-          alerts: "alerts" in raw ? (raw.alerts as PriceAlert[]) : current.alerts,
+          alerts: "alerts" in raw ? restoreAlerts(raw.alerts, current.alerts) : current.alerts,
           alertHistory:
-            "alertHistory" in raw ? (raw.alertHistory as AlertHistory) : current.alertHistory,
-          watchlist: "watchlist" in raw ? (raw.watchlist as WatchEntry[]) : current.watchlist,
+            "alertHistory" in raw ? restoreAlertHistory(raw.alertHistory) : current.alertHistory,
+          watchlist: "watchlist" in raw ? restoreWatchlist(raw.watchlist, current.watchlist) : current.watchlist,
         };
       },
     },
   ),
 );
+
+function restoreAlerts(raw: unknown, fallback: PriceAlert[]): PriceAlert[] {
+  if (!Array.isArray(raw)) return fallback;
+  return raw.filter(
+    (a): a is PriceAlert =>
+      typeof a === "object" &&
+      a !== null &&
+      typeof (a as Partial<PriceAlert>).id === "string" &&
+      typeof (a as Partial<PriceAlert>).symbol === "string" &&
+      typeof (a as Partial<PriceAlert>).condition === "object" &&
+      (a as Partial<PriceAlert>).condition !== null,
+  );
+}
+
+function restoreAlertHistory(raw: unknown): AlertHistory {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return {};
+  const out: AlertHistory = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (k === "__proto__") continue;
+    if (Array.isArray(v)) {
+      out[k] = v.filter((n): n is number => typeof n === "number" && Number.isFinite(n)).slice(-200);
+    }
+  }
+  return out;
+}
+
+function restoreWatchlist(raw: unknown, fallback: WatchEntry[]): WatchEntry[] {
+  if (!Array.isArray(raw)) return fallback;
+  return raw.filter(
+    (w): w is WatchEntry =>
+      typeof w === "object" &&
+      w !== null &&
+      typeof (w as Partial<WatchEntry>).symbol === "string" &&
+      typeof (w as Partial<WatchEntry>).ticker === "string",
+  );
+}
 
 /** Prepend a superseded head to the archive: newest first, capped. */
 function archiveVersion(

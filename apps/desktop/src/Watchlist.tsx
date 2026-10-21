@@ -1,6 +1,6 @@
 import { Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { market, searchSymbols } from "./data";
+import { quoteOf, searchSymbols } from "./data";
 import { useWorkspace } from "./store";
 import type { WatchEntry } from "./store";
 
@@ -11,8 +11,8 @@ interface Props {
 /**
  * Right-hand watchlist panel.
  *
- * Polls the market adapter's quotes on a slow tick. A real feed would push
- * instead, but the polling loop keeps the panel independent of feed plumbing.
+ * Polls the active feed's quotes on a slow tick. Keyed on the joined symbol
+ * list so price updates do not reset the interval.
  */
 export function Watchlist({ onOpenAlerts }: Props) {
   const watchlist = useWorkspace((s) => s.watchlist);
@@ -23,6 +23,7 @@ export function Watchlist({ onOpenAlerts }: Props) {
 
   const [adding, setAdding] = useState(false);
   const [query, setQuery] = useState("");
+  const symbolKey = watchlist.map((w) => w.symbol).join(",");
 
   useEffect(() => {
     if (!adding) return;
@@ -30,12 +31,12 @@ export function Watchlist({ onOpenAlerts }: Props) {
   }, [adding]);
 
   useEffect(() => {
-    if (watchlist.length === 0) return;
-    const symbols = watchlist.map((w) => w.symbol);
+    if (!symbolKey) return;
+    const symbols = symbolKey.split(",");
     let cancelled = false;
 
     const tick = () => {
-      void Promise.all(symbols.map((s) => market.getQuote(s))).then((quotes) => {
+      void Promise.all(symbols.map((s) => quoteOf(s).catch(() => null))).then((quotes) => {
         if (cancelled) return;
         quotes.forEach((q) => {
           if (q) updateWatchPrice(q.symbol, q.last, q.changePercent ?? null);
@@ -49,7 +50,7 @@ export function Watchlist({ onOpenAlerts }: Props) {
       cancelled = true;
       clearInterval(t);
     };
-  }, [watchlist, updateWatchPrice]);
+  }, [symbolKey, updateWatchPrice]);
 
   const addFromQuery = async () => {
     const found = await searchSymbols(query);
@@ -69,7 +70,7 @@ export function Watchlist({ onOpenAlerts }: Props) {
   };
 
   return (
-    <aside aria-label="Watchlist" className="flex w-56 shrink-0 flex-col border-l border-ev-raised bg-ev-bg">
+    <aside aria-label="Watchlist" className="flex w-full min-w-0 flex-1 flex-col bg-ev-bg">
       <div className="flex items-center justify-between border-b border-ev-raised px-3 py-2">
         <h2 className="text-base font-semibold uppercase tracking-wider text-ev-muted">Watchlist</h2>
         <div className="flex items-center gap-1">

@@ -27,6 +27,8 @@ export interface PriceAlert {
   triggeredAt?: number;
   /** Last close the evaluator saw, so crossings do not re-fire. */
   lastPrice?: number;
+  /** Last candle timestamp seen by the evaluator, so once_per_bar alerts re-arm on a new bar. */
+  lastBarTime?: number;
   /** When set, the alert follows this horizontal drawing: moving the line moves the level, deleting the line deletes the alert. */
   drawingId?: string;
 }
@@ -124,18 +126,41 @@ export function evaluateAlert(
 ): PriceAlert | null {
   if (alert.state === "triggered" && alert.frequency === "once") return null;
 
+  // Re-arm per-bar alerts when the candle timestamp advances to a new bar.
+  const isNewBar = alert.lastBarTime !== undefined && candle.time > alert.lastBarTime;
+  const effectiveState: AlertState =
+    alert.state === "triggered" && alert.frequency !== "once" && isNewBar ? "armed" : alert.state;
+
+  // If still triggered inside the same bar, update lastPrice/lastBarTime only if changed.
+  if (effectiveState === "triggered") {
+    if (alert.lastPrice === candle.close && alert.lastBarTime === candle.time) return null;
+    return { ...alert, lastPrice: candle.close, lastBarTime: candle.time };
+  }
+
   const price = candle.close;
   const fired = shouldTrigger(alert.condition, price, alert.lastPrice, history);
 
-  const next: PriceAlert = { ...alert, lastPrice: price };
-  if (!fired) return alert.lastPrice === price ? null : next;
+  const next: PriceAlert = {
+    ...alert,
+    state: effectiveState,
+    lastPrice: price,
+    lastBarTime: candle.time,
+  };
+  if (!fired) {
+    return alert.lastPrice === price &&
+      alert.state === effectiveState &&
+      (alert.lastBarTime === undefined || alert.lastBarTime === candle.time)
+      ? null
+      : next;
+  }
 
   // once_per_bar wants the trigger but does not need a bar boundary to record it.
   next.state = "triggered";
   next.triggeredAt = candle.time;
   if (alert.frequency === "once_per_bar_close" && !barClosed) {
-    next.state = alert.state;
-    delete next.triggeredAt;
+    next.state = effectiveState;
+    if (alert.triggeredAt === undefined) delete next.triggeredAt;
+    else next.triggeredAt = alert.triggeredAt;
   }
   return next;
 }

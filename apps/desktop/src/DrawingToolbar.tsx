@@ -17,6 +17,8 @@ import {
   TrendingUp,
   Triangle,
   Type,
+  Undo2,
+  Redo2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { DrawingToolId, MagnetMode } from "@ezyview/drawing-tools";
@@ -98,6 +100,7 @@ export function DrawingToolbar() {
   const setActiveTool = useWorkspace((s) => s.setActiveTool);
   const undoDrawing = useWorkspace((s) => s.undoDrawing);
   const redoDrawing = useWorkspace((s) => s.redoDrawing);
+  const canUndo = useWorkspace((s) => s.drawingUndo.length > 0);
   const canRedo = useWorkspace((s) => s.drawingRedo.length > 0);
   const magnet = useWorkspace((s) => s.magnet);
   const setMagnet = useWorkspace((s) => s.setMagnet);
@@ -160,10 +163,10 @@ export function DrawingToolbar() {
         title="Undo last drawing (Ctrl+Z)"
         aria-label="Undo last drawing"
         onClick={() => undoDrawing()}
-        disabled={false}
+        disabled={!canUndo}
         className="flex size-8 items-center justify-center rounded text-dense font-medium text-ev-muted hover:bg-ev-raised hover:text-ev-strong disabled:opacity-40"
       >
-        U
+        <Undo2 size={15} aria-hidden />
       </button>
       <button
         type="button"
@@ -173,7 +176,7 @@ export function DrawingToolbar() {
         disabled={!canRedo}
         className="flex size-8 items-center justify-center rounded text-dense font-medium text-ev-muted hover:bg-ev-raised hover:text-ev-strong disabled:opacity-40"
       >
-        R
+        <Redo2 size={15} aria-hidden />
       </button>
     </div>
   );

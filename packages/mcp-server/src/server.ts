@@ -40,9 +40,10 @@ const market = new DemoMarketAdapter();
 const calendar = new DemoCalendarAdapter();
 const fundamentals = new DemoFundamentalsAdapter();
 
-const str = (a: Args, key: string): string => {
+const str = (a: Args, key: string, maxLen = 256): string => {
   const v = a[key];
   if (typeof v !== "string" || v === "") throw new Error(`"${key}" must be a non-empty string`);
+  if (v.length > maxLen) throw new Error(`"${key}" exceeds maximum length of ${maxLen}`);
   return v;
 };
 const num = (a: Args, key: string, fallback?: number): number => {
@@ -51,6 +52,13 @@ const num = (a: Args, key: string, fallback?: number): number => {
   if (typeof v !== "number" || !Number.isFinite(v)) throw new Error(`"${key}" must be a number`);
   return v;
 };
+const posNum = (a: Args, key: string, fallback?: number): number => {
+  const v = num(a, key, fallback);
+  if (v <= 0) throw new Error(`"${key}" must be positive`);
+  return v;
+};
+
+const VALID_SCREENER_FIELDS = new Set<ScreenerField>(["price", "changePct", "volume", "fromHighPct", "rsi"]);
 
 const object = (properties: Record<string, unknown>, required: string[] = []) => ({
   type: "object",
@@ -154,10 +162,16 @@ const TOOLS: Tool[] = [
     run: (a) => {
       const right = str(a, "right") as OptionRight;
       if (right !== "call" && right !== "put") throw new Error('"right" must be "call" or "put"');
-      const base = { right, spot: num(a, "spot"), strike: num(a, "strike"), years: num(a, "days") / 365, rate: num(a, "rate", 0.04) };
-      const input = { ...base, vol: num(a, "vol") };
+      const spot = posNum(a, "spot");
+      const strike = posNum(a, "strike");
+      const days = posNum(a, "days");
+      const vol = posNum(a, "vol");
+      const rate = num(a, "rate", 0.04);
+      if (Math.abs(rate) > 5) throw new Error('"rate" out of range');
+      const base = { right, spot, strike, years: days / 365, rate };
+      const input = { ...base, vol };
       const out: Record<string, unknown> = { price: price(input), greeks: greeks(input) };
-      if (a.marketPrice !== undefined) out.impliedVol = impliedVol(base, num(a, "marketPrice"));
+      if (a.marketPrice !== undefined) out.impliedVol = impliedVol(base, posNum(a, "marketPrice"));
       return out;
     },
   },
@@ -165,7 +179,7 @@ const TOOLS: Tool[] = [
     name: "option_chain",
     description: "Model-built option chain (Black-Scholes off a volatility smile) around a spot price.",
     inputSchema: object({ spot: { type: "number" }, baseVol: { type: "number" }, days: { type: "number" } }, ["spot"]),
-    run: (a) => buildChain({ spot: num(a, "spot"), baseVol: num(a, "baseVol", 0.3), expiries: [num(a, "days", 30)] }),
+    run: (a) => buildChain({ spot: posNum(a, "spot"), baseVol: posNum(a, "baseVol", 0.3), expiries: [posNum(a, "days", 30)] }),
   },
   {
     name: "screen",
@@ -179,10 +193,20 @@ const TOOLS: Tool[] = [
     }),
     run: async (a) => {
       const rows = await scanUniverse(market);
-      const field = a.field as ScreenerField | undefined;
+      let field: ScreenerField | undefined;
+      if (a.field !== undefined) {
+        if (typeof a.field !== "string" || !VALID_SCREENER_FIELDS.has(a.field as ScreenerField)) {
+          throw new Error(`"field" must be one of: ${[...VALID_SCREENER_FIELDS].join(", ")}`);
+        }
+        field = a.field as ScreenerField;
+      }
+      const sortByRaw = typeof a.sortBy === "string" ? a.sortBy : "changePct";
+      if (!VALID_SCREENER_FIELDS.has(sortByRaw as ScreenerField)) {
+        throw new Error(`"sortBy" must be one of: ${[...VALID_SCREENER_FIELDS].join(", ")}`);
+      }
       return runScreener(rows, {
         filters: field ? [{ field, min: typeof a.min === "number" ? a.min : undefined, max: typeof a.max === "number" ? a.max : undefined }] : [],
-        sortBy: (typeof a.sortBy === "string" ? a.sortBy : "changePct") as ScreenerField,
+        sortBy: sortByRaw as ScreenerField,
         descending: a.descending !== false,
       });
     },
@@ -192,10 +216,14 @@ const TOOLS: Tool[] = [
     description: "Economic events in the next N days (default 7).",
     inputSchema: object({ days: { type: "number" }, currency: { type: "string" }, impact: { type: "string" } }),
     run: (a) => {
+      const days = Math.min(Math.max(1, num(a, "days", 7)), 365);
       const now = Math.floor(Date.now() / 1000);
-      return calendar.getCalendar(now, now + num(a, "days", 7) * 86400, {
-        currency: typeof a.currency === "string" ? a.currency : undefined,
-        impact: typeof a.impact === "string" ? (a.impact as "high" | "medium" | "low") : undefined,
+      return calendar.getCalendar(now, now + days * 86400, {
+        currency: typeof a.currency === "string" ? a.currency.slice(0, 16) : undefined,
+        impact:
+          a.impact === "high" || a.impact === "medium" || a.impact === "low"
+            ? a.impact
+            : undefined,
       });
     },
   },
@@ -215,7 +243,8 @@ const TOOLS: Tool[] = [
     inputSchema: object({}),
     run: async () => {
       const snap = await loadSnapshot();
-      return { updatedAt: snap.updatedAt, layouts: snap.layouts };
+      const ageSeconds = Math.max(0, Math.floor(Date.now() / 1000) - snap.updatedAt);
+      return { updatedAt: snap.updatedAt, ageSeconds, layouts: snap.layouts };
     },
   },
   {
@@ -256,12 +285,18 @@ const TOOLS: Tool[] = [
       const period = a.period === "weekly" ? "weekly" : "daily";
       const key = typeof a.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(a.date) ? a.date : dateKey(Date.now() / 1000);
       const { start, end } = reviewWindow(key, period);
-      const entries = (snap.journal.entries as JournalEntry[]).filter((e) => e.entryTime >= start && e.entryTime < end);
-      const notes = (snap.journal.notes as JournalNote[]).filter((n) => n.time >= start && n.time < end);
+      const safeEntries = (snap.journal.entries as JournalEntry[]).filter(
+        (e): e is JournalEntry => typeof e === "object" && e !== null && typeof e.entryTime === "number",
+      );
+      const safeNotes = (snap.journal.notes as JournalNote[]).filter(
+        (n): n is JournalNote => typeof n === "object" && n !== null && typeof n.time === "number",
+      );
+      const entries = safeEntries.filter((e) => e.entryTime >= start && e.entryTime < end);
+      const notes = safeNotes.filter((n) => n.time >= start && n.time < end);
       return {
         period,
         date: key,
-        summary: composeReview(snap.journal.entries as JournalEntry[], snap.journal.notes as JournalNote[], start, end),
+        summary: composeReview(safeEntries, safeNotes, start, end),
         stats: computeStats(entries),
         entries,
         notes,
@@ -281,9 +316,17 @@ const fail = (id: RpcResponse["id"], code: number, message: string): RpcResponse
  * Handle one JSON-RPC message. Returns null for notifications (no reply).
  * Tool failures are reported in-band (`isError`) so the model can read and recover.
  */
-export async function handleMessage(msg: RpcRequest): Promise<RpcResponse | null> {
-  const id = msg.id ?? null;
+export async function handleMessage(rawMsg: unknown): Promise<RpcResponse | null> {
+  if (typeof rawMsg !== "object" || rawMsg === null || Array.isArray(rawMsg)) {
+    return fail(null, -32600, "Invalid Request: expected JSON-RPC object");
+  }
+  const msg = rawMsg as Partial<RpcRequest>;
+  const id = typeof msg.id === "number" || typeof msg.id === "string" || msg.id === null ? msg.id : null;
   const isNotification = msg.id === undefined;
+
+  if (typeof msg.method !== "string" || msg.method === "") {
+    return fail(id, -32600, "Invalid Request: missing or non-string method");
+  }
 
   switch (msg.method) {
     case "initialize":
@@ -297,11 +340,14 @@ export async function handleMessage(msg: RpcRequest): Promise<RpcResponse | null
     case "tools/list":
       return ok(id, { tools: TOOLS.map(({ name, description, inputSchema }) => ({ name, description, inputSchema })) });
     case "tools/call": {
-      const name = msg.params?.name;
+      const params = typeof msg.params === "object" && msg.params !== null ? msg.params : {};
+      const name = params.name;
       const tool = TOOLS.find((t) => t.name === name);
       if (!tool) return fail(id, -32602, `Unknown tool: ${String(name)}`);
       try {
-        const out = await tool.run((msg.params?.arguments ?? {}) as Args);
+        const rawArgs = params.arguments;
+        const args = typeof rawArgs === "object" && rawArgs !== null && !Array.isArray(rawArgs) ? (rawArgs as Args) : {};
+        const out = await tool.run(args);
         return ok(id, { content: [{ type: "text", text: JSON.stringify(out) }] });
       } catch (error) {
         return ok(id, { isError: true, content: [{ type: "text", text: error instanceof Error ? error.message : String(error) }] });

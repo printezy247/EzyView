@@ -61,7 +61,7 @@ export function buildSnapshot(input: SnapshotInput, now: number = Date.now()) {
 
 const inTauri = (): boolean => typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
-async function writeSnapshot(): Promise<void> {
+async function writeSnapshot(attempt = 0): Promise<boolean> {
   const ws = useWorkspace.getState();
   const journal = useJournal.getState();
   const json = JSON.stringify(
@@ -77,8 +77,13 @@ async function writeSnapshot(): Promise<void> {
   try {
     const { invoke } = await import("@tauri-apps/api/core");
     await invoke("write_snapshot", { json });
+    return true;
   } catch {
-    // No data folder or disk full: the next change retries.
+    if (attempt < 2) {
+      await new Promise((r) => setTimeout(r, 500 * 2 ** attempt));
+      return writeSnapshot(attempt + 1);
+    }
+    return false;
   }
 }
 

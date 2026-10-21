@@ -36,7 +36,7 @@ describe("gateAction", () => {
     expect(result.reasons.join(" ")).toMatch(/allow-list empty/);
   });
 
-  it("every MT5 action confirms; real accounts confirm twice", () => {
+  it("every MT5 action confirms; real and unknown accounts confirm twice", () => {
     const demo = gateAction({ action: "place", volume: 0.1, accountKind: "demo" }, rails());
     expect(demo.decision).toBe("confirm");
     expect(demo.secondConfirm).toBe(false);
@@ -45,6 +45,10 @@ describe("gateAction", () => {
     expect(real.decision).toBe("confirm");
     expect(real.secondConfirm).toBe(true);
     expect(real.reasons.join(" ")).toMatch(/REAL account/);
+
+    const unknown = gateAction({ action: "place", volume: 0.1, accountKind: "unknown" }, rails());
+    expect(unknown.decision).toBe("confirm");
+    expect(unknown.secondConfirm).toBe(true);
 
     for (const action of ["close", "cancel", "modify"] as const) {
       expect(gateAction({ action, accountKind: "demo" }, rails()).decision).toBe("confirm");

@@ -1,12 +1,18 @@
 import { useEffect, useId, useState } from "react";
 import {
   DEFAULT_SHELL_SETTINGS,
+  alertSoundEnabled,
+  alertSoundVolume,
+  clearKeyringSecrets,
   factoryReset,
   loadShellSettings,
   nativeNotificationsEnabled,
   notifyNative,
+  playAlertChime,
   relaunchApp,
   saveShellSettings,
+  setAlertSoundEnabled,
+  setAlertSoundVolume,
   setNativeNotifications,
 } from "./shell";
 import type { ShellSettings } from "./shell";
@@ -22,6 +28,8 @@ const heading = "mb-1 text-dense font-medium uppercase tracking-wider text-ev-fa
 export function DesktopTab() {
   const [settings, setSettings] = useState<ShellSettings>(DEFAULT_SHELL_SETTINGS);
   const [notify, setNotify] = useState(nativeNotificationsEnabled);
+  const [sound, setSound] = useState(alertSoundEnabled);
+  const [volume, setVolume] = useState(alertSoundVolume);
   const [status, setStatus] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const [update, setUpdate] = useState<UpdateResult | "checking" | null>(null);
@@ -101,6 +109,40 @@ export function DesktopTab() {
           />
           System notification when a price alert fires
         </label>
+        <label className="mt-2 flex items-center gap-2 text-base text-ev-text">
+          <input
+            type="checkbox"
+            checked={sound}
+            onChange={(e) => {
+              setSound(e.target.checked);
+              setAlertSoundEnabled(e.target.checked);
+            }}
+          />
+          Play audio chime when an alert fires
+        </label>
+        <div className="mt-2 flex items-center gap-3 text-base text-ev-muted">
+          <label htmlFor="alert-vol" className="text-dense">
+            Chime volume
+          </label>
+          <input
+            id="alert-vol"
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={volume}
+            disabled={!sound}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              setVolume(v);
+              setAlertSoundVolume(v);
+            }}
+            className="w-32 accent-ev-accent"
+          />
+          <button type="button" className={button} disabled={!sound} onClick={() => playAlertChime()}>
+            Test chime
+          </button>
+        </div>
         <button type="button" className={`${button} mt-2`} onClick={() => void notifyNative("EzyView", "Notifications are working.")}>
           Send test notification
         </button>
@@ -152,10 +194,23 @@ export function DesktopTab() {
 
       <section aria-label="Factory reset">
         <h2 className={heading}>Factory reset</h2>
-        <p className="mb-2 text-dense text-ev-muted">Wipes local app data and restarts. API keys in the OS keyring are kept.</p>
-        <button type="button" className={`${button} text-ev-down`} onClick={() => void reset()}>
-          Factory reset…
-        </button>
+        <p className="mb-2 text-dense text-ev-muted">Wipes local app data and restarts. API keys in the OS keyring are kept unless cleared separately.</p>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={`${button} text-ev-down`} onClick={() => void reset()}>
+            Factory reset…
+          </button>
+          <button
+            type="button"
+            className={button}
+            onClick={() => {
+              void clearKeyringSecrets()
+                .then(() => setStatus("Cleared provider API keys from OS keyring."))
+                .catch((e) => setStatus(e instanceof Error ? e.message : String(e)));
+            }}
+          >
+            Clear keyring API keys
+          </button>
+        </div>
       </section>
     </div>
   );

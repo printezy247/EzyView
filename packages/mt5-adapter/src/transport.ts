@@ -194,7 +194,9 @@ class BridgeTransport implements Mt5Transport {
   }
 
   private async send<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
-    const init: RequestInit = { method };
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12_000);
+    const init: RequestInit = { method, signal: controller.signal };
     if (method === "POST") {
       // text/plain is a CORS "simple" header: it skips the preflight, which
       // this local server answers unreliably for some browsers. The bridge
@@ -202,12 +204,17 @@ class BridgeTransport implements Mt5Transport {
       init.headers = { "content-type": "text/plain;charset=UTF-8" };
       init.body = JSON.stringify(body ?? {});
     }
-    const response = await this.fetchFn(`${this.baseUrl}${path}`, init);
-    if (!response.ok) {
-      const detail = await response.text().catch(() => "");
-      throw new Error(`MT5 bridge ${method} ${path} → HTTP ${response.status} ${detail}`.trim());
+    try {
+      const response = await this.fetchFn(`${this.baseUrl}${path}`, init);
+      if (!response.ok) {
+        if (response.status === 401) this.session = null;
+        const detail = await response.text().catch(() => "");
+        throw new Error(`MT5 bridge ${method} ${path} → HTTP ${response.status} ${detail}`.trim());
+      }
+      return (await response.json()) as T;
+    } finally {
+      clearTimeout(timer);
     }
-    return (await response.json()) as T;
   }
 }
 

@@ -32,6 +32,7 @@ import { maskLogin } from "./tradingSafety";
 import { Modal } from "./Modal";
 import { NoticeHost } from "./NoticeHost";
 import { isTypingTarget } from "./hotkeys";
+import { quoteOf } from "./data";
 
 /**
  * The persistent shell: left section rail, tab strip, toolbar, routed page
@@ -87,7 +88,23 @@ export default function App() {
   // the dock starts on watchlist so the default view is unchanged.
   const [dockTab, setDockTab] = useState<DockTabId | null>("watchlist");
   const [alertOpen, setAlertOpen] = useState(false);
+  const [alertSeedPrice, setAlertSeedPrice] = useState<number | null>(null);
   const [hotkeysOpen, setHotkeysOpen] = useState(false);
+
+  useEffect(() => {
+    if (!alertOpen) return;
+    let cancelled = false;
+    const watched = useWorkspace.getState().watchlist.find((w) => w.symbol === state.symbol)?.price ?? null;
+    if (watched !== null) setAlertSeedPrice(watched);
+    void quoteOf(state.symbol)
+      .then((q) => {
+        if (!cancelled && q) setAlertSeedPrice(q.last);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [alertOpen, state.symbol]);
 
   // Remember the last visited route so reloads land where the user left off.
   const location = useLocation();
@@ -242,7 +259,7 @@ export default function App() {
           onAdd={addAlert}
           onRemove={removeAlert}
           symbol={state.symbol}
-          lastPrice={null}
+          lastPrice={alertSeedPrice}
         />
 
         <footer className="flex h-6 shrink-0 items-center gap-4 border-t border-ev-raised bg-ev-chrome px-3 text-dense text-ev-muted">

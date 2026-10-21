@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { Trash2 } from "lucide-react";
-import { composeReview, reviewWindow } from "@ezyview/journal";
+import { Sparkles, Trash2 } from "lucide-react";
+import { composeReview, computeStats, reviewWindow } from "@ezyview/journal";
 import type { JournalEntry, JournalNote } from "@ezyview/journal";
 import { useJournal } from "./journal";
 
@@ -44,6 +44,26 @@ export function JournalReviews({ entries, notes, selectedDay, onSelectDay }: Pro
     setPeriod(reviewPeriod);
     setDraft(text);
     setDraftKey(`${reviewKey}|${reviewPeriod}`);
+  };
+
+  const generateAiBrief = () => {
+    const windowEntries = entries.filter((e) => e.entryTime >= win.start && e.entryTime < win.end);
+    const stats = computeStats(windowEntries);
+    const winPct = (stats.winRate * 100).toFixed(1);
+    const pf = stats.profitFactor === null ? "∞" : stats.profitFactor.toFixed(2);
+    const narrative = [
+      composed,
+      "",
+      "--- AI Coach Review Pack ---",
+      `Window: ${period.toUpperCase()} (${selectedDay})`,
+      `Performance: ${stats.trades} trades | Win Rate: ${winPct}% | Net P&L: ${stats.netPnl.toFixed(2)} | Profit Factor: ${pf} | Max Drawdown: ${stats.maxDrawdown.toFixed(2)}`,
+      stats.trades === 0
+        ? "Observation: No trades recorded in this window. Review your watchlist setups or import closed deals from the Feed tab."
+        : stats.winRate >= 0.5 && stats.netPnl > 0
+          ? "Strengths: Positive expectancy maintained. Keep position sizing consistent and avoid giving back gains on low-conviction setups."
+          : "Action Items: Review losing trades for stop-loss discipline and entry timing. Check if losses clustered around high-impact macro events.",
+    ].join("\n");
+    edit(narrative);
   };
 
   const periodBtn = (value: "daily" | "weekly", label: string) => (
@@ -96,6 +116,15 @@ export function JournalReviews({ entries, notes, selectedDay, onSelectDay }: Pro
             className={`${textarea} min-h-40 flex-1`}
           />
           <div className="mt-1 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={generateAiBrief}
+              className="flex items-center gap-1 rounded border border-ev-line px-2 py-0.5 text-dense text-ev-strong hover:bg-ev-raised"
+              title="Generate structured AI review summary from your journal pack"
+            >
+              <Sparkles size={12} aria-hidden />
+              Generate review
+            </button>
             <button
               type="button"
               onClick={() => setDraftKey("")}

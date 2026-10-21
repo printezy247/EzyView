@@ -127,6 +127,24 @@ describe("evaluateAlert", () => {
     const closed = evaluateAlert(a, [], candle(150, 1_700_000_084), true);
     expect(closed?.state).toBe("triggered");
   });
+
+  it("re-arms a `once_per_bar` alert on a new bar timestamp and can fire again", () => {
+    const a0 = alert({ kind: "greater", value: 100 }, "once_per_bar");
+    // Fires on bar 1000
+    const a1 = evaluateAlert(a0, [], candle(105, 1000), false)!;
+    expect(a1.state).toBe("triggered");
+    expect(a1.lastBarTime).toBe(1000);
+    // Same bar 1000: stays triggered, does not re-fire
+    const sameBar = evaluateAlert(a1, [], candle(110, 1000), false);
+    expect(sameBar?.state).toBe("triggered");
+    // Next bar 1060 where condition is false: re-arms to "armed"
+    const rearmed = evaluateAlert(sameBar ?? a1, [], candle(95, 1060), false)!;
+    expect(rearmed.state).toBe("armed");
+    // Next bar 1120 where condition is true again: fires again!
+    const refired = evaluateAlert(rearmed, [], candle(108, 1120), false)!;
+    expect(refired.state).toBe("triggered");
+    expect(refired.triggeredAt).toBe(1120);
+  });
 });
 
 describe("pushHistory", () => {

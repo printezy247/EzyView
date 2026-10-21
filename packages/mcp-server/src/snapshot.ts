@@ -46,10 +46,14 @@ export function defaultSnapshotPath(
   env: NodeJS.ProcessEnv = process.env,
   home: string = homedir(),
 ): string {
-  if (env.EZYVIEW_SNAPSHOT) return env.EZYVIEW_SNAPSHOT;
-  if (platform === "win32") return join(env.APPDATA ?? join(home, "AppData", "Roaming"), APP_ID, SNAPSHOT_FILE);
+  if (env.EZYVIEW_SNAPSHOT && env.EZYVIEW_SNAPSHOT.trim() !== "") return env.EZYVIEW_SNAPSHOT.trim();
+  if (platform === "win32") {
+    const appData = env.APPDATA && env.APPDATA.trim() !== "" ? env.APPDATA.trim() : join(home, "AppData", "Roaming");
+    return join(appData, APP_ID, SNAPSHOT_FILE);
+  }
   if (platform === "darwin") return join(home, "Library", "Application Support", APP_ID, SNAPSHOT_FILE);
-  return join(env.XDG_DATA_HOME ?? join(home, ".local", "share"), APP_ID, SNAPSHOT_FILE);
+  const xdg = env.XDG_DATA_HOME && env.XDG_DATA_HOME.trim() !== "" ? env.XDG_DATA_HOME.trim() : join(home, ".local", "share");
+  return join(xdg, APP_ID, SNAPSHOT_FILE);
 }
 
 /** Structural check; anything else is "no usable snapshot". */
@@ -73,8 +77,12 @@ export async function loadSnapshot(path: string = defaultSnapshotPath()): Promis
   let text: string;
   try {
     text = await readFile(path, "utf8");
-  } catch {
-    throw new Error(`No EzyView workspace snapshot at ${path}. Open the EzyView desktop app once so it can write one.`);
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException | null)?.code;
+    if (code && code !== "ENOENT") {
+      throw new Error(`Cannot read EzyView workspace snapshot at ${path} (${code}).`, { cause: err });
+    }
+    throw new Error(`No EzyView workspace snapshot at ${path}. Open the EzyView desktop app once so it can write one.`, { cause: err });
   }
   const snapshot = parseSnapshot(text);
   if (!snapshot) throw new Error(`Workspace snapshot at ${path} is not a valid EzyView snapshot.`);

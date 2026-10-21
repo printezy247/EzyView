@@ -27,6 +27,7 @@ import os
 import sqlite3
 import sys
 import threading
+import time
 import uuid
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -39,6 +40,42 @@ HOST = "127.0.0.1"
 AUDIT_DB = os.environ.get(
     "EZYVIEW_MT5_AUDIT", os.path.join(os.path.dirname(os.path.abspath(__file__)), "audit.db")
 )
+
+# Optional shared secret token and server-side safety limits.
+BRIDGE_TOKEN = os.environ.get("EZYVIEW_MT5_TOKEN", "").strip()
+MAX_ORDER_VOLUME = float(os.environ.get("EZYVIEW_MT5_MAX_VOLUME", "50.0"))
+SYMBOL_ALLOW_LIST = [
+    s.strip().upper()
+    for s in os.environ.get("EZYVIEW_MT5_ALLOW_SYMBOLS", "").split(",")
+    if s.strip()
+]
+
+ALLOWED_ORIGINS = {
+    "tauri://localhost",
+    "http://tauri.localhost",
+    "https://tauri.localhost",
+    "http://localhost:1420",
+    "http://127.0.0.1:1420",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+}
+
+RATE_LOCK = threading.Lock()
+RATE_WINDOW_SEC = 1.0
+RATE_MAX_REQ = 60
+_rate_buckets: dict[str, list[float]] = {}
+
+
+def check_rate_limit(ip: str) -> bool:
+    now = time.monotonic()
+    with RATE_LOCK:
+        stamps = [t for t in _rate_buckets.get(ip, []) if now - t < RATE_WINDOW_SEC]
+        if len(stamps) >= RATE_MAX_REQ:
+            _rate_buckets[ip] = stamps
+            return False
+        stamps.append(now)
+        _rate_buckets[ip] = stamps
+        return True
 
 # In-app login session (Phase 1): minted by /connect, dropped by /disconnect.
 # While it is None the bridge keeps its legacy attach-to-terminal behaviour;
@@ -294,13 +331,25 @@ class Handler(BaseHTTPRequestHandler):
         if os.environ.get("EZYVIEW_MT5_VERBOSE"):
             sys.stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
 
+    def _cors_origin(self) -> str:
+        origin = (self.headers.get("Origin") or "").strip()
+        if origin in ALLOWED_ORIGINS or origin.startswith("http://127.0.0.1:") or origin.startswith("http://localhost:"):
+            return origin
+        return "tauri://localhost"
+
+    def _authorized(self) -> bool:
+        if not BRIDGE_TOKEN:
+            return True
+        provided = (self.headers.get("X-Bridge-Token") or "").strip()
+        return provided == BRIDGE_TOKEN
+
     def _send(self, payload, status=200):
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Origin", self._cors_origin())
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Bridge-Token")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         # One request per connection: browsers reuse pooled sockets, and a
         # reused socket to this server sometimes dies before any bytes flow.
@@ -317,6 +366,8 @@ class Handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length") or 0)
         if length <= 0:
             return {}
+        if length > 1_048_576:
+            return {"_bad_json": "request body too large"}
         try:
             return json.loads(self.rfile.read(length).decode("utf-8")) or {}
         except Exception as err:
@@ -326,6 +377,11 @@ class Handler(BaseHTTPRequestHandler):
         self._send({"ok": True})
 
     def do_GET(self):
+        client_ip = self.client_address[0] if self.client_address else "127.0.0.1"
+        if not check_rate_limit(client_ip):
+            return self._fail("rate limit exceeded", 429)
+        if not self._authorized():
+            return self._fail("unauthorized: invalid or missing X-Bridge-Token", 401)
         url = urlparse(self.path)
         query = {k: v[0] for k, v in parse_qs(url.query).items()}
         try:
@@ -353,6 +409,11 @@ class Handler(BaseHTTPRequestHandler):
             self._fail(err, 500)
 
     def do_POST(self):
+        client_ip = self.client_address[0] if self.client_address else "127.0.0.1"
+        if not check_rate_limit(client_ip):
+            return self._fail("rate limit exceeded", 429)
+        if not self._authorized():
+            return self._fail("unauthorized: invalid or missing X-Bridge-Token", 401)
         url = urlparse(self.path)
         body = self._body()
         if "_bad_json" in body:
@@ -561,9 +622,16 @@ class Handler(BaseHTTPRequestHandler):
         symbol = body.get("symbol")
         side = body.get("side", "buy")
         kind = body.get("type", "market")
-        volume = float(body.get("volume") or 0)
-        if not symbol or volume <= 0:
-            return self._fail("symbol and a positive volume are required", 400)
+        try:
+            volume = float(body.get("volume") or 0)
+        except (TypeError, ValueError):
+            volume = 0.0
+        if not symbol or not math.isfinite(volume) or volume <= 0:
+            return self._fail("symbol and a finite positive volume are required", 400)
+        if volume > MAX_ORDER_VOLUME:
+            return self._fail(f"volume {volume} exceeds server max limit ({MAX_ORDER_VOLUME})", 400)
+        if SYMBOL_ALLOW_LIST and str(symbol).upper() not in SYMBOL_ALLOW_LIST:
+            return self._fail(f"symbol {symbol} is not in server allow-list", 403)
 
         # Read the account ref before taking LOCK: `_account_ref` locks too, and
         # this is a non-reentrant lock.

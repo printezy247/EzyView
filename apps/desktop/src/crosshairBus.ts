@@ -35,8 +35,24 @@ const open = (): BroadcastChannel | null => {
   return channel;
 };
 
+let pendingPayload: { symbol: string; time: number | null; price: number | null } | null = null;
+let rafHandle: number | null = null;
+
 export function publishCrosshair(symbol: string, time: number | null, price: number | null): void {
-  open()?.postMessage({ from: WINDOW_ID, symbol, time, price });
+  if (!symbol || symbol.length > 64) return;
+  if (typeof requestAnimationFrame !== "function") {
+    open()?.postMessage({ from: WINDOW_ID, symbol, time, price });
+    return;
+  }
+  pendingPayload = { symbol, time, price };
+  if (rafHandle === null) {
+    rafHandle = requestAnimationFrame(() => {
+      rafHandle = null;
+      const p = pendingPayload;
+      pendingPayload = null;
+      if (p) open()?.postMessage({ from: WINDOW_ID, ...p });
+    });
+  }
 }
 
 export function subscribeCrosshair(onMessage: (m: CrosshairMessage) => void): () => void {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router";
-import { market } from "./data";
+import { quoteOf } from "./data";
 import { useWorkspace } from "./store";
 import { themeColors } from "@ezyview/brand";
 
@@ -17,13 +17,14 @@ export function HeatmapTab() {
   const appTheme = useWorkspace((s) => s.appTheme);
   const chartTheme = useWorkspace((s) => s.activeLayout().charts[0]?.theme ?? "dark");
   const theme = appTheme === "auto" ? chartTheme : appTheme;
+  const symbolKey = watchlist.map((w) => w.symbol).join(",");
 
   useEffect(() => {
-    if (watchlist.length === 0) return;
+    if (!symbolKey) return;
     let cancelled = false;
-    const symbols = watchlist.map((w) => w.symbol);
+    const symbols = symbolKey.split(",");
     const tick = () => {
-      void Promise.all(symbols.map((s) => market.getQuote(s))).then((quotes) => {
+      void Promise.all(symbols.map((s) => quoteOf(s).catch(() => null))).then((quotes) => {
         if (cancelled) return;
         quotes.forEach((q) => {
           if (q) updateWatchPrice(q.symbol, q.last, q.changePercent ?? null);
@@ -36,7 +37,7 @@ export function HeatmapTab() {
       cancelled = true;
       clearInterval(t);
     };
-  }, [watchlist, updateWatchPrice]);
+  }, [symbolKey, updateWatchPrice]);
 
   // Tile weight: change magnitude, floored so a flat market still fills the grid.
   const maxAbs = useMemo(

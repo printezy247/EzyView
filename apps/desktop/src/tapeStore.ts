@@ -12,6 +12,7 @@ import { TapeBuffer, type TapeEntry } from "./tape";
  */
 
 const CAPACITY = 200;
+export const MAX_TAPE_SYMBOLS = 50;
 
 interface TapeStore {
   /** Symbol -> bounded print log. Replaced (not mutated) so React re-renders. */
@@ -28,14 +29,28 @@ export const useTape = create<TapeStore>((set, get) => ({
   tapes: {},
   push: (symbol, price, size) => {
     let buffer = buffers.get(symbol);
-    if (!buffer) {
+    if (buffer) {
+      // Refresh LRU position
+      buffers.delete(symbol);
+      buffers.set(symbol, buffer);
+    } else {
       buffer = new TapeBuffer(CAPACITY);
       buffers.set(symbol, buffer);
     }
     buffer.push({ symbol, price, size, ts: Date.now() });
+
+    const nextTapes: Record<string, TapeEntry[]> = { ...get().tapes, [symbol]: buffer.recent() };
+    while (buffers.size > MAX_TAPE_SYMBOLS) {
+      const oldest = buffers.keys().next().value;
+      if (oldest === undefined) break;
+      buffers.get(oldest)?.clear();
+      buffers.delete(oldest);
+      delete nextTapes[oldest];
+    }
+
     // A fresh array per push: the panel is a live feed, so it must re-render
     // even when the buffer only shifted one entry off the end.
-    set({ tapes: { ...get().tapes, [symbol]: buffer.recent() } });
+    set({ tapes: nextTapes });
   },
   clear: (symbol) => {
     buffers.get(symbol)?.clear();

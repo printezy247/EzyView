@@ -71,17 +71,21 @@ export function gateAction(input: GateInput, config: SafetyConfig): GateResult {
   if (config.symbolAllowList.length === 0) {
     reasons.push("allow-list empty: every symbol can trade");
   }
-  if (input.accountKind === "real") {
-    reasons.push(`this ${ACTION_LABEL[input.action]} goes to a REAL account`);
+  if (input.accountKind === "real" || input.accountKind === "unknown") {
+    reasons.push(
+      input.accountKind === "real"
+        ? `this ${ACTION_LABEL[input.action]} goes to a REAL account`
+        : `this ${ACTION_LABEL[input.action]} goes to an unverified terminal account (treated as REAL for safety)`,
+    );
   }
   if (config.dryRun) {
     reasons.push("dry-run: validated at the bridge, not sent");
   }
-  // Every MT5 action confirms (spec §10); real accounts confirm a second time.
+  // Every MT5 action confirms (spec §10); real and unverified accounts confirm a second time.
   return {
     decision: "confirm",
     reasons,
-    secondConfirm: input.accountKind === "real",
+    secondConfirm: input.accountKind === "real" || input.accountKind === "unknown",
     dryRun: config.dryRun,
   };
 }

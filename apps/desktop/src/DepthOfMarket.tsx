@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Quote } from "@ezyview/data-adapters";
-import { market } from "./data";
+import { quoteOf } from "./data";
 
 interface Props {
   symbol: string;
@@ -27,9 +27,11 @@ export function DepthOfMarket({ symbol, precision }: Props) {
   useEffect(() => {
     let cancelled = false;
     const tick = () => {
-      void market.getQuote(symbol).then((q) => {
-        if (!cancelled) setQuote(q);
-      });
+      void quoteOf(symbol)
+        .catch(() => null)
+        .then((q) => {
+          if (!cancelled) setQuote(q);
+        });
     };
     tick();
     const t = setInterval(tick, 1500);
@@ -45,7 +47,7 @@ export function DepthOfMarket({ symbol, precision }: Props) {
   const maxCum = Math.max(1, ...asks.map((a) => a.cum), ...bids.map((b) => b.cum));
 
   return (
-    <aside aria-label="Depth of market" className="flex w-44 shrink-0 flex-col border-l border-ev-raised bg-ev-bg">
+    <aside aria-label="Depth of market" className="flex w-full min-w-0 flex-1 flex-col bg-ev-bg">
       <div className="border-b border-ev-raised px-3 py-2">
         <h2 className="text-base font-semibold uppercase tracking-wider text-ev-muted">Depth</h2>
         <p className="mt-0.5 text-dense text-ev-faint">{symbol}</p>

@@ -40,6 +40,7 @@ export function TradingPanel({ symbol }: Props) {
   const deals = useTrading((s) => s.deals);
   const close = useTrading((s) => s.close);
   const closeAll = useTrading((s) => s.closeAll);
+  const submit = useTrading((s) => s.submit);
   const cancel = useTrading((s) => s.cancel);
   const reset = useTrading((s) => s.reset);
   const source = useMt5((s) => s.source);
@@ -145,6 +146,32 @@ export function TradingPanel({ symbol }: Props) {
                       {p.margin === undefined ? "—" : money(p.margin)}
                     </span>,
                     <div className="flex justify-end gap-1">
+                      <button
+                        type="button"
+                        title="Close 50% of position"
+                        onClick={() => void close(p.symbol, Number((p.qty / 2).toFixed(4)) || p.qty)}
+                        className="rounded border border-ev-line px-1.5 py-0.5 text-dense text-ev-muted hover:border-ev-accent hover:text-ev-strong"
+                      >
+                        50%
+                      </button>
+                      <button
+                        type="button"
+                        title="Reverse position direction"
+                        onClick={() => {
+                          void (async () => {
+                            await close(p.symbol);
+                            await submit({
+                              symbol: p.symbol,
+                              side: p.side === "long" ? "sell" : "buy",
+                              type: "market",
+                              qty: p.qty,
+                            });
+                          })();
+                        }}
+                        className="rounded border border-ev-line px-1.5 py-0.5 text-dense text-ev-muted hover:border-ev-accent hover:text-ev-strong"
+                      >
+                        Rev
+                      </button>
                       <button
                         type="button"
                         onClick={() => void close(p.symbol)}

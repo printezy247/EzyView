@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { market } from "./data";
+import { quoteOf } from "./data";
 import { useWorkspace } from "./store";
 import { Input, rowClass } from "./ui";
 
@@ -21,13 +21,14 @@ export function ScreenerTab() {
   const [minChange, setMinChange] = useState("");
   const [sort, setSort] = useState<SortKey>("change");
   const [desc, setDesc] = useState(true);
+  const symbolKey = watchlist.map((w) => w.symbol).join(",");
 
   useEffect(() => {
-    if (watchlist.length === 0) return;
+    if (!symbolKey) return;
     let cancelled = false;
-    const symbols = watchlist.map((w) => w.symbol);
+    const symbols = symbolKey.split(",");
     const tick = () => {
-      void Promise.all(symbols.map((s) => market.getQuote(s))).then((quotes) => {
+      void Promise.all(symbols.map((s) => quoteOf(s).catch(() => null))).then((quotes) => {
         if (cancelled) return;
         quotes.forEach((q) => {
           if (q) updateWatchPrice(q.symbol, q.last, q.changePercent ?? null);
@@ -40,7 +41,7 @@ export function ScreenerTab() {
       cancelled = true;
       clearInterval(t);
     };
-  }, [watchlist, updateWatchPrice]);
+  }, [symbolKey, updateWatchPrice]);
 
   const rows = useMemo(() => {
     const floor = minChange.trim() === "" ? null : Number(minChange);

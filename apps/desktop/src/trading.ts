@@ -250,7 +250,8 @@ export const useTrading = create<TradingState & TradingActions>((set, get) => ({
       set({ note: "Nothing to close.", error: null });
       return;
     }
-    const gate = mt5Gate({ action: "close" });
+    const maxRowVol = Math.max(...rows.map((r) => r.qty));
+    const gate = mt5Gate({ action: "close", symbol: rows[0]?.symbol, volume: maxRowVol });
     park(set, gate, { kind: "close-all", rows, gate, token: approvalTokens.mint() });
   },
 

@@ -24,6 +24,14 @@ describe("mcp server protocol", () => {
     const bad = await handleMessage({ jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "nope" } });
     expect(bad!.error!.code).toBe(-32602);
   });
+
+  it("rejects non-object or malformed JSON-RPC envelopes with -32600", async () => {
+    const cases = [null, 42, "hello", [1, 2], {}, { jsonrpc: "2.0", id: 1, method: "" }];
+    const results = await Promise.all(cases.map((invalid) => handleMessage(invalid)));
+    for (const res of results) {
+      expect(res?.error?.code).toBe(-32600);
+    }
+  });
 });
 
 describe("mcp server tools", () => {
@@ -52,6 +60,8 @@ describe("mcp server tools", () => {
   it("screens, and serves calendar and earnings", async () => {
     const screened = await call("screen", { field: "rsi", min: 0, max: 100 });
     expect(Array.isArray(screened.data)).toBe(true);
+    expect((await call("screen", { field: "not_a_field" })).isError).toBe(true);
+    expect((await call("price_option", { right: "call", spot: -10, strike: 100, days: 30, vol: 0.2 })).isError).toBe(true);
     expect((await call("economic_calendar", { days: 3 })).isError).toBe(false);
     const e = await call("earnings", { symbol: "NASDAQ:AAPL" });
     expect(e.data.earnings.length).toBeGreaterThan(0);
