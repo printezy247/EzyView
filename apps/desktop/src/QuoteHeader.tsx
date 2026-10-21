@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { Chip } from "./ui";
-import { precisionFor, quoteOf } from "./data";
+import { isLivePublicSymbol, precisionFor, quoteOf } from "./data";
 import { useMt5 } from "./mt5";
 import { provenanceLabel, provenanceOf, provenanceTitle, provenanceTone } from "./provenance";
 import type { Quote } from "@ezyview/data-adapters";
@@ -38,7 +38,8 @@ export function QuoteHeader({ symbol }: { symbol: string }) {
   }, [symbol]);
 
   const ageSeconds = quote ? Math.floor(Date.now() / 1000) - quote.time : undefined;
-  const provenance = provenanceOf({ source, status, ageSeconds });
+  const baseProvenance = provenanceOf({ source, status, ageSeconds });
+  const provenance = baseProvenance === "demo" && isLivePublicSymbol(symbol) ? "live" : baseProvenance;
   const digits = precisionFor(quote?.last ?? null);
   const up = (quote?.changePercent ?? 0) >= 0;
 

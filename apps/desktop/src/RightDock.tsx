@@ -1,12 +1,5 @@
-import type { ReactNode } from "react";
-
-/**
- * A docked right-hand panel with a tab strip: one panel visible at a time
- * instead of three stacked, each of which shrank the chart. The tabs replaced
- * the per-panel booleans that used to live in the shell (`watchlistOpen`,
- * `domOpen`, `objectsOpen`), so "which panel is open" is now a single value and
- * the chart gets a stable width.
- */
+import { useState, type ReactNode } from "react";
+import { Activity, BookOpen, Columns, Layers, List, PanelRightClose } from "lucide-react";
 
 /**
  * The right-dock tabs. Declared here rather than in the toolbar so every
@@ -26,6 +19,15 @@ export interface DockTab {
   badge?: number;
 }
 
+const TAB_ICON: Record<DockTabId, ReactNode> = {
+  watchlist: <List size={14} aria-hidden />,
+  depth: <BookOpen size={14} aria-hidden />,
+  objects: <Layers size={14} aria-hidden />,
+  tape: <Activity size={14} aria-hidden />,
+};
+
+const WIDTH_PRESETS = [256, 300, 360] as const;
+
 interface Props {
   tabs: DockTab[];
   active: DockTabId | null;
@@ -34,14 +36,50 @@ interface Props {
   width?: number;
 }
 
-export function RightDock({ tabs, active, onSelect, width = 288 }: Props) {
+export function RightDock({ tabs, active, onSelect, width }: Props) {
+  const [widthIdx, setWidthIdx] = useState(1);
+  const resolvedWidth = width ?? WIDTH_PRESETS[widthIdx] ?? 300;
+
+  // When collapsed (active === null), render a slim TradingView-style 38px vertical icon rail
+  // so the chart gets maximum horizontal room!
+  if (active === null) {
+    return (
+      <aside
+        aria-label="Chart panels"
+        className="flex w-10 shrink-0 flex-col items-center gap-1 border-l border-ev-raised bg-ev-chrome py-2"
+      >
+        <div role="tablist" aria-label="Panel" className="flex flex-col items-center gap-1">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={false}
+              title={`${tab.label} — ${tab.hint ?? "Click to expand panel"}`}
+              onClick={() => onSelect(tab.id)}
+              className="relative flex size-8 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+            >
+              {TAB_ICON[tab.id]}
+              <span className="sr-only">{tab.label}</span>
+              {tab.badge !== undefined && tab.badge > 0 && (
+                <span className="num absolute -right-0.5 -top-0.5 rounded-full bg-ev-accent px-1 text-[9px] leading-tight text-white">
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </aside>
+    );
+  }
+
   return (
     <aside
       aria-label="Chart panels"
-      className="flex shrink-0 flex-col border-l border-ev-raised bg-ev-bg"
-      style={{ width }}
+      className="flex shrink-0 flex-col border-l border-ev-raised bg-ev-bg transition-[width] duration-150"
+      style={{ width: resolvedWidth }}
     >
-      <div role="tablist" aria-label="Panel" className="flex h-8 shrink-0 items-center gap-0.5 border-b border-ev-raised px-1">
+      <div role="tablist" aria-label="Panel" className="flex h-8 shrink-0 items-center gap-0.5 border-b border-ev-raised bg-ev-chrome px-1">
         {tabs.map((tab) => {
           const on = active === tab.id;
           return (
@@ -54,38 +92,42 @@ export function RightDock({ tabs, active, onSelect, width = 288 }: Props) {
               onClick={() => onSelect(on ? null : tab.id)}
               className={
                 on
-                  ? "flex items-center gap-1 rounded px-2 py-1 text-dense font-medium text-ev-strong"
+                  ? "flex items-center gap-1 rounded bg-ev-panel px-2 py-1 text-dense font-medium text-ev-strong shadow-xs"
                   : "flex items-center gap-1 rounded px-2 py-1 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
               }
             >
-              {tab.label}
+              {TAB_ICON[tab.id]}
+              <span>{tab.label}</span>
               {tab.badge !== undefined && tab.badge > 0 && (
                 <span className="num rounded bg-ev-accent px-1 text-micro text-white">{tab.badge}</span>
               )}
             </button>
           );
         })}
-        {active !== null && (
+        <div className="ml-auto flex items-center gap-0.5">
+          <button
+            type="button"
+            title="Cycle panel width (Compact / Standard / Wide)"
+            aria-label="Cycle panel width"
+            onClick={() => setWidthIdx((i) => (i + 1) % WIDTH_PRESETS.length)}
+            className="rounded p-1 text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+          >
+            <Columns size={12} aria-hidden />
+          </button>
           <button
             type="button"
             onClick={() => onSelect(null)}
-            title="Hide panel"
+            title="Collapse panel to right rail"
             aria-label="Hide panel"
-            className="ml-auto rounded px-1.5 py-1 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+            className="rounded p-1 text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
           >
-            ✕
+            <PanelRightClose size={13} aria-hidden />
           </button>
-        )}
+        </div>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col">
-        {active === null ? (
-          <p className="px-3 py-6 text-base leading-relaxed text-ev-faint">
-            No panel open. Pick one above — or press a tab again to close it.
-          </p>
-        ) : (
-          (tabs.find((t) => t.id === active)?.render() ?? null)
-        )}
+        {tabs.find((t) => t.id === active)?.render() ?? null}
       </div>
     </aside>
   );

@@ -2,12 +2,27 @@ import type { Resolution } from "@ezyview/data-adapters";
 import type { ChartType } from "@ezyview/chart-engine";
 import { useEffect, useSyncExternalStore, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { ArrowLeftRight, CandlestickChart, Clock, Eye, FlaskConical, Search, Share2, Telescope } from "lucide-react";
+import {
+  ArrowLeftRight,
+  BellPlus,
+  Bookmark,
+  Camera,
+  CandlestickChart,
+  Clock,
+  Eye,
+  FlaskConical,
+  Grid2x2,
+  PlusCircle,
+  Rewind,
+  Search,
+  Share2,
+  Telescope,
+} from "lucide-react";
 import { CommandPalette } from "./CommandPalette";
 import { IntervalDialog } from "./IntervalDialog";
 import { buildNavCommands } from "./commandRegistry";
 import type { CommandGroup } from "./commandRegistry";
-import { RESOLUTION_GROUPS, resolutionName } from "./data";
+import { PICKER_RESOLUTIONS, RESOLUTION_GROUPS, resolutionName } from "./data";
 import type { DockTabId } from "./RightDock";
 import { Menu } from "./Menu";
 import type { MenuEntry } from "./Menu";
@@ -206,6 +221,83 @@ export function Toolbar(props: Props) {
   const setMagnet = useWorkspace((s) => s.setMagnet);
   const crosshairSync = useWorkspace((s) => s.crosshairSync);
   const setCrosshairSync = useWorkspace((s) => s.setCrosshairSync);
+  const chartTemplates = useWorkspace((s) => s.chartTemplates);
+  const applyChartTemplate = useWorkspace((s) => s.applyChartTemplate);
+  const saveChartTemplate = useWorkspace((s) => s.saveChartTemplate);
+  const addIndicator = useWorkspace((s) => s.addIndicator);
+
+  const quickSymbols: MenuEntry[] = [
+    { kind: "label", id: "qs-metals", label: "Precious Metals & Forex" },
+    { kind: "radio", id: "sym-xau", label: "OANDA:XAUUSD — Gold / US Dollar", selected: props.symbol === "OANDA:XAUUSD", onSelect: () => props.onSymbol("OANDA:XAUUSD") },
+    { kind: "radio", id: "sym-eur", label: "FX:EURUSD — Euro / US Dollar", selected: props.symbol === "FX:EURUSD", onSelect: () => props.onSymbol("FX:EURUSD") },
+    { kind: "radio", id: "sym-gbp", label: "FX:GBPUSD — British Pound / US Dollar", selected: props.symbol === "FX:GBPUSD", onSelect: () => props.onSymbol("FX:GBPUSD") },
+    { kind: "separator", id: "qs-s1" },
+    { kind: "label", id: "qs-crypto", label: "Crypto Spot" },
+    { kind: "radio", id: "sym-btc", label: "BINANCE:BTCUSDT — Bitcoin / USDT", selected: props.symbol === "BINANCE:BTCUSDT", onSelect: () => props.onSymbol("BINANCE:BTCUSDT") },
+    { kind: "radio", id: "sym-eth", label: "BINANCE:ETHUSDT — Ethereum / USDT", selected: props.symbol === "BINANCE:ETHUSDT", onSelect: () => props.onSymbol("BINANCE:ETHUSDT") },
+    { kind: "radio", id: "sym-sol", label: "BINANCE:SOLUSDT — Solana / USDT", selected: props.symbol === "BINANCE:SOLUSDT", onSelect: () => props.onSymbol("BINANCE:SOLUSDT") },
+    { kind: "separator", id: "qs-s2" },
+    { kind: "label", id: "qs-eq", label: "Equities & Indices" },
+    { kind: "radio", id: "sym-spx", label: "SP:SPX — S&P 500 Index", selected: props.symbol === "SP:SPX", onSelect: () => props.onSymbol("SP:SPX") },
+    { kind: "radio", id: "sym-aapl", label: "NASDAQ:AAPL — Apple Inc.", selected: props.symbol === "NASDAQ:AAPL", onSelect: () => props.onSymbol("NASDAQ:AAPL") },
+  ];
+
+  const templateEntries: MenuEntry[] = [
+    { kind: "label", id: "tpl-presets", label: "Quick Study Presets" },
+    {
+      kind: "action",
+      id: "preset-trend",
+      label: "Trend Pack (EMA + RSI)",
+      onSelect: () => {
+        addIndicator("ema");
+        addIndicator("rsi");
+      },
+    },
+    {
+      kind: "action",
+      id: "preset-bb",
+      label: "Volatility Pack (Bollinger + MACD)",
+      onSelect: () => {
+        addIndicator("bb");
+        addIndicator("macd");
+      },
+    },
+    {
+      kind: "action",
+      id: "preset-clean",
+      label: "Clear all indicators",
+      onSelect: () => useWorkspace.getState().updateActive({ indicators: [] }),
+    },
+    { kind: "separator", id: "tpl-sep" },
+    {
+      kind: "action",
+      id: "tpl-save",
+      label: "Save current chart as template",
+      onSelect: () => {
+        const name = `${props.symbol.split(":").pop()} ${props.resolution} (${props.indicatorCount} studies)`;
+        saveChartTemplate(name);
+        notice.alert("Template saved", `Saved "${name}" to Templates.`);
+      },
+    },
+    ...chartTemplates.map(
+      (t): MenuEntry => ({
+        kind: "action",
+        id: `tpl-${t.id}`,
+        label: `Apply: ${t.name}`,
+        onSelect: () => applyChartTemplate(t.id),
+      }),
+    ),
+  ];
+
+  const gridEntries: MenuEntry[] = GRID_MODES.map(
+    (g): MenuEntry => ({
+      kind: "radio",
+      id: `qgrid-${g.id}`,
+      label: `${g.label} (${g.id})`,
+      selected: props.grid === g.id,
+      onSelect: () => props.onGrid(g.id),
+    }),
+  );
 
   const dockTab = (id: DockTabId, label: string) =>
     toggle(id, label, props.dockTab === id, () => props.onSelectDockTab(id));
@@ -420,11 +512,40 @@ export function Toolbar(props: Props) {
   const analysisOpen = props.replayActive;
 
   return (
-    <div className="flex h-9 shrink-0 items-center gap-0.5 border-b border-ev-raised px-2">
+    <div className="flex h-9 shrink-0 items-center gap-0.5 overflow-x-auto border-b border-ev-raised px-2">
       <SymbolSearch symbol={props.symbol} onSelect={props.onSymbol} />
+      <Menu
+        label=""
+        caption="Quick symbol switcher & markets"
+        icon={<PlusCircle size={13} aria-hidden />}
+        entries={quickSymbols}
+      />
       <QuoteHeader symbol={props.symbol} />
 
-      <div className="mx-1 h-4 w-px bg-ev-raised" />
+      <div className="mx-1 h-4 w-px shrink-0 bg-ev-raised" />
+
+      {/* 1-click favorite interval pills (TradingView style) */}
+      <div className="hidden items-center gap-0.5 lg:flex" role="group" aria-label="Favorite intervals">
+        {PICKER_RESOLUTIONS.map((r) => {
+          const active = props.resolution === r;
+          return (
+            <button
+              key={r}
+              type="button"
+              title={resolutionName(r)}
+              aria-pressed={active}
+              onClick={() => props.onResolution(r)}
+              className={
+                active
+                  ? "rounded bg-ev-accent/20 px-1.5 py-0.5 text-dense font-semibold text-ev-accent-text"
+                  : "rounded px-1.5 py-0.5 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+              }
+            >
+              {r}
+            </button>
+          );
+        })}
+      </div>
 
       <Menu label={props.resolution} caption="Interval" icon={<Clock size={13} aria-hidden />} entries={intervalEntries} />
       <Menu
@@ -455,7 +576,7 @@ export function Toolbar(props: Props) {
         </label>
       )}
 
-      <div className="mx-1 h-4 w-px bg-ev-raised" />
+      <div className="mx-1 h-4 w-px shrink-0 bg-ev-raised" />
 
       <nav aria-label="Main menu" className="flex items-center gap-0.5">
         <Menu
@@ -465,24 +586,74 @@ export function Toolbar(props: Props) {
           triggerActive={strategiesActive}
           entries={studyEntries}
         />
+        <Menu
+          label="Templates"
+          caption="Indicator & chart templates"
+          icon={<Bookmark size={13} aria-hidden />}
+          entries={templateEntries}
+        />
         <Menu label="Analysis" icon={<Telescope size={13} aria-hidden />} triggerActive={analysisOpen} entries={analysisEntries} />
         <Menu label="Trade" icon={<ArrowLeftRight size={13} aria-hidden />} triggerActive={tradeOpen} entries={tradeEntries} />
         <Menu label="View" icon={<Eye size={13} aria-hidden />} entries={viewEntries} />
         <Menu label="Export" icon={<Share2 size={13} aria-hidden />} entries={exportEntries} />
       </nav>
 
-      {props.replayActive && (
-        <span className="ml-2 rounded bg-ev-accent/15 px-1.5 py-0.5 text-dense font-medium text-ev-accent-text">Replay on</span>
-      )}
+      <div className="mx-1 h-4 w-px shrink-0 bg-ev-raised" />
+
+      {/* Direct 1-click TradingView action buttons: Alert, Replay, Grid, Snapshot */}
+      <button
+        type="button"
+        title="Create price alert on active symbol"
+        onClick={props.onOpenAlerts}
+        className="flex h-6 shrink-0 items-center gap-1 rounded px-2 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+      >
+        <BellPlus size={13} aria-hidden />
+        <span className="hidden xl:inline">Alert</span>
+      </button>
+
+      <button
+        type="button"
+        aria-pressed={props.replayActive}
+        title="Toggle bar replay mode"
+        onClick={props.onToggleReplay}
+        className={
+          props.replayActive
+            ? "flex h-6 shrink-0 items-center gap-1 rounded bg-ev-accent/20 px-2 text-dense font-medium text-ev-accent-text"
+            : "flex h-6 shrink-0 items-center gap-1 rounded px-2 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+        }
+      >
+        <Rewind size={13} aria-hidden />
+        <span className="hidden xl:inline">Replay</span>
+      </button>
+
+      <Menu
+        label={props.grid}
+        caption="Chart grid layout"
+        icon={<Grid2x2 size={13} aria-hidden />}
+        entries={gridEntries}
+      />
+
+      <button
+        type="button"
+        title="Take instant chart snapshot (PNG)"
+        aria-label="Take chart snapshot"
+        onClick={() => {
+          const src = getActiveExportSource();
+          if (src) saveChartPng(src);
+        }}
+        className="flex size-6 shrink-0 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+      >
+        <Camera size={13} aria-hidden />
+      </button>
 
       <button
         type="button"
         onClick={() => setPaletteOpen(true)}
         aria-keyshortcuts="Control+K"
-        className="ml-auto flex h-6 w-56 items-center gap-2 rounded border border-ev-line px-2 text-dense text-ev-muted hover:border-ev-dim hover:text-ev-strong"
+        className="ml-auto flex h-6 w-48 shrink-0 items-center gap-2 rounded border border-ev-line px-2 text-dense text-ev-muted hover:border-ev-dim hover:text-ev-strong"
       >
         <Search size={12} aria-hidden />
-        <span className="flex-1 text-left">Search features</span>
+        <span className="flex-1 truncate text-left">Search features</span>
         <kbd className="text-dense text-ev-faint">{PALETTE_KEY}</kbd>
       </button>
 

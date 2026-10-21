@@ -18,7 +18,7 @@ import { ObjectTree } from "./ObjectTree";
 import { TimeAndSales } from "./TimeAndSales";
 import { LinkGroupDialog } from "./LinkGroupDialog";
 import { sessionForSymbol } from "./sessionFor";
-import { loadHistory } from "./data";
+import { loadHistory, precisionFor, quoteOf } from "./data";
 import { useWorkspace } from "./store";
 import type { ChartState } from "./store";
 import { themeColors } from "@ezyview/brand";
@@ -33,7 +33,7 @@ import { eventsActive } from "./eventOptions";
 import { EMPTY_FUNDAMENTAL_EVENTS, fetchFundamentalEvents } from "./fundamentalEvents";
 import { publishCrosshair, subscribeCrosshair } from "./crosshairBus";
 import type { CrosshairMessage } from "./crosshairBus";
-import { setActiveExportSource } from "./exportBridge";
+import { getActiveExportSource, setActiveExportSource } from "./exportBridge";
 
 interface ChartPageProps {
   /** Which right-dock tab is visible, or null when the dock is closed. */
@@ -552,77 +552,291 @@ function Readout({
   const submit = useTrading((s) => s.submit);
   const updateIndicator = useWorkspace((s) => s.updateIndicator);
   const removeIndicator = useWorkspace((s) => s.removeIndicator);
+  const addIndicator = useWorkspace((s) => s.addIndicator);
+  const updateActive = useWorkspace((s) => s.updateActive);
+  const showGrid = useWorkspace((s) => s.activeChart().showGrid);
+  const showVolume = useWorkspace((s) => s.activeChart().showVolume);
   const watchedPrice = useWorkspace((s) => s.watchlist.find((w) => w.symbol === rawSymbol)?.price ?? null);
 
+  const [livePrice, setLivePrice] = useState<number | null>(null);
+  const [liveChangePct, setLiveChangePct] = useState<number | null>(null);
+  const [qty, setQty] = useState<number>(1);
+  const [collapsed, setCollapsed] = useState(false);
+  const [tradeBoxVisible, setTradeBoxVisible] = useState(true);
+  const [studyQuickOpen, setStudyQuickOpen] = useState(false);
+  const [floatHudVisible, setFloatHudVisible] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const poll = () => {
+      void quoteOf(rawSymbol).then((q) => {
+        if (!cancelled && q) {
+          setLivePrice(q.last);
+          setLiveChangePct(q.changePercent ?? null);
+        }
+      });
+    };
+    poll();
+    const timer = setInterval(poll, 1500);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [rawSymbol]);
+
+  const displayPrice = livePrice ?? watchedPrice;
+  const digits = precisionFor(displayPrice);
+  const spread = displayPrice !== null ? Math.max(Math.pow(10, -digits) * 2, displayPrice * 0.00015) : 0;
+  const bid = displayPrice !== null ? (displayPrice - spread / 2).toFixed(digits) : null;
+  const ask = displayPrice !== null ? (displayPrice + spread / 2).toFixed(digits) : null;
+
   return (
-    <div className="pointer-events-none absolute left-2 top-2 z-10 flex flex-col gap-1 text-dense text-ev-muted">
-      <div className="flex items-center gap-2">
-        <span className="font-medium text-ev-strong">{symbol}</span>
-        {watchedPrice !== null && <span className="num text-ev-text">{watchedPrice}</span>}
-        {time !== null && <span>{new Date(time * 1000).toLocaleString()}</span>}
-        <div className="pointer-events-auto ml-1 flex items-center gap-1">
+    <>
+      <div className="pointer-events-none absolute left-2 top-2 z-10 flex flex-col gap-1.5 text-dense text-ev-muted">
+        {/* Top Symbol + Live Price + Quick Controls Row */}
+        <div className="pointer-events-auto flex flex-wrap items-center gap-1.5 rounded bg-ev-bg/85 px-2 py-1 backdrop-blur-xs">
           <button
             type="button"
-            title={`Quick market sell 1 unit of ${rawSymbol}`}
+            title={collapsed ? "Expand chart legend" : "Collapse chart legend"}
             onClick={(e) => {
               e.stopPropagation();
-              void submit({ symbol: rawSymbol, side: "sell", type: "market", qty: 1 });
+              setCollapsed((v) => !v);
             }}
-            className="rounded border border-ev-down/50 bg-ev-down/15 px-1.5 py-px text-micro font-semibold text-ev-down hover:bg-ev-down hover:text-white"
+            className="rounded px-1 text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
           >
-            SELL
+            {collapsed ? "▸" : "▾"}
           </button>
-          <button
-            type="button"
-            title={`Quick market buy 1 unit of ${rawSymbol}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              void submit({ symbol: rawSymbol, side: "buy", type: "market", qty: 1 });
-            }}
-            className="rounded border border-ev-up/50 bg-ev-up/15 px-1.5 py-px text-micro font-semibold text-ev-up hover:bg-ev-up hover:text-white"
-          >
-            BUY
-          </button>
-        </div>
-      </div>
-      {indicators.length > 0 && (
-        <div className="pointer-events-auto flex flex-wrap items-center gap-1.5">
-          {indicators.map((ind) => (
-            <span
-              key={ind.uid}
-              className={`inline-flex items-center gap-1 rounded bg-ev-panel/85 px-1.5 py-0.5 text-micro ${
-                ind.hidden ? "text-ev-faint line-through" : "text-ev-text"
-              }`}
-            >
-              <button
-                type="button"
-                title={ind.hidden ? `Show ${ind.def.name}` : `Hide ${ind.def.name}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  updateIndicator(ind.uid, { hidden: !ind.hidden });
-                }}
-                className="hover:text-ev-strong"
-              >
-                {ind.name ?? ind.def.name}
-                {Object.keys(ind.params).length > 0 && ` (${Object.values(ind.params).join(",")})`}
-              </button>
-              <button
-                type="button"
-                aria-label={`Remove ${ind.name ?? ind.def.name}`}
-                title="Remove indicator"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  removeIndicator(ind.uid);
-                }}
-                className="text-ev-faint hover:text-ev-down"
-              >
-                ×
-              </button>
+          <span className="font-semibold text-ev-strong">{symbol}</span>
+          {displayPrice !== null && (
+            <span className="num font-semibold text-ev-strong">{displayPrice.toFixed(digits)}</span>
+          )}
+          {liveChangePct !== null && (
+            <span className={`num text-micro font-medium ${liveChangePct >= 0 ? "text-ev-up" : "text-ev-down"}`}>
+              {liveChangePct >= 0 ? "+" : ""}
+              {liveChangePct.toFixed(2)}%
             </span>
-          ))}
+          )}
+          {time !== null && <span className="text-micro text-ev-faint">{new Date(time * 1000).toLocaleString()}</span>}
+
+          <button
+            type="button"
+            title={tradeBoxVisible ? "Hide 1-click Buy/Sell buttons" : "Show 1-click Buy/Sell buttons"}
+            onClick={(e) => {
+              e.stopPropagation();
+              setTradeBoxVisible((v) => !v);
+            }}
+            className={`ml-1 rounded border px-1.5 py-px text-micro ${
+              tradeBoxVisible
+                ? "border-ev-accent/40 bg-ev-accent/15 text-ev-accent-text"
+                : "border-ev-line text-ev-muted hover:text-ev-strong"
+            }`}
+          >
+            B/S
+          </button>
+
+          <div className="relative">
+            <button
+              type="button"
+              title="Quickly add popular indicator to chart"
+              onClick={(e) => {
+                e.stopPropagation();
+                setStudyQuickOpen((v) => !v);
+              }}
+              className="rounded border border-ev-line bg-ev-panel px-1.5 py-px text-micro text-ev-muted hover:border-ev-dim hover:text-ev-strong"
+            >
+              + Study ▾
+            </button>
+            {studyQuickOpen && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute left-0 top-full z-20 mt-1 flex w-36 flex-col rounded border border-ev-line bg-ev-panel py-1 shadow-xl"
+              >
+                {[
+                  { id: "ema", label: "EMA (20)" },
+                  { id: "sma", label: "SMA (20)" },
+                  { id: "rsi", label: "RSI (14)" },
+                  { id: "bb", label: "Bollinger Bands" },
+                  { id: "macd", label: "MACD" },
+                  { id: "vwap", label: "VWAP" },
+                ].map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => {
+                      addIndicator(s.id);
+                      setStudyQuickOpen(false);
+                    }}
+                    className="px-2.5 py-1 text-left text-dense text-ev-text hover:bg-ev-raised hover:text-ev-strong"
+                  >
+                    + {s.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      )}
-    </div>
+
+        {/* TradingView-style 1-Click Bid / Qty / Ask Trade Box (hideable) */}
+        {!collapsed && tradeBoxVisible && (
+          <div className="pointer-events-auto flex items-center gap-1">
+            <button
+              type="button"
+              title={`Quick market sell ${qty} of ${rawSymbol}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                void submit({ symbol: rawSymbol, side: "sell", type: "market", qty });
+              }}
+              className="flex items-center gap-1.5 rounded border border-ev-down/60 bg-ev-down/15 px-2 py-0.5 text-micro font-semibold text-ev-down shadow-xs hover:bg-ev-down hover:text-white"
+            >
+              <span>SELL</span>
+              {bid && <span className="num font-bold">{bid}</span>}
+            </button>
+
+            <select
+              aria-label="Quick order quantity"
+              title="1-click order quantity / lot size"
+              value={qty}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => setQty(Number(e.target.value))}
+              className="num h-5 rounded border border-ev-line bg-ev-panel px-1 text-center text-micro text-ev-strong"
+            >
+              {[0.01, 0.1, 0.5, 1, 2, 5, 10].map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              title={`Quick market buy ${qty} of ${rawSymbol}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                void submit({ symbol: rawSymbol, side: "buy", type: "market", qty });
+              }}
+              className="flex items-center gap-1.5 rounded border border-ev-up/60 bg-ev-up/15 px-2 py-0.5 text-micro font-semibold text-ev-up shadow-xs hover:bg-ev-up hover:text-white"
+            >
+              <span>BUY</span>
+              {ask && <span className="num font-bold">{ask}</span>}
+            </button>
+          </div>
+        )}
+
+        {/* Active Study Legend Chips */}
+        {!collapsed && indicators.length > 0 && (
+          <div className="pointer-events-auto flex flex-wrap items-center gap-1.5">
+            {indicators.map((ind) => (
+              <span
+                key={ind.uid}
+                className={`inline-flex items-center gap-1 rounded border border-ev-line/60 bg-ev-panel/90 px-1.5 py-0.5 text-micro shadow-xs ${
+                  ind.hidden ? "text-ev-faint line-through" : "text-ev-text"
+                }`}
+              >
+                <button
+                  type="button"
+                  title={ind.hidden ? `Show ${ind.def.name}` : `Hide ${ind.def.name}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    updateIndicator(ind.uid, { hidden: !ind.hidden });
+                  }}
+                  className="hover:text-ev-strong"
+                >
+                  {ind.name ?? ind.def.name}
+                  {Object.keys(ind.params).length > 0 && ` (${Object.values(ind.params).join(",")})`}
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Remove ${ind.name ?? ind.def.name}`}
+                  title="Remove indicator"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeIndicator(ind.uid);
+                  }}
+                  className="text-ev-faint hover:text-ev-down"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Hideable Floating Bottom-Center Chart Controls Pill (TradingView style) */}
+      <div className="pointer-events-auto absolute bottom-8 left-1/2 z-10 -translate-x-1/2">
+        {floatHudVisible ? (
+          <div className="flex items-center gap-1 rounded-full border border-ev-line bg-ev-panel/90 px-2.5 py-0.5 text-micro text-ev-muted shadow-lg backdrop-blur-xs">
+            <button
+              type="button"
+              title="Reset chart zoom & scroll"
+              onClick={(e) => {
+                e.stopPropagation();
+                getActiveExportSource()?.view?.reset();
+              }}
+              className="rounded px-1.5 py-0.5 hover:bg-ev-raised hover:text-ev-strong"
+            >
+              Reset view
+            </button>
+            <button
+              type="button"
+              title="Fit price scale to visible bars"
+              onClick={(e) => {
+                e.stopPropagation();
+                getActiveExportSource()?.view?.autoScale();
+              }}
+              className="rounded px-1.5 py-0.5 hover:bg-ev-raised hover:text-ev-strong"
+            >
+              Auto fit
+            </button>
+            <button
+              type="button"
+              title="Toggle chart grid lines"
+              onClick={(e) => {
+                e.stopPropagation();
+                updateActive({ showGrid: !showGrid });
+              }}
+              className={`rounded px-1.5 py-0.5 ${showGrid ? "text-ev-accent-text" : "hover:text-ev-strong"}`}
+            >
+              Grid
+            </button>
+            <button
+              type="button"
+              title="Toggle volume histogram"
+              onClick={(e) => {
+                e.stopPropagation();
+                updateActive({ showVolume: !showVolume });
+              }}
+              className={`rounded px-1.5 py-0.5 ${showVolume ? "text-ev-accent-text" : "hover:text-ev-strong"}`}
+            >
+              Vol
+            </button>
+            <button
+              type="button"
+              title="Hide floating chart controls"
+              onClick={(e) => {
+                e.stopPropagation();
+                setFloatHudVisible(false);
+              }}
+              className="ml-0.5 rounded px-1 text-ev-faint hover:text-ev-strong"
+            >
+              ×
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            title="Show floating chart controls"
+            onClick={(e) => {
+              e.stopPropagation();
+              setFloatHudVisible(true);
+            }}
+            className="rounded-full border border-ev-line bg-ev-panel/75 px-2 py-0.5 text-micro text-ev-faint hover:bg-ev-panel hover:text-ev-strong"
+          >
+            •••
+          </button>
+        )}
+      </div>
+    </>
   );
 }
 

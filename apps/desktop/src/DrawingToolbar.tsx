@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   ArrowUpRight,
   BarChart2,
@@ -9,10 +10,13 @@ import {
   MoveHorizontal,
   MoveUpRight,
   MoveVertical,
+  PanelLeftClose,
+  PanelLeftOpen,
   Route,
   Ruler,
   Spline,
   Square,
+  Trash2,
   TrendingDown,
   TrendingUp,
   Triangle,
@@ -96,14 +100,38 @@ const MAGNET_TITLE: Record<MagnetMode, string> = {
  * cursor button or Escape returns to navigation.
  */
 export function DrawingToolbar() {
+  const [collapsed, setCollapsed] = useState(false);
   const activeTool = useWorkspace((s) => s.activeTool);
   const setActiveTool = useWorkspace((s) => s.setActiveTool);
   const undoDrawing = useWorkspace((s) => s.undoDrawing);
   const redoDrawing = useWorkspace((s) => s.redoDrawing);
+  const setDrawings = useWorkspace((s) => s.setDrawings);
+  const drawingCount = useWorkspace((s) => s.activeChart().drawings.length);
   const canUndo = useWorkspace((s) => s.drawingUndo.length > 0);
   const canRedo = useWorkspace((s) => s.drawingRedo.length > 0);
   const magnet = useWorkspace((s) => s.magnet);
   const setMagnet = useWorkspace((s) => s.setMagnet);
+
+  if (collapsed) {
+    return (
+      <div
+        role="toolbar"
+        aria-orientation="vertical"
+        aria-label="Drawing tools"
+        className="flex w-6 shrink-0 flex-col items-center border-r border-ev-raised bg-ev-chrome py-2"
+      >
+        <button
+          type="button"
+          title="Show drawing tools toolbar"
+          aria-label="Show drawing tools"
+          onClick={() => setCollapsed(false)}
+          className="flex size-5 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+        >
+          <PanelLeftOpen size={13} aria-hidden />
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -178,6 +206,28 @@ export function DrawingToolbar() {
       >
         <Redo2 size={15} aria-hidden />
       </button>
+      <button
+        type="button"
+        title="Remove all drawings on this chart"
+        aria-label="Remove all drawings"
+        disabled={drawingCount === 0}
+        onClick={() => setDrawings([])}
+        className="flex size-8 items-center justify-center rounded text-dense font-medium text-ev-muted hover:bg-ev-raised hover:text-ev-down disabled:opacity-40"
+      >
+        <Trash2 size={15} aria-hidden />
+      </button>
+
+      <div className="mt-auto pt-1">
+        <button
+          type="button"
+          title="Collapse drawing tools toolbar"
+          aria-label="Collapse drawing tools"
+          onClick={() => setCollapsed(true)}
+          className="flex size-7 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+        >
+          <PanelLeftClose size={14} aria-hidden />
+        </button>
+      </div>
     </div>
   );
 }

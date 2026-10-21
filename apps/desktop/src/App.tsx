@@ -32,7 +32,7 @@ import { maskLogin } from "./tradingSafety";
 import { Modal } from "./Modal";
 import { NoticeHost } from "./NoticeHost";
 import { isTypingTarget } from "./hotkeys";
-import { quoteOf } from "./data";
+import { isLivePublicSymbol, quoteOf } from "./data";
 
 /**
  * The persistent shell: left section rail, tab strip, toolbar, routed page
@@ -262,13 +262,74 @@ export default function App() {
           lastPrice={alertSeedPrice}
         />
 
-        <footer className="flex h-6 shrink-0 items-center gap-4 border-t border-ev-raised bg-ev-chrome px-3 text-dense text-ev-muted">
+        <footer className="flex h-7 shrink-0 items-center gap-3 overflow-x-auto border-t border-ev-raised bg-ev-chrome px-3 text-dense text-ev-muted">
           <SourceToggle />
-          <FeedStatus />
-          <span>
+          <FeedStatus symbol={state.symbol} />
+
+          <div className="h-3.5 w-px shrink-0 bg-ev-raised" />
+
+          {/* TradingView-style bottom drawer & workspace quick-toggles */}
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              aria-pressed={tradingOpen}
+              title="Toggle bottom Trading Panel & Order Ticket"
+              onClick={toggleTrading}
+              className={`rounded px-2 py-0.5 font-medium ${
+                tradingOpen ? "bg-ev-accent/20 text-ev-accent-text" : "hover:bg-ev-raised hover:text-ev-strong"
+              }`}
+            >
+              Trading Panel
+            </button>
+            <button
+              type="button"
+              aria-pressed={dockTab === "watchlist"}
+              title="Toggle right-hand Watchlist dock"
+              onClick={() => selectDockTab("watchlist")}
+              className={`rounded px-2 py-0.5 ${
+                dockTab === "watchlist" ? "bg-ev-raised font-medium text-ev-strong" : "hover:bg-ev-raised hover:text-ev-strong"
+              }`}
+            >
+              Watchlist
+            </button>
+            <button
+              type="button"
+              aria-pressed={dockTab === "depth"}
+              title="Toggle right-hand Depth of Market (DOM)"
+              onClick={() => selectDockTab("depth")}
+              className={`rounded px-2 py-0.5 ${
+                dockTab === "depth" ? "bg-ev-raised font-medium text-ev-strong" : "hover:bg-ev-raised hover:text-ev-strong"
+              }`}
+            >
+              DOM
+            </button>
+            <Link
+              to="/markets"
+              title="Open Stock, Crypto & Forex Screener / Heatmaps"
+              className="rounded px-2 py-0.5 hover:bg-ev-raised hover:text-ev-strong"
+            >
+              Screener & Heatmaps
+            </Link>
+            <Link
+              to="/strategies"
+              title="Open Pine Script Editor & Strategy Tester"
+              className="rounded px-2 py-0.5 hover:bg-ev-raised hover:text-ev-strong"
+            >
+              Pine Editor
+            </Link>
+            <Link
+              to="/journal"
+              title="Open Trading Journal & AI Coach"
+              className="rounded px-2 py-0.5 hover:bg-ev-raised hover:text-ev-strong"
+            >
+              Journal
+            </Link>
+          </div>
+
+          <span className="hidden lg:inline">
             {state.drawings.length} drawing{state.drawings.length === 1 ? "" : "s"}
           </span>
-          <span className="ml-auto flex items-center gap-3">
+          <span className="ml-auto flex shrink-0 items-center gap-3">
             <MarketClock />
             <Link
               to="/settings"
@@ -395,17 +456,18 @@ function SourceToggle() {
   );
 }
 
-/** One dot that says whether the broker feed is answering. */
-function FeedStatus() {
+/** One dot that says whether the broker or public live feed is answering. */
+function FeedStatus({ symbol }: { symbol: string }) {
   const source = useMt5((s) => s.source);
   const status = useMt5((s) => s.status);
   const error = useMt5((s) => s.error);
 
   if (source !== "mt5") {
+    const livePublic = isLivePublicSymbol(symbol);
     return (
       <span className="flex items-center gap-1.5">
         <span className="size-1.5 rounded-full bg-ev-up" aria-hidden />
-        demo feed
+        {livePublic ? "live market feed" : "market feed"}
       </span>
     );
   }

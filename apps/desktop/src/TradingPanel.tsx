@@ -34,6 +34,8 @@ const clock = (epoch: number): string => new Date(epoch * 1000).toLocaleTimeStri
  */
 export function TradingPanel({ symbol }: Props) {
   const [tab, setTab] = useState<Tab>("positions");
+  const [minimized, setMinimized] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const account = useTrading((s) => s.account);
   const positions = useTrading((s) => s.positions);
   const orders = useTrading((s) => s.orders);
@@ -56,10 +58,20 @@ export function TradingPanel({ symbol }: Props) {
     null;
   const precision = precisionFor(sample);
 
+  const heightClass = minimized ? "h-8" : expanded ? "h-80" : "h-56";
+
   return (
-    <section aria-label="Trading" className="flex h-56 shrink-0 flex-col border-t border-ev-raised bg-ev-bg">
-      <header className="flex h-8 shrink-0 items-center gap-3 border-b border-ev-raised px-3 text-dense">
-        <span className="font-semibold uppercase tracking-wider text-ev-muted">Trading</span>
+    <section aria-label="Trading" className={`flex ${heightClass} shrink-0 flex-col border-t border-ev-raised bg-ev-bg transition-[height] duration-150`}>
+      <header className="flex h-8 shrink-0 items-center gap-3 border-b border-ev-raised bg-ev-chrome px-3 text-dense">
+        <button
+          type="button"
+          title={minimized ? "Expand trading panel" : "Minimize trading panel to summary strip"}
+          onClick={() => setMinimized((v) => !v)}
+          className="flex items-center gap-1 font-semibold uppercase tracking-wider text-ev-muted hover:text-ev-strong"
+        >
+          <span>{minimized ? "▴" : "▾"}</span>
+          <span>Trading</span>
+        </button>
 
         <dl className="flex items-center gap-3 num">
           <Fact label="Balance" value={account ? money(account.balance) : "—"} />
@@ -96,9 +108,29 @@ export function TradingPanel({ symbol }: Props) {
           {source === "mt5" && (
             <span className="rounded bg-ev-accent/15 px-1.5 py-0.5 text-dense text-ev-accent-text">broker</span>
           )}
+          <button
+            type="button"
+            title={expanded ? "Restore standard panel height" : "Maximize trading panel height"}
+            onClick={() => {
+              setMinimized(false);
+              setExpanded((v) => !v);
+            }}
+            className="rounded px-1.5 py-0.5 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+          >
+            {expanded ? "⤡" : "⤢"}
+          </button>
+          <button
+            type="button"
+            title={minimized ? "Expand trading panel" : "Minimize trading panel"}
+            onClick={() => setMinimized((v) => !v)}
+            className="rounded px-1.5 py-0.5 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+          >
+            {minimized ? "Expand" : "Minimize"}
+          </button>
         </div>
       </header>
 
+      {!minimized && (
       <div className="flex min-h-0 flex-1">
         <OrderTicket symbol={symbol} />
 
@@ -248,6 +280,7 @@ export function TradingPanel({ symbol }: Props) {
           </div>
         </div>
       </div>
+      )}
     </section>
   );
 }

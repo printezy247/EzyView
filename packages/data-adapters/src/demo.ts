@@ -65,14 +65,14 @@ interface DemoSpec {
 }
 
 const DEMO_SYMBOLS: DemoSpec[] = [
-  { symbol: "DEMO:BTCUSDT", ticker: "BTCUSDT", description: "Bitcoin / TetherUS", assetClass: "crypto", base: 67000, precision: 2, tickSize: 0.1 },
-  { symbol: "DEMO:ETHUSDT", ticker: "ETHUSDT", description: "Ethereum / TetherUS", assetClass: "crypto", base: 3300, precision: 2, tickSize: 0.01 },
-  { symbol: "DEMO:SOLUSDT", ticker: "SOLUSDT", description: "Solana / TetherUS", assetClass: "crypto", base: 165, precision: 3, tickSize: 0.001 },
-  { symbol: "DEMO:EURUSD", ticker: "EURUSD", description: "Euro / US Dollar", assetClass: "forex", base: 1.085, precision: 5, tickSize: 0.00001 },
-  { symbol: "DEMO:GBPUSD", ticker: "GBPUSD", description: "British Pound / US Dollar", assetClass: "forex", base: 1.27, precision: 5, tickSize: 0.00001 },
-  { symbol: "DEMO:XAUUSD", ticker: "XAUUSD", description: "Gold / US Dollar", assetClass: "forex", base: 2650, precision: 2, tickSize: 0.01 },
-  { symbol: "DEMO:AAPL", ticker: "AAPL", description: "Apple Inc.", assetClass: "stock", base: 232, precision: 2, tickSize: 0.01 },
-  { symbol: "DEMO:SPX", ticker: "SPX", description: "S&P 500 Index", assetClass: "index", base: 5800, precision: 2, tickSize: 0.01 },
+  { symbol: "DEMO:BTCUSDT", ticker: "BTCUSDT", description: "Bitcoin / TetherUS", assetClass: "crypto", base: 94500, precision: 2, tickSize: 0.1 },
+  { symbol: "DEMO:ETHUSDT", ticker: "ETHUSDT", description: "Ethereum / TetherUS", assetClass: "crypto", base: 3420, precision: 2, tickSize: 0.01 },
+  { symbol: "DEMO:SOLUSDT", ticker: "SOLUSDT", description: "Solana / TetherUS", assetClass: "crypto", base: 215, precision: 3, tickSize: 0.001 },
+  { symbol: "DEMO:EURUSD", ticker: "EURUSD", description: "Euro / US Dollar", assetClass: "forex", base: 1.092, precision: 5, tickSize: 0.00001 },
+  { symbol: "DEMO:GBPUSD", ticker: "GBPUSD", description: "British Pound / US Dollar", assetClass: "forex", base: 1.304, precision: 5, tickSize: 0.00001 },
+  { symbol: "DEMO:XAUUSD", ticker: "XAUUSD", description: "Gold / US Dollar", assetClass: "forex", base: 4128.5, precision: 2, tickSize: 0.01 },
+  { symbol: "DEMO:AAPL", ticker: "AAPL", description: "Apple Inc.", assetClass: "stock", base: 242, precision: 2, tickSize: 0.01 },
+  { symbol: "DEMO:SPX", ticker: "SPX", description: "S&P 500 Index", assetClass: "index", base: 6120, precision: 2, tickSize: 0.01 },
 ];
 
 /**
@@ -124,23 +124,25 @@ export class DemoMarketAdapter implements MarketDataAdapter {
 
     const out: Candle[] = [];
     const rand = mulberry32(hashSeed(`${spec.symbol}:${seconds}:${startBar}`));
-    // Walk backwards so the most recent price is anchored to spec.base.
-    let close = spec.base;
+    // Walk backwards from endBar so the newest candle's close matches the active quote / base across all timeframes.
+    const latestQuote = this.quotes.get(spec.symbol);
+    let close = latestQuote?.last ?? spec.base;
     const bars: Candle[] = [];
     for (let i = 0; i < count; i++) {
       const drift = (rand() - 0.5) * spec.base * 0.012;
-      const open = close;
-      close = Math.max(spec.tickSize, open + drift);
-      const high = Math.max(open, close) + rand() * spec.base * 0.004;
-      const low = Math.min(open, close) - rand() * spec.base * 0.004;
+      const barClose = close;
+      const barOpen = Math.max(spec.tickSize, barClose - drift);
+      const high = Math.max(barOpen, barClose) + rand() * spec.base * 0.004;
+      const low = Math.min(barOpen, barClose) - rand() * spec.base * 0.004;
       bars.push({
         time: endBar - i * seconds,
-        open: round(open, spec.precision),
+        open: round(barOpen, spec.precision),
         high: round(high, spec.precision),
         low: round(Math.max(spec.tickSize, low), spec.precision),
-        close: round(close, spec.precision),
+        close: round(barClose, spec.precision),
         volume: Math.round(50 + rand() * 950),
       });
+      close = barOpen;
     }
     // bars are newest-first; chart consumers expect oldest-first.
     for (let i = bars.length - 1; i >= 0; i--) out.push(bars[i]!);
@@ -148,9 +150,11 @@ export class DemoMarketAdapter implements MarketDataAdapter {
   }
 
   async getQuote(symbol: string): Promise<Quote | null> {
-    const existing = this.quotes.get(symbol);
-    if (existing) return existing;
-    const candles = await this.getHistory({ symbol, resolution: "1m", from: 0, to: 0, limit: 2 });
+    const spec = this.findSpec(symbol);
+    if (!spec) return null;
+    const existing = this.quotes.get(spec.symbol);
+    if (existing) return { ...existing, symbol };
+    const candles = await this.getHistory({ symbol: spec.symbol, resolution: "1m", from: 0, to: 0, limit: 2 });
     if (candles.length === 0) return null;
     const last = candles[candles.length - 1]!;
     const prev = candles.length > 1 ? candles[candles.length - 2]! : last;
@@ -161,7 +165,7 @@ export class DemoMarketAdapter implements MarketDataAdapter {
       changePercent: prev.close === 0 ? 0 : round(((last.close - prev.close) / prev.close) * 100, 4),
       time: Math.floor(Date.now() / 1000),
     };
-    this.quotes.set(symbol, quote);
+    this.quotes.set(spec.symbol, quote);
     return quote;
   }
 
@@ -171,9 +175,9 @@ export class DemoMarketAdapter implements MarketDataAdapter {
       for (const symbol of symbols) {
         const spec = this.findSpec(symbol);
         if (!spec) continue;
-        const prev = this.quotes.get(symbol);
+        const prev = this.quotes.get(spec.symbol);
         const base = prev?.last ?? spec.base;
-        const delta = (Math.random() - 0.5) * base * 0.001;
+        const delta = (Math.random() - 0.5) * base * 0.0006;
         const last = Math.max(spec.tickSize, base + delta);
         const quote: Quote = {
           symbol,
@@ -182,7 +186,7 @@ export class DemoMarketAdapter implements MarketDataAdapter {
           changePercent: round(((last - spec.base) / spec.base) * 100, 4),
           time: now,
         };
-        this.quotes.set(symbol, quote);
+        this.quotes.set(spec.symbol, quote);
         onQuote(quote);
       }
     }, 1000);

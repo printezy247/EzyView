@@ -69,6 +69,152 @@ export function precisionFor(price: number | null): number {
 /** True while the chart/ticket are reading the broker's feed. */
 export const brokerFeed = (): boolean => useMt5.getState().source === "mt5";
 
+/** Map common EzyView tickers to Binance public market data symbols (PAXGUSDT = 1 troy oz spot Gold). */
+const PUBLIC_PAIR_MAP: Record<string, string> = {
+  XAUUSD: "PAXGUSDT",
+  BTCUSDT: "BTCUSDT",
+  ETHUSDT: "ETHUSDT",
+  SOLUSDT: "SOLUSDT",
+  EURUSD: "EURUSDT",
+  GBPUSD: "GBPUSDT",
+};
+
+const BINANCE_INTERVAL_MAP: Partial<Record<Resolution, string>> = {
+  "1s": "1s",
+  "1m": "1m",
+  "3m": "3m",
+  "5m": "5m",
+  "15m": "15m",
+  "30m": "30m",
+  "1h": "1h",
+  "2h": "2h",
+  "4h": "4h",
+  "6h": "6h",
+  "8h": "8h",
+  "12h": "12h",
+  "1D": "1d",
+  "1W": "1w",
+  "1M": "1M",
+};
+
+const isTestEnv = (): boolean =>
+  typeof process !== "undefined" && Boolean(process.env?.VITEST || process.env?.NODE_ENV === "test");
+
+const liveQuoteCache = new Map<string, { quote: Quote; fetchedAt: number }>();
+const livePublicTickers = new Set<string>();
+
+/** True when `symbol` has received a real live market quote from the public feed. */
+export function isLivePublicSymbol(symbol: string): boolean {
+  return livePublicTickers.has(tickerOf(symbol).toUpperCase());
+}
+
+async function fetchPublicQuote(symbol: string): Promise<Quote | null> {
+  if (isTestEnv() || typeof fetch !== "function") return null;
+  const ticker = tickerOf(symbol).toUpperCase();
+  const pair = PUBLIC_PAIR_MAP[ticker];
+  if (!pair) return null;
+
+  const nowMs = Date.now();
+  const cached = liveQuoteCache.get(ticker);
+  if (cached && nowMs - cached.fetchedAt < 1500) {
+    return { ...cached.quote, symbol };
+  }
+
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 3500);
+  try {
+    const res = await fetch(`https://data-api.binance.vision/api/v3/ticker/24hr?symbol=${pair}`, {
+      signal: ctrl.signal,
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      lastPrice?: string;
+      priceChange?: string;
+      priceChangePercent?: string;
+      closeTime?: number;
+    };
+    const last = Number(data.lastPrice);
+    if (!Number.isFinite(last) || last <= 0) return null;
+    const change = Number(data.priceChange ?? 0);
+    const changePercent = Number(data.priceChangePercent ?? 0);
+    const quote: Quote = {
+      symbol,
+      last,
+      change: Number.isFinite(change) ? change : 0,
+      changePercent: Number.isFinite(changePercent) ? changePercent : 0,
+      time: Math.floor((data.closeTime ?? nowMs) / 1000),
+    };
+    liveQuoteCache.set(ticker, { quote, fetchedAt: nowMs });
+    livePublicTickers.add(ticker);
+    return quote;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function fetchPublicHistory(symbol: string, resolution: Resolution, limit: number): Promise<Candle[] | null> {
+  if (isTestEnv() || typeof fetch !== "function") return null;
+  const ticker = tickerOf(symbol).toUpperCase();
+  const pair = PUBLIC_PAIR_MAP[ticker];
+  const interval = BINANCE_INTERVAL_MAP[resolution] ?? "15m";
+  if (!pair) return null;
+
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 4500);
+  try {
+    const clamped = Math.max(10, Math.min(1000, limit));
+    const res = await fetch(
+      `https://data-api.binance.vision/api/v3/klines?symbol=${pair}&interval=${interval}&limit=${clamped}`,
+      { signal: ctrl.signal },
+    );
+    if (!res.ok) return null;
+    const raw = (await res.json()) as unknown[];
+    if (!Array.isArray(raw) || raw.length === 0) return null;
+    const candles: Candle[] = [];
+    for (const row of raw) {
+      if (!Array.isArray(row) || row.length < 6) continue;
+      const time = Math.floor(Number(row[0]) / 1000);
+      const open = Number(row[1]);
+      const high = Number(row[2]);
+      const low = Number(row[3]);
+      const close = Number(row[4]);
+      const volume = Number(row[5]);
+      if (
+        Number.isFinite(time) &&
+        Number.isFinite(open) &&
+        Number.isFinite(high) &&
+        Number.isFinite(low) &&
+        Number.isFinite(close)
+      ) {
+        candles.push({ time, open, high, low, close, volume: Number.isFinite(volume) ? volume : 0 });
+      }
+    }
+    if (candles.length === 0) return null;
+    livePublicTickers.add(ticker);
+    const newest = candles[candles.length - 1]!;
+    const first = candles[0]!;
+    if (!liveQuoteCache.has(ticker)) {
+      liveQuoteCache.set(ticker, {
+        fetchedAt: Date.now(),
+        quote: {
+          symbol,
+          last: newest.close,
+          change: newest.close - first.open,
+          changePercent: first.open > 0 ? ((newest.close - first.open) / first.open) * 100 : 0,
+          time: Math.floor(Date.now() / 1000),
+        },
+      });
+    }
+    return candles;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function searchSymbols(query: string): Promise<SymbolInfo[]> {
   if (brokerFeed()) return getMt5().data.searchSymbols(query);
   return market.searchSymbols(query);
@@ -80,6 +226,8 @@ const ticking = new Set<string>();
 
 export async function quoteOf(symbol: string): Promise<Quote | null> {
   if (brokerFeed()) return getMt5().data.getQuote(symbol);
+  const live = await fetchPublicQuote(symbol);
+  if (live) return live;
   if (!ticking.has(symbol)) {
     ticking.add(symbol);
     void market.subscribe([symbol], () => {});
@@ -94,5 +242,7 @@ export async function loadHistory(symbol: string, resolution: Resolution, limit 
   const to = Math.floor(now / step) * step;
   const request = { symbol, resolution, from: to - step * limit, to, limit };
   if (brokerFeed()) return getMt5().data.getHistory(request);
+  const live = await fetchPublicHistory(symbol, resolution, limit);
+  if (live && live.length > 0) return live;
   return market.getHistory(request);
 }
