@@ -10,6 +10,8 @@ import {
   setNativeNotifications,
 } from "./shell";
 import type { ShellSettings } from "./shell";
+import { checkForUpdate, openReleasePage } from "./updateCheck";
+import type { UpdateResult } from "./updateCheck";
 
 const button =
   "rounded bg-ev-line px-3 py-1.5 text-[11px] text-ev-strong hover:bg-ev-line-strong disabled:opacity-40";
@@ -21,6 +23,7 @@ export function DesktopTab() {
   const [notify, setNotify] = useState(nativeNotificationsEnabled);
   const [status, setStatus] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+  const [update, setUpdate] = useState<UpdateResult | "checking" | null>(null);
   const proxyId = useId();
 
   useEffect(() => {
@@ -48,6 +51,36 @@ export function DesktopTab() {
 
   return (
     <div className="space-y-5">
+      <section aria-label="Updates">
+        <h2 className={heading}>Updates</h2>
+        <button
+          type="button"
+          className={button}
+          disabled={update === "checking"}
+          onClick={() => {
+            setUpdate("checking");
+            void checkForUpdate().then(setUpdate);
+          }}
+        >
+          {update === "checking" ? "Checking…" : "Check for updates"}
+        </button>
+        {update && update !== "checking" && (
+          <p role="status" className="mt-2 text-[12px] text-ev-text">
+            {update.kind === "current" && `You are on the latest version (${update.version}).`}
+            {update.kind === "none" && "No published releases yet."}
+            {update.kind === "error" && `Could not check: ${update.message}`}
+            {update.kind === "available" && (
+              <>
+                Version {update.version} is available.{" "}
+                <button type="button" className="text-ev-accent-text underline" onClick={() => void openReleasePage(update.url)}>
+                  Open release page
+                </button>
+              </>
+            )}
+          </p>
+        )}
+      </section>
+
       <section aria-label="Notifications">
         <h2 className={heading}>Notifications</h2>
         <label className="flex items-center gap-2 text-[12px] text-ev-text">

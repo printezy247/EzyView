@@ -6,6 +6,7 @@ import { DetachedChart } from "./DetachedChart.js";
 import { installCrashCapture } from "./diagnostics.js";
 import { ErrorBoundary } from "./ErrorBoundary.js";
 import { parseShareLink } from "./shareLink.js";
+import { checkOnStartup } from "./updateCheck.js";
 import { startAlertFeed } from "./alertFeed.js";
 import { startSnapshotSync } from "./snapshot.js";
 import { useWorkspace } from "./store.js";
@@ -33,6 +34,7 @@ installCrashCapture();
 if (!detached) {
   startSnapshotSync();
   startAlertFeed();
+  void checkOnStartup();
 }
 
 // HashRouter survives Tauri's asset-protocol origins, where history routing
