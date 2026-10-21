@@ -305,3 +305,32 @@ button[aria-disabled="true"] {
 :root[data-density="comfortable"] .ev-row {
   height: 2rem;
 }
+
+/* Price update flash animation */
+@keyframes price-flash-up {
+  0% {
+    background-color: color-mix(in srgb, var(--ev-up) 40%, transparent);
+    color: var(--ev-up);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@keyframes price-flash-down {
+  0% {
+    background-color: color-mix(in srgb, var(--ev-down) 40%, transparent);
+    color: var(--ev-down);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.flash-up {
+  animation: price-flash-up 900ms ease-out;
+}
+
+.flash-down {
+  animation: price-flash-down 900ms ease-out;
+}

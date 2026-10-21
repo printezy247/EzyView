@@ -364,3 +364,32 @@ describe("chart templates", () => {
     expect(useWorkspace.getState().chartTemplates.some((t) => t.id === saved.id)).toBe(false);
   });
 });
+
+describe("performance optimizations", () => {
+  it("maintains memoized watchlistSymbolKey on add/remove and not on price updates", () => {
+    useWorkspace.setState({ watchlist: [], watchlistSymbolKey: "" });
+    const entry1 = { symbol: "BINANCE:BTCUSDT", ticker: "BTCUSDT", description: "Bitcoin", assetClass: "crypto", precision: 2, price: null, changePct: null };
+    const entry2 = { symbol: "OANDA:XAUUSD", ticker: "XAUUSD", description: "Gold", assetClass: "commodity", precision: 2, price: null, changePct: null };
+
+    useWorkspace.getState().addToWatchlist(entry1);
+    expect(useWorkspace.getState().watchlistSymbolKey).toBe("BINANCE:BTCUSDT");
+
+    useWorkspace.getState().addToWatchlist(entry2);
+    expect(useWorkspace.getState().watchlistSymbolKey).toBe("BINANCE:BTCUSDT,OANDA:XAUUSD");
+
+    // Price update keeps the same symbol key
+    useWorkspace.getState().updateWatchPrice("BINANCE:BTCUSDT", 65000, 2.5);
+    expect(useWorkspace.getState().watchlistSymbolKey).toBe("BINANCE:BTCUSDT,OANDA:XAUUSD");
+    expect(useWorkspace.getState().watchlist[0]?.price).toBe(65000);
+
+    useWorkspace.getState().removeFromWatchlist("BINANCE:BTCUSDT");
+    expect(useWorkspace.getState().watchlistSymbolKey).toBe("OANDA:XAUUSD");
+  });
+
+  it("avoids state reallocations in updateActive when values have not changed", () => {
+    const chart = useWorkspace.getState().activeChart();
+    const prevLayouts = useWorkspace.getState().layouts;
+    useWorkspace.getState().updateActive({ chartType: chart.chartType });
+    expect(useWorkspace.getState().layouts).toBe(prevLayouts);
+  });
+});

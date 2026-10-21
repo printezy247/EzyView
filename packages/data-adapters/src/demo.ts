@@ -89,6 +89,7 @@ export class DemoMarketAdapter implements MarketDataAdapter {
 
   private readonly timers = new Set<ReturnType<typeof setInterval>>();
   private readonly quotes = new Map<string, Quote>();
+  private readonly inFlightQuotes = new Map<string, Promise<Quote | null>>();
 
   async ping(): Promise<boolean> {
     return true;
@@ -154,19 +155,32 @@ export class DemoMarketAdapter implements MarketDataAdapter {
     if (!spec) return null;
     const existing = this.quotes.get(spec.symbol);
     if (existing) return { ...existing, symbol };
-    const candles = await this.getHistory({ symbol: spec.symbol, resolution: "1m", from: 0, to: 0, limit: 2 });
-    if (candles.length === 0) return null;
-    const last = candles[candles.length - 1]!;
-    const prev = candles.length > 1 ? candles[candles.length - 2]! : last;
-    const quote: Quote = {
-      symbol,
-      last: last.close,
-      change: round(last.close - prev.close, 6),
-      changePercent: prev.close === 0 ? 0 : round(((last.close - prev.close) / prev.close) * 100, 4),
-      time: Math.floor(Date.now() / 1000),
-    };
-    this.quotes.set(spec.symbol, quote);
-    return quote;
+
+    const inFlight = this.inFlightQuotes.get(spec.symbol);
+    if (inFlight) return inFlight;
+
+    const promise = (async () => {
+      try {
+        const candles = await this.getHistory({ symbol: spec.symbol, resolution: "1m", from: 0, to: 0, limit: 2 });
+        if (candles.length === 0) return null;
+        const last = candles[candles.length - 1]!;
+        const prev = candles.length > 1 ? candles[candles.length - 2]! : last;
+        const quote: Quote = {
+          symbol,
+          last: last.close,
+          change: round(last.close - prev.close, 6),
+          changePercent: prev.close === 0 ? 0 : round(((last.close - prev.close) / prev.close) * 100, 4),
+          time: Math.floor(Date.now() / 1000),
+        };
+        this.quotes.set(spec.symbol, quote);
+        return quote;
+      } finally {
+        this.inFlightQuotes.delete(spec.symbol);
+      }
+    })();
+
+    this.inFlightQuotes.set(spec.symbol, promise);
+    return promise;
   }
 
   async subscribe(symbols: string[], onQuote: SubscribeHandler): Promise<UnsubscribeFn> {

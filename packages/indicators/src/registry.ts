@@ -20,3 +20,23 @@ export function catalogByFamily(): Record<string, IndicatorDef[]> {
   for (const def of FULL_CATALOG) (out[def.family] ??= []).push(def);
   return out;
 }
+
+/** Dynamically import an indicator definition on demand. */
+export async function loadIndicator(id: string): Promise<IndicatorDef | null> {
+  const sync = getIndicator(id);
+  if (sync) return sync;
+  const [{ CATALOG }, { CATALOG_2 }] = await Promise.all([
+    import("./catalog.js"),
+    import("./catalog2.js"),
+  ]);
+  return [...CATALOG, ...CATALOG_2].find((d) => d.id === id) ?? null;
+}
+
+/** Dynamically load the full indicator catalogue. */
+export async function loadCatalog(): Promise<IndicatorDef[]> {
+  const [{ CATALOG }, { CATALOG_2 }] = await Promise.all([
+    import("./catalog.js"),
+    import("./catalog2.js"),
+  ]);
+  return [...CATALOG, ...CATALOG_2];
+}

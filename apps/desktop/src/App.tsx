@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router";
+import { useShallow } from "zustand/react/shallow";
 import { ChartPage } from "./ChartPage";
+import { ErrorBoundary } from "./ErrorBoundary";
 import { IndicatorDialog } from "./IndicatorDialog";
 import { TabBar } from "./TabBar";
 import { Toolbar } from "./Toolbar";
@@ -12,13 +14,6 @@ import { openChartWindow } from "./windows";
 import { NavRail } from "./NavRail";
 import { useZen } from "./zen";
 import { TradeConfirmDialog } from "./TradeConfirmDialog";
-import { JournalPage } from "./JournalPage";
-import { ResearchPage } from "./ResearchPage";
-import { StrategiesPage } from "./StrategiesPage";
-import { MarketsPage } from "./MarketsPage";
-import { TradePage } from "./TradePage";
-import { AlertsPage } from "./AlertsPage";
-import { SettingsPage } from "./SettingsPage";
 import { HotkeySheet } from "./HotkeySheet";
 import { MarketClock } from "./MarketClockBar";
 import { useWorkspace } from "./store";
@@ -33,6 +28,15 @@ import { Modal } from "./Modal";
 import { NoticeHost } from "./NoticeHost";
 import { isTypingTarget } from "./hotkeys";
 import { isLivePublicSymbol, quoteOf } from "./data";
+import { useTrading } from "./trading";
+
+const MarketsPage = lazy(() => import("./MarketsPage").then((m) => ({ default: m.MarketsPage })));
+const TradePage = lazy(() => import("./TradePage").then((m) => ({ default: m.TradePage })));
+const ResearchPage = lazy(() => import("./ResearchPage").then((m) => ({ default: m.ResearchPage })));
+const JournalPage = lazy(() => import("./JournalPage").then((m) => ({ default: m.JournalPage })));
+const StrategiesPage = lazy(() => import("./StrategiesPage").then((m) => ({ default: m.StrategiesPage })));
+const AlertsPage = lazy(() => import("./AlertsPage").then((m) => ({ default: m.AlertsPage })));
+const SettingsPage = lazy(() => import("./SettingsPage").then((m) => ({ default: m.SettingsPage })));
 
 /**
  * The persistent shell: left section rail, tab strip, toolbar, routed page
@@ -41,17 +45,32 @@ import { isLivePublicSymbol, quoteOf } from "./data";
  * page-local booleans, handed down to the chart page.
  */
 export default function App() {
-  const layout = useWorkspace((s) => s.activeLayout());
+  const {
+    layout,
+    setGrid,
+    updateActive,
+    setSymbol,
+    setResolution,
+    alerts,
+    addAlert,
+    removeAlert,
+    replayBar,
+    setReplay,
+  } = useWorkspace(
+    useShallow((s) => ({
+      layout: s.activeLayout(),
+      setGrid: s.setGrid,
+      updateActive: s.updateActive,
+      setSymbol: s.setSymbol,
+      setResolution: s.setResolution,
+      alerts: s.alerts,
+      addAlert: s.addAlert,
+      removeAlert: s.removeAlert,
+      replayBar: s.replayBar,
+      setReplay: s.setReplay,
+    })),
+  );
   const state = activeChartOf(layout);
-  const setGrid = useWorkspace((s) => s.setGrid);
-  const updateActive = useWorkspace((s) => s.updateActive);
-  const setSymbol = useWorkspace((s) => s.setSymbol);
-  const setResolution = useWorkspace((s) => s.setResolution);
-  const alerts = useWorkspace((s) => s.alerts);
-  const addAlert = useWorkspace((s) => s.addAlert);
-  const removeAlert = useWorkspace((s) => s.removeAlert);
-  const replayBar = useWorkspace((s) => s.replayBar);
-  const setReplay = useWorkspace((s) => s.setReplay);
 
   // F11 toggles fullscreen "zen" mode (nav rail and tabs hidden); Esc leaves it.
   // An open menu swallows Escape first, so Esc closes the menu before it exits.
@@ -218,35 +237,73 @@ export default function App() {
         </header>
 
         <div className="flex min-h-0 flex-1 flex-col">
-          <Routes>
-            <Route index element={<Navigate to={normalizePath("/")} replace />} />
-            <Route
-              path="/chart"
-              element={
-                <ChartPage
-                  dockTab={dockTab}
-                  onSelectDockTab={selectDockTab}
-                  onSetDockTab={setDockTabDirect}
-                  tradingOpen={tradingOpen}
-                  onToggleTrading={toggleTrading}
-                  onOpenAlerts={() => setAlertOpen(true)}
-                  onOpenHotkeys={() => setHotkeysOpen(true)}
-                />
-              }
-            />
-            <Route path="/markets" element={<MarketsPage />} />
-            <Route path="/trade" element={<TradePage />} />
-            <Route path="/research" element={<ResearchPage />} />
-            <Route path="/journal" element={<JournalPage />} />
-            <Route path="/strategies" element={<StrategiesPage />} />
-            <Route path="/alerts" element={<AlertsPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            {/* Legacy paths: a persisted last route or an old bookmark still lands. */}
-            <Route path="/fundamentals" element={<Navigate to="/research?tab=fundamentals" replace />} />
-            <Route path="/options" element={<Navigate to="/research?tab=options" replace />} />
-            <Route path="/pine" element={<Navigate to="/strategies" replace />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <Suspense
+            fallback={
+              <div className="flex min-h-0 flex-1 items-center justify-center p-8 text-base text-ev-muted">
+                Loading...
+              </div>
+            }
+          >
+            <Routes>
+              <Route index element={<Navigate to={normalizePath("/")} replace />} />
+              <Route
+                path="/chart"
+                element={
+                  <ErrorBoundary
+                    fallback={(reset) => (
+                      <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-ev-bg p-6 text-center">
+                        <p className="text-body font-semibold text-ev-strong">Chart render encountered an error.</p>
+                        <p className="max-w-md text-base text-ev-muted">
+                          A chart error was caught and isolated so the rest of the application remains functional.
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={reset}
+                            className="rounded bg-ev-accent px-3 py-1.5 text-base font-medium text-white hover:bg-ev-accent-hover"
+                          >
+                            Retry Chart
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              useWorkspace.getState().updateActive({ indicators: [], drawings: [] });
+                              reset();
+                            }}
+                            className="rounded bg-ev-raised px-3 py-1.5 text-base font-medium text-ev-strong hover:bg-ev-line"
+                          >
+                            Reset Chart to Clean State
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  >
+                    <ChartPage
+                      dockTab={dockTab}
+                      onSelectDockTab={selectDockTab}
+                      onSetDockTab={setDockTabDirect}
+                      tradingOpen={tradingOpen}
+                      onToggleTrading={toggleTrading}
+                      onOpenAlerts={() => setAlertOpen(true)}
+                      onOpenHotkeys={() => setHotkeysOpen(true)}
+                    />
+                  </ErrorBoundary>
+                }
+              />
+              <Route path="/markets" element={<MarketsPage />} />
+              <Route path="/trade" element={<TradePage />} />
+              <Route path="/research" element={<ResearchPage />} />
+              <Route path="/journal" element={<JournalPage />} />
+              <Route path="/strategies" element={<StrategiesPage />} />
+              <Route path="/alerts" element={<AlertsPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              {/* Legacy paths: a persisted last route or an old bookmark still lands. */}
+              <Route path="/fundamentals" element={<Navigate to="/research?tab=fundamentals" replace />} />
+              <Route path="/options" element={<Navigate to="/research?tab=options" replace />} />
+              <Route path="/pine" element={<Navigate to="/strategies" replace />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
         </div>
 
         <IndicatorDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
@@ -379,9 +436,9 @@ function SourceToggle() {
   const setSource = useMt5((s) => s.setSource);
   const [busy, setBusy] = useState(false);
   const [risk, setRisk] = useState<string | null>(null);
+  const [switchWarning, setSwitchWarning] = useState<string | null>(null);
 
-  const pick = (id: ChartSource) => {
-    if (busy || id === source) return;
+  const executeSourceSwitch = (id: ChartSource) => {
     setBusy(true);
     void (async () => {
       await setSource(id);
@@ -389,6 +446,19 @@ function SourceToggle() {
       const key = await realSourceKey();
       if (key && !realSourceAcked.has(key)) setRisk(key);
     })().finally(() => setBusy(false));
+  };
+
+  const pick = (id: ChartSource) => {
+    if (busy || id === source) return;
+    if (source === "mt5" && id === "ezyview") {
+      const activeCount = useTrading.getState().positions.length;
+      const isOnline = useMt5.getState().status === "online";
+      if (isOnline && activeCount > 0) {
+        setSwitchWarning(`${activeCount} active position${activeCount > 1 ? "s are" : " is"} currently open on MT5`);
+        return;
+      }
+    }
+    executeSourceSwitch(id);
   };
 
   const acceptRisk = () => {
@@ -427,6 +497,42 @@ function SourceToggle() {
           {SOURCE_LABEL[id]}
         </button>
       ))}
+      {switchWarning && (
+        <Modal
+          onClose={() => setSwitchWarning(null)}
+          labelledBy="switch-warn-title"
+          className="w-[26rem] rounded-md border border-ev-warn/40 bg-ev-panel text-base shadow-2xl"
+        >
+          <div className="space-y-3 p-4">
+            <h2 id="switch-warn-title" className="text-body font-semibold text-ev-warn">
+              Active MT5 Trading State
+            </h2>
+            <p className="text-ev-text leading-relaxed">
+              {switchWarning}. Switching your chart to the Demo feed will detach live chart execution and hide active broker levels.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                autoFocus
+                onClick={() => setSwitchWarning(null)}
+                className="rounded border border-ev-line px-3 py-1 text-ev-muted hover:text-ev-strong"
+              >
+                Stay on MT5
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSwitchWarning(null);
+                  executeSourceSwitch("ezyview");
+                }}
+                className="rounded bg-ev-warn px-3 py-1 font-semibold text-white hover:brightness-110"
+              >
+                Switch to Demo anyway
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
       {risk && (
         <Modal
           onClose={refuseRisk}

@@ -45,6 +45,7 @@ export function RightDock({ tabs, active, onSelect, width }: Props) {
   if (active === null) {
     return (
       <aside
+        key="rail"
         aria-label="Chart panels"
         className="flex w-10 shrink-0 flex-col items-center gap-1 border-l border-ev-raised bg-ev-chrome py-2"
       >
@@ -75,6 +76,7 @@ export function RightDock({ tabs, active, onSelect, width }: Props) {
 
   return (
     <aside
+      key="panel"
       aria-label="Chart panels"
       className="flex shrink-0 flex-col border-l border-ev-raised bg-ev-bg transition-[width] duration-150"
       style={{ width: resolvedWidth }}
@@ -126,7 +128,7 @@ export function RightDock({ tabs, active, onSelect, width }: Props) {
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col">
+      <div key={active} className="flex min-h-0 flex-1 flex-col">
         {tabs.find((t) => t.id === active)?.render() ?? null}
       </div>
     </aside>

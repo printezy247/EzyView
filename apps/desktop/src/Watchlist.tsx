@@ -1,5 +1,5 @@
 import { Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { quoteOf, searchSymbols } from "./data";
 import { useWorkspace } from "./store";
 import type { WatchEntry } from "./store";
@@ -8,14 +8,86 @@ interface Props {
   onOpenAlerts: () => void;
 }
 
+function WatchRow({
+  item,
+  onSelect,
+  onRemove,
+}: {
+  item: WatchEntry;
+  onSelect: () => void;
+  onRemove: () => void;
+}) {
+  const prevPriceRef = useRef<number | null>(item.price);
+  const [flash, setFlash] = useState<"up" | "down" | null>(null);
+
+  useEffect(() => {
+    if (prevPriceRef.current !== null && item.price !== null && item.price !== prevPriceRef.current) {
+      setFlash(item.price > prevPriceRef.current ? "up" : "down");
+    }
+    prevPriceRef.current = item.price;
+  }, [item.price]);
+
+  useEffect(() => {
+    if (!flash) return;
+    const t = setTimeout(() => setFlash(null), 900);
+    return () => clearTimeout(t);
+  }, [flash]);
+
+  return (
+    <li className="group flex items-center gap-2 border-b border-ev-panel px-3 py-1.5">
+      <button
+        type="button"
+        onClick={onSelect}
+        className="min-w-0 flex-1 text-left"
+        title={`Open ${item.description}`}
+      >
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="truncate text-base font-medium text-ev-strong">{item.ticker}</span>
+          <span
+            className={`shrink-0 rounded px-1 text-base num text-ev-text transition-colors ${
+              flash === "up" ? "flash-up" : flash === "down" ? "flash-down" : ""
+            }`}
+          >
+            {item.price === null ? "—" : item.price.toFixed(item.precision)}
+          </span>
+        </div>
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="truncate text-dense text-ev-faint">{item.assetClass}</span>
+          <span
+            className={
+              item.changePct === null
+                ? "text-dense text-ev-faint"
+                : item.changePct >= 0
+                  ? "text-dense num text-ev-up"
+                  : "text-dense num text-ev-down"
+            }
+          >
+            {item.changePct === null ? "—" : `${item.changePct >= 0 ? "+" : ""}${item.changePct.toFixed(2)}%`}
+          </span>
+        </div>
+      </button>
+      <button
+        type="button"
+        title={`Remove ${item.ticker}`}
+        onClick={onRemove}
+        className="text-ev-line opacity-0 transition-opacity hover:text-ev-down group-hover:opacity-100"
+      >
+        <Trash2 size={12} aria-hidden />
+      </button>
+    </li>
+  );
+}
+
 /**
  * Right-hand watchlist panel.
  *
- * Polls the active feed's quotes on a slow tick. Keyed on the joined symbol
- * list so price updates do not reset the interval.
+ * Polls the active feed's quotes on a slow tick. Keyed on the memoized symbol
+ * key in zustand so price updates do not trigger O(N) allocations or reset intervals.
  */
 export function Watchlist({ onOpenAlerts }: Props) {
   const watchlist = useWorkspace((s) => s.watchlist);
+  const symbolKey = useWorkspace((s) => s.watchlistSymbolKey);
+  const isReplay = useWorkspace((s) => s.replayBar !== null);
   const addToWatchlist = useWorkspace((s) => s.addToWatchlist);
   const removeFromWatchlist = useWorkspace((s) => s.removeFromWatchlist);
   const updateWatchPrice = useWorkspace((s) => s.updateWatchPrice);
@@ -23,7 +95,7 @@ export function Watchlist({ onOpenAlerts }: Props) {
 
   const [adding, setAdding] = useState(false);
   const [query, setQuery] = useState("");
-  const symbolKey = watchlist.map((w) => w.symbol).join(",");
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!adding) return;
@@ -31,7 +103,7 @@ export function Watchlist({ onOpenAlerts }: Props) {
   }, [adding]);
 
   useEffect(() => {
-    if (!symbolKey) return;
+    if (!symbolKey || isReplay) return;
     const symbols = symbolKey.split(",");
     let cancelled = false;
 
@@ -50,10 +122,12 @@ export function Watchlist({ onOpenAlerts }: Props) {
       cancelled = true;
       clearInterval(t);
     };
-  }, [symbolKey, updateWatchPrice]);
+  }, [symbolKey, isReplay, updateWatchPrice]);
 
-  const addFromQuery = async () => {
-    const found = await searchSymbols(query);
+  const addFromQuery = async (targetQuery = query) => {
+    const trimmed = targetQuery.trim();
+    if (!trimmed) return;
+    const found = await searchSymbols(trimmed);
     const first = found[0];
     if (!first) return;
     const entry: WatchEntry = {
@@ -67,6 +141,16 @@ export function Watchlist({ onOpenAlerts }: Props) {
     };
     addToWatchlist(entry);
     setAdding(false);
+    setQuery("");
+  };
+
+  const handleQueryChange = (val: string) => {
+    setQuery(val);
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      // Pre-warm search without committing
+      if (val.trim()) void searchSymbols(val.trim());
+    }, 250);
   };
 
   return (
@@ -99,7 +183,7 @@ export function Watchlist({ onOpenAlerts }: Props) {
             aria-label="Add symbol to watchlist"
             autoFocus
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => handleQueryChange(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") void addFromQuery();
               if (e.key === "Escape") setAdding(false);
@@ -118,43 +202,12 @@ export function Watchlist({ onOpenAlerts }: Props) {
         ) : (
           <ul>
             {watchlist.map((w) => (
-              <li key={w.symbol} className="group flex items-center gap-2 border-b border-ev-panel px-3 py-1.5">
-                <button
-                  type="button"
-                  onClick={() => updateActive({ symbol: w.symbol })}
-                  className="min-w-0 flex-1 text-left"
-                  title={`Open ${w.description}`}
-                >
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="truncate text-base font-medium text-ev-strong">{w.ticker}</span>
-                    <span className="shrink-0 text-base num text-ev-text">
-                      {w.price === null ? "—" : w.price.toFixed(w.precision)}
-                    </span>
-                  </div>
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="truncate text-dense text-ev-faint">{w.assetClass}</span>
-                    <span
-                      className={
-                        w.changePct === null
-                          ? "text-dense text-ev-faint"
-                          : w.changePct >= 0
-                            ? "text-dense num text-ev-up"
-                            : "text-dense num text-ev-down"
-                      }
-                    >
-                      {w.changePct === null ? "—" : `${w.changePct >= 0 ? "+" : ""}${w.changePct.toFixed(2)}%`}
-                    </span>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  title={`Remove ${w.ticker}`}
-                  onClick={() => removeFromWatchlist(w.symbol)}
-                  className="text-ev-line opacity-0 transition-opacity hover:text-ev-down group-hover:opacity-100"
-                >
-                  <Trash2 size={12} aria-hidden />
-                </button>
-              </li>
+              <WatchRow
+                key={w.symbol}
+                item={w}
+                onSelect={() => updateActive({ symbol: w.symbol })}
+                onRemove={() => removeFromWatchlist(w.symbol)}
+              />
             ))}
           </ul>
         )}

@@ -137,6 +137,8 @@ interface WorkspaceStore {
   alertHistory: AlertHistory;
   /** Symbols tracked in the watchlist panel. */
   watchlist: WatchEntry[];
+  /** Memoized comma-joined symbols for O(1) watchlist key comparison. */
+  watchlistSymbolKey: string;
   /** Saved Pine scripts, keyed by id. */
   pineScripts: Record<string, PineScriptRecord>;
   /** Replay cursor into the loaded history, or null when off. */
@@ -333,6 +335,7 @@ export const useWorkspace = create<WorkspaceStore>()(
       alerts: [],
       alertHistory: {},
       watchlist: [],
+      watchlistSymbolKey: "",
       pineScripts: {},
       replayBar: null,
       magnet: "off",
@@ -356,7 +359,18 @@ export const useWorkspace = create<WorkspaceStore>()(
 
       // Per-cell settings. The linked fields (symbol, interval) have their own
       // actions below, because they propagate to the cell's link group.
-      updateActive: (patch) => set((s) => editChart(s, (c) => ({ ...c, ...patch }))),
+      updateActive: (patch) =>
+        set((s) => {
+          const layout = s.layouts.find((l) => l.id === s.activeLayoutId) ?? s.layouts[0];
+          if (!layout) return s;
+          const current = layout.charts[layout.activeChart];
+          if (!current) return s;
+          const hasChange = Object.entries(patch).some(
+            ([k, v]) => (current as unknown as Record<string, unknown>)[k] !== v,
+          );
+          if (!hasChange) return s;
+          return editChart(s, (c) => ({ ...c, ...patch }));
+        }),
 
       // The focused cell's symbol, and every cell in its link group.
       setSymbol: (symbol) => set((s) => editActive(s, (l) => applyToGroup(l, { symbol }))),
@@ -623,10 +637,17 @@ export const useWorkspace = create<WorkspaceStore>()(
       },
 
       addToWatchlist: (entry) =>
-        set((s) => (s.watchlist.some((w) => w.symbol === entry.symbol) ? s : { watchlist: [...s.watchlist, entry] })),
+        set((s) => {
+          if (s.watchlist.some((w) => w.symbol === entry.symbol)) return s;
+          const next = [...s.watchlist, entry];
+          return { watchlist: next, watchlistSymbolKey: next.map((w) => w.symbol).join(",") };
+        }),
 
       removeFromWatchlist: (symbol) =>
-        set((s) => ({ watchlist: s.watchlist.filter((w) => w.symbol !== symbol) })),
+        set((s) => {
+          const next = s.watchlist.filter((w) => w.symbol !== symbol);
+          return { watchlist: next, watchlistSymbolKey: next.map((w) => w.symbol).join(",") };
+        }),
 
       updateWatchPrice: (symbol, price, changePct) =>
         set((s) => ({
@@ -814,6 +835,10 @@ export const useWorkspace = create<WorkspaceStore>()(
           alertHistory:
             "alertHistory" in raw ? restoreAlertHistory(raw.alertHistory) : current.alertHistory,
           watchlist: "watchlist" in raw ? restoreWatchlist(raw.watchlist, current.watchlist) : current.watchlist,
+          watchlistSymbolKey:
+            "watchlist" in raw
+              ? restoreWatchlist(raw.watchlist, current.watchlist).map((w) => w.symbol).join(",")
+              : current.watchlist.map((w) => w.symbol).join(","),
         };
       },
     },

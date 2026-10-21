@@ -119,22 +119,29 @@ function AlertForm({
   const [mult, setMult] = useAlertField<string>("2");
   const [frequency, setFrequency] = useAlertField<AlertFrequency>("once_per_bar_close");
   const [message, setMessage] = useAlertField<string>("");
+  const [busy, setBusy] = useState(false);
 
   const needsValue = ["crossing", "crossing_up", "crossing_down", "greater", "less"].includes(kind);
   const needsBars = kind.startsWith("moving_");
   const needsMult = kind.startsWith("channel_exit_");
 
   const submit = () => {
+    if (disabled || busy) return;
+    setBusy(true);
     const condition: AlertCondition = needsValue
       ? ({ kind, value: Number(value) } as AlertCondition)
       : needsBars
         ? ({ kind, bars: Number(bars) } as AlertCondition)
         : ({ kind, mult: Number(mult) } as AlertCondition);
-    onAdd(symbol, condition, frequency, message.trim());
-    setMessage("");
+    try {
+      onAdd(symbol, condition, frequency, message.trim());
+      setMessage("");
+    } finally {
+      setTimeout(() => setBusy(false), 300);
+    }
   };
 
-  const disabled = (needsValue && !Number.isFinite(Number(value))) || (needsBars && Number(bars) < 1);
+  const disabled = (needsValue && !Number.isFinite(Number(value))) || (needsBars && Number(bars) < 1) || busy;
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-ev-raised px-4 py-3">
@@ -209,7 +216,7 @@ function AlertForm({
         disabled={disabled}
         className="rounded bg-ev-accent px-3 py-1 text-base font-medium text-white disabled:opacity-40"
       >
-        Create
+        {busy ? "Creating…" : "Create"}
       </button>
     </div>
   );

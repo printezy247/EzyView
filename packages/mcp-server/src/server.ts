@@ -60,6 +60,14 @@ const posNum = (a: Args, key: string, fallback?: number): number => {
 
 const VALID_SCREENER_FIELDS = new Set<ScreenerField>(["price", "changePct", "volume", "fromHighPct", "rsi"]);
 
+function checkAuth(a: Args): void {
+  const requiredToken = process.env.EZYVIEW_MCP_TOKEN;
+  if (!requiredToken) return;
+  if (typeof a.token !== "string" || a.token !== requiredToken) {
+    throw new Error("Unauthorized: Invalid or missing EZYVIEW_MCP_TOKEN");
+  }
+}
+
 const object = (properties: Record<string, unknown>, required: string[] = []) => ({
   type: "object",
   properties,
@@ -240,8 +248,9 @@ const TOOLS: Tool[] = [
     name: "get_workspace",
     description:
       "The user's EzyView layouts: each chart's symbol, interval, chart type, indicator ids and drawings. Read from the desktop app's workspace snapshot.",
-    inputSchema: object({}),
-    run: async () => {
+    inputSchema: object({ token: { type: "string", description: "Auth token required if EZYVIEW_MCP_TOKEN is set" } }),
+    run: async (a) => {
+      checkAuth(a);
       const snap = await loadSnapshot();
       const ageSeconds = Math.max(0, Math.floor(Date.now() / 1000) - snap.updatedAt);
       return { updatedAt: snap.updatedAt, ageSeconds, layouts: snap.layouts };
@@ -250,8 +259,9 @@ const TOOLS: Tool[] = [
   {
     name: "list_alerts",
     description: "The user's price alerts (condition, state, symbol) and watchlist, from the desktop app's snapshot.",
-    inputSchema: object({ symbol: { type: "string" } }),
+    inputSchema: object({ symbol: { type: "string" }, token: { type: "string" } }),
     run: async (a) => {
+      checkAuth(a);
       const snap = await loadSnapshot();
       const symbol = typeof a.symbol === "string" && a.symbol !== "" ? a.symbol : null;
       const matches = (row: unknown) =>
@@ -263,8 +273,9 @@ const TOOLS: Tool[] = [
     name: "get_journal",
     description:
       "Trading journal entries and notes with aggregate stats (win rate, net P&L, expectancy). Optional symbol filter and limit (newest first).",
-    inputSchema: object({ symbol: { type: "string" }, limit: { type: "number" } }),
+    inputSchema: object({ symbol: { type: "string" }, limit: { type: "number" }, token: { type: "string" } }),
     run: async (a) => {
+      checkAuth(a);
       const snap = await loadSnapshot();
       const symbol = typeof a.symbol === "string" && a.symbol !== "" ? a.symbol : null;
       const limit = Math.min(1000, Math.max(0, Math.floor(num(a, "limit", 50))));
@@ -279,8 +290,9 @@ const TOOLS: Tool[] = [
     name: "journal_review_pack",
     description:
       "Everything needed to write a daily or weekly trading review: the app's deterministic summary, stats, trades and notes for the window containing the given date (YYYY-MM-DD, default today). Write the narrative yourself from this data.",
-    inputSchema: object({ period: { type: "string", enum: ["daily", "weekly"] }, date: { type: "string" } }),
+    inputSchema: object({ period: { type: "string", enum: ["daily", "weekly"] }, date: { type: "string" }, token: { type: "string" } }),
     run: async (a) => {
+      checkAuth(a);
       const snap = await loadSnapshot();
       const period = a.period === "weekly" ? "weekly" : "daily";
       const key = typeof a.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(a.date) ? a.date : dateKey(Date.now() / 1000);

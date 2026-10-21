@@ -571,13 +571,13 @@ function Readout({
     const poll = () => {
       void quoteOf(rawSymbol).then((q) => {
         if (!cancelled && q) {
-          setLivePrice(q.last);
-          setLiveChangePct(q.changePercent ?? null);
+          setLivePrice((prev) => (prev === q.last ? prev : q.last));
+          setLiveChangePct((prev) => (prev === q.changePercent ? prev : q.changePercent ?? null));
         }
       });
     };
     poll();
-    const timer = setInterval(poll, 1500);
+    const timer = setInterval(poll, 2000);
     return () => {
       cancelled = true;
       clearInterval(timer);

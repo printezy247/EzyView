@@ -195,6 +195,7 @@ export function buildExportEntries(api: ExportMenuApi): MenuEntry[] {
 export function Toolbar(props: Props) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [intervalOpen, setIntervalOpen] = useState(false);
+  const [snapshotBusy, setSnapshotBusy] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const strategiesActive = location.pathname === "/strategies";
@@ -637,11 +638,18 @@ export function Toolbar(props: Props) {
         type="button"
         title="Take instant chart snapshot (PNG)"
         aria-label="Take chart snapshot"
+        disabled={snapshotBusy}
         onClick={() => {
-          const src = getActiveExportSource();
-          if (src) saveChartPng(src);
+          if (snapshotBusy) return;
+          setSnapshotBusy(true);
+          try {
+            const src = getActiveExportSource();
+            if (src) saveChartPng(src);
+          } finally {
+            setTimeout(() => setSnapshotBusy(false), 500);
+          }
         }}
-        className="flex size-6 shrink-0 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+        className="flex size-6 shrink-0 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong disabled:opacity-40"
       >
         <Camera size={13} aria-hidden />
       </button>

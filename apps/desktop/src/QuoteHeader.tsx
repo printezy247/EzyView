@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Chip } from "./ui";
 import { isLivePublicSymbol, precisionFor, quoteOf } from "./data";
 import { useMt5 } from "./mt5";
+import { useWorkspace } from "./store";
 import { provenanceLabel, provenanceOf, provenanceTitle, provenanceTone } from "./provenance";
 import type { Quote } from "@ezyview/data-adapters";
 
@@ -20,13 +21,23 @@ import type { Quote } from "@ezyview/data-adapters";
 export function QuoteHeader({ symbol }: { symbol: string }) {
   const source = useMt5((s) => s.source);
   const status = useMt5((s) => s.status);
+  const isReplay = useWorkspace((s) => s.replayBar !== null);
   const [quote, setQuote] = useState<Quote | null>(null);
+  const [flash, setFlash] = useState<"up" | "down" | null>(null);
+  const prevLastRef = useRef<number | null>(null);
 
   useEffect(() => {
+    if (isReplay) return;
     let cancelled = false;
     const tick = () => {
       void quoteOf(symbol).then((q) => {
-        if (!cancelled) setQuote(q);
+        if (!cancelled && q) {
+          if (prevLastRef.current !== null && q.last !== prevLastRef.current) {
+            setFlash(q.last > prevLastRef.current ? "up" : "down");
+          }
+          prevLastRef.current = q.last;
+          setQuote(q);
+        }
       });
     };
     tick();
@@ -35,7 +46,13 @@ export function QuoteHeader({ symbol }: { symbol: string }) {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [symbol]);
+  }, [symbol, isReplay]);
+
+  useEffect(() => {
+    if (!flash) return;
+    const t = setTimeout(() => setFlash(null), 900);
+    return () => clearTimeout(t);
+  }, [flash]);
 
   const ageSeconds = quote ? Math.floor(Date.now() / 1000) - quote.time : undefined;
   const baseProvenance = provenanceOf({ source, status, ageSeconds });
@@ -45,7 +62,7 @@ export function QuoteHeader({ symbol }: { symbol: string }) {
 
   return (
     <div className="flex items-center gap-2">
-      <div className="flex items-baseline gap-1.5">
+      <div className={`flex items-baseline gap-1.5 rounded px-1 transition-colors ${flash === "up" ? "flash-up" : flash === "down" ? "flash-down" : ""}`}>
         <span className="num text-body font-semibold text-ev-strong" data-volatile="price">
           {quote ? quote.last.toFixed(digits) : "—"}
         </span>

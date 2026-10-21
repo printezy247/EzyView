@@ -14,6 +14,8 @@ describe("sanitizeExportFilename", () => {
     expect(pine("a/b")).toBe("ab");
     expect(pine("a\\b")).toBe("ab");
     expect(pine("a\u0000b")).toBe("ab");
+    expect(pine("../../../etc/passwd")).toBe("etcpasswd");
+    expect(pine("..\\..\\windows")).toBe("windows");
     expect(pine("  spaced  ")).toBe("spaced");
   });
 

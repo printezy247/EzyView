@@ -325,6 +325,17 @@ async function refreshInto(set: SetState): Promise<void> {
     paperEngine.getOrders(),
     paperEngine.getHistory(),
   ]);
+  const current = useTrading.getState();
+  if (
+    current.account?.equity === account?.equity &&
+    current.account?.balance === account?.balance &&
+    current.positions.length === positions.length &&
+    current.orders.length === orders.length &&
+    current.deals.length === deals.length &&
+    current.positions.every((p, i) => p.symbol === positions[i]?.symbol && p.unrealizedPnl === positions[i]?.unrealizedPnl)
+  ) {
+    return;
+  }
   set({ account, positions, orders, deals });
 }
 

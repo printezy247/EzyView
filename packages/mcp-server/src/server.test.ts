@@ -66,4 +66,20 @@ describe("mcp server tools", () => {
     const e = await call("earnings", { symbol: "NASDAQ:AAPL" });
     expect(e.data.earnings.length).toBeGreaterThan(0);
   });
+
+  it("enforces authentication on workspace inspection when EZYVIEW_MCP_TOKEN is configured", async () => {
+    process.env.EZYVIEW_MCP_TOKEN = "secret123";
+    try {
+      // Unauthorized call fails with error
+      const unauth = await call("get_workspace", {});
+      expect(unauth.isError).toBe(true);
+      expect(unauth.data).toContain("Unauthorized");
+
+      // Valid token succeeds
+      const auth = await call("get_workspace", { token: "secret123" });
+      expect(auth.isError).toBe(false);
+    } finally {
+      delete process.env.EZYVIEW_MCP_TOKEN;
+    }
+  });
 });

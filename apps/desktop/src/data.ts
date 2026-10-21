@@ -223,26 +223,53 @@ export async function searchSymbols(query: string): Promise<SymbolInfo[]> {
 /** One quote, from whichever feed the chart is on. */
 /** Demo symbols already ticking; the demo feed only moves while subscribed to. */
 const ticking = new Set<string>();
+const inFlightQuotes = new Map<string, Promise<Quote | null>>();
+const inFlightHistory = new Map<string, Promise<Candle[]>>();
 
 export async function quoteOf(symbol: string): Promise<Quote | null> {
-  if (brokerFeed()) return getMt5().data.getQuote(symbol);
-  const live = await fetchPublicQuote(symbol);
-  if (live) return live;
-  if (!ticking.has(symbol)) {
-    ticking.add(symbol);
-    void market.subscribe([symbol], () => {});
-  }
-  return market.getQuote(symbol);
+  const existing = inFlightQuotes.get(symbol);
+  if (existing) return existing;
+
+  const promise = (async () => {
+    try {
+      if (brokerFeed()) return await getMt5().data.getQuote(symbol);
+      const live = await fetchPublicQuote(symbol);
+      if (live) return live;
+      if (!ticking.has(symbol)) {
+        ticking.add(symbol);
+        void market.subscribe([symbol], () => {});
+      }
+      return await market.getQuote(symbol);
+    } finally {
+      inFlightQuotes.delete(symbol);
+    }
+  })();
+
+  inFlightQuotes.set(symbol, promise);
+  return promise;
 }
 
 export async function loadHistory(symbol: string, resolution: Resolution, limit = 500): Promise<Candle[]> {
-  const step = RESOLUTION_SECONDS[resolution];
-  const now = Math.floor(Date.now() / 1000);
-  // Snap the window to the bar grid so the newest candle is always complete.
-  const to = Math.floor(now / step) * step;
-  const request = { symbol, resolution, from: to - step * limit, to, limit };
-  if (brokerFeed()) return getMt5().data.getHistory(request);
-  const live = await fetchPublicHistory(symbol, resolution, limit);
-  if (live && live.length > 0) return live;
-  return market.getHistory(request);
+  const key = `${symbol}:${resolution}:${limit}`;
+  const existing = inFlightHistory.get(key);
+  if (existing) return existing;
+
+  const promise = (async () => {
+    try {
+      const step = RESOLUTION_SECONDS[resolution];
+      const now = Math.floor(Date.now() / 1000);
+      // Snap the window to the bar grid so the newest candle is always complete.
+      const to = Math.floor(now / step) * step;
+      const request = { symbol, resolution, from: to - step * limit, to, limit };
+      if (brokerFeed()) return await getMt5().data.getHistory(request);
+      const live = await fetchPublicHistory(symbol, resolution, limit);
+      if (live && live.length > 0) return live;
+      return await market.getHistory(request);
+    } finally {
+      inFlightHistory.delete(key);
+    }
+  })();
+
+  inFlightHistory.set(key, promise);
+  return promise;
 }

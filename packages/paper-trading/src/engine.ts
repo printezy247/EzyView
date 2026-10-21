@@ -319,24 +319,31 @@ export class PaperTradingEngine implements TradingAdapter {
    */
   updateQuote(symbol: string, price: number): void {
     if (!finite(price) || price <= 0) return;
+    const prev = this.last.get(symbol);
+    if (prev === price) return;
     this.last.set(symbol, price);
     const time = this.now();
 
-    // Keep the mark fresh so equity reflects the market even between fills.
     const position = this.positions.get(symbol);
+    const hadPosition = Boolean(position);
     if (position) this.positions.set(symbol, { ...position, markPrice: price, unrealizedPnl: unrealized(position, price) });
 
+    let triggeredAny = false;
     for (const order of Array.from(this.orders.values())) {
       if (order.status !== "pending" || order.symbol !== symbol) continue;
       const trigger = this.triggered(order, price);
       if (!trigger) continue;
+      triggeredAny = true;
       // The resting order is spent; the fill below books the position.
       this.orders.delete(order.id);
       this.executeOrder({ ...order, type: "market", qty: order.qty }, trigger, order);
     }
 
-    this.checkExits(symbol, price, time);
-    this.onUpdate?.();
+    const hadExits = this.checkExits(symbol, price, time);
+    // Only fire UI update if positions, orders, or equity actually changed
+    if (hadPosition || triggeredAny || hadExits) {
+      this.onUpdate?.();
+    }
   }
 
   // -------------------------------------------------------------------------

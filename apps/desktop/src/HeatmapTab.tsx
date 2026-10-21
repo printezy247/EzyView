@@ -1,26 +1,96 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { quoteOf } from "./data";
+import { precisionFor, quoteOf } from "./data";
 import { useWorkspace } from "./store";
-import { themeColors } from "@ezyview/brand";
+import { market } from "./data";
+import type { Quote, SymbolInfo } from "@ezyview/data-adapters";
+
+type Scope = "all" | "crypto" | "forex" | "commodity" | "stock" | "index";
+
+interface HeatTile {
+  symbol: string;
+  ticker: string;
+  description: string;
+  assetClass: string;
+  price: number | null;
+  changePct: number | null;
+  precision: number;
+}
+
+const ASSET_LABELS: Record<Scope, string> = {
+  all: "All Markets",
+  crypto: "Crypto",
+  forex: "Forex",
+  commodity: "Commodities & Metals",
+  stock: "Equities",
+  index: "Indices",
+};
 
 /**
- * Heatmap: one tile per watched symbol, coloured by percent change and sized
- * by the size of the move. Sizing by move (rather than by market cap) is what
- * the quotes the app has can honestly support.
+ * Investing.com-style visual market heatmap:
+ * Tiles sized and color-graded by performance, with asset-class segmentation
+ * and single-click routing to the chart.
  */
 export function HeatmapTab() {
   const navigate = useNavigate();
   const watchlist = useWorkspace((s) => s.watchlist);
+  const symbolKey = useWorkspace((s) => s.watchlistSymbolKey);
   const updateWatchPrice = useWorkspace((s) => s.updateWatchPrice);
   const updateActive = useWorkspace((s) => s.updateActive);
-  const appTheme = useWorkspace((s) => s.appTheme);
-  const chartTheme = useWorkspace((s) => s.activeLayout().charts[0]?.theme ?? "dark");
-  const theme = appTheme === "auto" ? chartTheme : appTheme;
-  const symbolKey = watchlist.map((w) => w.symbol).join(",");
 
+  const [mode, setMode] = useState<"universe" | "watchlist">("universe");
+  const [filter, setFilter] = useState<Scope>("all");
+  const [universeTiles, setUniverseTiles] = useState<HeatTile[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Load universe symbols on mount
   useEffect(() => {
-    if (!symbolKey) return;
+    let cancelled = false;
+    setLoading(true);
+    void market.searchSymbols("").then((symbols: SymbolInfo[]) => {
+      if (cancelled) return;
+      const initial: HeatTile[] = symbols.map((s) => ({
+        symbol: s.symbol,
+        ticker: s.ticker,
+        description: s.description,
+        assetClass: s.assetClass,
+        price: null,
+        changePct: null,
+        precision: s.precision,
+      }));
+      setUniverseTiles(initial);
+      setLoading(false);
+
+      // Fetch live/sim quotes for universe symbols
+      void Promise.all(
+        symbols.map((s) =>
+          quoteOf(s.symbol)
+            .then((q: Quote | null) => {
+              if (cancelled || !q) return null;
+              return { symbol: s.symbol, last: q.last, changePercent: q.changePercent ?? 0 };
+            })
+            .catch(() => null),
+        ),
+      ).then((quotes) => {
+        if (cancelled) return;
+        setUniverseTiles((prev) =>
+          prev.map((tile) => {
+            const found = quotes.find((q) => q?.symbol === tile.symbol);
+            if (!found) return tile;
+            return { ...tile, price: found.last, changePct: found.changePercent };
+          }),
+        );
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Poll watchlist quotes when on watchlist view
+  useEffect(() => {
+    if (mode !== "watchlist" || !symbolKey) return;
     let cancelled = false;
     const symbols = symbolKey.split(",");
     const tick = () => {
@@ -32,56 +102,164 @@ export function HeatmapTab() {
       });
     };
     tick();
-    const t = setInterval(tick, 5000);
+    const t = setInterval(tick, 4000);
     return () => {
       cancelled = true;
       clearInterval(t);
     };
-  }, [symbolKey, updateWatchPrice]);
+  }, [mode, symbolKey, updateWatchPrice]);
 
-  // Tile weight: change magnitude, floored so a flat market still fills the grid.
+  const rawTiles: HeatTile[] = useMemo(() => {
+    if (mode === "watchlist") {
+      return watchlist.map((w) => ({
+        symbol: w.symbol,
+        ticker: w.ticker,
+        description: w.description,
+        assetClass: w.assetClass,
+        price: w.price,
+        changePct: w.changePct,
+        precision: w.precision,
+      }));
+    }
+    return universeTiles;
+  }, [mode, watchlist, universeTiles]);
+
+  const filteredTiles = useMemo(() => {
+    if (filter === "all") return rawTiles;
+    return rawTiles.filter((t) => {
+      const cls = t.assetClass.toLowerCase();
+      if (filter === "commodity") return cls.includes("commodity") || cls.includes("metal") || t.ticker.includes("XAU");
+      if (filter === "stock") return cls.includes("stock") || cls.includes("equity");
+      return cls.includes(filter);
+    });
+  }, [rawTiles, filter]);
+
   const maxAbs = useMemo(
-    () => Math.max(1, ...watchlist.map((w) => Math.abs(w.changePct ?? 0))),
-    [watchlist],
+    () => Math.max(1.5, ...filteredTiles.map((w) => Math.abs(w.changePct ?? 0))),
+    [filteredTiles],
   );
-  const colors = themeColors(theme);
-
-  if (watchlist.length === 0) {
-    return <p className="p-3 text-base text-ev-faint">Add symbols to the watchlist to see a heatmap.</p>;
-  }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-wrap content-start gap-1.5 overflow-y-auto p-3">
-      {watchlist.map((w) => {
-        const pct = w.changePct ?? 0;
-        const up = pct >= 0;
-        const weight = Math.abs(pct) / maxAbs;
-        // Grow with the move but never collapse below a legible tile.
-        const grow = 1 + weight * 3;
-        const bg = up ? colors.up : colors.down;
-        return (
-          <button
-            key={w.symbol}
-            type="button"
-            onClick={() => {
-              updateActive({ symbol: w.symbol });
-              navigate("/chart");
-            }}
-            className="flex flex-col justify-between rounded border border-ev-line p-2 text-left text-white transition hover:brightness-110"
-            style={{
-              flex: `${grow} 1 8rem`,
-              minHeight: `${3 + weight * 4}rem`,
-              backgroundColor: `color-mix(in srgb, ${bg} ${30 + weight * 55}%, transparent)`,
-            }}
-            title={`${w.description} — ${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`}
-          >
-            <span className="text-base font-semibold">{w.ticker}</span>
-            <span className="num text-body font-medium">
-              {w.changePct === null ? "—" : `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`}
-            </span>
-          </button>
-        );
-      })}
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-ev-bg">
+      {/* Header filter & scope bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ev-raised px-4 py-2">
+        <div className="flex items-center gap-1.5">
+          <div className="flex rounded border border-ev-line p-px">
+            <button
+              type="button"
+              onClick={() => setMode("universe")}
+              className={`rounded px-2.5 py-1 text-dense font-medium ${
+                mode === "universe" ? "bg-ev-raised text-ev-strong" : "text-ev-muted hover:text-ev-strong"
+              }`}
+            >
+              Market Universe
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("watchlist")}
+              className={`rounded px-2.5 py-1 text-dense font-medium ${
+                mode === "watchlist" ? "bg-ev-raised text-ev-strong" : "text-ev-muted hover:text-ev-strong"
+              }`}
+            >
+              Watchlist ({watchlist.length})
+            </button>
+          </div>
+
+          <div className="mx-1 h-4 w-px bg-ev-raised" />
+
+          {/* Sector filters */}
+          <div className="flex flex-wrap items-center gap-1">
+            {(Object.keys(ASSET_LABELS) as Scope[]).map((scopeKey) => (
+              <button
+                key={scopeKey}
+                type="button"
+                onClick={() => setFilter(scopeKey)}
+                className={`rounded px-2 py-0.5 text-dense ${
+                  filter === scopeKey
+                    ? "bg-ev-accent text-white font-medium"
+                    : "text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+                }`}
+              >
+                {ASSET_LABELS[scopeKey]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <span className="text-dense text-ev-faint">
+          {filteredTiles.length} instruments · Click tile to chart
+        </span>
+      </div>
+
+      {/* Heatmap visualization grid */}
+      <div className="flex min-h-0 flex-1 flex-wrap content-start gap-2 overflow-y-auto p-4">
+        {loading && universeTiles.length === 0 ? (
+          <div className="flex flex-1 items-center justify-center p-8 text-base text-ev-muted">
+            Loading market heatmap…
+          </div>
+        ) : filteredTiles.length === 0 ? (
+          <p className="p-4 text-base text-ev-faint">No market instruments match the active filter.</p>
+        ) : (
+          filteredTiles.map((tile) => {
+            const pct = tile.changePct ?? 0;
+            const up = pct >= 0;
+            const weight = Math.min(1, Math.abs(pct) / maxAbs);
+            const digits = tile.precision ?? precisionFor(tile.price);
+
+            // Tiered color grading (Investing.com palette)
+            let tileBg = "rgba(42, 47, 56, 0.4)";
+            let textColor = "text-ev-text";
+
+            if (pct > 0.05) {
+              if (pct >= 3.0) tileBg = "#0ea600";
+              else if (pct >= 1.0) tileBg = "rgba(14, 166, 0, 0.75)";
+              else tileBg = "rgba(14, 166, 0, 0.40)";
+              textColor = "text-white";
+            } else if (pct < -0.05) {
+              if (pct <= -3.0) tileBg = "#d91400";
+              else if (pct <= -1.0) tileBg = "rgba(217, 20, 0, 0.75)";
+              else tileBg = "rgba(217, 20, 0, 0.40)";
+              textColor = "text-white";
+            }
+
+            // Sizing: tiles scale dynamically with move weight
+            const flexGrow = Math.round(1 + weight * 2.5);
+
+            return (
+              <button
+                key={tile.symbol}
+                type="button"
+                onClick={() => {
+                  updateActive({ symbol: tile.symbol });
+                  navigate("/chart");
+                }}
+                className={`flex flex-col justify-between rounded border border-white/10 p-3 text-left transition hover:scale-[1.01] hover:brightness-110 shadow-sm ${textColor}`}
+                style={{
+                  flex: `${flexGrow} 1 10rem`,
+                  minHeight: "5.5rem",
+                  backgroundColor: tileBg,
+                }}
+                title={`${tile.description} (${tile.symbol})\nPrice: ${
+                  tile.price !== null ? tile.price.toFixed(digits) : "—"
+                }\nChange: ${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`}
+              >
+                <div className="flex items-baseline justify-between gap-1">
+                  <span className="font-bold tracking-tight text-base">{tile.ticker}</span>
+                  <span className="text-micro opacity-75 uppercase">{tile.assetClass}</span>
+                </div>
+                <div className="flex items-baseline justify-between gap-1">
+                  <span className="num text-dense opacity-90">
+                    {tile.price !== null ? tile.price.toFixed(digits) : "—"}
+                  </span>
+                  <span className="num font-bold text-base">
+                    {tile.changePct === null ? "—" : `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`}
+                  </span>
+                </div>
+              </button>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }

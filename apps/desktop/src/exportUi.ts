@@ -23,6 +23,8 @@ export function sanitizeExportFilename(name: string, fallback: string): string {
       return !'<>:"/\\|?*'.includes(ch);
     })
     .join("")
+    .replace(/^(\.\.[\/\\]?)+/, "")
+    .replace(/^\.+/, "")
     .trim();
   return cleaned || fallback;
 }
@@ -119,6 +121,7 @@ export function saveChartJson(source: ExportSource): void {
 /** Save the layout as a shareable JSON file. */
 export function saveLayoutJson(layout: Layout): void {
   const blob = new Blob([exportLayoutJson(layout)], { type: "application/json" });
+  notice.alert("Exporting layout JSON", "Layout export contains unencrypted chart layout and drawing structures.");
   void saveBlob(blob, `${sanitizeExportFilename(`layout-${layout.name}`, "layout")}.json`);
 }
 

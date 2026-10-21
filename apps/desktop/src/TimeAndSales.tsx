@@ -50,14 +50,16 @@ export function TimeAndSales() {
   const layout = useWorkspace((s) => s.activeLayout());
   const state = activeChartOf(layout);
   const symbol = state.symbol;
+  const isReplay = useWorkspace((s) => s.replayBar !== null);
   const entries = useTape((s) => s.tapes[symbol] ?? EMPTY_TAPE);
   const push = useTape((s) => s.push);
   const clear = useTape((s) => s.clear);
   const [paused, setPaused] = useState(false);
   const [minSize, setMinSize] = useState<number>(0);
+  const [pace, setPace] = useState<number>(1200);
 
   useEffect(() => {
-    if (paused) return;
+    if (paused || isReplay) return;
     let cancelled = false;
 
     const tick = () => {
@@ -69,12 +71,12 @@ export function TimeAndSales() {
       });
     };
     tick();
-    const t = setInterval(tick, 1200);
+    const t = setInterval(tick, pace);
     return () => {
       cancelled = true;
       clearInterval(t);
     };
-  }, [symbol, push, paused]);
+  }, [symbol, push, paused, pace, isReplay]);
 
   const filteredEntries = minSize > 0 ? entries.filter((e) => e.size >= minSize) : entries;
 
@@ -92,10 +94,22 @@ export function TimeAndSales() {
         <span className="text-micro text-ev-faint">{filteredEntries.length} prints</span>
 
         <select
+          value={pace}
+          onChange={(e) => setPace(Number(e.target.value))}
+          aria-label="Tape stream speed"
+          className="ml-auto rounded bg-ev-raised px-1 py-0.5 text-micro text-ev-muted hover:text-ev-strong"
+          title="Tape tick speed"
+        >
+          <option value={400}>Fast (400ms)</option>
+          <option value={1200}>Normal (1.2s)</option>
+          <option value={3000}>Slow (3s)</option>
+        </select>
+
+        <select
           value={minSize}
           onChange={(e) => setMinSize(Number(e.target.value))}
           aria-label="Filter prints by minimum size"
-          className="ml-auto rounded bg-ev-raised px-1 py-0.5 text-micro text-ev-muted hover:text-ev-strong"
+          className="rounded bg-ev-raised px-1 py-0.5 text-micro text-ev-muted hover:text-ev-strong"
           title="Filter tape prints by minimum size"
         >
           <option value={0}>All sizes</option>
