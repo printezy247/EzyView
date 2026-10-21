@@ -24,7 +24,7 @@ const overlay = (o: Partial<FundamentalEventOverlay> = {}): FundamentalEventOver
 describe("mergeMarkerLayers", () => {
   it("returns the script layer alone when fundamentals are empty", () => {
     const script = [scriptMarker(200), scriptMarker(100)];
-    expect(mergeMarkerLayers(script, [])).toEqual([...script].toSorted((a, b) => Number(a.time) - Number(b.time)));
+    expect(mergeMarkerLayers(script, [])).toEqual([...script].sort((a, b) => Number(a.time) - Number(b.time)));
   });
 
   it("returns the fundamentals layer alone when the script layer is empty", () => {

@@ -77,9 +77,9 @@ export class FinnhubNewsAdapter implements NewsAdapter {
       }
     }
     if (items.length === 0) items = await this.category("general");
-    return items
+    return [...items]
       .filter((n) => !options?.from || n.time >= options.from)
-      .toSorted((a, b) => b.time - a.time)
+      .sort((a, b) => b.time - a.time)
       .slice(0, limit);
   }
 
@@ -147,7 +147,7 @@ export class FinnhubEarningsAdapter implements Pick<FundamentalsAdapter, "getEar
     }
     return [...byQuarter.values()]
       .filter((r) => (!from || r.time >= from) && (!to || r.time <= to))
-      .toSorted((a, b) => a.time - b.time);
+      .sort((a, b) => a.time - b.time);
   }
 }
 
@@ -199,7 +199,7 @@ export class FinnhubCorporateCalendarAdapter implements CorporateCalendarAdapter
         source: "finnhub",
       });
     }
-    return out.toSorted((a, b) => a.time - b.time);
+    return [...out].sort((a, b) => a.time - b.time);
   }
 
   async getDividends(symbol: string, from: EpochSeconds, to: EpochSeconds): Promise<DividendEvent[]> {
@@ -219,6 +219,6 @@ export class FinnhubCorporateCalendarAdapter implements CorporateCalendarAdapter
       if (exDate === null || amount === null) continue;
       out.push({ symbol, exDate, payDate: parseYmd(r.payDate), amount, currency: r.currency ?? null, source: "finnhub" });
     }
-    return out.toSorted((a, b) => b.exDate - a.exDate);
+    return [...out].sort((a, b) => b.exDate - a.exDate);
   }
 }

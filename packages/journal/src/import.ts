@@ -14,7 +14,7 @@ interface Group {
 }
 
 export function entriesFromDeals(deals: readonly Deal[], source?: JournalEntry["source"]): JournalEntry[] {
-  const ordered = deals.toSorted((a, b) => a.time - b.time);
+  const ordered = [...deals].sort((a, b) => a.time - b.time);
   const groups = new Map<string, Group>();
   const ungrouped: Deal[] = [];
 
@@ -54,7 +54,7 @@ export function entriesFromDeals(deals: readonly Deal[], source?: JournalEntry["
     });
   }
 
-  return entries.toSorted((a, b) => b.entryTime - a.entryTime);
+  return [...entries].sort((a, b) => b.entryTime - a.entryTime);
 }
 
 function fromGroup(group: Group, source?: JournalEntry["source"]): JournalEntry {

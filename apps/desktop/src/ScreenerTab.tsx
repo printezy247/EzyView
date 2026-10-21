@@ -54,7 +54,7 @@ export function ScreenerTab() {
       return true;
     });
     const dir = desc ? -1 : 1;
-    return filtered.toSorted((a, b) => {
+    return [...filtered].sort((a, b) => {
       if (sort === "ticker") return a.ticker.localeCompare(b.ticker) * dir;
       if (sort === "price") return ((a.price ?? 0) - (b.price ?? 0)) * dir;
       return ((a.changePct ?? 0) - (b.changePct ?? 0)) * dir;

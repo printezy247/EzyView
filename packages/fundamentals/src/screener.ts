@@ -45,7 +45,7 @@ export function runScreener(rows: ScreenerRow[], query: ScreenerQuery): Screener
     });
   });
   const dir = query.descending ? -1 : 1;
-  return kept.toSorted((a, b) => {
+  return [...kept].sort((a, b) => {
     if (query.sortBy === "ticker") return a.ticker.localeCompare(b.ticker) * dir;
     const av = a[query.sortBy];
     const bv = b[query.sortBy];

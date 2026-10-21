@@ -182,7 +182,7 @@ export function toFundamentalMarkers(markers: readonly FundamentalEventMarker[])
         color: m.kind === "earnings" ? EARNINGS_COLOR : IMPACT_COLORS[m.impact ?? "high"],
       }),
     )
-    .toSorted((a, b) => Number(a.time) - Number(b.time));
+    .sort((a, b) => Number(a.time) - Number(b.time));
 }
 
 /** Vertical lines with the impact colour of the event marker at the same time. */
@@ -191,9 +191,9 @@ export function toFundamentalLines(overlays: FundamentalEventOverlay): Fundament
   for (const m of overlays.markers) {
     if (m.kind === "event") impactAt.set(m.time, m.impact ?? "high");
   }
-  return overlays.lines
+  return [...overlays.lines]
     .map((time): FundamentalLine => ({ time, color: IMPACT_COLORS[impactAt.get(time) ?? "high"] }))
-    .toSorted((a, b) => a.time - b.time);
+    .sort((a, b) => a.time - b.time);
 }
 
 /**
@@ -207,7 +207,7 @@ export function mergeMarkerLayers(
   fundamental: readonly SeriesMarker<Time>[],
 ): SeriesMarker<Time>[] {
   // Stable sort: equal times keep script markers ahead of fundamentals.
-  return [...script, ...fundamental].toSorted((a, b) => Number(a.time) - Number(b.time));
+  return [...script, ...fundamental].sort((a, b) => Number(a.time) - Number(b.time));
 }
 
 /**
@@ -670,12 +670,20 @@ export class EzyChart {
 
   /** Push `bgcolor()` bands and `plotshape()` markers onto the live data. */
   private syncScriptLayers(): void {
+    const data = this.layerData;
     this.bgBands.setBands(
       this.currentBands.map((b) => ({ color: b.color, flags: this.litFlags(b.values) })),
-      this.layerData.map((c) => c.time as UTCTimestamp),
+      data.map((c) => c.time as UTCTimestamp),
     );
     this.markerLayer = this.buildMarkers();
-    this.applyMarkers();
+
+    // In replay mode, do not pass future fundamental markers ahead of visible candles
+    const maxTime = data.length > 0 ? Number(data[data.length - 1]!.time) : Infinity;
+    const visibleFundamentals = Number.isFinite(maxTime)
+      ? this.fundamentalMarkerLayer.filter((m) => Number(m.time) <= maxTime)
+      : this.fundamentalMarkerLayer;
+
+    this.applyMarkers(visibleFundamentals);
   }
 
   /** A band is lit wherever its value is a present, non-`na` number. */
@@ -701,17 +709,17 @@ export class EzyChart {
         });
       }
     }
-    return out.toSorted((a, b) => Number(a.time) - Number(b.time));
+    return [...out].sort((a, b) => Number(a.time) - Number(b.time));
   }
 
   /**
    * Push the composited script + fundamental markers onto the main series,
    * creating the plugin on first use so an empty chart costs nothing.
    */
-  private applyMarkers(): void {
+  private applyMarkers(fundamentals = this.fundamentalMarkerLayer): void {
     const series = this.mainSeries;
     if (!series) return;
-    const merged = mergeMarkerLayers(this.markerLayer, this.fundamentalMarkerLayer);
+    const merged = mergeMarkerLayers(this.markerLayer, fundamentals);
     if (this.markerApi === null) {
       if (merged.length === 0) return;
       this.markerApi = createSeriesMarkers(
@@ -933,6 +941,15 @@ export class EzyChart {
 
   fitContent(): void {
     this.chart.timeScale().fitContent();
+  }
+
+  /** Scroll the view so the rightmost candle is visible at the right edge. */
+  scrollToRealTime(): void {
+    try {
+      this.chart.timeScale().scrollToPosition(3, false);
+    } catch {
+      // Safe no-op if timeScale is unattached
+    }
   }
 
   /** Show `[from, to]` (epoch seconds); times outside the data leave blank space. */

@@ -64,7 +64,7 @@ export class TapeBuffer {
 
   /** Newest first, as a fresh array the caller cannot use to mutate the tape. */
   recent(): TapeEntry[] {
-    return this.entries.toReversed();
+    return [...this.entries].reverse();
   }
 
   clear(): void {

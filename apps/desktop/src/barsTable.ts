@@ -19,7 +19,7 @@ export function tableRows(bars: readonly Candle[], precision: number): TableRow[
   const fixed = (n: number) => n.toFixed(precision);
   return bars
     .slice(-MAX_TABLE_ROWS)
-    .toReversed()
+    .reverse()
     .map((b) => ({
       time: stamp(b.time),
       open: fixed(b.open),

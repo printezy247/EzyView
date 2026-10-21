@@ -100,7 +100,7 @@ export function JournalPanel({ onClose }: Props) {
         node: <NoteRow note={note} onDelete={() => removeNote(note.id)} onPreview={setPreview} />,
       }));
 
-    return [...tradeRows, ...noteRows].toSorted((a, b) => b.time - a.time);
+    return [...tradeRows, ...noteRows].sort((a, b) => b.time - a.time);
   }, [entries, notes, query, removeEntry, removeNote]);
 
   const submit = () => {

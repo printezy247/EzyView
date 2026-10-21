@@ -58,7 +58,7 @@ export function DepthOfMarket({ symbol, precision }: Props) {
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto text-dense num">
           <ul>
-            {asks.toReversed().map((lvl) => (
+            {[...asks].reverse().map((lvl) => (
                 <Row key={`a-${lvl.price}`} level={lvl} maxCum={maxCum} side="ask" precision={precision} />
               ))}
           </ul>

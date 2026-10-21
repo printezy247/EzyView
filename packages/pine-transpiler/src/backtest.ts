@@ -45,7 +45,7 @@ export function backtest(orders: PineOrder[], opts: BacktestOptions): BacktestRe
   const equity: number[] = [];
 
   // Process orders in bar order so fills respect the sequence the script saw.
-  const sorted = orders.toSorted((a, b) => a.barIndex - b.barIndex);
+  const sorted = [...orders].sort((a, b) => a.barIndex - b.barIndex);
 
   for (const order of sorted) {
     const price = close[order.barIndex];

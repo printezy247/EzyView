@@ -444,6 +444,9 @@ export function ChartHost(props: Props) {
     const bars = sliceForReplay(historyRef.current, props.replayBar ?? null);
     chartRef.current?.setData(bars);
     setShown(bars);
+    if (props.replayBar != null) {
+      chartRef.current?.scrollToRealTime();
+    }
   }, [props.replayBar]);
 
   // Live last bar: once a second, fold the feed's price into the newest candle
@@ -661,8 +664,9 @@ const PRICE_ONLY_LABEL: Partial<Record<ChartType, string>> = { renko: "Renko", k
 
 /** Bars up to and including the cursor; the full history when not replaying. */
 function sliceForReplay(candles: Candle[], cursor: number | null): Candle[] {
-  if (cursor === null) return candles;
-  const end = Math.max(1, Math.min(cursor + 1, candles.length));
+  if (cursor === null || candles.length === 0) return candles;
+  const resolved = cursor < 0 ? Math.max(0, candles.length + cursor) : cursor;
+  const end = Math.max(1, Math.min(resolved + 1, candles.length));
   return candles.slice(0, end);
 }
 

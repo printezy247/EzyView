@@ -271,7 +271,7 @@ const TOOLS: Tool[] = [
       const entries = (snap.journal.entries as JournalEntry[])
         .filter((e) => typeof e === "object" && e !== null && typeof e.entryTime === "number")
         .filter((e) => symbol === null || e.symbol === symbol)
-        .toSorted((x, y) => y.entryTime - x.entryTime);
+        .sort((x, y) => y.entryTime - x.entryTime);
       return { stats: computeStats(entries), entries: entries.slice(0, limit), notes: snap.journal.notes.slice(0, limit) };
     },
   },

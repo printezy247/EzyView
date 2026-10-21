@@ -13,6 +13,8 @@
   },
   "rules": {
     "no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
-    "no-console": ["warn", { "allow": ["warn", "error"] }]
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "unicorn/no-array-sort": "off",
+    "unicorn/no-array-reverse": "off"
   }
 }

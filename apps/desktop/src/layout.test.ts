@@ -164,7 +164,7 @@ describe("restoreWorkspace", () => {
 
   it("rejects an unknown replay speed", () => {
     const restored = restoreWorkspace(
-      { layouts: [layout([chart("A")])], activeLayoutId: "L1", magnet: "off", replaySpeed: 3 },
+      { layouts: [layout([chart("A")])], activeLayoutId: "L1", magnet: "off", replaySpeed: 99 },
       current,
       chart("D"),
       resolveDef,

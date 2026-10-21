@@ -81,7 +81,7 @@ describe("optimizePine", () => {
     );
 
     expect(seen).toEqual([{ a: 1, b: 2 }]);
-    expect(Object.keys(seen[0] ?? {}).toSorted()).toEqual(["a", "b"]);
+    expect(Object.keys(seen[0] ?? {}).sort()).toEqual(["a", "b"]);
   });
 
   it("stops at maxCombos and flags the grid capped", () => {

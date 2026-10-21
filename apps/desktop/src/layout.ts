@@ -210,10 +210,10 @@ export interface PersistedWorkspace {
 }
 
 /** Replay transport speed multipliers (× a 500 ms/bar base). */
-export type ReplaySpeed = 0.5 | 1 | 2 | 4;
+export type ReplaySpeed = 0.1 | 0.5 | 1 | 2 | 3 | 5;
 
 const MAGNET_IDS = new Set<string>(["off", "weak", "strong"]);
-const REPLAY_SPEEDS = new Set<number>([0.5, 1, 2, 4]);
+const REPLAY_SPEEDS = new Set<number>([0.1, 0.5, 1, 2, 3, 5]);
 
 /**
  * Validate what came out of storage. Anything malformed falls back to

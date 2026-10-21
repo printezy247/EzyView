@@ -57,7 +57,7 @@ describe("chain", () => {
     const rows = chain[0]!.rows;
     expect(rows).toHaveLength(17);
     const strikes = rows.map((r) => r.strike);
-    expect(strikes).toEqual(strikes.toSorted((a, b) => a - b));
+    expect(strikes).toEqual([...strikes].sort((a, b) => a - b));
     const mid = rows[8]!;
     expect(Math.abs(mid.strike - 200)).toBeLessThanOrEqual(strikeStep(200));
     expect(rows[0]!.call.iv).toBeGreaterThan(mid.call.iv);

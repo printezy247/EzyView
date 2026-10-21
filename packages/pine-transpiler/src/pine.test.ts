@@ -267,7 +267,7 @@ describe("evaluate", () => {
     const ctx = makeContext(6);
     runPine('plot(input.int(3))\nplot(input.int(7, title="Second"))', ctx);
     // One key per input call site in source order, never one per bar.
-    expect(Object.keys(ctx.inputs).toSorted()).toEqual(["0", "1"]);
+    expect(Object.keys(ctx.inputs).sort()).toEqual(["0", "1"]);
     expect(ctx.inputs["0"]).toBe(3);
     expect(ctx.inputs["1"]).toBe(7);
   });
