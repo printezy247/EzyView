@@ -1,6 +1,6 @@
 import type { AssignExpr, Identifier, Node, Script } from "./ast.js";
 import { parse } from "./parser.js";
-import { PineSyntaxError } from "./parser.js";
+import { PineSyntaxError } from "./lexer.js";
 
 /** Thrown when the transpiler meets a Pine feature EzyView does not model. */
 export class PineUnsupportedError extends Error {
@@ -162,7 +162,7 @@ class Emitter {
         return;
       }
       case "VarDecl": {
-        const name = this.safeName(node.name);
+        const name = this.safeName(node.name, node.line, node.col);
         if (node.isVar) {
           this.varNames.add(name);
           if (!this.emittedVars.has(name)) {
@@ -176,7 +176,7 @@ class Emitter {
         return;
       }
       case "DeclStmt": {
-        const name = this.safeName(node.name);
+        const name = this.safeName(node.name, node.line, node.col);
         if (node.isVar) {
           this.varNames.add(name);
           if (!this.emittedVars.has(name)) {
@@ -211,15 +211,34 @@ class Emitter {
         return;
       }
       case "ForStmt": {
-        const v = this.safeName(node.variable);
-        this.line(`for (let ${v} = num(${this.expr(node.from)}); ${v} <= num(${this.expr(node.to)}); ${v} += ${node.step ? `num(${this.expr(node.step)})` : "1"}) {`);
-        this.indent(() => this.emitBody(node.body.body));
+        if (node.step && node.step.kind === "NumberLit" && node.step.value === 0) {
+          throw new PineUnsupportedError("for-loop step must not be 0", node.line, node.col);
+        }
+        const v = this.safeName(node.variable, node.line, node.col);
+        this.line("{");
+        this.indent(() => {
+          this.line("let __iters = 0;");
+          this.line(`for (let ${v} = num(${this.expr(node.from)}); ${v} <= num(${this.expr(node.to)}); ${v} += ${node.step ? `num(${this.expr(node.step)})` : "1"}) {`);
+          this.indent(() => {
+            this.line("if (++__iters > 100000) throw new Error(\"pine: too many iterations\");");
+            this.emitBody(node.body.body);
+          });
+          this.line("}");
+        });
         this.line("}");
         return;
       }
       case "WhileStmt": {
-        this.line(`while (truthy(${this.expr(node.test)}, barIndex)) {`);
-        this.indent(() => this.emitBody(node.body.body));
+        this.line("{");
+        this.indent(() => {
+          this.line("let __iters = 0;");
+          this.line(`while (truthy(${this.expr(node.test)}, barIndex)) {`);
+          this.indent(() => {
+            this.line("if (++__iters > 100000) throw new Error(\"pine: too many iterations\");");
+            this.emitBody(node.body.body);
+          });
+          this.line("}");
+        });
         this.line("}");
         return;
       }
@@ -250,9 +269,14 @@ class Emitter {
       case "NaLit":
         return "NA";
       case "Identifier":
-        return this.safeName(node.name);
-      case "MemberExpr":
+        return this.safeName(node.name, node.line, node.col);
+      case "MemberExpr": {
+        const DENIED_MEMBERS = new Set(["constructor", "__proto__", "prototype", "then", "call", "apply", "bind", "toString", "valueOf"]);
+        if (DENIED_MEMBERS.has(node.property)) {
+          throw new PineUnsupportedError(`member \`${node.property}\` is not allowed`, node.line, node.col);
+        }
         return `${this.expr(node.object)}.${node.property}`;
+      }
       case "IndexExpr":
         return `at(${this.expr(node.object)}, ${this.expr(node.index)}, barIndex)`;
       case "CallExpr":
@@ -386,15 +410,18 @@ class Emitter {
       if (callee.name === "plot") return sinkCall("plotCall");
       if (callee.name === "plotshape") return sinkCall("shapeCall");
       if (callee.name === "bgcolor") return sinkCall("bgcolorCall");
-      return `${this.safeName(callee.name)}(${args.join(", ")})`;
+      return `${this.safeName(callee.name, callee.line, callee.col)}(${args.join(", ")})`;
     }
 
     throw new PineUnsupportedError("indirect calls are not supported", node.line, node.col);
   }
 
   /** Prefix user bindings so they cannot shadow runtime helpers like `add`. */
-  private safeName(name: string): string {
+  private safeName(name: string, line: number = 0, col: number = 0): string {
     if (BUILTIN_NAMES.has(name)) return `__user_${name}`;
+    if (DANGEROUS_GLOBALS.has(name)) {
+      throw new PineUnsupportedError(`identifier \`${name}\` is not allowed`, line, col);
+    }
     return name;
   }
 
@@ -439,6 +466,27 @@ const BUILTIN_NAMES = new Set([
   "ctx",
   "plots",
   "orders",
+]);
+
+const DANGEROUS_GLOBALS = new Set([
+  "globalThis",
+  "window",
+  "document",
+  "fetch",
+  "XMLHttpRequest",
+  "WebSocket",
+  "Function",
+  "eval",
+  "constructor",
+  "process",
+  "require",
+  "module",
+  "exports",
+  "setTimeout",
+  "setInterval",
+  "Promise",
+  "Reflect",
+  "Proxy",
 ]);
 
 export { PineSyntaxError };

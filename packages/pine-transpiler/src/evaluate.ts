@@ -22,6 +22,7 @@ interface EmittedResult extends PineOutput {
 }
 
 export function runPine(source: string, ctx: Context): PineResult {
+  validateContext(ctx);
   const { code, options } = transpile(source);
   const factory = new Function(
     "helpers",
@@ -33,6 +34,26 @@ export function runPine(source: string, ctx: Context): PineResult {
        truthy, num, at, plotCall, shapeCall, bgcolorCall, inputCall, inputScalar,
        strategyEntry, strategyClose, strategyExit, strategyCloseAll,
      } = helpers;
+     // Shadow host globals so a script that slips past the transpiler cannot reach
+     // them. eval and arguments are intentionally skipped (strict-mode
+     // syntax hazards); CSP unsafe-eval removal is deferred until the
+     // interpreter rewrite lands (see audit Phase A).
+     const globalThis = undefined;
+     const window = undefined;
+     const document = undefined;
+     const fetch = undefined;
+     const XMLHttpRequest = undefined;
+     const WebSocket = undefined;
+     const Function = undefined;
+     const process = undefined;
+     const require = undefined;
+     const module = undefined;
+     const exports = undefined;
+     const setTimeout = undefined;
+     const setInterval = undefined;
+     const Promise = undefined;
+     const Reflect = undefined;
+     const Proxy = undefined;
      let barIndexUsed = 0;
      return function (ctx) {
        ${code}
@@ -42,6 +63,35 @@ export function runPine(source: string, ctx: Context): PineResult {
   const fn = factory(buildHelpers());
   const out = fn(withDerivedSeries(ctx));
   return { plots: out.plots, orders: out.orders, options, barIndexUsed: out.barIndexUsed ?? 0 };
+}
+
+/**
+ * Validate a run context before executing a Pine script.
+ *
+ * Rejects empty or oversized inputs and non-finite prices so a script cannot
+ * spin on garbage data or blow up memory.
+ */
+function validateContext(ctx: Context): void {
+  if (!ctx || !Array.isArray(ctx.close) || ctx.close.length === 0) {
+    throw new Error("pine: close series must be non-empty");
+  }
+  const len = ctx.close.length;
+  const series: Array<number[]> = [ctx.open, ctx.high, ctx.low, ctx.close, ctx.volume];
+  for (const s of series) {
+    if (!Array.isArray(s) || s.length !== len) {
+      throw new Error("pine: OHLCV series must have equal length");
+    }
+  }
+  if (len > 5000) {
+    throw new Error("pine: input series exceeds 5000 bars");
+  }
+  for (const s of series) {
+    for (const v of s) {
+      if (typeof v !== "number" || !Number.isFinite(v)) {
+        throw new Error("pine: prices must be finite");
+      }
+    }
+  }
 }
 
 /**
