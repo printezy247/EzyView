@@ -28,7 +28,8 @@ export interface PineScriptRecord {
   /**
    * Scalar `input.*` values from the last successful run, keyed as the
    * runtime keys them (declaration order / `id` kwarg). Absent on records
-   * saved before this snapshot existed, or after a failed run.
+   * saved before this snapshot existed; a failed run does not set it, so a
+   * prior snapshot may remain.
    */
   inputs?: Record<string, number | string | boolean>;
 }

@@ -3,10 +3,18 @@ import { Play, Save, Trash2, X, TrendingUp } from "lucide-react";
 // Type-only: Monaco itself is dynamically imported so it stays out of the
 // initial bundle. Types are erased by the compiler, so this costs nothing.
 import type * as Monaco from "monaco-editor";
-import { backtest, runPine, pineCompletions, lintPine } from "@ezyview/pine-transpiler";
-import type { BacktestResult, Context, PineCompletion, PineLintIssue } from "@ezyview/pine-transpiler";
+import { backtest, runPine, pineCompletions, lintPine, optimizePine, DEFAULT_MAX_COMBOS } from "@ezyview/pine-transpiler";
+import type {
+  BacktestResult,
+  Context,
+  OptimizationResult,
+  ParamSpec,
+  PineCompletion,
+  PineLintIssue,
+} from "@ezyview/pine-transpiler";
 import { useWorkspace, uid } from "./store";
 import type { PineScriptRecord } from "./store";
+import { parseParamValues } from "./pineOptimize";
 
 interface Props {
   onClose: () => void;
@@ -70,12 +78,21 @@ export function PineEditor({ onClose, bars, symbol }: Props) {
   const [source, setSource] = useState(STARTER);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BacktestResult | null>(null);
+  // Best combo from the Optimize panel, merged into the next run's inputs so
+  // the tester reflects the applied grid point without re-running the grid.
+  const [appliedBest, setAppliedBest] = useState<Record<string, number> | null>(null);
 
   const scripts = useWorkspace((s) => s.pineScripts);
   const savePineScript = useWorkspace((s) => s.savePineScript);
   const deletePineScript = useWorkspace((s) => s.deletePineScript);
   const setPineResult = useWorkspace((s) => s.setPineResult);
   const record: PineScriptRecord | undefined = scripts[scriptId];
+  // Numeric slice of the last run's input snapshot — the keys the Optimize
+  // panel offers (bool/string inputs are not grid-able).
+  const numericInputs: Record<string, number> = {};
+  for (const [key, value] of Object.entries(record?.inputs ?? {})) {
+    if (typeof value === "number") numericInputs[key] = value;
+  }
 
   // Monaco is ~1 MB of JS, so it is fetched on first open rather than bundled
   // into the initial payload — most sessions never visit this route at all.
@@ -159,7 +176,10 @@ export function PineEditor({ onClose, bars, symbol }: Props) {
         close: bars.map((b) => b.close),
         volume: bars.map((b) => b.volume),
         barIndex: bars.length - 1,
-        inputs: {},
+        // A grid point applied via "Apply best" seeds the next run; normal
+        // runs without an applied combo start from an empty map (spreading
+        // null/undefined is a no-op).
+        inputs: { ...appliedBest },
       };
       const scriptRun = runPine(source, ctx);
       // A clean run retires the previous syntax marker; lint findings remain.
@@ -195,7 +215,7 @@ export function PineEditor({ onClose, bars, symbol }: Props) {
       setResult(null);
       setPineResult(scriptId, { id: scriptId, name, source, options: null, plots: [], orders: [], error: msg });
     }
-  }, [bars, name, scriptId, source, setPineResult, refreshMarkers]);
+  }, [bars, name, scriptId, source, appliedBest, setPineResult, refreshMarkers]);
 
   return (
     <section
@@ -290,7 +310,174 @@ export function PineEditor({ onClose, bars, symbol }: Props) {
       ) : null}
 
       {result && result.trades.length > 0 && <StrategyTester result={result} inputs={record?.inputs} />}
+      {Object.keys(numericInputs).length > 0 && (
+        <OptimizePanel
+          source={source}
+          bars={bars}
+          baseInputs={numericInputs}
+          appliedBest={appliedBest}
+          onApplyBest={setAppliedBest}
+        />
+      )}
     </section>
+  );
+}
+
+/**
+ * Parameter grid over the last run's numeric inputs.
+ *
+ * Rows are driven by `baseInputs` (numeric entries of the record's input
+ * snapshot); each row's values text parses to a `ParamSpec`. Combos rebuild a
+ * fresh context per run — same OHLCV, inputs = base overridden by the combo —
+ * so `runPine`'s in-place mutation cannot leak between grid points. A combo
+ * whose script throws is skipped by `optimizePine` itself; the hint counts
+ * those as `expected - runs.length`.
+ */
+function OptimizePanel({
+  source,
+  bars,
+  baseInputs,
+  appliedBest,
+  onApplyBest,
+}: {
+  source: string;
+  bars: { open: number; high: number; low: number; close: number; volume: number }[];
+  baseInputs: Record<string, number>;
+  appliedBest: Record<string, number> | null;
+  onApplyBest: (inputs: Record<string, number>) => void;
+}) {
+  const [texts, setTexts] = useState<Record<string, string>>({});
+  const [outcome, setOutcome] = useState<OptimizationResult | null>(null);
+  const [runHint, setRunHint] = useState<string | null>(null);
+
+  const keys = Object.keys(baseInputs);
+
+  // Parsed on render so the Run button's disabled state matches what a click
+  // would actually execute; invalid rows are flagged live, empty ones skipped.
+  const specs: ParamSpec[] = [];
+  const invalidKeys: string[] = [];
+  for (const key of keys) {
+    const values = parseParamValues(texts[key] ?? "");
+    if (values === null) invalidKeys.push(key);
+    else if (values.length > 0) specs.push({ key, values });
+  }
+  const canRun = specs.length > 0 && bars.length > 0;
+
+  const handleOptimize = (): void => {
+    const close = bars.map((b) => b.close);
+    const next = optimizePine((vals) => {
+      const ctx: Context = {
+        open: bars.map((b) => b.open),
+        high: bars.map((b) => b.high),
+        low: bars.map((b) => b.low),
+        close,
+        volume: bars.map((b) => b.volume),
+        barIndex: bars.length - 1,
+        inputs: { ...baseInputs, ...vals },
+      };
+      return backtest(runPine(source, ctx).orders, { close });
+    }, specs);
+    setOutcome(next);
+    const expected = Math.min(
+      specs.reduce((n, s) => n * s.values.length, 1),
+      DEFAULT_MAX_COMBOS,
+    );
+    const notes: string[] = [];
+    if (next.capped) notes.push(`capped at ${DEFAULT_MAX_COMBOS}`);
+    const failed = expected - next.runs.length;
+    if (failed > 0) notes.push(`${failed} combo${failed === 1 ? "" : "s"} failed`);
+    setRunHint(notes.length > 0 ? notes.join(" · ") : null);
+  };
+
+  return (
+    <div className="border-t border-ev-raised px-4 py-2 text-xs">
+      <div className="mb-1.5 flex items-center gap-3 text-ev-text-2">
+        <span className="font-semibold uppercase tracking-wider text-ev-faint">Optimize</span>
+        <button
+          type="button"
+          onClick={handleOptimize}
+          disabled={!canRun}
+          className="rounded bg-ev-line px-2.5 py-1 text-ev-strong hover:bg-ev-line-strong disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Run grid
+        </button>
+        {appliedBest && (
+          <span className="text-ev-muted">
+            Next run uses: {Object.entries(appliedBest).map(([k, v]) => `${k}=${v}`).join(" ")}
+          </span>
+        )}
+      </div>
+
+      {keys.map((key) => (
+        <div key={key} className="mb-1 flex items-center gap-2">
+          <label htmlFor={`opt-values-${key}`} className="w-24 shrink-0 text-ev-faint">
+            {key}
+          </label>
+          <input
+            id={`opt-values-${key}`}
+            value={texts[key] ?? ""}
+            onChange={(e) => setTexts((t) => ({ ...t, [key]: e.target.value }))}
+            placeholder="10..50 step 10 or 1,2,3"
+            className="w-56 rounded bg-ev-bg px-2 py-1 text-ev-strong outline-none placeholder:text-ev-muted"
+          />
+          <span className="text-ev-faint">now {baseInputs[key]}</span>
+        </div>
+      ))}
+
+      {bars.length === 0 && <div className="mb-1 text-ev-muted">No data loaded for this symbol yet.</div>}
+      {invalidKeys.length > 0 && (
+        <div className="mb-1 text-ev-muted">Ignored invalid rows: {invalidKeys.join(", ")}</div>
+      )}
+      {!canRun && bars.length > 0 && specs.length === 0 && (
+        <div className="mb-1 text-ev-muted">Enter values for at least one input, e.g. 10..50 step 10.</div>
+      )}
+
+      {outcome && runHint && <div className="mb-1 text-ev-muted">{runHint}</div>}
+      {outcome && outcome.runs.length === 0 && (
+        <div className="mb-1 text-ev-muted">No successful runs{outcome.capped ? " (grid capped)" : ""}.</div>
+      )}
+      {outcome && outcome.best && (
+        <>
+          <div className="mb-1 flex items-center gap-3 text-ev-text-2">
+            <span>
+              {outcome.runs.length} run{outcome.runs.length === 1 ? "" : "s"}
+            </span>
+            <button
+              type="button"
+              onClick={() => onApplyBest(outcome.best!.inputs)}
+              className="rounded bg-ev-line px-2 py-0.5 text-ev-strong hover:bg-ev-line-strong"
+            >
+              Apply best
+            </button>
+          </div>
+          <table className="w-full text-left tabular-nums">
+            <thead>
+              <tr className="text-[11px] uppercase tracking-wider text-ev-faint">
+                <th scope="col" className="py-0.5 font-semibold">Params</th>
+                <th scope="col" className="py-0.5 font-semibold">Net PnL</th>
+                <th scope="col" className="py-0.5 font-semibold">Win rate</th>
+                <th scope="col" className="py-0.5 font-semibold">PF</th>
+              </tr>
+            </thead>
+            <tbody className="text-ev-text-2">
+              {/* Runs arrive best-first; the first row is the highlighted best. */}
+              {outcome.runs.slice(0, 10).map((r, i) => (
+                <tr key={i} className={`border-t border-ev-raised ${i === 0 ? "bg-ev-line/40" : ""}`}>
+                  <td className="py-0.5">{Object.entries(r.inputs).map(([k, v]) => `${k}=${v}`).join(" ")}</td>
+                  <td className={`py-0.5 ${r.result.totalPnl >= 0 ? "text-ev-up" : "text-ev-down"}`}>
+                    {r.result.totalPnl.toFixed(2)}
+                  </td>
+                  <td className="py-0.5">{(r.result.winRate * 100).toFixed(1)}%</td>
+                  <td className="py-0.5">
+                    {r.result.profitFactor === null ? "∞" : r.result.profitFactor.toFixed(2)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+    </div>
   );
 }
 
