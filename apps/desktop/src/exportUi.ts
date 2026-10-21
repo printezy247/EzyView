@@ -1,5 +1,7 @@
 import type { ExportSource } from "./exportBridge";
 import { candlesToCsv, candlesToJson } from "./chartDataExport";
+import type { Layout } from "./layout";
+import { exportLayoutJson } from "./layoutShare";
 
 /**
  * Make a user-provided name safe for a download filename: strip all C0
@@ -75,4 +77,31 @@ export function saveChartCsv(source: ExportSource): void {
 export function saveChartJson(source: ExportSource): void {
   const blob = new Blob([candlesToJson(source.getCandles(), source.meta())], { type: "application/json" });
   downloadBlob(blob, chartDataFilename(source.meta(), "json"));
+}
+
+/** Save the layout as a shareable JSON file. */
+export function saveLayoutJson(layout: Layout): void {
+  const blob = new Blob([exportLayoutJson(layout)], { type: "application/json" });
+  downloadBlob(blob, `${sanitizeExportFilename(`layout-${layout.name}`, "layout")}.json`);
+}
+
+/**
+ * Ask for a text file and resolve with its contents; null when cancelled or
+ * outside the browser. The picker is a transient <input type=file>, the same
+ * idiom the object tree's drawings import uses.
+ */
+export function pickTextFile(accept: string): Promise<string | null> {
+  if (typeof document === "undefined") return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = accept;
+    input.addEventListener("change", () => {
+      const file = input.files?.[0];
+      if (!file) return resolve(null);
+      file.text().then(resolve, () => resolve(null));
+    });
+    input.addEventListener("cancel", () => resolve(null));
+    input.click();
+  });
 }

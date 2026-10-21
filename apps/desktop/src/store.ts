@@ -128,6 +128,8 @@ interface WorkspaceStore {
 
   addLayout(): void;
   copyLayout(id: string): void;
+  /** Add a parsed layout file as a new layout (fresh id/colour/date) and activate it. */
+  importLayout(layout: Layout): void;
   deleteLayout(id: string): void;
   renameLayout(id: string, name: string): void;
 
@@ -302,6 +304,17 @@ export const useWorkspace = create<WorkspaceStore>()(
             ...structuredCloneLayout(src),
             id: uid(),
             name: `${src.name} copy`,
+            color: LAYOUT_COLORS[s.layouts.length % LAYOUT_COLORS.length]!,
+            createdAt: Date.now(),
+          };
+          return { layouts: [...s.layouts, layout], activeLayoutId: layout.id };
+        }),
+
+      importLayout: (imported) =>
+        set((s) => {
+          const layout: Layout = {
+            ...imported,
+            id: uid(),
             color: LAYOUT_COLORS[s.layouts.length % LAYOUT_COLORS.length]!,
             createdAt: Date.now(),
           };

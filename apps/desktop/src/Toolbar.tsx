@@ -11,10 +11,12 @@ import type { MenuEntry } from "./Menu";
 import { SymbolSearch } from "./SymbolSearch";
 import { getActiveExportSource, getExportSourceVersion, subscribeExportSources } from "./exportBridge";
 import type { ExportSource } from "./exportBridge";
-import { saveChartCsv, saveChartJson, saveChartPng } from "./exportUi";
+import { pickTextFile, saveChartCsv, saveChartJson, saveChartPng, saveLayoutJson } from "./exportUi";
+import { parseLayoutJson } from "./layoutShare";
+import { getIndicator } from "@ezyview/indicators";
 import { GRID_MODES } from "./layout";
 import type { ChartThemeName, CrosshairModeName, GridMode, PriceScaleModeName } from "./layout";
-import { useWorkspace } from "./store";
+import { defaultChartState, useWorkspace } from "./store";
 import type { MagnetMode } from "@ezyview/drawing-tools";
 
 /** Timezones offered in the View menu; empty = exchange/UTC default. */
@@ -109,6 +111,8 @@ export interface ExportMenuApi {
   savePng: (source: ExportSource) => void;
   saveCsv: (source: ExportSource) => void;
   saveJson: (source: ExportSource) => void;
+  saveLayout: () => void;
+  importLayout: () => void;
 }
 
 /**
@@ -132,6 +136,9 @@ export function buildExportEntries(api: ExportMenuApi): MenuEntry[] {
     action("save-png", "Save chart image (PNG)", api.savePng),
     action("save-csv", "Export chart data (CSV)", api.saveCsv),
     action("save-json", "Export chart data (JSON)", api.saveJson),
+    { kind: "separator", id: "s-layout" },
+    { kind: "action", id: "save-layout", label: "Export layout (JSON)", onSelect: api.saveLayout },
+    { kind: "action", id: "import-layout", label: "Import layout…", onSelect: api.importLayout },
   ];
 }
 
@@ -333,6 +340,18 @@ export function Toolbar(props: Props) {
     savePng: saveChartPng,
     saveCsv: saveChartCsv,
     saveJson: saveChartJson,
+    saveLayout: () => saveLayoutJson(useWorkspace.getState().activeLayout()),
+    importLayout: () => {
+      void pickTextFile(".json,application/json").then((text) => {
+        if (text === null) return;
+        try {
+          const ws = useWorkspace.getState();
+          ws.importLayout(parseLayoutJson(text, defaultChartState(), getIndicator));
+        } catch (e) {
+          window.alert(e instanceof Error ? e.message : "Could not import layout");
+        }
+      });
+    },
   });
 
   const groups: CommandGroup[] = [
