@@ -77,7 +77,16 @@ export type PendingAction =
   | { kind: "place"; request: OrderRequest; gate: GateResult; token: string }
   | { kind: "close"; symbol: string; qty?: number; gate: GateResult; token: string }
   | { kind: "cancel"; id: string; gate: GateResult; token: string }
-  | { kind: "amend"; symbol: string; stopLoss?: number | null; takeProfit?: number | null; gate: GateResult; token: string }
+  | {
+      kind: "amend";
+      symbol: string;
+      /** Broker ticket for the position, not the symbol: the bridge modifies by ticket. */
+      ticket: string;
+      stopLoss?: number | null;
+      takeProfit?: number | null;
+      gate: GateResult;
+      token: string;
+    }
   | { kind: "close-all"; rows: { symbol: string; qty: number }[]; gate: GateResult; token: string };
 
 export interface TradingState {
@@ -154,9 +163,14 @@ async function sendMt5(action: PendingAction): Promise<string | null> {
     case "cancel":
       await transport.cancel(action.id, options);
       break;
-    case "amend":
-      await transport.modify(action.symbol, action.stopLoss ?? undefined, action.takeProfit ?? undefined, options);
+    case "amend": {
+      // null clears a level at the bridge (0 means "no stop"), while an absent
+      // key preserves it. Do not coalesce null to undefined here.
+      const sl = action.stopLoss === null ? 0 : action.stopLoss;
+      const tp = action.takeProfit === null ? 0 : action.takeProfit;
+      await transport.modify(action.ticket, sl, tp, options);
       break;
+    }
     case "close-all":
       // Serial on purpose: the bridge holds one MT5 lock, and two closes of
       // the same symbol racing would double-send.
@@ -240,9 +254,15 @@ export const useTrading = create<TradingState & TradingActions>((set, get) => ({
       }
     }
     // Amending an open position is a write like any other, so it parks at the
-    // gate rather than going straight to the bridge.
+    // gate rather than going straight to the bridge. The bridge addresses the
+    // position by broker ticket; without one the amend cannot be routed.
+    const position = get().positions.find((row) => row.symbol === symbol);
+    if (!position?.id) {
+      set({ error: `No broker ticket for ${symbol}. Refresh positions and try again.` });
+      return false;
+    }
     const gate = mt5Gate({ action: "modify", symbol });
-    return park(set, gate, { kind: "amend", symbol, ...levels, gate, token: approvalTokens.mint() });
+    return park(set, gate, { kind: "amend", symbol, ticket: position.id, ...levels, gate, token: approvalTokens.mint() });
   },
 
   async closeAll() {

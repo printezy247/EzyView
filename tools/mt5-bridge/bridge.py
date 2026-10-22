@@ -792,27 +792,37 @@ class Handler(BaseHTTPRequestHandler):
         if ticket in (None, ""):
             return self._fail("ticket required", 400)
         login, server = _account_ref()
+        # A level the caller did not send keeps its current value. Treating an
+        # omitted field as 0.0 used to silently clear the other bracket: drag
+        # the stop and the take profit disappeared with it. A present 0 still
+        # clears its level, which is how the UI removes a bracket.
+        for key in ("sl", "tp"):
+            if key in body and body[key] is not None:
+                try:
+                    value = float(body[key])
+                except (TypeError, ValueError):
+                    return self._fail(f"{key} must be a number", 400)
+                if not math.isfinite(value) or value < 0:
+                    return self._fail(f"{key} must be a finite, non-negative price", 400)
         with LOCK:
             position = next((p for p in seq(mt5.positions_get()) if str(p.ticket) == str(ticket)), None)
-            if position is None:
-                order = next((o for o in seq(mt5.orders_get()) if str(o.ticket) == str(ticket)), None)
-                if order is None:
-                    return self._fail("unknown ticket", 404)
-                request = {
-                    "action": mt5.TRADE_ACTION_SLTP,
-                    "symbol": order.symbol,
-                    "sl": float(body.get("sl") or 0.0),
-                    "tp": float(body.get("tp") or 0.0),
-                    "order": order.ticket,
-                }
+            order = None if position is not None else next((o for o in seq(mt5.orders_get()) if str(o.ticket) == str(ticket)), None)
+            if position is None and order is None:
+                return self._fail("unknown ticket", 404)
+            source = position if position is not None else order
+            request = {
+                "action": mt5.TRADE_ACTION_SLTP,
+                "symbol": source.symbol,
+                "sl": float(source.sl or 0.0),
+                "tp": float(source.tp or 0.0),
+            }
+            if position is not None:
+                request["position"] = position.ticket
             else:
-                request = {
-                    "action": mt5.TRADE_ACTION_SLTP,
-                    "symbol": position.symbol,
-                    "position": position.ticket,
-                    "sl": float(body.get("sl") or 0.0),
-                    "tp": float(body.get("tp") or 0.0),
-                }
+                request["order"] = order.ticket
+            for key in ("sl", "tp"):
+                if key in body and body[key] is not None:
+                    request[key] = float(body[key])
             detail = f"ticket {ticket} sl {request['sl']} tp {request['tp']}"
             if body.get("dry_run"):
                 audit("modify", login=login, server=server, symbol=request["symbol"],

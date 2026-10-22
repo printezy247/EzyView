@@ -103,6 +103,34 @@ describe("PaperTradingEngine", () => {
     await expect(engine.getPositions()).resolves.toEqual([]);
   });
 
+  it("closes a position that consumes the whole account's margin", async () => {
+    engine.updateQuote("DEMO:BTCUSDT", 100);
+    // Exactly $10m notional at 100×: margin equals the balance, free margin 0.
+    await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "market", qty: 100_000 });
+    expect((await engine.getAccount()).freeMargin).toBe(0);
+
+    // Closing reduces margin, so it must not be charged for it.
+    await expect(engine.closePosition("DEMO:BTCUSDT")).resolves.toMatchObject({ status: "filled" });
+    await expect(engine.getPositions()).resolves.toEqual([]);
+  });
+
+  it("partially closes a fully-margined position", async () => {
+    engine.updateQuote("DEMO:BTCUSDT", 100);
+    await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "market", qty: 100_000 });
+
+    await expect(engine.closePosition("DEMO:BTCUSDT", 50_000)).resolves.toMatchObject({ status: "filled" });
+    const [position] = await engine.getPositions();
+    expect(position?.qty).toBe(50_000);
+  });
+
+  it("closeAll liquidates a fully-margined account", async () => {
+    engine.updateQuote("DEMO:BTCUSDT", 100);
+    await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "market", qty: 100_000 });
+
+    await expect(engine.closeAll()).resolves.toHaveLength(1);
+    await expect(engine.getPositions()).resolves.toEqual([]);
+  });
+
   it("holds a limit order until a tick crosses it", async () => {
     engine.updateQuote("DEMO:BTCUSDT", 100);
     await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "limit", price: 90, qty: 1 });
