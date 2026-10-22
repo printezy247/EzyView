@@ -99,14 +99,24 @@ export class Mt5MarketData implements MarketDataAdapter {
 
   async subscribe(symbols: string[], onQuote: SubscribeHandler): Promise<UnsubscribeFn> {
     let active = true;
-    const tick = () => {
-      for (const symbol of symbols) {
-        void this.getQuote(symbol).then((quote) => {
-          if (active && quote) onQuote(quote);
-        });
+    let inFlight = false;
+    const tick = async () => {
+      if (!active || inFlight) return;
+      inFlight = true;
+      try {
+        const raw = await this.transport.marketWatch();
+        if (!active) return;
+        for (const symbol of symbols) {
+          const quote = findQuote(raw, symbol);
+          if (quote) onQuote(quote);
+        }
+      } catch {
+        // network or server error; next tick will retry
+      } finally {
+        inFlight = false;
       }
     };
-    tick();
+    void tick();
     const timer = setInterval(tick, POLL_MS);
     return async () => {
       active = false;
@@ -194,14 +204,17 @@ export class Mt5Trading implements TradingAdapter {
   }
 
   async closePosition(symbol: string, qty?: number): Promise<Order> {
+    const positions = await this.getPositions().catch(() => []);
+    const position = positions.find((p) => p.symbol === symbol);
+    const side = position?.side === "short" ? "buy" : "sell";
     await this.transport.close(symbol, qty);
     return {
       id: `${symbol}-close`,
       symbol,
-      side: "sell",
+      side,
       type: "market",
-      qty: qty ?? 0,
-      filledQty: qty ?? 0,
+      qty: qty ?? position?.qty ?? 0,
+      filledQty: qty ?? position?.qty ?? 0,
       status: "filled",
       time: Math.floor(Date.now() / 1000),
     };

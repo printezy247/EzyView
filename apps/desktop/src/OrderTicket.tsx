@@ -32,6 +32,7 @@ export function OrderTicket({ symbol }: Props) {
   const error = useTrading((s) => s.error);
   const note = useTrading((s) => s.note);
   const clearError = useTrading((s) => s.clearError);
+  const account = useTrading((s) => s.account);
   const maxLeverage = useTrading((s) => s.account?.leverage ?? 100);
 
   const [side, setSide] = useState<OrderSide>("buy");
@@ -101,6 +102,21 @@ export function OrderTicket({ symbol }: Props) {
     workingPrice > 0 &&
     levelsValid &&
     !sending;
+
+  const calcRiskQty = (riskPct: number) => {
+    const equity = account?.equity ?? account?.balance ?? 10_000;
+    const entry = workingPrice ?? last ?? 0;
+    const sl = stopValue ?? (side === "buy" ? entry * 0.99 : entry * 1.01);
+    if (!stopValue && entry > 0) {
+      setStopLoss(sl.toFixed(precision));
+    }
+    const diff = Math.abs(entry - sl);
+    const riskAmount = (equity * riskPct) / 100;
+    if (diff > 0 && riskAmount > 0) {
+      const calculated = riskAmount / diff;
+      setQty(calculated >= 10 ? Math.round(calculated).toString() : calculated.toFixed(2));
+    }
+  };
 
   const send = async () => {
     if (!ready) return;
@@ -178,9 +194,24 @@ export function OrderTicket({ symbol }: Props) {
       </div>
 
       <div>
-        <label className={LABEL} htmlFor="order-qty">
-          Quantity
-        </label>
+        <div className="flex items-center justify-between">
+          <label className={LABEL} htmlFor="order-qty">
+            Quantity
+          </label>
+          <div className="flex items-center gap-1 text-[11px] text-ev-muted">
+            <span>Risk:</span>
+            {[1, 2, 5].map((pct) => (
+              <button
+                key={pct}
+                type="button"
+                onClick={() => calcRiskQty(pct)}
+                className="rounded border border-ev-line bg-ev-panel px-1 py-px hover:border-ev-dim hover:text-ev-strong cursor-pointer"
+              >
+                {pct}%
+              </button>
+            ))}
+          </div>
+        </div>
         <input
           id="order-qty"
           inputMode="decimal"

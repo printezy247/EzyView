@@ -23,20 +23,10 @@ export function catalogByFamily(): Record<string, IndicatorDef[]> {
 
 /** Dynamically import an indicator definition on demand. */
 export async function loadIndicator(id: string): Promise<IndicatorDef | null> {
-  const sync = getIndicator(id);
-  if (sync) return sync;
-  const [{ CATALOG: primary }, { CATALOG_2: secondary }] = await Promise.all([
-    import("./catalog.js"),
-    import("./catalog2.js"),
-  ]);
-  return [...primary, ...secondary].find((d) => d.id === id) ?? null;
+  return getIndicator(id);
 }
 
 /** Dynamically load the full indicator catalogue. */
 export async function loadCatalog(): Promise<IndicatorDef[]> {
-  const [{ CATALOG: primary }, { CATALOG_2: secondary }] = await Promise.all([
-    import("./catalog.js"),
-    import("./catalog2.js"),
-  ]);
-  return [...primary, ...secondary];
+  return FULL_CATALOG;
 }

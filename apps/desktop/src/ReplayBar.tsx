@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, FastForward, Pause, Play, Rewind, X } from "lucide-react";
 import { useWorkspace } from "./store";
 import type { ReplaySpeed } from "./layout";
+import { isTypingTarget } from "./hotkeys";
 
 interface Props {
   /** Total bars loaded for the active symbol. */
@@ -81,12 +82,7 @@ export function ReplayBar({ totalBars }: Props) {
     const onKeyDown = (e: KeyboardEvent) => {
       // Ignore if user is typing into an input, textarea or contenteditable
       const target = e.target as HTMLElement | null;
-      if (
-        target &&
-        (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
-      ) {
-        return;
-      }
+      if (isTypingTarget(target)) return;
 
       if (e.code === "Space") {
         e.preventDefault();

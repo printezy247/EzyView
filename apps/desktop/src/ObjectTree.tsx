@@ -115,7 +115,7 @@ export function ObjectTree({ onClose }: Props) {
                             step={p.type === "float" ? 0.1 : 1}
                             onChange={(e) => {
                               const val = Number(e.target.value);
-                              if (Number.isFinite(val)) updateIndicatorParams(i.uid, { [p.id]: val });
+                              if (Number.isFinite(val)) updateIndicatorParams(i.uid, { ...i.params, [p.id]: val });
                             }}
                             className="w-16 rounded border border-ev-line bg-ev-bg px-1.5 py-0.5 text-right num text-ev-strong"
                           />
@@ -123,12 +123,12 @@ export function ObjectTree({ onClose }: Props) {
                           <input
                             type="checkbox"
                             checked={Boolean(i.params[p.id] ?? p.default)}
-                            onChange={(e) => updateIndicatorParams(i.uid, { [p.id]: e.target.checked })}
+                            onChange={(e) => updateIndicatorParams(i.uid, { ...i.params, [p.id]: e.target.checked })}
                           />
                         ) : (
                           <select
                             value={String(i.params[p.id] ?? p.default)}
-                            onChange={(e) => updateIndicatorParams(i.uid, { [p.id]: e.target.value })}
+                            onChange={(e) => updateIndicatorParams(i.uid, { ...i.params, [p.id]: e.target.value })}
                             className="rounded border border-ev-line bg-ev-bg px-1 py-0.5 text-ev-strong"
                           >
                             {["close", "open", "high", "low", "hl2", "hlc3", "ohlc4"].map((src) => (

@@ -33,6 +33,7 @@ import { eventsActive } from "./eventOptions";
 import { EMPTY_FUNDAMENTAL_EVENTS, fetchFundamentalEvents } from "./fundamentalEvents";
 import { publishCrosshair, subscribeCrosshair } from "./crosshairBus";
 import type { CrosshairMessage } from "./crosshairBus";
+import { isTypingTarget } from "./hotkeys";
 import { getActiveExportSource, setActiveExportSource } from "./exportBridge";
 
 interface ChartPageProps {
@@ -58,7 +59,8 @@ export function ChartPage({ dockTab, onSelectDockTab, onSetDockTab, tradingOpen,
   const state = activeChartOf(layout);
   const setLinkGroup = useWorkspace((s) => s.setLinkGroup);
   const setActiveChart = useWorkspace((s) => s.setActiveChart);
-  const updateActive = useWorkspace((s) => s.updateActive);
+  const setSymbol = useWorkspace((s) => s.setSymbol);
+  const setResolution = useWorkspace((s) => s.setResolution);
   const activeTool = useWorkspace((s) => s.activeTool);
   const replayBar = useWorkspace((s) => s.replayBar);
   const setReplay = useWorkspace((s) => s.setReplay);
@@ -201,7 +203,7 @@ export function ChartPage({ dockTab, onSelectDockTab, onSetDockTab, tradingOpen,
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+      if (isTypingTarget(target)) return;
       if (e.key === "Escape") {
         useWorkspace.getState().setActiveTool(null);
         useWorkspace.getState().selectDrawing(null);
@@ -379,7 +381,10 @@ export function ChartPage({ dockTab, onSelectDockTab, onSetDockTab, tradingOpen,
               currentSymbol={state.symbol}
               currentResolution={state.resolution}
               onClose={() => setCommandOpen(false)}
-              onApply={(symbol, resolution) => updateActive({ symbol, resolution: resolution as never })}
+              onApply={(symbol, resolution) => {
+                if (symbol) setSymbol(symbol);
+                if (resolution) setResolution(resolution as never);
+              }}
             />
           )}
         </main>
@@ -490,8 +495,22 @@ function ChartGrid({
   onFocus,
   onContextMenu,
 }: ChartGridProps) {
+  const [maximizedCell, setMaximizedCell] = useState<number | null>(null);
   const cells: ChartState[] = layout.charts.slice(0, cellCount(layout.grid));
   const multi = cells.length > 1;
+
+  // Alt+Enter toggles single-cell maximize
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.altKey && e.key === "Enter") {
+        e.preventDefault();
+        setMaximizedCell((cur) => (cur === null ? layout.activeChart : null));
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [layout.activeChart]);
+
   // The focused cell's link group. When it has one, the crosshair mirror stays
   // inside that group; when it has none, the mirror keeps reaching every cell.
   const focusedGroup = linkGroupOf(cells[layout.activeChart] ?? {});
@@ -506,9 +525,14 @@ function ChartGrid({
   useEffect(() => {
     setActiveExportSource(layout.activeChart);
   }, [layout.activeChart]);
+
+  const renderCells = maximizedCell !== null ? [cells[maximizedCell] ?? cells[0]!] : cells;
+  const gridClass = maximizedCell !== null ? "grid-cols-1 grid-rows-1" : GRID_CLASS[layout.grid];
+
   return (
-    <div className={`absolute inset-0 grid gap-px bg-ev-raised ${GRID_CLASS[layout.grid]}`}>
-      {cells.map((chart, index) => {
+    <div className={`absolute inset-0 grid gap-px bg-ev-raised ${gridClass}`}>
+      {renderCells.map((chart, i) => {
+        const index = maximizedCell !== null ? maximizedCell : i;
         const focused = index === layout.activeChart;
         return (
           <section
@@ -517,6 +541,7 @@ function ChartGrid({
             aria-current={multi && focused ? "true" : undefined}
             // Capture so focus moves before the chart handles the click.
             onPointerDownCapture={() => onFocus(index)}
+            onFocusCapture={() => onFocus(index)}
             onPointerEnter={() => onHover(index)}
             onPointerLeave={() => onHover(null)}
             className="relative min-h-0 min-w-0 bg-ev-bg"
@@ -565,6 +590,13 @@ function ChartGrid({
               rawSymbol={chart.symbol}
               time={focused ? crosshairTime : null}
               indicators={chart.indicators}
+              showGrid={chart.showGrid}
+              showVolume={chart.showVolume}
+              focused={focused}
+              chartIndex={index}
+              multi={multi}
+              isMaximized={maximizedCell !== null}
+              onToggleMaximize={() => setMaximizedCell((cur) => (cur === null ? index : null))}
             />
             {multi && focused && (
               <div className="pointer-events-none absolute inset-0 z-10 ring-1 ring-inset ring-ev-accent" aria-hidden />
@@ -581,19 +613,33 @@ function Readout({
   rawSymbol,
   time,
   indicators,
+  showGrid,
+  showVolume,
+  focused = true,
+  chartIndex,
+  multi = false,
+  isMaximized = false,
+  onToggleMaximize,
 }: {
   symbol: string;
   rawSymbol: string;
   time: number | null;
   indicators: ChartState["indicators"];
+  showGrid: boolean;
+  showVolume: boolean;
+  focused?: boolean;
+  chartIndex?: number;
+  multi?: boolean;
+  isMaximized?: boolean;
+  onToggleMaximize?: () => void;
 }) {
   const submit = useTrading((s) => s.submit);
   const updateIndicator = useWorkspace((s) => s.updateIndicator);
   const removeIndicator = useWorkspace((s) => s.removeIndicator);
   const addIndicator = useWorkspace((s) => s.addIndicator);
-  const updateActive = useWorkspace((s) => s.updateActive);
-  const showGrid = useWorkspace((s) => s.activeChart().showGrid);
-  const showVolume = useWorkspace((s) => s.activeChart().showVolume);
+  const updateChart = useWorkspace((s) => s.updateChart);
+  const activeIndex = useWorkspace((s) => s.activeLayout().activeChart);
+  const targetIndex = chartIndex ?? activeIndex;
   const watchedPrice = useWorkspace((s) => s.watchlist.find((w) => w.symbol === rawSymbol)?.price ?? null);
 
   const [livePrice, setLivePrice] = useState<number | null>(null);
@@ -644,6 +690,19 @@ function Readout({
           >
             {collapsed ? "▸" : "▾"}
           </button>
+          {multi && onToggleMaximize && (
+            <button
+              type="button"
+              title={isMaximized ? "Restore grid (Alt+Enter)" : "Maximize chart (Alt+Enter)"}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleMaximize();
+              }}
+              className="rounded px-1 text-ev-muted hover:bg-ev-raised hover:text-ev-strong cursor-pointer"
+            >
+              {isMaximized ? "⤡" : "⤢"}
+            </button>
+          )}
           <span className="font-semibold text-ev-strong">{symbol}</span>
           {displayPrice !== null && (
             <span className="num font-semibold text-ev-strong">{displayPrice.toFixed(digits)}</span>
@@ -801,80 +860,82 @@ function Readout({
         )}
       </div>
 
-      {/* Hideable Floating Bottom-Center Chart Controls Pill (TradingView style) */}
-      <div className="pointer-events-auto absolute bottom-8 left-1/2 z-10 -translate-x-1/2">
-        {floatHudVisible ? (
-          <div className="flex items-center gap-1 rounded-full border border-ev-line bg-ev-panel/90 px-2.5 py-0.5 text-micro text-ev-muted shadow-lg backdrop-blur-xs">
+      {/* Hideable Floating Bottom-Center Chart Controls Pill (TradingView style) - focused cell only */}
+      {focused && (
+        <div className="pointer-events-auto absolute bottom-8 left-1/2 z-10 -translate-x-1/2">
+          {floatHudVisible ? (
+            <div className="flex items-center gap-1 rounded-full border border-ev-line bg-ev-panel/90 px-2.5 py-0.5 text-micro text-ev-muted shadow-lg backdrop-blur-xs">
+              <button
+                type="button"
+                title="Reset chart zoom & scroll"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  getActiveExportSource()?.view?.reset();
+                }}
+                className="rounded px-1.5 py-0.5 hover:bg-ev-raised hover:text-ev-strong"
+              >
+                Reset view
+              </button>
+              <button
+                type="button"
+                title="Fit price scale to visible bars"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  getActiveExportSource()?.view?.autoScale();
+                }}
+                className="rounded px-1.5 py-0.5 hover:bg-ev-raised hover:text-ev-strong"
+              >
+                Auto fit
+              </button>
+              <button
+                type="button"
+                title="Toggle chart grid lines"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  updateChart(targetIndex, { showGrid: !showGrid });
+                }}
+                className={`rounded px-1.5 py-0.5 ${showGrid ? "text-ev-accent-text" : "hover:text-ev-strong"}`}
+              >
+                Grid
+              </button>
+              <button
+                type="button"
+                title="Toggle volume histogram"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  updateChart(targetIndex, { showVolume: !showVolume });
+                }}
+                className={`rounded px-1.5 py-0.5 ${showVolume ? "text-ev-accent-text" : "hover:text-ev-strong"}`}
+              >
+                Vol
+              </button>
+              <button
+                type="button"
+                title="Hide floating chart controls"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setFloatHudVisible(false);
+                }}
+                className="ml-0.5 rounded px-1 text-ev-faint hover:text-ev-strong"
+              >
+                ×
+              </button>
+            </div>
+          ) : (
             <button
               type="button"
-              title="Reset chart zoom & scroll"
+              title="Show floating chart controls"
               onClick={(e) => {
                 e.stopPropagation();
-                getActiveExportSource()?.view?.reset();
+                setFloatHudVisible(true);
               }}
-              className="rounded px-1.5 py-0.5 hover:bg-ev-raised hover:text-ev-strong"
+              className="rounded-full border border-ev-line bg-ev-panel/75 px-2 py-0.5 text-micro text-ev-faint hover:bg-ev-panel hover:text-ev-strong"
             >
-              Reset view
+              •••
             </button>
-            <button
-              type="button"
-              title="Fit price scale to visible bars"
-              onClick={(e) => {
-                e.stopPropagation();
-                getActiveExportSource()?.view?.autoScale();
-              }}
-              className="rounded px-1.5 py-0.5 hover:bg-ev-raised hover:text-ev-strong"
-            >
-              Auto fit
-            </button>
-            <button
-              type="button"
-              title="Toggle chart grid lines"
-              onClick={(e) => {
-                e.stopPropagation();
-                updateActive({ showGrid: !showGrid });
-              }}
-              className={`rounded px-1.5 py-0.5 ${showGrid ? "text-ev-accent-text" : "hover:text-ev-strong"}`}
-            >
-              Grid
-            </button>
-            <button
-              type="button"
-              title="Toggle volume histogram"
-              onClick={(e) => {
-                e.stopPropagation();
-                updateActive({ showVolume: !showVolume });
-              }}
-              className={`rounded px-1.5 py-0.5 ${showVolume ? "text-ev-accent-text" : "hover:text-ev-strong"}`}
-            >
-              Vol
-            </button>
-            <button
-              type="button"
-              title="Hide floating chart controls"
-              onClick={(e) => {
-                e.stopPropagation();
-                setFloatHudVisible(false);
-              }}
-              className="ml-0.5 rounded px-1 text-ev-faint hover:text-ev-strong"
-            >
-              ×
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            title="Show floating chart controls"
-            onClick={(e) => {
-              e.stopPropagation();
-              setFloatHudVisible(true);
-            }}
-            className="rounded-full border border-ev-line bg-ev-panel/75 px-2 py-0.5 text-micro text-ev-faint hover:bg-ev-panel hover:text-ev-strong"
-          >
-            •••
-          </button>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </>
   );
 }

@@ -42,6 +42,7 @@ export class DrawingsPrimitive implements IPanePrimitive<Time> {
 
   detached(): void {
     this.chart = null;
+    this.requestUpdate = () => {};
   }
 
   paneViews(): readonly IPanePrimitivePaneView[] {
@@ -54,8 +55,11 @@ export class DrawingsPrimitive implements IPanePrimitive<Time> {
     const scale: ITimeScaleApi<Time> | null = this.chart?.timeScale() ?? null;
     if (!scale) return [];
     return drawing.points.map((p) => {
-      const x = scale.timeToCoordinate(p.time as Time);
       const y = this.priceToY(p.price);
+      if (drawing.tool === "horizontal_line") {
+        return y === null ? null : { x: 0, y };
+      }
+      const x = scale.timeToCoordinate(p.time as Time);
       return x === null || y === null ? null : { x, y };
     });
   }

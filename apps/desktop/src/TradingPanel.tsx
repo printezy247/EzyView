@@ -45,6 +45,7 @@ export function TradingPanel({ symbol }: Props) {
   const closeAll = useTrading((s) => s.closeAll);
   const submit = useTrading((s) => s.submit);
   const cancel = useTrading((s) => s.cancel);
+  const amend = useTrading((s) => s.amend);
   const reset = useTrading((s) => s.reset);
   const source = useMt5((s) => s.source);
 
@@ -206,6 +207,14 @@ export function TradingPanel({ symbol }: Props) {
                       {p.margin === undefined ? "—" : money(p.margin)}
                     </span>,
                     <div className="flex justify-end gap-1">
+                      <button
+                        type="button"
+                        title={`Move stop loss to break-even (${p.entryPrice.toFixed(precision)})`}
+                        onClick={() => void amend(p.symbol, { stopLoss: p.entryPrice })}
+                        className="rounded border border-ev-line px-1.5 py-0.5 text-dense text-ev-muted hover:border-ev-accent hover:text-ev-strong cursor-pointer"
+                      >
+                        BE
+                      </button>
                       <button
                         type="button"
                         title="Close 50% of position"

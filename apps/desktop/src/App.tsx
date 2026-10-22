@@ -81,7 +81,13 @@ export default function App() {
         e.preventDefault();
         useZen.getState().toggle();
       } else if (e.key === "Escape") {
-        useZen.getState().exit();
+        const ws = useWorkspace.getState();
+        if (!ws.activeTool && !ws.selectedDrawingId) {
+          useZen.getState().exit();
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "n") {
+        e.preventDefault();
+        useWorkspace.getState().addLayout();
       } else if (
         e.key === "?" &&
         !e.ctrlKey &&

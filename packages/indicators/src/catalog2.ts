@@ -19,8 +19,8 @@ import {
 } from "./helpers.js";
 import { num, res, source, srcParam } from "./catalog.js";
 
-const lengthParam = (def: number, label = "Length") => ({
-  id: "length",
+const lengthParam = (def: number, label = "Length", id = "length") => ({
+  id,
   label,
   type: "int" as const,
   default: def,
@@ -292,7 +292,7 @@ const stochRsiDef: IndicatorDef = {
   pane: "separate",
   family: "momentum",
   defaultColorIndex: 24,
-  params: [lengthParam(14, "RSI Length"), lengthParam(14, "Stoch Length"), lengthParam(3, "Smoothing")],
+  params: [lengthParam(14, "RSI Length", "length"), lengthParam(14, "Stoch Length", "length1"), lengthParam(3, "Smoothing", "length2")],
   compute: (d, p) => {
     const rsiLen = num(p, "length", 14);
     const stochLen = num(p, "length1", 14);
@@ -399,7 +399,7 @@ const tsiDef: IndicatorDef = {
   pane: "separate",
   family: "momentum",
   defaultColorIndex: 28,
-  params: [lengthParam(25, "Long"), lengthParam(13, "Short"), lengthParam(7, "Signal")],
+  params: [lengthParam(25, "Long", "length"), lengthParam(13, "Short", "length1"), lengthParam(7, "Signal", "length2")],
   compute: (d, p) => {
     const longLen = num(p, "length", 25);
     const shortLen = num(p, "length1", 13);

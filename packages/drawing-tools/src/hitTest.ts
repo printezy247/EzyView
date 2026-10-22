@@ -1,6 +1,6 @@
 import type { Drawing } from "./types.js";
-import { bounds, distToSegment, distToInfiniteLine, insideRect, near } from "./geometry.js";
-import { fibLevels } from "./fib.js";
+import { bounds, distToSegment, distToRay, distToInfiniteLine, insideRect, near } from "./geometry.js";
+import { fibLevels, FIB_EXTENSION_RATIOS } from "./fib.js";
 import type { ScreenPoint } from "./types.js";
 
 export interface HitResult {
@@ -41,7 +41,10 @@ export function hitTest(
       if (screen.length < 2) return null;
       return distToSegment(click, screen[0]!, screen[1]!) <= tol ? { id: drawing.id, handle: -1 } : null;
     }
-    case "ray":
+    case "ray": {
+      if (screen.length < 2) return null;
+      return distToRay(click, screen[0]!, screen[1]!) <= tol ? { id: drawing.id, handle: -1 } : null;
+    }
     case "extended_line": {
       if (screen.length < 2) return null;
       return distToInfiniteLine(click, screen[0]!, screen[1]!) <= tol ? { id: drawing.id, handle: -1 } : null;
@@ -60,8 +63,7 @@ export function hitTest(
       if (screen.length < 2) return null;
       return insideRect(click, screen[0]!, screen[1]!, tol) ? { id: drawing.id, handle: -1 } : null;
     }
-    case "fib_retracement":
-    case "fib_extension": {
+    case "fib_retracement": {
       if (screen.length < 2) return null;
       const box = bounds(pts);
       const insideX = click.x >= box.x0 - tol && click.x <= box.x1 + tol;
@@ -73,6 +75,24 @@ export function hitTest(
       for (const level of prices) {
         const t = (level.price - drawing.points[0]!.price) / (drawing.points[1]!.price - drawing.points[0]!.price || 1);
         const y = a!.y + (b!.y - a!.y) * t;
+        if (Math.abs(click.y - y) <= tol) return { id: drawing.id, handle: -1 };
+      }
+      return null;
+    }
+    case "fib_extension": {
+      if (screen.length < 3) return null;
+      const [a, b, c] = screen;
+      if (!a || !b || !c) return null;
+      // Hit on anchor segments
+      if (distToSegment(click, a, b) <= tol || distToSegment(click, b, c) <= tol) {
+        return { id: drawing.id, handle: -1 };
+      }
+      const box = bounds(pts);
+      const insideX = click.x >= box.x0 - tol && click.x <= box.x1 + tol;
+      if (!insideX) return null;
+      // Hit on extension horizontal lines
+      for (const ratio of FIB_EXTENSION_RATIOS) {
+        const y = c.y + (b.y - a.y) * ratio;
         if (Math.abs(click.y - y) <= tol) return { id: drawing.id, handle: -1 };
       }
       return null;

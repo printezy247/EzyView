@@ -81,16 +81,26 @@ export function JournalPanel({ onClose }: Props) {
   const [preview, setPreview] = useState<string | null>(null);
   const [lastImport, setLastImport] = useState<number | null>(null);
 
-  const stats = useMemo(() => computeStats(entries), [entries]);
+  const filteredEntries = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return entries;
+    const matches = (haystacks: (string | undefined)[]): boolean =>
+      haystacks.some((value) => (value ?? "").toLowerCase().includes(needle));
+    return entries.filter((entry) => matches([entry.symbol, entry.setup, entry.notes, ...(entry.tags ?? [])]));
+  }, [entries, query]);
+
+  const stats = useMemo(() => computeStats(filteredEntries), [filteredEntries]);
 
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const matches = (haystacks: (string | undefined)[]): boolean =>
       !needle || haystacks.some((value) => (value ?? "").toLowerCase().includes(needle));
 
-    const tradeRows: Row[] = entries
-      .filter((entry) => matches([entry.symbol, entry.setup, entry.notes, ...(entry.tags ?? [])]))
-      .map((entry) => ({ key: `t:${entry.id}`, time: entry.exitTime ?? entry.entryTime, node: <TradeRow entry={entry} onDelete={() => removeEntry(entry.id)} /> }));
+    const tradeRows: Row[] = filteredEntries.map((entry) => ({
+      key: `t:${entry.id}`,
+      time: entry.exitTime ?? entry.entryTime,
+      node: <TradeRow entry={entry} onDelete={() => removeEntry(entry.id)} />,
+    }));
 
     const noteRows: Row[] = notes
       .filter((note) => matches([note.symbol, note.text, ...(note.tags ?? [])]))
@@ -101,7 +111,7 @@ export function JournalPanel({ onClose }: Props) {
       }));
 
     return [...tradeRows, ...noteRows].sort((a, b) => b.time - a.time);
-  }, [entries, notes, query, removeEntry, removeNote]);
+  }, [filteredEntries, notes, query, removeEntry, removeNote]);
 
   const submit = () => {
     const trimmed = text.trim();

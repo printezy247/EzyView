@@ -192,7 +192,10 @@ fn set_shell_settings(app: AppHandle, settings: ShellSettings) -> Result<(), Str
         return Err("proxy must be http://, https:// or socks5:// with no spaces".into());
     }
     let json = serde_json::to_string_pretty(&settings).map_err(|e| e.to_string())?;
-    std::fs::write(app_data(&app)?.join(SHELL_SETTINGS_FILE), json).map_err(|e| e.to_string())
+    let path = app_data(&app)?.join(SHELL_SETTINGS_FILE);
+    std::fs::write(&path, json).map_err(|e| e.to_string())?;
+    restrict_permissions(&path, 0o600);
+    Ok(())
 }
 
 /// Restart so saved shell settings take effect.
@@ -244,17 +247,22 @@ fn log_path(app: &AppHandle) -> Result<std::path::PathBuf, String> {
     Ok(dir.join("crash.log"))
 }
 
+static LOG_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 /// Append a crash block to the local log (capped); nothing leaves the machine.
 #[tauri::command]
 fn append_log(app: AppHandle, text: String) -> Result<(), String> {
+    let _guard = LOG_LOCK.lock().map_err(|e| e.to_string())?;
     // A webview can call this with any text, so the block is bounded before
     // it reaches the disk.
     let text: String = text.chars().take(64 * 1024).collect();
     let path = log_path(&app)?;
     let existing = std::fs::read_to_string(&path).unwrap_or_default();
     let next = trim_log(&format!("{existing}{text}"));
-    std::fs::write(&path, next).map_err(|e| e.to_string())?;
-    restrict_permissions(&path, 0o600);
+    let tmp = path.with_extension("log.tmp");
+    std::fs::write(&tmp, &next).map_err(|e| e.to_string())?;
+    restrict_permissions(&tmp, 0o600);
+    std::fs::rename(&tmp, &path).map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -307,7 +315,11 @@ async fn save_file(
         return Ok(false);
     };
     let path = path.into_path().map_err(|e| e.to_string())?;
-    std::fs::write(path, bytes).map_err(|e| e.to_string())?;
+    tauri::async_runtime::spawn_blocking(move || {
+        std::fs::write(path, bytes).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())??;
     Ok(true)
 }
 
@@ -369,14 +381,23 @@ fn api_key_set(name: String, value: String) -> Result<(), String> {
     entry.set_password(value).map_err(|e| e.to_string())
 }
 
-/// Wipe the standard provider keys from the OS keyring on explicit user request.
+/// Wipe provider keys and optional dynamic broker credentials from the OS keyring on explicit user request.
 #[tauri::command]
-fn clear_keyring_secrets() -> Result<(), String> {
+fn clear_keyring_secrets(extra_keys: Option<Vec<String>>) -> Result<(), String> {
     for name in API_KEY_NAMES {
         if let Ok(entry) = key_entry(name) {
             match entry.delete_credential() {
                 Ok(()) | Err(keyring::Error::NoEntry) => {}
                 Err(e) => return Err(e.to_string()),
+            }
+        }
+    }
+    if let Some(extras) = extra_keys {
+        for name in extras {
+            if is_mt5_account_name(&name) {
+                if let Ok(entry) = key_entry(&name) {
+                    let _ = entry.delete_credential();
+                }
             }
         }
     }

@@ -46,9 +46,13 @@ export function OptionsPanel({ symbol, onClose }: Props) {
   useEffect(() => {
     let cancelled = false;
     setSpot(null);
-    void loadHistory(symbol, "1D").then((bars) => {
-      if (!cancelled) setSpot(bars[bars.length - 1]?.close ?? null);
-    });
+    void loadHistory(symbol, "1D")
+      .then((bars) => {
+        if (!cancelled) setSpot(bars[bars.length - 1]?.close ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setSpot(null);
+      });
     return () => {
       cancelled = true;
     };

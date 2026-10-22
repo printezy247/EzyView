@@ -261,6 +261,36 @@ export class EzyChart {
   /** Last main-series points and what they were built from, so a theme or type round-trip reuses them. */
   private seriesCache: { data: Candle[]; type: ChartType; theme: ChartTheme; box: number | null; points: never[] } | null =
     null;
+  private sharedOhlcv: { open: number[]; high: number[]; low: number[]; close: number[]; volume: number[] } | null = null;
+  private sharedOhlcvKey = "";
+
+  private getSharedOhlcv(): { open: number[]; high: number[]; low: number[]; close: number[]; volume: number[] } {
+    const last = this.data.at(-1);
+    const key = `${this.data.length}|${last?.time ?? 0}|${last?.close ?? 0}`;
+    if (this.sharedOhlcv && this.sharedOhlcvKey === key) return this.sharedOhlcv;
+    const n = this.data.length;
+    const open: number[] = [];
+    open.length = n;
+    const high: number[] = [];
+    high.length = n;
+    const low: number[] = [];
+    low.length = n;
+    const close: number[] = [];
+    close.length = n;
+    const volume: number[] = [];
+    volume.length = n;
+    for (let i = 0; i < n; i++) {
+      const c = this.data[i]!;
+      open[i] = c.open;
+      high[i] = c.high;
+      low[i] = c.low;
+      close[i] = c.close;
+      volume[i] = c.volume;
+    }
+    this.sharedOhlcv = { open, high, low, close, volume };
+    this.sharedOhlcvKey = key;
+    return this.sharedOhlcv;
+  }
 
   /** Debug: count of click events received by this chart instance. */
   clickCount = 0;
@@ -803,13 +833,7 @@ export class EzyChart {
     const cached = this.indicatorCache.get(inst.uid);
     if (cached && cached.key === key) return cached.values;
     const values = inst.def.compute(
-      {
-        open: this.data.map((c) => c.open),
-        high: this.data.map((c) => c.high),
-        low: this.data.map((c) => c.low),
-        close: this.data.map((c) => c.close),
-        volume: this.data.map((c) => c.volume),
-      },
+      this.getSharedOhlcv(),
       inst.params as Record<string, number | boolean>,
     );
     this.indicatorCache.set(inst.uid, { key, values });

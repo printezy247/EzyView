@@ -24,3 +24,4 @@ export function fibLevels(priceA: number, priceB: number, ratios: readonly { rat
 }
 
 export const FIB_RETRACEMENT_LEVELS = RETRACEMENT;
+export const FIB_EXTENSION_RATIOS = [0, 0.618, 1, 1.618, 2.618, 4.236] as const;

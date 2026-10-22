@@ -703,14 +703,24 @@ function EquityCurve({ equity }: { equity: readonly number[] }) {
       : equity.map((v, i) => `${x(i).toFixed(2)},${y(v).toFixed(2)}`).join(" ");
   const first = equity[0]!;
   const last = equity[equity.length - 1]!;
+  const isUp = last >= first;
+  const color = isUp ? "var(--ev-up)" : "var(--ev-down)";
+  const areaCoords = `${coords} ${W},${H} 0,${H}`;
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      className="mb-1.5 h-10 w-full"
+      className="mb-1.5 h-12 w-full overflow-hidden rounded border border-ev-line/40 bg-ev-panel/50"
       role="img"
       aria-label={`Equity curve ending at ${last.toFixed(2)}`}
       preserveAspectRatio="none"
     >
+      <defs>
+        <linearGradient id="equityGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity={0.25} />
+          <stop offset="100%" stopColor={color} stopOpacity={0.0} />
+        </linearGradient>
+      </defs>
+      {equity.length > 1 && <polygon points={areaCoords} fill="url(#equityGrad)" />}
       {equity.length === 1 ? (
         // A lone point has no length; a short segment keeps it visible.
         <line
@@ -718,7 +728,7 @@ function EquityCurve({ equity }: { equity: readonly number[] }) {
           y1={y(last)}
           x2={x(0) + 2}
           y2={y(last)}
-          stroke={last >= first ? "var(--ev-up)" : "var(--ev-down)"}
+          stroke={color}
           strokeWidth={1.5}
           vectorEffect="non-scaling-stroke"
         />
@@ -726,7 +736,7 @@ function EquityCurve({ equity }: { equity: readonly number[] }) {
         <polyline
           points={coords}
           fill="none"
-          stroke={last >= first ? "var(--ev-up)" : "var(--ev-down)"}
+          stroke={color}
           strokeWidth={1.5}
           vectorEffect="non-scaling-stroke"
         />

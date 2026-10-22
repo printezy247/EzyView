@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Resolution } from "@ezyview/data-adapters";
 
 import { parseInterval } from "./intervalBuilder";
@@ -22,6 +22,10 @@ interface Props {
  */
 export function IntervalDialog({ open, onClose, onPick }: Props) {
   const [value, setValue] = useState("");
+
+  useEffect(() => {
+    if (open) setValue("");
+  }, [open]);
   const result = value.trim() === "" ? null : parseInterval(value);
 
   const submit = () => {

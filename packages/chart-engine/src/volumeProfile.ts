@@ -85,10 +85,28 @@ export class VolumeProfilePrimitive implements IPanePrimitive<Time> {
     const to = range ? Number(range.to) : Number.POSITIVE_INFINITY;
     const c = this.cache;
     if (c && c.candles === this.candles && c.from === from && c.to === to) return c.profile;
-    const profile = volumeProfile(
-      this.candles.filter((k) => k.time >= from && k.time <= to),
-      ROWS,
-    );
+
+    const len = this.candles.length;
+    let lo = 0;
+    let hi = len;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (this.candles[mid]!.time < from) lo = mid + 1;
+      else hi = mid;
+    }
+    const startIndex = lo;
+
+    lo = startIndex;
+    hi = len;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (this.candles[mid]!.time <= to) lo = mid + 1;
+      else hi = mid;
+    }
+    const endIndex = lo;
+
+    const visibleCandles = this.candles.slice(startIndex, endIndex);
+    const profile = volumeProfile(visibleCandles, ROWS);
     this.cache = { candles: this.candles, from, to, profile };
     return profile;
   }

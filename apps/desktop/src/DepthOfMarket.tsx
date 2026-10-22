@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Quote } from "@ezyview/data-adapters";
 import { quoteOf } from "./data";
 import { useWorkspace } from "./store";
+import { useTrading } from "./trading";
 
 interface Props {
   symbol: string;
@@ -20,7 +21,9 @@ interface Level {
  */
 export function DepthOfMarket({ symbol, precision }: Props) {
   const [quote, setQuote] = useState<Quote | null>(null);
+  const [qty, setQty] = useState(1);
   const isReplay = useWorkspace((s) => s.replayBar !== null);
+  const submit = useTrading((s) => s.submit);
 
   useEffect(() => {
     if (isReplay) return;
@@ -58,10 +61,27 @@ export function DepthOfMarket({ symbol, precision }: Props) {
   return (
     <aside aria-label="Depth of market" className="flex w-full min-w-0 flex-1 flex-col bg-ev-bg">
       <div className="border-b border-ev-raised px-3 py-2">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold uppercase tracking-wider text-ev-muted">Depth of Market</h2>
-          <span className="text-dense num text-ev-faint">{symbol}</span>
-        </div>
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold uppercase tracking-wider text-ev-muted">Depth of Market</h2>
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-1 text-micro text-ev-muted">
+                <span>Lot:</span>
+                <select
+                  aria-label="Order size"
+                  value={qty}
+                  onChange={(e) => setQty(Number(e.target.value))}
+                  className="rounded border border-ev-line bg-ev-panel px-1 py-0.5 text-micro text-ev-strong"
+                >
+                  {[0.1, 0.5, 1, 2, 5, 10].map((v) => (
+                    <option key={v} value={v}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <span className="text-dense num text-ev-faint">{symbol}</span>
+            </div>
+          </div>
 
         {/* Bid/Ask Volume Imbalance Bar */}
         {mid !== null && (
@@ -99,6 +119,7 @@ export function DepthOfMarket({ symbol, precision }: Props) {
                   maxSize={maxSize}
                   side="ask"
                   precision={precision}
+                  onClick={() => void submit({ symbol, side: "sell", type: "limit", price: lvl.price, qty })}
                 />
               ))}
             </ul>
@@ -121,6 +142,7 @@ export function DepthOfMarket({ symbol, precision }: Props) {
                   maxSize={maxSize}
                   side="bid"
                   precision={precision}
+                  onClick={() => void submit({ symbol, side: "buy", type: "limit", price: lvl.price, qty })}
                 />
               ))}
             </ul>
@@ -137,18 +159,24 @@ function Row({
   maxSize,
   side,
   precision,
+  onClick,
 }: {
   level: Level;
   maxCum: number;
   maxSize: number;
   side: "ask" | "bid";
   precision: number;
+  onClick: () => void;
 }) {
   const cumWidth = `${Math.min(100, (level.cum / maxCum) * 100)}%`;
   const sizeWidth = `${Math.min(100, (level.size / maxSize) * 60)}%`;
 
   return (
-    <li className="relative flex items-center justify-between px-3 py-0.5 hover:bg-white/[0.03]">
+    <li
+      onClick={onClick}
+      title={`Click to place ${side === "ask" ? "Sell" : "Buy"} Limit at ${level.price.toFixed(precision)}`}
+      className="group relative flex cursor-pointer select-none items-center justify-between px-3 py-0.5 transition-colors hover:bg-white/[0.06]"
+    >
       {/* Cumulative depth background gradient bar */}
       <span
         className="absolute inset-y-0 right-0 pointer-events-none"
@@ -168,8 +196,11 @@ function Row({
         aria-hidden
       />
 
-      <span className={`relative font-semibold ${side === "ask" ? "text-ev-down" : "text-ev-up"}`}>
-        {level.price.toFixed(precision)}
+      <span className={`relative font-semibold flex items-center gap-1.5 ${side === "ask" ? "text-ev-down" : "text-ev-up"}`}>
+        <span>{level.price.toFixed(precision)}</span>
+        <span className="hidden rounded border border-ev-line bg-ev-panel px-1 py-px text-[10px] font-medium text-ev-muted group-hover:inline-block">
+          + {side === "ask" ? "Sell" : "Buy"}
+        </span>
       </span>
       <div className="relative flex items-baseline gap-2 text-right">
         <span className="text-ev-strong font-medium">{level.size.toFixed(2)}</span>

@@ -1,5 +1,5 @@
 import { Plus, Trash2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { quoteOf, searchSymbols } from "./data";
 import { useWorkspace } from "./store";
 import type { WatchEntry } from "./store";
@@ -95,7 +95,20 @@ export function Watchlist({ onOpenAlerts }: Props) {
 
   const [adding, setAdding] = useState(false);
   const [query, setQuery] = useState("");
+  const [sortField, setSortField] = useState<"none" | "symbol" | "price" | "change">("none");
+  const [sortDesc, setSortDesc] = useState(false);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const sortedWatchlist = useMemo(() => {
+    if (sortField === "none") return watchlist;
+    return [...watchlist].sort((a, b) => {
+      let diff = 0;
+      if (sortField === "symbol") diff = a.ticker.localeCompare(b.ticker);
+      else if (sortField === "price") diff = (a.price ?? 0) - (b.price ?? 0);
+      else if (sortField === "change") diff = (a.changePct ?? 0) - (b.changePct ?? 0);
+      return sortDesc ? -diff : diff;
+    });
+  }, [watchlist, sortField, sortDesc]);
 
   useEffect(() => {
     if (!adding) return;
@@ -202,6 +215,52 @@ export function Watchlist({ onOpenAlerts }: Props) {
         </div>
       )}
 
+      {watchlist.length > 0 && (
+        <div className="flex items-center justify-between border-b border-ev-raised bg-ev-panel px-3 py-1 text-micro font-semibold uppercase tracking-wider text-ev-faint">
+          <button
+            type="button"
+            onClick={() => {
+              if (sortField === "symbol") setSortDesc((d) => !d);
+              else {
+                setSortField("symbol");
+                setSortDesc(false);
+              }
+            }}
+            className="cursor-pointer hover:text-ev-strong"
+          >
+            Symbol {sortField === "symbol" ? (sortDesc ? "↓" : "↑") : ""}
+          </button>
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => {
+                if (sortField === "price") setSortDesc((d) => !d);
+                else {
+                  setSortField("price");
+                  setSortDesc(true);
+                }
+              }}
+              className="cursor-pointer hover:text-ev-strong"
+            >
+              Last {sortField === "price" ? (sortDesc ? "↓" : "↑") : ""}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (sortField === "change") setSortDesc((d) => !d);
+                else {
+                  setSortField("change");
+                  setSortDesc(true);
+                }
+              }}
+              className="cursor-pointer hover:text-ev-strong"
+            >
+              Chg% {sortField === "change" ? (sortDesc ? "↓" : "↑") : ""}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="min-h-0 flex-1 overflow-y-auto">
         {watchlist.length === 0 ? (
           <p className="px-3 py-6 text-base leading-relaxed text-ev-faint">
@@ -209,7 +268,7 @@ export function Watchlist({ onOpenAlerts }: Props) {
           </p>
         ) : (
           <ul>
-            {watchlist.map((w) => (
+            {sortedWatchlist.map((w) => (
               <WatchRow
                 key={w.symbol}
                 item={w}

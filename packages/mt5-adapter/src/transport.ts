@@ -215,6 +215,9 @@ class BridgeTransport implements Mt5Transport {
   }
 
   private async send<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
+    if (this.token && !isLoopbackUrl(this.baseUrl)) {
+      throw new Error("Refusing to send MT5 token to a non-local host.");
+    }
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 12_000);
     const init: RequestInit = { method, signal: controller.signal };
@@ -224,9 +227,6 @@ class BridgeTransport implements Mt5Transport {
       // parses the body as JSON regardless of content type.
       init.headers = { "content-type": "text/plain;charset=UTF-8" };
       init.body = JSON.stringify(body ?? {});
-    }
-    if (this.token) {
-      init.headers = { ...init.headers, "x-bridge-token": this.token };
     }
     try {
       const response = await this.fetchFn(this.url(path), init);

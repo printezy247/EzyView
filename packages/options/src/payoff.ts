@@ -26,8 +26,16 @@ export function breakevens(legs: Leg[], lo: number, hi: number, steps = 2000): n
   for (let i = 1; i <= steps; i++) {
     const x = lo + ((hi - lo) * i) / steps;
     const y = expiryPnl(legs, x);
-    if (prev === 0) out.push(prevX);
-    else if (prev * y < 0) out.push(prevX + ((x - prevX) * Math.abs(prev)) / (Math.abs(prev) + Math.abs(y)));
+    if (Math.abs(prev) < 1e-9) {
+      if (out.length === 0 || Math.abs(out[out.length - 1]! - prevX) > 1e-4) {
+        out.push(prevX);
+      }
+    } else if (prev * y < 0) {
+      const root = prevX + ((x - prevX) * Math.abs(prev)) / (Math.abs(prev) + Math.abs(y));
+      if (out.length === 0 || Math.abs(out[out.length - 1]! - root) > 1e-4) {
+        out.push(root);
+      }
+    }
     prevX = x;
     prev = y;
   }

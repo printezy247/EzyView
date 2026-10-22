@@ -179,6 +179,8 @@ interface WorkspaceStore {
   setActiveLayout(id: string): void;
   /** Patch the focused chart cell. */
   updateActive(patch: Partial<ChartState>): void;
+  /** Patch a specific chart cell by index in the active layout. */
+  updateChart(index: number, patch: Partial<ChartState>): void;
   /** Set the focused cell's symbol, and every cell in its link group. */
   setSymbol(symbol: string): void;
   /** Set the focused cell's interval, and every cell in its link group. */
@@ -263,8 +265,12 @@ interface WorkspaceStore {
 
 /** Apply `fn` to the active layout and flag it as edited. */
 function editActive(s: WorkspaceStore, fn: (layout: Layout) => Layout): Partial<WorkspaceStore> {
+  const current = s.layouts.find((l) => l.id === s.activeLayoutId);
+  if (!current) return {};
+  const updated = fn(current);
+  if (updated === current) return {};
   return {
-    layouts: s.layouts.map((l) => (l.id === s.activeLayoutId ? fn(l) : l)),
+    layouts: s.layouts.map((l) => (l.id === s.activeLayoutId ? updated : l)),
     dirty: { ...s.dirty, [s.activeLayoutId]: true },
   };
 }
@@ -450,7 +456,8 @@ export const useWorkspace = create<WorkspaceStore>()(
 
       activeChart: () => activeChartOf(get().activeLayout()),
 
-      setActiveLayout: (id) => set({ activeLayoutId: id, activeTool: null, selectedDrawingId: null }),
+      setActiveLayout: (id) =>
+        set({ activeLayoutId: id, activeTool: null, selectedDrawingId: null, drawingUndo: [], drawingRedo: [] }),
 
       // Per-cell settings. The linked fields (symbol, interval) have their own
       // actions below, because they propagate to the cell's link group.
@@ -465,6 +472,19 @@ export const useWorkspace = create<WorkspaceStore>()(
           );
           if (!hasChange) return s;
           return editChart(s, (c) => ({ ...c, ...patch }));
+        }),
+
+      updateChart: (index, patch) =>
+        set((s) => {
+          const layout = s.layouts.find((l) => l.id === s.activeLayoutId) ?? s.layouts[0];
+          if (!layout) return s;
+          const current = layout.charts[index];
+          if (!current) return s;
+          const hasChange = Object.entries(patch).some(
+            ([k, v]) => (current as unknown as Record<string, unknown>)[k] !== v,
+          );
+          if (!hasChange) return s;
+          return editActive(s, (l) => updateChart(l, index, (c) => ({ ...c, ...patch })));
         }),
 
       // The focused cell's symbol, and every cell in its link group.
@@ -492,7 +512,12 @@ export const useWorkspace = create<WorkspaceStore>()(
           const layout = get().activeLayout();
           const next = setActiveChart(layout, index);
           if (next === layout) return s;
-          return { layouts: s.layouts.map((l) => (l.id === layout.id ? next : l)), replayBar: null };
+          return {
+            layouts: s.layouts.map((l) => (l.id === layout.id ? next : l)),
+            replayBar: null,
+            drawingUndo: [],
+            drawingRedo: [],
+          };
         }),
 
       addLayout: () =>
@@ -563,7 +588,10 @@ export const useWorkspace = create<WorkspaceStore>()(
 
       updateIndicatorParams: (target, params) =>
         set((s) =>
-          editChart(s, (c) => ({ ...c, indicators: c.indicators.map((i) => (i.uid === target ? { ...i, params } : i)) })),
+          editChart(s, (c) => ({
+            ...c,
+            indicators: c.indicators.map((i) => (i.uid === target ? { ...i, params: { ...i.params, ...params } } : i)),
+          })),
         ),
 
       updateIndicator: (target, patch) =>

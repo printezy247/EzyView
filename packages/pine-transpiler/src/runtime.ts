@@ -68,11 +68,31 @@ function series2(
   return out;
 }
 
+const taCache = new WeakMap<object, Map<string, PineValue[]>>();
+
+function memoizeTa(fnName: string, src: PineValue[], period: number, compute: () => PineValue[]): PineValue[] {
+  if (typeof src !== "object" || src === null) return compute();
+  let cache = taCache.get(src);
+  if (!cache) {
+    cache = new Map();
+    taCache.set(src, cache);
+  }
+  const key = `${fnName}:${period}`;
+  const hit = cache.get(key);
+  if (hit) return hit;
+  const result = compute();
+  cache.set(key, result);
+  return result;
+}
+
 /** Wrap a helper so it accepts Pine's `SeriesValue[]` and returns one. */
-function wrap(fn: (values: number[], period: number) => SeriesValue[]) {
+function wrap(name: string, fn: (values: number[], period: number) => SeriesValue[]) {
   return (src: PineValue[], length: number): PineValue[] => {
-    const values = src.map((v) => (isNa(v) ? Number.NaN : toNumber(v)));
-    return fn(values, Math.max(1, Math.floor(length))) as PineValue[];
+    const period = Math.max(1, Math.floor(length));
+    return memoizeTa(name, src, period, () => {
+      const values = src.map((v) => (isNa(v) ? Number.NaN : toNumber(v)));
+      return fn(values, period) as PineValue[];
+    });
   };
 }
 
@@ -81,32 +101,44 @@ const series1 = (src: PineValue[], fn: (v: number) => number): PineValue[] =>
 
 /** Every `ta.*` function the transpiler exposes. */
 export const ta = {
-  sma: wrap(sma),
-  ema: wrap(ema),
-  rma: wrap(rma),
-  wma: wrap(wma),
-  stdev: wrap(stdev),
+  sma: wrap("sma", sma),
+  ema: wrap("ema", ema),
+  rma: wrap("rma", rma),
+  wma: wrap("wma", wma),
+  stdev: wrap("stdev", stdev),
   hma: (src: PineValue[], length: number): PineValue[] => {
-    const values = src.map((v) => (isNa(v) ? Number.NaN : toNumber(v)));
-    const half = Math.max(1, Math.floor(length / 2));
-    const sqrtLen = Math.max(1, Math.round(Math.sqrt(length)));
-    const a = wma(values, half) as number[];
-    const b = wma(values, length) as number[];
-    const diff = a.map((x, i) => 2 * x - (b[i] ?? Number.NaN));
-    const smoothed = wma(fillForward(diff.map((v) => (Number.isNaN(v) ? null : v))), sqrtLen) as number[];
-    return smoothed.map((v) => (Number.isNaN(v) ? NA : v));
+    const period = Math.max(1, Math.floor(length));
+    return memoizeTa("hma", src, period, () => {
+      const values = src.map((v) => (isNa(v) ? Number.NaN : toNumber(v)));
+      const half = Math.max(1, Math.floor(period / 2));
+      const sqrtLen = Math.max(1, Math.round(Math.sqrt(period)));
+      const a = wma(values, half) as number[];
+      const b = wma(values, period) as number[];
+      const diff = a.map((x, i) => 2 * x - (b[i] ?? Number.NaN));
+      const smoothed = wma(fillForward(diff.map((v) => (Number.isNaN(v) ? null : v))), sqrtLen) as number[];
+      return smoothed.map((v) => (Number.isNaN(v) ? NA : v));
+    });
   },
   highest: (src: PineValue[], length: number): PineValue[] => {
-    const values = src.map((v) => (isNa(v) ? Number.NaN : toNumber(v)));
-    return highest(values, Math.max(1, Math.floor(length))) as PineValue[];
+    const period = Math.max(1, Math.floor(length));
+    return memoizeTa("highest", src, period, () => {
+      const values = src.map((v) => (isNa(v) ? Number.NaN : toNumber(v)));
+      return highest(values, period) as PineValue[];
+    });
   },
   lowest: (src: PineValue[], length: number): PineValue[] => {
-    const values = src.map((v) => (isNa(v) ? Number.NaN : toNumber(v)));
-    return lowest(values, Math.max(1, Math.floor(length))) as PineValue[];
+    const period = Math.max(1, Math.floor(length));
+    return memoizeTa("lowest", src, period, () => {
+      const values = src.map((v) => (isNa(v) ? Number.NaN : toNumber(v)));
+      return lowest(values, period) as PineValue[];
+    });
   },
   change: (src: PineValue[], length = 1): PineValue[] => {
-    const values = src.map((v) => (isNa(v) ? Number.NaN : toNumber(v)));
-    return change(values, Math.max(1, Math.floor(length))) as PineValue[];
+    const period = Math.max(1, Math.floor(length));
+    return memoizeTa("change", src, period, () => {
+      const values = src.map((v) => (isNa(v) ? Number.NaN : toNumber(v)));
+      return change(values, period) as PineValue[];
+    });
   },
   tr: (_ctx: Context): PineValue[] => {
     const data = { open: _ctx.open, high: _ctx.high, low: _ctx.low, close: _ctx.close, volume: _ctx.volume };
@@ -114,16 +146,19 @@ export const ta = {
   },
   atr: (ctx: Context, length: number): PineValue[] => {
     const data = { open: ctx.open, high: ctx.high, low: ctx.low, close: ctx.close, volume: ctx.volume };
-    return wrap(rma)(trueRange(data), length);
+    return wrap("rma", rma)(trueRange(data), length);
   },
   rsi: (src: PineValue[], length: number): PineValue[] => {
-    const values = src.map((v) => (isNa(v) ? Number.NaN : toNumber(v)));
-    const deltas = change(values, 1).map((v) => v ?? 0);
-    const gains = deltas.map((v) => (v > 0 ? v : 0));
-    const losses = deltas.map((v) => (v < 0 ? -v : 0));
-    return map2(rma(gains, length), rma(losses, length), (g, l) =>
-      l === 0 ? 100 : 100 - 100 / (1 + g / l),
-    ) as PineValue[];
+    const period = Math.max(1, Math.floor(length));
+    return memoizeTa("rsi", src, period, () => {
+      const values = src.map((v) => (isNa(v) ? Number.NaN : toNumber(v)));
+      const deltas = change(values, 1).map((v) => v ?? 0);
+      const gains = deltas.map((v) => (v > 0 ? v : 0));
+      const losses = deltas.map((v) => (v < 0 ? -v : 0));
+      return map2(rma(gains, period), rma(losses, period), (g, l) =>
+        l === 0 ? 100 : 100 - 100 / (1 + g / l),
+      ) as PineValue[];
+    });
   },
   crossover: (a: PineValue[], b: PineValue | PineValue[]): PineValue[] => {
     const bv = Array.isArray(b) ? b : Array.from({ length: a.length }, () => b);

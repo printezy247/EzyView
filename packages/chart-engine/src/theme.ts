@@ -94,5 +94,6 @@ export const INDICATOR_COLORS = [
 ];
 
 export function colorAt(index: number): string {
-  return INDICATOR_COLORS[index % INDICATOR_COLORS.length]!;
+  const len = INDICATOR_COLORS.length;
+  return INDICATOR_COLORS[((index % len) + len) % len]!;
 }
