@@ -144,7 +144,7 @@ export function ScreenerTab() {
                 >
                   <td className="font-medium text-ev-strong">{w.ticker}</td>
                   <td className="text-right text-ev-text">{w.price === null ? "—" : w.price.toFixed(w.precision)}</td>
-                  <td className={w.changePct === null ? "text-right text-ev-faint" : w.changePct >= 0 ? "text-right text-ev-up" : "text-right text-ev-down"}>
+                  <td className={w.changePct === null ? "text-right text-ev-faint" : w.changePct >= 0 ? "text-right text-ev-up-text" : "text-right text-ev-down-text"}>
                     {w.changePct === null ? "—" : `${w.changePct >= 0 ? "+" : ""}${w.changePct.toFixed(2)}%`}
                   </td>
                   <td className="text-ev-muted">{w.assetClass}</td>

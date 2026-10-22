@@ -682,33 +682,41 @@ function Readout({
           <button
             type="button"
             title={collapsed ? "Expand chart legend" : "Collapse chart legend"}
+            aria-label="Chart legend"
+            aria-expanded={!collapsed}
             onClick={(e) => {
               e.stopPropagation();
               setCollapsed((v) => !v);
             }}
-            className="rounded px-1 text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+            className="min-h-6 min-w-6 rounded px-1 text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
           >
-            {collapsed ? "▸" : "▾"}
+            <span aria-hidden>{collapsed ? "▸" : "▾"}</span>
           </button>
           {multi && onToggleMaximize && (
             <button
               type="button"
               title={isMaximized ? "Restore grid (Alt+Enter)" : "Maximize chart (Alt+Enter)"}
+              aria-label="Maximize chart"
+              aria-pressed={isMaximized}
               onClick={(e) => {
                 e.stopPropagation();
                 onToggleMaximize();
               }}
-              className="rounded px-1 text-ev-muted hover:bg-ev-raised hover:text-ev-strong cursor-pointer"
+              className="min-h-6 min-w-6 rounded px-1 text-ev-muted hover:bg-ev-raised hover:text-ev-strong cursor-pointer"
             >
-              {isMaximized ? "⤡" : "⤢"}
+              <span aria-hidden>{isMaximized ? "⤡" : "⤢"}</span>
             </button>
           )}
+          <span role="status" className="sr-only">
+            {multi && onToggleMaximize ? (isMaximized ? "Chart maximized" : "Chart grid restored") : ""}
+            {collapsed ? ". Legend collapsed" : ""}
+          </span>
           <span className="font-semibold text-ev-strong">{symbol}</span>
           {displayPrice !== null && (
             <span className="num font-semibold text-ev-strong">{displayPrice.toFixed(digits)}</span>
           )}
           {liveChangePct !== null && (
-            <span className={`num text-micro font-medium ${liveChangePct >= 0 ? "text-ev-up" : "text-ev-down"}`}>
+            <span className={`num text-micro font-medium ${liveChangePct >= 0 ? "text-ev-up-text" : "text-ev-down-text"}`}>
               {liveChangePct >= 0 ? "+" : ""}
               {liveChangePct.toFixed(2)}%
             </span>
@@ -784,7 +792,7 @@ function Readout({
                 e.stopPropagation();
                 void submit({ symbol: rawSymbol, side: "sell", type: "market", qty });
               }}
-              className="flex items-center gap-1.5 rounded border border-ev-down/60 bg-ev-down/15 px-2 py-0.5 text-micro font-semibold text-ev-down shadow-xs hover:bg-ev-down hover:text-white"
+              className="flex items-center gap-1.5 rounded border border-ev-down/60 bg-ev-down/15 px-2 py-0.5 text-micro font-semibold text-ev-down-text shadow-xs hover:bg-ev-down hover:text-white"
             >
               <span>SELL</span>
               {bid && <span className="num font-bold">{bid}</span>}
@@ -812,7 +820,7 @@ function Readout({
                 e.stopPropagation();
                 void submit({ symbol: rawSymbol, side: "buy", type: "market", qty });
               }}
-              className="flex items-center gap-1.5 rounded border border-ev-up/60 bg-ev-up/15 px-2 py-0.5 text-micro font-semibold text-ev-up shadow-xs hover:bg-ev-up hover:text-white"
+              className="flex items-center gap-1.5 rounded border border-ev-up/60 bg-ev-up/15 px-2 py-0.5 text-micro font-semibold text-ev-up-text shadow-xs hover:bg-ev-up hover:text-white"
             >
               <span>BUY</span>
               {ask && <span className="num font-bold">{ask}</span>}
@@ -850,7 +858,7 @@ function Readout({
                     e.stopPropagation();
                     removeIndicator(ind.uid);
                   }}
-                  className="text-ev-faint hover:text-ev-down"
+                  className="text-ev-faint hover:text-ev-down-text"
                 >
                   ×
                 </button>

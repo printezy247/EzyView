@@ -75,9 +75,9 @@ export function IntervalDialog({ open, onClose, onPick }: Props) {
           {result === null ? (
             <span className="text-ev-faint">Waiting for an interval.</span>
           ) : result.ok ? (
-            <span className="text-ev-up">Shows {result.label} bars.</span>
+            <span className="text-ev-up-text">Shows {result.label} bars.</span>
           ) : (
-            <span className="text-ev-down">
+            <span className="text-ev-down-text">
               {result.reason}
               {result.suggestion && (
                 <>

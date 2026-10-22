@@ -23,7 +23,7 @@ export const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
   solid: "bg-ev-accent text-white hover:bg-ev-accent-hover disabled:hover:bg-ev-accent",
   outline: "border border-ev-line bg-transparent text-ev-text hover:bg-ev-raised hover:text-ev-strong",
   ghost: "bg-transparent text-ev-muted hover:bg-ev-raised hover:text-ev-strong",
-  danger: "border border-ev-down/40 bg-transparent text-ev-down hover:bg-ev-down/10",
+  danger: "border border-ev-down/40 bg-transparent text-ev-down-text hover:bg-ev-down/10",
 };
 
 const BASE = "inline-flex shrink-0 items-center justify-center font-medium transition disabled:cursor-not-allowed disabled:opacity-50";
@@ -59,8 +59,8 @@ export function inputClass(className?: ClassValue): string {
 export function chipClass(options: { tone?: "neutral" | "up" | "down" | "warn" | "accent"; className?: ClassValue } = {}): string {
   const tones = {
     neutral: "bg-ev-raised text-ev-muted",
-    up: "bg-ev-up/15 text-ev-up",
-    down: "bg-ev-down/15 text-ev-down",
+    up: "bg-ev-up/15 text-ev-up-text",
+    down: "bg-ev-down/15 text-ev-down-text",
     // Warm, not alarming: a stale price is worth noticing, not a failure.
     warn: "bg-ev-warn/15 text-ev-warn",
     accent: "bg-ev-accent/15 text-ev-accent-text",

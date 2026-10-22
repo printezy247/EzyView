@@ -5,6 +5,7 @@ import { OrderTicket } from "./OrderTicket";
 import { useMt5 } from "./mt5";
 import { useTrading } from "./trading";
 import { notice } from "./notice";
+import { canBreakEven } from "./tradeMath";
 
 interface Props {
   symbol: string;
@@ -21,7 +22,7 @@ const TABS: { id: Tab; label: string }[] = [
 const money = (value: number): string =>
   value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const pnlClass = (value: number): string => (value >= 0 ? "text-ev-up" : "text-ev-down");
+const pnlClass = (value: number): string => (value >= 0 ? "text-ev-up-text" : "text-ev-down-text");
 
 const signed = (value: number): string => `${value >= 0 ? "+" : ""}${money(value)}`;
 
@@ -196,7 +197,7 @@ export function TradingPanel({ symbol }: Props) {
                   key: `${p.symbol}:${p.side}`,
                   cells: [
                     <span className="font-medium text-ev-strong">{p.symbol}</span>,
-                    <span className={p.side === "long" ? "text-ev-up" : "text-ev-down"}>
+                    <span className={p.side === "long" ? "text-ev-up-text" : "text-ev-down-text"}>
                       {p.side.toUpperCase()}
                     </span>,
                     <span className="num">{fmtQty(p.qty)}</span>,
@@ -209,9 +210,10 @@ export function TradingPanel({ symbol }: Props) {
                     <div className="flex justify-end gap-1">
                       <button
                         type="button"
-                        title={`Move stop loss to break-even (${p.entryPrice.toFixed(precision)})`}
+                        disabled={!canBreakEven({ side: p.side, entry: p.entryPrice, mark: p.markPrice, stopLoss: p.stopLoss })}
+                        title={`Move stop loss to break-even (${p.entryPrice.toFixed(precision)}); available once in profit`}
                         onClick={() => void amend(p.symbol, { stopLoss: p.entryPrice })}
-                        className="rounded border border-ev-line px-1.5 py-0.5 text-dense text-ev-muted hover:border-ev-accent hover:text-ev-strong cursor-pointer"
+                        className="rounded border border-ev-line px-1.5 py-0.5 text-dense text-ev-muted hover:border-ev-accent hover:text-ev-strong cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         BE
                       </button>
@@ -228,7 +230,10 @@ export function TradingPanel({ symbol }: Props) {
                         title="Reverse position direction"
                         onClick={() => {
                           void (async () => {
-                            await close(p.symbol);
+                            // A failed or parked close must not be followed by the
+                            // opposite order: that would double the position.
+                            const closed = await close(p.symbol);
+                            if (!closed) return;
                             // On MT5 the close parks at the confirmation gate, so
                             // the reverse has to wait for the trader to confirm
                             // that close first - otherwise the two orders race
@@ -249,17 +254,17 @@ export function TradingPanel({ symbol }: Props) {
                       <button
                         type="button"
                         onClick={() => void close(p.symbol)}
-                        className="rounded border border-ev-line px-1.5 py-0.5 text-dense text-ev-muted hover:border-ev-down hover:text-ev-down"
+                        className="rounded border border-ev-line px-1.5 py-0.5 text-dense text-ev-muted hover:border-ev-down hover:text-ev-down-text"
                       >
                         Close
                       </button>
                       {p.stopLoss !== undefined && (
-                        <span className="rounded border border-ev-down/40 px-1.5 py-0.5 text-dense text-ev-down">
+                        <span className="rounded border border-ev-down/40 px-1.5 py-0.5 text-dense text-ev-down-text">
                           SL {p.stopLoss.toFixed(precision)}
                         </span>
                       )}
                       {p.takeProfit !== undefined && (
-                        <span className="rounded border border-ev-up/40 px-1.5 py-0.5 text-dense text-ev-up">
+                        <span className="rounded border border-ev-up/40 px-1.5 py-0.5 text-dense text-ev-up-text">
                           TP {p.takeProfit.toFixed(precision)}
                         </span>
                       )}
@@ -277,7 +282,7 @@ export function TradingPanel({ symbol }: Props) {
                   key: o.id,
                   cells: [
                     <span className="font-medium text-ev-strong">{o.symbol}</span>,
-                    <span className={o.side === "buy" ? "text-ev-up" : "text-ev-down"}>
+                    <span className={o.side === "buy" ? "text-ev-up-text" : "text-ev-down-text"}>
                       {o.side.toUpperCase()}
                     </span>,
                     <span className="uppercase text-ev-text">{o.type}</span>,
@@ -288,7 +293,7 @@ export function TradingPanel({ symbol }: Props) {
                       <button
                         type="button"
                         onClick={() => void cancel(o.id)}
-                        className="rounded border border-ev-line px-1.5 py-0.5 text-dense text-ev-muted hover:border-ev-down hover:text-ev-down"
+                        className="rounded border border-ev-line px-1.5 py-0.5 text-dense text-ev-muted hover:border-ev-down hover:text-ev-down-text"
                       >
                         Cancel
                       </button>
@@ -309,7 +314,7 @@ export function TradingPanel({ symbol }: Props) {
                     cells: [
                       <span className="num text-ev-muted">{clock(d.time)}</span>,
                       <span className="font-medium text-ev-strong">{d.symbol}</span>,
-                      <span className={d.side === "buy" ? "text-ev-up" : "text-ev-down"}>
+                      <span className={d.side === "buy" ? "text-ev-up-text" : "text-ev-down-text"}>
                         {d.side.toUpperCase()}
                       </span>,
                       <span className="num">{fmtQty(d.qty)}</span>,

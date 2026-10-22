@@ -124,7 +124,7 @@ export function JournalCalendar({ entries, selectedDay, onSelectDay }: Props) {
                 <span className="mt-auto w-full truncate text-right text-micro num text-ev-muted">
                   {count}
                   {net !== undefined && net !== 0 && (
-                    <span className={net > 0 ? " text-ev-up" : " text-ev-down"}>
+                    <span className={net > 0 ? " text-ev-up-text" : " text-ev-down-text"}>
                       {" "}
                       {net > 0 ? "+" : ""}
                       {Math.abs(net) >= 1000 ? `${(net / 1000).toFixed(1)}k` : net.toFixed(0)}

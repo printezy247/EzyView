@@ -660,7 +660,7 @@ export function ChartHost(props: Props) {
       )}
       {loadError && (
         <div role="alert" className="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
-          <p className="max-w-xs rounded border border-ev-down/40 bg-ev-panel/95 px-3 py-2 text-center text-base text-ev-down">
+          <p className="max-w-xs rounded border border-ev-down/40 bg-ev-panel/95 px-3 py-2 text-center text-base text-ev-down-text">
             Could not load {props.symbol}: {loadError}
           </p>
         </div>

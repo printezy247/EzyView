@@ -420,7 +420,7 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
       <div ref={host} className="min-h-0 flex-1" />
 
       {error && (
-        <div role="alert" className="border-t border-ev-line bg-ev-down/15 px-4 py-2 text-base text-ev-down">
+        <div role="alert" className="border-t border-ev-line bg-ev-down/15 px-4 py-2 text-base text-ev-down-text">
           {error}
         </div>
       )}
@@ -601,7 +601,7 @@ function OptimizePanel({
               {outcome.runs.slice(0, 10).map((r, i) => (
                 <tr key={i} className={`border-t border-ev-raised ${i === 0 ? "bg-ev-line/40" : ""}`}>
                   <td className="py-0.5">{Object.entries(r.inputs).map(([k, v]) => `${k}=${v}`).join(" ")}</td>
-                  <td className={`py-0.5 ${r.result.totalPnl >= 0 ? "text-ev-up" : "text-ev-down"}`}>
+                  <td className={`py-0.5 ${r.result.totalPnl >= 0 ? "text-ev-up-text" : "text-ev-down-text"}`}>
                     {r.result.totalPnl.toFixed(2)}
                   </td>
                   <td className="py-0.5">{(r.result.winRate * 100).toFixed(1)}%</td>
@@ -671,8 +671,8 @@ function StrategyTester({ result, inputs }: { result: BacktestResult; inputs?: R
               <td className="py-0.5">
                 #{t.exitBar} @ {t.exitPrice.toFixed(2)}
               </td>
-              <td className={`py-0.5 ${t.pnl >= 0 ? "text-ev-up" : "text-ev-down"}`}>{t.pnl.toFixed(2)}</td>
-              <td className={`py-0.5 ${t.returnPct >= 0 ? "text-ev-up" : "text-ev-down"}`}>
+              <td className={`py-0.5 ${t.pnl >= 0 ? "text-ev-up-text" : "text-ev-down-text"}`}>{t.pnl.toFixed(2)}</td>
+              <td className={`py-0.5 ${t.returnPct >= 0 ? "text-ev-up-text" : "text-ev-down-text"}`}>
                 {(t.returnPct * 100).toFixed(2)}%
               </td>
             </tr>
@@ -746,7 +746,7 @@ function EquityCurve({ equity }: { equity: readonly number[] }) {
 }
 
 function Metric({ label, value, tone }: { label: string; value: string; tone?: "pos" | "neg" }) {
-  const color = tone === "pos" ? "text-ev-up" : tone === "neg" ? "text-ev-down" : "text-ev-strong";
+  const color = tone === "pos" ? "text-ev-up-text" : tone === "neg" ? "text-ev-down-text" : "text-ev-strong";
   return (
     <span className="flex items-center gap-1">
       <span className="text-ev-faint">{label}</span>

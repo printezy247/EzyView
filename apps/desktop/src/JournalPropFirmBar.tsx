@@ -93,7 +93,7 @@ export function JournalPropFirmBar({ drawdown }: { drawdown: number }) {
   return (
     <div
       className={`flex shrink-0 items-center gap-4 border-b px-3 py-1 text-dense ${
-        breached ? "border-ev-down bg-ev-down/10 text-ev-down" : "border-ev-raised text-ev-muted"
+        breached ? "border-ev-down bg-ev-down/10 text-ev-down-text" : "border-ev-raised text-ev-muted"
       }`}
       role={breached ? "alert" : undefined}
     >

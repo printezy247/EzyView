@@ -97,7 +97,8 @@ export interface TradingActions {
   /** Paper sends straight away; MT5 parks at the gate and returns false. */
   submit(request: OrderRequest): Promise<boolean>;
   cancel(id: string): Promise<boolean>;
-  close(symbol: string, qty?: number): Promise<void>;
+  /** True only when the position was closed right now; a parked or failed close is false. */
+  close(symbol: string, qty?: number): Promise<boolean>;
   /**
    * Move or clear an open position's stop and/or target. `null` clears a level,
    * `undefined` leaves it as it is — so dragging the stop on the chart does not
@@ -211,17 +212,19 @@ export const useTrading = create<TradingState & TradingActions>((set, get) => ({
 
   async close(symbol, qty) {
     if (useMt5.getState().source !== "mt5") {
+      let ok = false;
       try {
         await paperEngine.closePosition(symbol, qty);
         set({ error: null });
+        ok = true;
       } catch (err) {
         set({ error: message(err) });
       }
       await refreshInto(set);
-      return;
+      return ok;
     }
     const gate = mt5Gate({ action: "close", symbol, volume: qty });
-    park(set, gate, { kind: "close", symbol, qty, gate, token: approvalTokens.mint() });
+    return park(set, gate, { kind: "close", symbol, qty, gate, token: approvalTokens.mint() });
   },
 
   async amend(symbol, levels) {

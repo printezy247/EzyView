@@ -87,4 +87,21 @@ describe("Modal", () => {
     await user.click(screen.getByRole("button", { name: "First" }));
     expect(onClose).not.toHaveBeenCalled();
   });
+
+  it("wraps focus past hidden controls", async () => {
+    const user = userEvent.setup();
+    render(
+      <Modal open onClose={() => {}} labelledBy="t">
+        <h2 id="t">Title</h2>
+        <button type="button">First</button>
+        <button type="button">Last</button>
+        <button type="button" style={{ display: "none" }}>
+          Ghost
+        </button>
+      </Modal>,
+    );
+    screen.getByRole("button", { name: "Last" }).focus();
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "First" }));
+  });
 });

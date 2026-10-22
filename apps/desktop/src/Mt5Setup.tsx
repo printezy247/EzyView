@@ -33,7 +33,7 @@ export function ConnectionTab({ settings, save, busy, setBusy }: { settings: Mt5
   return (
     <>
       <p className="mb-2 text-dense text-ev-muted">
-        Where MetaTrader 5 answers from. The app only connects to this computer (127.0.0.1 or localhost); reach a
+        Where MetaTrader 5 answers from. The app only connects to this computer (127.0.0.1 or ::1); reach a
         terminal on another machine through an SSH tunnel.
       </p>
       <div className="mb-2 flex gap-1">
@@ -205,7 +205,7 @@ export function BrokerTab() {
                 >
                   connect
                 </button>
-                <button type="button" disabled={busy} onClick={() => void forget(a.server, a.login)} className="px-1 text-dense text-ev-down hover:underline">
+                <button type="button" disabled={busy} onClick={() => void forget(a.server, a.login)} className="px-1 text-dense text-ev-down-text hover:underline">
                   forget
                 </button>
               </span>
@@ -233,7 +233,7 @@ export function BrokerTab() {
           </span>
         </label>
       )}
-      {error && <p className="rounded border border-ev-down/40 bg-ev-down/10 p-1.5 text-dense text-ev-down">{error}</p>}
+      {error && <p className="rounded border border-ev-down/40 bg-ev-down/10 p-1.5 text-dense text-ev-down-text">{error}</p>}
       <div className="flex justify-end">
         <button
           type="button"
@@ -322,7 +322,7 @@ export function AuditTab() {
             <span className="text-ev-text">{r.ts?.replace("T", " ").slice(0, 19)}</span> · {r.event}
             {r.symbol ? ` · ${r.symbol}` : ""}
             {r.volume !== undefined && r.volume !== null ? ` ×${r.volume}` : ""}
-            {r.result === "rejected" || r.result === "error" ? <span className="text-ev-down"> · {r.result}{r.error ? `: ${r.error}` : ""}</span> : ` · ${r.result}`}
+            {r.result === "rejected" || r.result === "error" ? <span className="text-ev-down-text"> · {r.result}{r.error ? `: ${r.error}` : ""}</span> : ` · ${r.result}`}
           </li>
         ))}
       </ul>

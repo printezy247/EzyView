@@ -203,7 +203,7 @@ export function ObjectTree({ onClose }: Props) {
           />
         </div>
         {ioError && (
-          <p role="alert" className="mt-1.5 text-ev-down">
+          <p role="alert" className="mt-1.5 text-ev-down-text">
             {ioError}
           </p>
         )}

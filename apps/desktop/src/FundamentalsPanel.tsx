@@ -100,7 +100,7 @@ export function FundamentalsPanel({ symbol, onClose, onPickSymbol }: Props) {
 
 /** Says, for the open tab, whether the rows are live and from whom, or demo data. */
 function SourceBadge({ slots, live, keyError }: { slots: SourceSlot[]; live: FundamentalsSources["live"]; keyError: string | null }) {
-  if (keyError) return <span className="ml-3 truncate text-ev-down">{keyError}</span>;
+  if (keyError) return <span className="ml-3 truncate text-ev-down-text">{keyError}</span>;
   if (slots.length === 0) return <span className="ml-3 text-ev-muted">Scans the current market feed</span>;
   const names = [...new Set(slots.map((s) => live[s]).filter((n) => n !== null))];
   const demo = slots.some((s) => live[s] === null);
@@ -111,7 +111,7 @@ function SourceBadge({ slots, live, keyError }: { slots: SourceSlot[]; live: Fun
     );
   }
   return (
-    <span className="ml-3 rounded bg-ev-up/15 px-1.5 py-0.5 text-ev-up">
+    <span className="ml-3 rounded bg-ev-up/15 px-1.5 py-0.5 text-ev-up-text">
       LIVE · {names.join(" + ")}
       {demo && <span className="text-ev-warn"> (part demo)</span>}
     </span>

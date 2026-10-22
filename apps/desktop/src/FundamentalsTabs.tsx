@@ -25,7 +25,7 @@ const when = (epoch: number): string =>
 /** Provider dates are UTC days; render them in UTC so they do not shift a day. */
 export const day = (epoch: number): string => new Date(epoch * 1000).toLocaleDateString(undefined, { timeZone: "UTC" });
 export const pct = (v: number): string => `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`;
-export const tone = (v: number): string => (v >= 0 ? "text-ev-up" : "text-ev-down");
+export const tone = (v: number): string => (v >= 0 ? "text-ev-up-text" : "text-ev-down-text");
 
 /**
  * Epoch seconds for a `YYYY-MM-DD` date input at local midnight.
@@ -90,7 +90,7 @@ export function useLoad<T>(load: () => Promise<T>, key: string): { data: T | nul
 
 export const Empty = ({ text }: { text: string }) => <p className="p-3 text-dense text-ev-muted">{text}</p>;
 export const Failed = ({ text }: { text: string }) => (
-  <p role="alert" className="p-3 text-dense text-ev-down">
+  <p role="alert" className="p-3 text-dense text-ev-down-text">
     Could not load: {text}
   </p>
 );
@@ -199,7 +199,7 @@ export function CalendarTab({ src }: { src: Src }) {
                   <span className="mr-1.5 inline-block size-1.5 rounded-full" style={{ background: IMPACT_COLOR[e.impact] }} aria-label={`${e.impact} impact`} />
                   {e.title}
                 </td>
-                <td className={`text-right ${e.deviation === "better" ? "text-ev-up" : e.deviation === "worse" ? "text-ev-down" : ""}`}>
+                <td className={`text-right ${e.deviation === "better" ? "text-ev-up-text" : e.deviation === "worse" ? "text-ev-down-text" : ""}`}>
                   {e.actual ?? "—"}
                 </td>
                 <td className="text-right">{e.forecast ?? "—"}</td>

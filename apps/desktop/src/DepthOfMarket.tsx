@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Quote } from "@ezyview/data-adapters";
 import { quoteOf } from "./data";
 import { useWorkspace } from "./store";
 import { useTrading } from "./trading";
+import { createLockout, roundPrice } from "./tradeMath";
 
 interface Props {
   symbol: string;
@@ -24,15 +25,29 @@ export function DepthOfMarket({ symbol, precision }: Props) {
   const [qty, setQty] = useState(1);
   const isReplay = useWorkspace((s) => s.replayBar !== null);
   const submit = useTrading((s) => s.submit);
+  const [failed, setFailed] = useState(false);
+  const [retry, setRetry] = useState(0);
+  // A second click on the same rung inside 500 ms is a double submit.
+  const lockout = useRef(createLockout(500)).current;
+
+  const place = (side: "buy" | "sell", price: number) => {
+    const rounded = roundPrice(price, precision);
+    if (!lockout(`${side}:${rounded}`)) return;
+    void submit({ symbol, side, type: "limit", price: rounded, qty });
+  };
 
   useEffect(() => {
     if (isReplay) return;
     let cancelled = false;
     const tick = () => {
       void quoteOf(symbol)
-        .catch(() => null)
         .then((q) => {
-          if (!cancelled) setQuote(q);
+          if (cancelled) return;
+          setQuote(q);
+          setFailed(q === null);
+        })
+        .catch(() => {
+          if (!cancelled) setFailed(true);
         });
     };
     tick();
@@ -41,7 +56,7 @@ export function DepthOfMarket({ symbol, precision }: Props) {
       cancelled = true;
       clearInterval(t);
     };
-  }, [symbol, isReplay]);
+  }, [symbol, isReplay, retry]);
 
   const mid = quote?.last ?? null;
   const asks = mid === null ? [] : buildLadder(mid, precision, "ask");
@@ -87,8 +102,8 @@ export function DepthOfMarket({ symbol, precision }: Props) {
         {mid !== null && (
           <div className="mt-2 space-y-1">
             <div className="flex justify-between text-micro text-ev-faint">
-              <span className="text-ev-up font-medium">Bids {bidRatio}%</span>
-              <span className="text-ev-down font-medium">Asks {100 - bidRatio}%</span>
+              <span className="text-ev-up-text font-medium">Bids {bidRatio}%</span>
+              <span className="text-ev-down-text font-medium">Asks {100 - bidRatio}%</span>
             </div>
             <div className="flex h-1.5 w-full overflow-hidden rounded bg-ev-raised">
               <div className="bg-ev-up transition-all duration-300" style={{ width: `${bidRatio}%` }} />
@@ -99,7 +114,25 @@ export function DepthOfMarket({ symbol, precision }: Props) {
       </div>
 
       {mid === null ? (
-        <p className="px-3 py-6 text-base text-ev-faint">Waiting for a quote…</p>
+        <p role="status" className="px-3 py-6 text-base text-ev-faint">
+          {failed ? (
+            <>
+              Quote unavailable.{" "}
+              <button
+                type="button"
+                onClick={() => {
+                  setFailed(false);
+                  setRetry((n) => n + 1);
+                }}
+                className="min-h-6 rounded px-1 text-ev-link underline"
+              >
+                Retry
+              </button>
+            </>
+          ) : (
+            "Waiting for a quote…"
+          )}
+        </p>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col">
           {/* Table Header */}
@@ -110,7 +143,7 @@ export function DepthOfMarket({ symbol, precision }: Props) {
 
           <div className="min-h-0 flex-1 overflow-y-auto text-dense num">
             {/* Asks (Sell Orders - descending toward mid) */}
-            <ul>
+            <ul aria-label="Asks">
               {[...asks].reverse().map((lvl) => (
                 <Row
                   key={`a-${lvl.price}`}
@@ -119,7 +152,7 @@ export function DepthOfMarket({ symbol, precision }: Props) {
                   maxSize={maxSize}
                   side="ask"
                   precision={precision}
-                  onClick={() => void submit({ symbol, side: "sell", type: "limit", price: lvl.price, qty })}
+                  onClick={() => place("sell", lvl.price)}
                 />
               ))}
             </ul>
@@ -133,7 +166,7 @@ export function DepthOfMarket({ symbol, precision }: Props) {
             </div>
 
             {/* Bids (Buy Orders - descending from mid) */}
-            <ul>
+            <ul aria-label="Bids">
               {bids.map((lvl) => (
                 <Row
                   key={`b-${lvl.price}`}
@@ -142,7 +175,7 @@ export function DepthOfMarket({ symbol, precision }: Props) {
                   maxSize={maxSize}
                   side="bid"
                   precision={precision}
-                  onClick={() => void submit({ symbol, side: "buy", type: "limit", price: lvl.price, qty })}
+                  onClick={() => place("buy", lvl.price)}
                 />
               ))}
             </ul>
@@ -172,10 +205,13 @@ function Row({
   const sizeWidth = `${Math.min(100, (level.size / maxSize) * 60)}%`;
 
   return (
-    <li
+    <li>
+    <button
+      type="button"
       onClick={onClick}
+      aria-label={`Place ${side === "ask" ? "sell" : "buy"} limit at ${level.price.toFixed(precision)}, size ${level.size.toFixed(2)}`}
       title={`Click to place ${side === "ask" ? "Sell" : "Buy"} Limit at ${level.price.toFixed(precision)}`}
-      className="group relative flex cursor-pointer select-none items-center justify-between px-3 py-0.5 transition-colors hover:bg-white/[0.06]"
+      className="group relative flex min-h-6 w-full cursor-pointer select-none items-center justify-between px-3 py-0.5 text-left transition-colors hover:bg-white/[0.06]"
     >
       {/* Cumulative depth background gradient bar */}
       <span
@@ -196,9 +232,9 @@ function Row({
         aria-hidden
       />
 
-      <span className={`relative font-semibold flex items-center gap-1.5 ${side === "ask" ? "text-ev-down" : "text-ev-up"}`}>
+      <span className={`relative font-semibold flex items-center gap-1.5 ${side === "ask" ? "text-ev-down-text" : "text-ev-up-text"}`}>
         <span>{level.price.toFixed(precision)}</span>
-        <span className="hidden rounded border border-ev-line bg-ev-panel px-1 py-px text-[10px] font-medium text-ev-muted group-hover:inline-block">
+        <span className="hidden rounded border border-ev-line bg-ev-panel px-1 py-px text-[10px] font-medium text-ev-muted group-hover:inline-block group-focus-visible:inline-block">
           + {side === "ask" ? "Sell" : "Buy"}
         </span>
       </span>
@@ -206,6 +242,7 @@ function Row({
         <span className="text-ev-strong font-medium">{level.size.toFixed(2)}</span>
         <span className="text-micro text-ev-faint w-12">{level.cum.toFixed(2)}</span>
       </div>
+    </button>
     </li>
   );
 }

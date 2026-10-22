@@ -155,10 +155,10 @@ export function JournalPanel({ onClose }: Props) {
         </nav>
 
         <dl className="flex items-center gap-3 num">
-          <Fact label="Net" value={money(stats.netPnl)} tone={stats.netPnl >= 0 ? "text-ev-up" : "text-ev-down"} />
+          <Fact label="Net" value={money(stats.netPnl)} tone={stats.netPnl >= 0 ? "text-ev-up-text" : "text-ev-down-text"} />
           <Fact label="Trades" value={String(stats.trades)} />
           <Fact label="Win rate" value={stats.trades === 0 ? "—" : `${Math.round(stats.winRate * 100)}%`} />
-          <Fact label="Max DD" value={money(stats.maxDrawdown)} tone="text-ev-down" />
+          <Fact label="Max DD" value={money(stats.maxDrawdown)} tone="text-ev-down-text" />
         </dl>
 
         <div className="ml-auto flex items-center gap-2">
@@ -166,7 +166,7 @@ export function JournalPanel({ onClose }: Props) {
             Import history
           </button>
           {lastImport !== null && (
-            <span className="text-dense text-ev-up">
+            <span className="text-dense text-ev-up-text">
               {lastImport === 0 ? "nothing new" : `+${lastImport}`}
             </span>
           )}
@@ -298,7 +298,7 @@ function TradeRow({ entry, onDelete }: { entry: JournalEntry; onDelete: () => vo
     <div className="flex items-center gap-3 text-dense">
       <span className="w-32 shrink-0 text-ev-muted">{clock(entry.exitTime ?? entry.entryTime)}</span>
       <span className="w-20 shrink-0 font-medium text-ev-strong">{entry.symbol}</span>
-      <span className={entry.side === "long" ? "w-12 text-ev-up" : "w-12 text-ev-down"}>
+      <span className={entry.side === "long" ? "w-12 text-ev-up-text" : "w-12 text-ev-down-text"}>
         {entry.side.toUpperCase()}
       </span>
       <span className="w-16 shrink-0 num text-ev-text">{entry.qty}</span>
@@ -309,7 +309,7 @@ function TradeRow({ entry, onDelete }: { entry: JournalEntry; onDelete: () => vo
       {pnl === undefined ? (
         <span className="rounded border border-ev-dim px-1.5 py-0.5 text-dense text-ev-muted">open</span>
       ) : (
-        <span className={`num ${pnl >= 0 ? "text-ev-up" : "text-ev-down"}`}>
+        <span className={`num ${pnl >= 0 ? "text-ev-up-text" : "text-ev-down-text"}`}>
           {pnl >= 0 ? "+" : ""}
           {money(pnl)}
         </span>
@@ -320,7 +320,7 @@ function TradeRow({ entry, onDelete }: { entry: JournalEntry; onDelete: () => vo
         type="button"
         aria-label={`Delete trade ${entry.symbol}`}
         onClick={onDelete}
-        className="ml-auto flex size-6 items-center justify-center rounded text-ev-faint hover:bg-ev-raised hover:text-ev-down"
+        className="ml-auto flex size-6 items-center justify-center rounded text-ev-faint hover:bg-ev-raised hover:text-ev-down-text"
       >
         <Trash2 size={12} aria-hidden />
       </button>
@@ -358,7 +358,7 @@ function NoteRow({
         type="button"
         aria-label="Delete note"
         onClick={onDelete}
-        className="ml-auto flex size-6 items-center justify-center rounded text-ev-faint hover:bg-ev-raised hover:text-ev-down"
+        className="ml-auto flex size-6 items-center justify-center rounded text-ev-faint hover:bg-ev-raised hover:text-ev-down-text"
       >
         <Trash2 size={12} aria-hidden />
       </button>

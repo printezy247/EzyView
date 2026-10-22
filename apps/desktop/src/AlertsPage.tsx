@@ -164,7 +164,7 @@ function FragmentRow({ alert: a, closes, expanded, onToggle, onOpenSymbol, onDel
               e.stopPropagation();
               onDelete();
             }}
-            className="text-ev-down"
+            className="text-ev-down-text"
           >
             <Trash2 size={13} aria-hidden />
           </IconButton>

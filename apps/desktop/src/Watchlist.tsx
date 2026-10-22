@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { quoteOf, searchSymbols } from "./data";
 import { useWorkspace } from "./store";
 import type { WatchEntry } from "./store";
+import { sortWatch } from "./watchSort";
+import type { WatchSortField } from "./watchSort";
 
 interface Props {
   onOpenAlerts: () => void;
@@ -18,11 +20,14 @@ function WatchRow({
   onRemove: () => void;
 }) {
   const prevPriceRef = useRef<number | null>(item.price);
-  const [flash, setFlash] = useState<"up" | "down" | null>(null);
+  // `n` changes on every tick, so the CSS animation restarts (via key) and the
+  // timer is re-armed even when the price moves the same way twice in a row.
+  const [flash, setFlash] = useState<{ dir: "up" | "down"; n: number } | null>(null);
 
   useEffect(() => {
     if (prevPriceRef.current !== null && item.price !== null && item.price !== prevPriceRef.current) {
-      setFlash(item.price > prevPriceRef.current ? "up" : "down");
+      const dir = item.price > prevPriceRef.current ? "up" : "down";
+      setFlash((f) => ({ dir, n: (f?.n ?? 0) + 1 }));
     }
     prevPriceRef.current = item.price;
   }, [item.price]);
@@ -44,11 +49,14 @@ function WatchRow({
         <div className="flex items-baseline justify-between gap-2">
           <span className="truncate text-base font-medium text-ev-strong">{item.ticker}</span>
           <span
+            key={flash?.n ?? 0}
             className={`shrink-0 rounded px-1 text-base num text-ev-text transition-colors ${
-              flash === "up" ? "flash-up" : flash === "down" ? "flash-down" : ""
+              flash?.dir === "up" ? "flash-up" : flash?.dir === "down" ? "flash-down" : ""
             }`}
           >
+            {flash && <span aria-hidden>{flash.dir === "up" ? "▲ " : "▼ "}</span>}
             {item.price === null ? "—" : item.price.toFixed(item.precision)}
+            {flash && <span className="sr-only">{flash.dir === "up" ? " rising" : " falling"}</span>}
           </span>
         </div>
         <div className="flex items-baseline justify-between gap-2">
@@ -58,8 +66,8 @@ function WatchRow({
               item.changePct === null
                 ? "text-dense text-ev-faint"
                 : item.changePct >= 0
-                  ? "text-dense num text-ev-up"
-                  : "text-dense num text-ev-down"
+                  ? "text-dense num text-ev-up-text"
+                  : "text-dense num text-ev-down-text"
             }
           >
             {item.changePct === null ? "—" : `${item.changePct >= 0 ? "+" : ""}${item.changePct.toFixed(2)}%`}
@@ -70,11 +78,39 @@ function WatchRow({
         type="button"
         title={`Remove ${item.ticker}`}
         onClick={onRemove}
-        className="text-ev-line opacity-0 transition-opacity hover:text-ev-down focus-visible:opacity-100 focus-visible:text-ev-down group-hover:opacity-100 group-focus-within:opacity-100"
+        className="text-ev-line opacity-0 transition-opacity hover:text-ev-down-text focus-visible:opacity-100 focus-visible:text-ev-down-text group-hover:opacity-100 group-focus-within:opacity-100"
       >
         <Trash2 size={12} aria-hidden />
       </button>
     </li>
+  );
+}
+
+function SortHead({
+  label,
+  field,
+  current,
+  desc,
+  onSort,
+}: {
+  label: string;
+  field: WatchSortField;
+  current: WatchSortField;
+  desc: boolean;
+  onSort: () => void;
+}) {
+  const active = current === field;
+  return (
+    <div role="columnheader" aria-sort={active ? (desc ? "descending" : "ascending") : "none"}>
+      <button
+        type="button"
+        onClick={onSort}
+        className="min-h-6 min-w-6 cursor-pointer px-1 uppercase hover:text-ev-strong"
+      >
+        {label}
+        <span aria-hidden>{active ? (desc ? " ↓" : " ↑") : ""}</span>
+      </button>
+    </div>
   );
 }
 
@@ -95,20 +131,11 @@ export function Watchlist({ onOpenAlerts }: Props) {
 
   const [adding, setAdding] = useState(false);
   const [query, setQuery] = useState("");
-  const [sortField, setSortField] = useState<"none" | "symbol" | "price" | "change">("none");
+  const [sortField, setSortField] = useState<WatchSortField>("none");
   const [sortDesc, setSortDesc] = useState(false);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const sortedWatchlist = useMemo(() => {
-    if (sortField === "none") return watchlist;
-    return [...watchlist].sort((a, b) => {
-      let diff = 0;
-      if (sortField === "symbol") diff = a.ticker.localeCompare(b.ticker);
-      else if (sortField === "price") diff = (a.price ?? 0) - (b.price ?? 0);
-      else if (sortField === "change") diff = (a.changePct ?? 0) - (b.changePct ?? 0);
-      return sortDesc ? -diff : diff;
-    });
-  }, [watchlist, sortField, sortDesc]);
+  const sortedWatchlist = useMemo(() => sortWatch(watchlist, sortField, sortDesc), [watchlist, sortField, sortDesc]);
 
   useEffect(() => {
     if (!adding) return;
@@ -144,6 +171,14 @@ export function Watchlist({ onOpenAlerts }: Props) {
       clearInterval(t);
     };
   }, [symbolKey, isReplay, updateWatchPrice]);
+
+  const toggleSort = (field: Exclude<WatchSortField, "none">, firstDesc: boolean) => {
+    if (sortField === field) setSortDesc((d) => !d);
+    else {
+      setSortField(field);
+      setSortDesc(firstDesc);
+    }
+  };
 
   const addFromQuery = async (targetQuery = query) => {
     const trimmed = targetQuery.trim();
@@ -183,13 +218,15 @@ export function Watchlist({ onOpenAlerts }: Props) {
             type="button"
             title="Create alert for the active symbol"
             onClick={onOpenAlerts}
-            className="rounded px-1.5 py-0.5 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+            className="min-h-6 rounded px-1.5 py-0.5 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
           >
             Alerts
           </button>
           <button
             type="button"
             title="Add symbol"
+            aria-label="Add symbol"
+            aria-expanded={adding}
             onClick={() => setAdding((v) => !v)}
             className="flex size-6 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
           >
@@ -216,47 +253,16 @@ export function Watchlist({ onOpenAlerts }: Props) {
       )}
 
       {watchlist.length > 0 && (
-        <div className="flex items-center justify-between border-b border-ev-raised bg-ev-panel px-3 py-1 text-micro font-semibold uppercase tracking-wider text-ev-faint">
-          <button
-            type="button"
-            onClick={() => {
-              if (sortField === "symbol") setSortDesc((d) => !d);
-              else {
-                setSortField("symbol");
-                setSortDesc(false);
-              }
-            }}
-            className="cursor-pointer hover:text-ev-strong"
+        <div role="table" aria-label="Watchlist sort">
+          <div
+            role="row"
+            className="flex items-center justify-between border-b border-ev-raised bg-ev-panel px-3 py-1 text-micro font-semibold uppercase tracking-wider text-ev-faint"
           >
-            Symbol {sortField === "symbol" ? (sortDesc ? "↓" : "↑") : ""}
-          </button>
-          <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() => {
-                if (sortField === "price") setSortDesc((d) => !d);
-                else {
-                  setSortField("price");
-                  setSortDesc(true);
-                }
-              }}
-              className="cursor-pointer hover:text-ev-strong"
-            >
-              Last {sortField === "price" ? (sortDesc ? "↓" : "↑") : ""}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (sortField === "change") setSortDesc((d) => !d);
-                else {
-                  setSortField("change");
-                  setSortDesc(true);
-                }
-              }}
-              className="cursor-pointer hover:text-ev-strong"
-            >
-              Chg% {sortField === "change" ? (sortDesc ? "↓" : "↑") : ""}
-            </button>
+            <SortHead label="Symbol" field="symbol" current={sortField} desc={sortDesc} onSort={() => toggleSort("symbol", false)} />
+            <div className="flex items-center gap-4">
+              <SortHead label="Last" field="price" current={sortField} desc={sortDesc} onSort={() => toggleSort("price", true)} />
+              <SortHead label="Chg%" field="change" current={sortField} desc={sortDesc} onSort={() => toggleSort("change", true)} />
+            </div>
           </div>
         </div>
       )}
