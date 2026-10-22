@@ -678,3 +678,89 @@ stay deferred, as they were before the redesign.
 - The currency converter is a labelled snapshot until an FX provider slot
   exists in `FundamentalsSources`.
 - The Time & Sales feed is the quote poll, one print per tick. It says so.
+
+## 24. Audit remediation pass (v0.2.7)
+
+A full code review of the app (stability, performance, security, reliability,
+UI/UX) ran against `main` and produced four phases of fixes, each on its own
+branch and merged with `--no-ff`.
+
+### Phase 1 — stability and money safety
+
+- An empty limit/stop field is not a price. It reached the engine as `0`,
+  which is finite, so the paper engine filled a sell limit against any quote
+  and opened a position at `0`. Empty is now invalid, prices must be
+  positive, and the ticket says what is wrong.
+- Stop loss and take profit are parsed and checked before they reach the
+  engine, so a typo cannot put `NaN` on the price axis.
+- The real-account acknowledgement is re-earned for every order; the confirm
+  dialog stays mounted, so the tick used to stay set and unlock every later
+  real-money order.
+- One action at a time at the safety gate: parking a second action used to
+  overwrite the first, so a reverse order lost its close leg and doubled the
+  position instead of reversing it.
+- The workspace blob is written through a debounced, quota-safe storage, and a
+  truncated payload is parked as `.corrupt` instead of wiping every layout,
+  drawing and script on the next write.
+- A slower account refresh can no longer overwrite a newer snapshot; the paper
+  account marks against the feed that is on; symbol search cancels properly;
+  Renko bricks are capped; MT5 leverage stays a multiplier; the demo feed's
+  ticker is unsubscribed; a detached window reads the real workspace.
+
+### Phase 2 — security
+
+- The Pine sandbox blocked `window` but not `self`, and a member call emitted
+  its namespace verbatim: a shared script could compile `self.fetch(...)` and
+  reach the host realm. The blocklist now covers every alias of the window,
+  member calls are checked too, and the evaluator shadows the host globals.
+- The SQL and shell plugins are gone: the webview could read or create any
+  file on disk through the SQL plugin's connection string. The opener is
+  scoped to the project URL.
+- The production CSP no longer trusts the dev server. The bridge and the MCP
+  client refuse to send a broker password or a key to anything but this
+  machine. The bridge's CORS no longer answers any local port, and its token
+  works end to end (the app sends it and keeps it in the keyring).
+- The journal, the workspace snapshot and the crash log are private to the
+  user, the log input is bounded, and a CSV export can no longer smuggle a
+  formula into Excel.
+
+### Phase 3 — performance
+
+- The crosshair writes state once per frame instead of twice per pointer
+  event, and indicators are cached against the bar count, the last bar and
+  the parameters instead of being recomputed over the whole history every
+  second.
+- The workspace is serialised inside a debounce, so a drawing drag no longer
+  rewrites `localStorage` on every pointer move.
+- The journal, the tape table, the clock formatters, the dock tabs, the
+  heatmap lookup and the history cache all stopped doing avoidable work.
+
+### Phase 4 — UI, accessibility and release
+
+- The toolbar is a scroll container, so every dropdown inside it was clipped
+  to the 36px strip: the menus were effectively invisible. They now render in
+  a portal, positioned under their trigger.
+- The command palette keeps the focus, traps `Tab`, and sits above dialogs.
+- The lazy pages show a status line instead of a blank area; a failed history
+  or heatmap load says what went wrong instead of spinning for ever.
+- The watchlist's delete button is visible to the keyboard, the market clock
+  states its sessions in words, and the screener, alerts and object-tree rows
+  can be reached and activated by keyboard.
+- The order side, the order type, the 1-click trade box and the dock tabs
+  report their state instead of only showing colour; the dock tabs answer the
+  arrow keys and their panel is a real `tabpanel`.
+- Destructive actions ask first. The icon buttons are 24px, the dialogs fit a
+  narrow window, and the journal calendar and heatmap use the theme's profit
+  and loss colours.
+
+### Still open (deliberately)
+
+- Pine still runs through `new Function`, so the CSP keeps `unsafe-eval`.
+  Moving the evaluator into a Worker is the real fix and is a rewrite.
+- The MCP server is stdio-only, so it is reachable by local processes only.
+  Its journal tools could require `EZYVIEW_MCP_TOKEN`; that would break the
+  current setup, so it stays optional and documented.
+- The ten panels that poll a quote still poll on their own schedules; a single
+  shared per-symbol poller is the next step.
+- `highest`/`lowest` and the other O(n x period) indicator helpers are still
+  linear per bar, and the marker layers are still rebuilt on every tick.
