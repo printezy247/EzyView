@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeStats } from "./stats";
+import { computeMaeMfe, computeStats } from "./stats";
 import type { JournalEntry } from "./model";
 
 const trade = (over: Partial<JournalEntry> = {}): JournalEntry => ({
@@ -195,5 +195,34 @@ describe("computeStats", () => {
   it("omits sessions that had no trades", () => {
     const stats = computeStats([trade({ entryTime: atHour(3), pnl: 10 })]);
     expect(stats.byTimeOfDay).toEqual([{ period: "Asia", trades: 1, netPnl: 10, winRate: 1 }]);
+  });
+
+  it("computes MAE and MFE for long and short trades", () => {
+    const longExcursion = computeMaeMfe({
+      side: "long",
+      entryPrice: 100,
+      lowestPrice: 96,
+      highestPrice: 110,
+    });
+    expect(longExcursion.mae).toBe(4);
+    expect(longExcursion.mfe).toBe(10);
+
+    const shortExcursion = computeMaeMfe({
+      side: "short",
+      entryPrice: 100,
+      lowestPrice: 90,
+      highestPrice: 103,
+    });
+    expect(shortExcursion.mae).toBe(3);
+    expect(shortExcursion.mfe).toBe(10);
+  });
+
+  it("calculates average MAE and MFE in journal stats", () => {
+    const stats = computeStats([
+      trade({ pnl: 10, mae: 2, mfe: 12 }),
+      trade({ pnl: -5, mae: 6, mfe: 2 }),
+    ]);
+    expect(stats.avgMae).toBe(4);
+    expect(stats.avgMfe).toBe(7);
   });
 });
