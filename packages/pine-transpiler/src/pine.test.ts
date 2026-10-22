@@ -447,9 +447,28 @@ describe("sandbox (Phase A)", () => {
       "globalThis", "window", "document", "fetch", "XMLHttpRequest", "WebSocket",
       "Function", "eval", "constructor", "process", "require", "module", "exports",
       "setTimeout", "setInterval", "Promise", "Reflect", "Proxy",
+      // The window's other names: any one of them is the same object.
+      // `location` is not here: it is a Pine namespace (location.abovebar).
+      "self", "top", "parent", "navigator", "localStorage",
+      "sessionStorage", "crypto", "Worker", "atob", "btoa", "caches", "history",
+      "screen", "WebAssembly", "importScripts", "EventSource", "Notification",
     ]) {
       expect(() => transpile(name)).toThrow(PineUnsupportedError);
     }
+  });
+
+  it("rejects a script that reaches the host through self", () => {
+    // `self` is `window` inside a webview, so this used to compile and gave a
+    // shared script the whole host realm.
+    expect(() => transpile('plot(self.fetch("http://127.0.0.1:8765/order"))')).toThrow(PineUnsupportedError);
+    expect(() => transpile("x = self.document")).toThrow(PineUnsupportedError);
+  });
+
+  it("rejects a member call that walks back into the host", () => {
+    // A member call emits its namespace verbatim, so it needs its own check.
+    expect(() => transpile('x.constructor("return 1")')).toThrow(PineUnsupportedError);
+    expect(() => transpile("x = window.location.href")).toThrow(PineUnsupportedError);
+    expect(() => transpile("x = navigator.sendBeacon")).toThrow(PineUnsupportedError);
   });
 
   it("rejects dangerous member access", () => {

@@ -31,6 +31,18 @@
         "img-src": "'self' data: blob:",
         "font-src": "'self' data:",
         "worker-src": "'self' blob:",
+        "connect-src": "'self' ipc: http://ipc.localhost https://data-api.binance.vision https://api.binance.com https://api.kraken.com https://finnhub.io https://www.alphavantage.co https://api.github.com http://127.0.0.1:8765 http://127.0.0.1:22346",
+        "object-src": "'none'",
+        "base-uri": "'self'",
+        "frame-ancestors": "'none'"
+      },
+      "devCsp": {
+        "default-src": "'self'",
+        "script-src": "'self' 'unsafe-eval'",
+        "style-src": "'self' 'unsafe-inline'",
+        "img-src": "'self' data: blob:",
+        "font-src": "'self' data:",
+        "worker-src": "'self' blob:",
         "connect-src": "'self' ipc: http://ipc.localhost https://data-api.binance.vision https://api.binance.com https://api.kraken.com https://finnhub.io https://www.alphavantage.co https://api.github.com http://127.0.0.1:8765 http://127.0.0.1:22346 http://127.0.0.1:1420 ws://127.0.0.1:1420",
         "object-src": "'none'",
         "base-uri": "'self'",

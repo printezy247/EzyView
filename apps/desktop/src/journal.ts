@@ -100,13 +100,56 @@ function normalizeTags(tags: readonly string[] | undefined): string[] | undefine
   return out.length > 0 ? out : undefined;
 }
 
+/**
+ * Writes are debounced: the journal holds PNG screenshots as data URLs, so
+ * serialising it on every checkbox tick meant copying megabytes of base64
+ * on the main thread.
+ */
+let journalTimer: ReturnType<typeof setTimeout> | null = null;
+let queuedState: Persisted | null = null;
+
 function writeState(state: Persisted): void {
   if (typeof localStorage === "undefined") return;
+  queuedState = state;
+  if (journalTimer) clearTimeout(journalTimer);
+  journalTimer = setTimeout(() => {
+    journalTimer = null;
+    const next = queuedState;
+    queuedState = null;
+    if (!next) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // Quota: the last screenshots stay for this session only.
+    }
+  }, 400);
+}
+
+/** Write the pending journal out right now (used on quit and by the tests). */
+export function flushJournal(): void {
+  if (journalTimer) {
+    clearTimeout(journalTimer);
+    journalTimer = null;
+  }
+  const next = queuedState;
+  queuedState = null;
+  if (!next) return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   } catch {
     // Quota: the last screenshots stay for this session only.
   }
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("pagehide", () => {
+    if (!queuedState) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(queuedState));
+    } catch {
+      // ignore
+    }
+  });
 }
 
 const uid = (): string => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);

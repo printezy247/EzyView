@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
+import { persist } from "zustand/middleware";
+import type { PersistStorage, StorageValue } from "zustand/middleware";
 import type { Candle } from "@ezyview/data-adapters";
 import { evaluateAlert, pushHistory } from "@ezyview/data-adapters";
 import type { AlertCondition, AlertFrequency, AlertHistory, PriceAlert } from "@ezyview/data-adapters";
@@ -81,11 +82,19 @@ const LAYOUT_COLORS = ["#d91400", "#0ea600", "#f2a93b", "#4a90e2", "#9c27b0", "#
 /** How many superseded sources a script keeps in its version list. */
 const MAX_PINE_VERSIONS = 20;
 
-/** Maximum undo/redo drawing states kept in memory per layout. */
+/**
+ * Maximum undo/redo drawing states kept in memory per layout.
+ */
 const MAX_DRAWING_UNDO = 30;
 
+/**
+ * Drawings are edited immutably - every change makes a new drawing object and
+ * a new array - so a shallow copy is a complete snapshot. The deep clone this
+ * used to make copied every drawing on every single edit and kept 30 copies
+ * alive.
+ */
 function pushUndo(stack: Drawing[][], item: Drawing[]): Drawing[][] {
-  const next = [...stack, structuredClone(item)];
+  const next = [...stack, item.slice()];
   return next.length > MAX_DRAWING_UNDO ? next.slice(-MAX_DRAWING_UNDO) : next;
 }
 
@@ -309,45 +318,6 @@ function restoreAppTheme(raw: unknown): AppTheme {
 
 const initial = [defaultLayout(0)];
 
-/** Detached chart windows share this origin's storage but must never write the workspace. */
-const memoryStorage = (): Storage => {
-  const data = new Map<string, string>();
-  return {
-    get length() {
-      return data.size;
-    },
-    clear: () => data.clear(),
-    getItem: (k) => data.get(k) ?? null,
-    key: (i) => [...data.keys()][i] ?? null,
-    removeItem: (k) => void data.delete(k),
-    setItem: (k, v) => void data.set(k, v),
-  };
-};
-
-/**
- * A detached window reads the real workspace but keeps its writes to itself,
- * so two windows never fight over one blob.
- */
-const detachedStorage = (): Storage => {
-  const local = new Map<string, string>();
-  return {
-    get length() {
-      return localStorage.length;
-    },
-    clear: () => local.clear(),
-    getItem: (k) => {
-      try {
-        return localStorage.getItem(k) ?? local.get(k) ?? null;
-      } catch {
-        return local.get(k) ?? null;
-      }
-    },
-    key: (i) => localStorage.key(i),
-    removeItem: (k) => void local.delete(k),
-    setItem: (k, v) => void local.set(k, v),
-  };
-};
-
 /** Write one workspace blob, surviving a full disk. */
 function writeWorkspace(name: string, value: string): void {
   try {
@@ -363,77 +333,87 @@ function writeWorkspace(name: string, value: string): void {
   }
 }
 
+/** The slice of the workspace that reaches localStorage. */
+type PersistedState = PersistedWorkspace & {
+  pineScripts: Record<string, PineScriptRecord>;
+  eventOptions: EventOptions;
+  chartTemplates: ChartTemplate[];
+  appTheme: AppTheme;
+  density: Density;
+  alerts: PriceAlert[];
+  alertHistory: AlertHistory;
+  watchlist: WatchEntry[];
+};
+
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+let queued: { name: string; value: StorageValue<PersistedState> } | null = null;
+
+function flushWorkspace(): void {
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
+  if (!queued) return;
+  const { name, value } = queued;
+  queued = null;
+  try {
+    writeWorkspace(name, JSON.stringify(value));
+  } catch {
+    // A value that cannot be serialised must not take the app down.
+  }
+}
+
+if (typeof window !== "undefined") window.addEventListener("pagehide", flushWorkspace);
+
 /**
  * Workspace persistence that survives the two ways localStorage hurts:
  * a truncated payload (which used to wipe every layout, drawing and script)
  * and a full disk (which used to throw out of the store's `set`).
  *
- * Writes are also debounced: a drawing drag updates the store on every
- * pointer move, and serialising the whole workspace each time was the
- * app's biggest source of jank.
+ * The state is serialised inside the debounce, not before it: a drawing
+ * drag updates the store on every pointer move, and serialising the whole
+ * workspace each time was the app's biggest source of jank.
  */
-const workspaceStorage = createJSONStorage(() => {
-  if (typeof localStorage === "undefined") return memoryStorage();
-  if (readDetached(globalThis.location?.search ?? "")) return detachedStorage();
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  let queued: { name: string; value: string } | null = null;
-
-  const flush = () => {
-    if (timer) {
-      clearTimeout(timer);
-      timer = null;
+const workspaceStorage: PersistStorage<PersistedState> = {
+  getItem: (name) => {
+    if (typeof localStorage === "undefined") return null;
+    let raw: string | null = null;
+    try {
+      raw = localStorage.getItem(name);
+    } catch {
+      return null;
     }
-    if (queued) {
-      const { name, value } = queued;
-      queued = null;
-      writeWorkspace(name, value);
-    }
-  };
-
-  if (typeof window !== "undefined") window.addEventListener("pagehide", flush);
-
-  return {
-    get length() {
-      return localStorage.length;
-    },
-    clear: () => localStorage.clear(),
-    key: (i: number) => localStorage.key(i),
-    removeItem: (k) => {
+    if (raw === null) return null;
+    try {
+      const parsed = JSON.parse(raw) as StorageValue<PersistedState>;
+      if (!parsed || typeof parsed !== "object" || !parsed.state) return null;
+      return parsed;
+    } catch {
+      // Corrupt payload: keep a copy for support and start from defaults
+      // instead of letting the next write destroy the good data.
       try {
-        localStorage.removeItem(k);
+        localStorage.setItem(`${name}.corrupt`, raw);
       } catch {
         // ignore
       }
-    },
-    getItem: (k) => {
-      let raw: string | null = null;
-      try {
-        raw = localStorage.getItem(k);
-      } catch {
-        return null;
-      }
-      if (raw === null) return null;
-      try {
-        JSON.parse(raw);
-      } catch {
-        // Corrupt payload: keep a copy for support and start from defaults
-        // instead of letting the next write destroy the good data.
-        try {
-          localStorage.setItem(`${k}.corrupt`, raw);
-        } catch {
-          // ignore
-        }
-        return null;
-      }
-      return raw;
-    },
-    setItem: (k, v) => {
-      queued = { name: k, value: v };
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(flush, 400);
-    },
-  };
-});
+      return null;
+    }
+  },
+  setItem: (name, value) => {
+    if (typeof localStorage === "undefined") return;
+    if (readDetached(globalThis.location?.search ?? "")) return; // detached windows never write
+    queued = { name, value };
+    if (persistTimer) clearTimeout(persistTimer);
+    persistTimer = setTimeout(flushWorkspace, 400);
+  },
+  removeItem: (name) => {
+    try {
+      localStorage.removeItem(name);
+    } catch {
+      // ignore
+    }
+  },
+};
 
 export const useWorkspace = create<WorkspaceStore>()(
   persist(
@@ -607,7 +587,7 @@ export const useWorkspace = create<WorkspaceStore>()(
           const idx = layout.activeChart;
           const current = layout.charts[idx]?.drawings ?? [];
           const previous = s.drawingUndo[s.drawingUndo.length - 1]!;
-          const next = editActive(s, (l) => updateChart(l, idx, (c) => ({ ...c, drawings: structuredClone(previous) })));
+          const next = editActive(s, (l) => updateChart(l, idx, (c) => ({ ...c, drawings: previous.slice() })));
           return { ...next, drawingUndo: s.drawingUndo.slice(0, -1), drawingRedo: pushUndo(s.drawingRedo, current) };
         }),
 
@@ -618,7 +598,7 @@ export const useWorkspace = create<WorkspaceStore>()(
           const idx = layout.activeChart;
           const current = layout.charts[idx]?.drawings ?? [];
           const nextArr = s.drawingRedo[s.drawingRedo.length - 1]!;
-          const next = editActive(s, (l) => updateChart(l, idx, (c) => ({ ...c, drawings: structuredClone(nextArr) })));
+          const next = editActive(s, (l) => updateChart(l, idx, (c) => ({ ...c, drawings: nextArr.slice() })));
           return { ...next, drawingRedo: s.drawingRedo.slice(0, -1), drawingUndo: pushUndo(s.drawingUndo, current) };
         }),
 
@@ -916,16 +896,7 @@ export const useWorkspace = create<WorkspaceStore>()(
       name: "ezyview.workspace",
       version: 1,
       storage: workspaceStorage,
-      partialize: (s): PersistedWorkspace & {
-        pineScripts: Record<string, PineScriptRecord>;
-        eventOptions: EventOptions;
-        chartTemplates: ChartTemplate[];
-        appTheme: AppTheme;
-        density: Density;
-        alerts: PriceAlert[];
-        alertHistory: AlertHistory;
-        watchlist: WatchEntry[];
-      } => ({
+      partialize: (s): PersistedState => ({
         layouts: s.layouts,
         appTheme: s.appTheme,
         density: s.density,

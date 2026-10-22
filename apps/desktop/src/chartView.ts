@@ -48,18 +48,38 @@ export function parseGoToDate(value: string): number | null {
   return t / 1000;
 }
 
-/** `13:26:55 UTC+8`; an unknown zone falls back to the machine's own. */
-export function formatClock(nowMs: number, timeZone?: string): string {
-  const build = (zone: string | undefined) => {
-    const time = new Intl.DateTimeFormat("en-GB", {
+/**
+ * `13:26:55 UTC+8`; an unknown zone falls back to the machine's own.
+ *
+ * The formatters are cached per zone: building an `Intl.DateTimeFormat` is
+ * expensive, and this runs once a second.
+ */
+const clockFormatters = new Map<string, { time: Intl.DateTimeFormat; label: Intl.DateTimeFormat }>();
+
+function formattersFor(zone: string | undefined): { time: Intl.DateTimeFormat; label: Intl.DateTimeFormat } {
+  const key = zone ?? "";
+  const cached = clockFormatters.get(key);
+  if (cached) return cached;
+  const built = {
+    time: new Intl.DateTimeFormat("en-GB", {
       timeZone: zone,
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
       hourCycle: "h23",
-    }).format(nowMs);
+    }),
+    label: new Intl.DateTimeFormat("en-GB", { timeZone: zone, timeZoneName: "shortOffset" }),
+  };
+  clockFormatters.set(key, built);
+  return built;
+}
+
+export function formatClock(nowMs: number, timeZone?: string): string {
+  const build = (zone: string | undefined) => {
+    const { time: timeFormat, label: labelFormat } = formattersFor(zone);
+    const time = timeFormat.format(nowMs);
     const label =
-      new Intl.DateTimeFormat("en-GB", { timeZone: zone, timeZoneName: "shortOffset" })
+      labelFormat
         .formatToParts(nowMs)
         .find((p) => p.type === "timeZoneName")?.value ?? "";
     return `${time} ${label.replace("GMT", "UTC").replace(/^UTC\+0$/, "UTC")}`.trim();

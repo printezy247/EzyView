@@ -271,7 +271,6 @@ class Emitter {
       case "Identifier":
         return this.safeName(node.name, node.line, node.col);
       case "MemberExpr": {
-        const DENIED_MEMBERS = new Set(["constructor", "__proto__", "prototype", "then", "call", "apply", "bind", "toString", "valueOf"]);
         if (DENIED_MEMBERS.has(node.property)) {
           throw new PineUnsupportedError(`member \`${node.property}\` is not allowed`, node.line, node.col);
         }
@@ -341,8 +340,7 @@ class Emitter {
   }
 
   private call(node: { callee: Node; args: Node[]; line: number; col: number }): string {
-    const callee = node.callee;
-    // Keyword arguments (`qty=10`) become one trailing object so the runtime
+    const callee = node.callee;    // Keyword arguments (`qty=10`) become one trailing object so the runtime
     // helpers can pick them off by name instead of by position.
     const positional = node.args.filter((a) => !(a.kind === "AssignExpr" && a.operator === "="));
     const kwargs = node.args.filter((a): a is AssignExpr =>
@@ -367,6 +365,14 @@ class Emitter {
     if (callee.kind === "MemberExpr") {
       const obj = callee.object;
       const ns = obj.kind === "Identifier" ? obj.name : "";
+      // A member call emits its namespace verbatim, so it has to be checked
+      // here: `self.fetch(...)` and `x.constructor(...)` both used to compile.
+      if (ns && DANGEROUS_GLOBALS.has(ns)) {
+        throw new PineUnsupportedError(`identifier \`${ns}\` is not allowed`, callee.line, callee.col);
+      }
+      if (DENIED_MEMBERS.has(callee.property)) {
+        throw new PineUnsupportedError(`member \`${callee.property}\` is not allowed`, callee.line, callee.col);
+      }
 
       // Plotting and order functions are script-level sinks, so they bypass the
       // `ta`/`math` namespaces and call the runtime helpers directly. The bar
@@ -468,13 +474,54 @@ const BUILTIN_NAMES = new Set([
   "orders",
 ]);
 
+/** Properties that lead back to the host realm or to a function's guts. */
+const DENIED_MEMBERS = new Set([
+  "constructor",
+  "__proto__",
+  "prototype",
+  "then",
+  "call",
+  "apply",
+  "bind",
+  "toString",
+  "valueOf",
+]);
+
+/**
+ * Host globals a script must never reach.
+ *
+ * The list is deliberately wide: `self` and `top` are the same object as
+ * `window` in a webview, so blocking only `window` left a one-word way out of
+ * the sandbox and into the host realm.
+ */
 const DANGEROUS_GLOBALS = new Set([
   "globalThis",
   "window",
+  "self",
+  "top",
+  "parent",
+  "frames",
   "document",
+  "navigator",
+  "history",
+  "screen",
+  "localStorage",
+  "sessionStorage",
+  "indexedDB",
+  "caches",
+  "crypto",
   "fetch",
   "XMLHttpRequest",
   "WebSocket",
+  "EventSource",
+  "Worker",
+  "SharedWorker",
+  "ServiceWorker",
+  "Notification",
+  "importScripts",
+  "WebAssembly",
+  "atob",
+  "btoa",
   "Function",
   "eval",
   "constructor",
@@ -484,6 +531,14 @@ const DANGEROUS_GLOBALS = new Set([
   "exports",
   "setTimeout",
   "setInterval",
+  "setImmediate",
+  "queueMicrotask",
+  "requestAnimationFrame",
+  "cancelAnimationFrame",
+  "requestIdleCallback",
+  "postMessage",
+  "structuredClone",
+  "performance",
   "Promise",
   "Reflect",
   "Proxy",

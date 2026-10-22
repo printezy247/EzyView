@@ -34,7 +34,13 @@ const DEFAULT_PROTOCOL = "2025-06-18";
 const NOTIFICATIONS = "notifications/initialized";
 const REQUEST_TIMEOUT_MS = 10_000;
 
-function isLoopbackUrl(rawUrl: string): boolean {
+/**
+ * The only hosts that may receive a broker credential or an API key.
+ *
+ * The bridge and the terminal's MCP server both run on this machine, so a
+ * remote host means a typo - or a hostile page asking for the password.
+ */
+export function isLoopbackUrl(rawUrl: string): boolean {
   try {
     const parsed = new URL(rawUrl);
     return parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost" || parsed.hostname === "::1";
@@ -132,8 +138,8 @@ export class McpClient {
 
   private async request(message: JsonRpcMessage): Promise<JsonRpcMessage> {
     const url = this.cfg.url;
-    if (this.cfg.key && url.startsWith("http://") && !isLoopbackUrl(url)) {
-      throw new McpError("Refusing to send Bearer token over cleartext HTTP to a non-localhost host. Use https://.");
+    if (this.cfg.key && !isLoopbackUrl(url)) {
+      throw new McpError("Refusing to send the MT5 key to a non-local host. The built-in MCP server runs on this machine.");
     }
     const headers: Record<string, string> = {
       "content-type": "application/json",

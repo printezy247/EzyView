@@ -24,7 +24,7 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 import type { Candle, Impact } from "@ezyview/data-adapters";
-import type { IndicatorDef, SeriesValue } from "@ezyview/indicators";
+import type { IndicatorDef, SeriesResult, SeriesValue } from "@ezyview/indicators";
 import type { Drawing, ScreenPoint } from "@ezyview/drawing-tools";
 import { BgBandsPrimitive } from "./bands.js";
 import { FundamentalLinesPrimitive, type FundamentalLine } from "./fundamentalLines.js";
@@ -623,6 +623,8 @@ export class EzyChart {
   }
 
   private currentInstances: IndicatorInstance[] = [];
+  /** Cached indicator results, keyed by instance. */
+  private indicatorCache = new Map<string, { key: string; values: SeriesResult }>();
 
   /**
    * Replace every Pine output on the chart.
@@ -785,8 +787,21 @@ export class EzyChart {
     if (!overlay) this.chart.panes()[paneIndex]?.setHeight(PANE_HEIGHT);
   }
 
-  private renderIndicator(inst: IndicatorInstance, mode: "create" | "refresh"): void {
-    const color = colorAt(inst.colorIndex);
+  /**
+   * The indicator's values, recomputed only when they can have changed.
+   *
+   * The live tick calls `setData` every second, and a full recompute over
+   * the whole history is O(n) per indicator - Ichimoku alone runs six
+   * O(n * period) helpers. The result is cached against the bar count, the
+   * last bar's time and the parameters, so a tick that only moves the last
+   * bar still recomputes (the values did change) but a re-render with the
+   * same data does not.
+   */
+  private indicatorValues(inst: IndicatorInstance): SeriesResult {
+    const last = this.data.at(-1);
+    const key = `${inst.uid}|${this.data.length}|${last?.time ?? 0}|${last?.close ?? 0}|${JSON.stringify(inst.params)}`;
+    const cached = this.indicatorCache.get(inst.uid);
+    if (cached && cached.key === key) return cached.values;
     const values = inst.def.compute(
       {
         open: this.data.map((c) => c.open),
@@ -797,6 +812,13 @@ export class EzyChart {
       },
       inst.params as Record<string, number | boolean>,
     );
+    this.indicatorCache.set(inst.uid, { key, values });
+    return values;
+  }
+
+  private renderIndicator(inst: IndicatorInstance, mode: "create" | "refresh"): void {
+    const color = colorAt(inst.colorIndex);
+    const values = this.indicatorValues(inst);
 
     const overlay = inst.def.pane === "overlay";
     const specs: { values: SeriesValue[]; color: string; hist: boolean }[] = [

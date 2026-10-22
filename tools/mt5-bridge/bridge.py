@@ -29,6 +29,7 @@ import sys
 import threading
 import time
 import uuid
+import urllib.parse
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
@@ -333,14 +334,22 @@ class Handler(BaseHTTPRequestHandler):
 
     def _cors_origin(self) -> str:
         origin = (self.headers.get("Origin") or "").strip()
-        if origin in ALLOWED_ORIGINS or origin.startswith("http://127.0.0.1:") or origin.startswith("http://localhost:"):
+        # Only the app's own origins. A blanket "any localhost port" rule let
+        # any page served by any local server drive the broker.
+        if origin in ALLOWED_ORIGINS:
             return origin
         return "tauri://localhost"
 
     def _authorized(self) -> bool:
         if not BRIDGE_TOKEN:
             return True
+        # The token may arrive as a header or as a query parameter: a custom
+        # header would make the browser send a preflight, which this local
+        # server answers unreliably.
         provided = (self.headers.get("X-Bridge-Token") or "").strip()
+        if not provided:
+            query = urllib.parse.urlparse(self.path).query
+            provided = urllib.parse.parse_qs(query).get("token", [""])[0].strip()
         return provided == BRIDGE_TOKEN
 
     def _send(self, payload, status=200):

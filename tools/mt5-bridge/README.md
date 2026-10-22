@@ -44,10 +44,24 @@ wine "$WINEPREFIX/drive_c/ezyview-py/python.exe" Z:/path/to/tools/mt5-bridge/bri
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `EZYVIEW_MT5_PORT` | `8765` | Listen port (127.0.0.1 only) |
+| `EZYVIEW_MT5_TOKEN` | — | Shared secret every request must carry (header `X-Bridge-Token` or `?token=`) |
 | `MT5_PATH` | auto-detected | `terminal64.exe` path |
 | `MT5_LOGIN` / `MT5_SERVER` / `MT5_PASSWORD` | — | Optional explicit login |
 | `EZYVIEW_MT5_DEVIATION` | `20` | Slippage points on market orders |
 | `EZYVIEW_MT5_VERBOSE` | — | Log every request |
+
+### Locking the bridge down
+
+The bridge can place real orders, so two things protect it:
+
+- **CORS** — only the app's own origins (`tauri://localhost`, the dev server
+  on port 1420) may talk to it. Any other page on this machine is refused.
+- **Token** — set `EZYVIEW_MT5_TOKEN` and every request must carry it. The
+  app asks for it in *MT5 setup → Bridge token* and keeps it in your OS
+  keyring, never in `localStorage`.
+
+Without a token the bridge is still bound to `127.0.0.1` and origin-checked,
+but any program running on this machine can talk to it.
 
 ## Endpoints
 

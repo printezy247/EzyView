@@ -6,7 +6,7 @@ import { ChartCommandInput } from "./ChartCommandInput";
 import { DrawingToolbar } from "./DrawingToolbar";
 import { ReplayBar } from "./ReplayBar";
 import { RightDock } from "./RightDock";
-import type { DockTabId } from "./RightDock";
+import type { DockTab, DockTabId } from "./RightDock";
 import { DepthOfMarket } from "./DepthOfMarket";
 import { TradingPanel } from "./TradingPanel";
 import { Watchlist } from "./Watchlist";
@@ -116,12 +116,25 @@ export function ChartPage({ dockTab, onSelectDockTab, onSetDockTab, tradingOpen,
   const onCrosshairTime = useCallback((t: number | null) => setCrosshairTime(t), []);
 
   // Read at event time so the handler never re-subscribes on a toggle.
-  const onCrosshairMove = useCallback((t: number | null, p: number | null) => {
+  // The pointer fires far faster than the screen refreshes, so the work is
+  // coalesced into one update per frame: a mouse move used to re-render the
+  // whole chart page, every cell and every side panel.
+  const crosshairFrame = useRef<number | null>(null);
+  const crosshairPending = useRef<{ t: number | null; p: number | null } | null>(null);
+
+  const flushCrosshair = useCallback(() => {
+    crosshairFrame.current = null;
+    const next = crosshairPending.current;
+    crosshairPending.current = null;
+    if (!next) return;
+    const { t, p } = next;
     setCrosshairTime(t);
     if (t !== null && p !== null) lastCursorRef.current = { time: t, price: p };
-    const on = useWorkspace.getState().crosshairSync;
     const ws = useWorkspace.getState();
-    if (on && hoverRef.current === ws.activeLayout().activeChart) publishCrosshair(ws.activeChart().symbol, t, p);
+    const on = ws.crosshairSync;
+    if (on && hoverRef.current === ws.activeLayout().activeChart) {
+      publishCrosshair(ws.activeChart().symbol, t, p);
+    }
     if (!on || t === null || p === null) {
       // Same-ref no-op keeps an already-cleared mirror from re-rendering.
       setSyncCross((prev) => (prev === null ? prev : null));
@@ -129,6 +142,24 @@ export function ChartPage({ dockTab, onSelectDockTab, onSetDockTab, tradingOpen,
     }
     setSyncCross((prev) => (prev && prev.time === t && prev.price === p ? prev : { time: t, price: p }));
   }, []);
+
+  const onCrosshairMove = useCallback(
+    (t: number | null, p: number | null) => {
+      crosshairPending.current = { t, p };
+      if (crosshairFrame.current === null) {
+        crosshairFrame.current = requestAnimationFrame(flushCrosshair);
+      }
+    },
+    [flushCrosshair],
+  );
+
+  // A pending frame must not land on an unmounted page.
+  useEffect(
+    () => () => {
+      if (crosshairFrame.current !== null) cancelAnimationFrame(crosshairFrame.current);
+    },
+    [],
+  );
 
   // Turning sync off drops the mirror so every cell clears its imposed crosshair.
   useEffect(() => {
@@ -280,6 +311,39 @@ export function ChartPage({ dockTab, onSelectDockTab, onSetDockTab, tradingOpen,
     [amend],
   );
 
+  // The dock tabs were rebuilt on every render, and the chart page re-renders
+  // on every crosshair frame.
+  const dockTabs = useMemo<DockTab[]>(
+    () => [
+      {
+        id: "watchlist",
+        label: "Watchlist",
+        hint: "Quotes for the symbols you track",
+        render: () => <Watchlist onOpenAlerts={onOpenAlerts} />,
+      },
+      {
+        id: "depth",
+        label: "Depth",
+        hint: "Depth of market around the current price",
+        render: () => <DepthOfMarket symbol={state.symbol} precision={2} />,
+      },
+      {
+        id: "objects",
+        label: "Objects",
+        hint: "Drawings and indicators on this chart",
+        badge: state.drawings.length,
+        render: () => <ObjectTree onClose={() => onSelectDockTab("objects")} />,
+      },
+      {
+        id: "tape",
+        label: "Tape",
+        hint: "Time & sales — recent prints for the active symbol",
+        render: () => <TimeAndSales />,
+      },
+    ],
+    [onOpenAlerts, onSelectDockTab, state.symbol, state.drawings.length],
+  );
+
   return (
     <>
       <div className="relative flex min-h-0 flex-1">
@@ -323,33 +387,7 @@ export function ChartPage({ dockTab, onSelectDockTab, onSetDockTab, tradingOpen,
         <RightDock
           active={dockTab}
           onSelect={onSetDockTab}
-          tabs={[
-            {
-              id: "watchlist",
-              label: "Watchlist",
-              hint: "Quotes for the symbols you track",
-              render: () => <Watchlist onOpenAlerts={onOpenAlerts} />,
-            },
-            {
-              id: "depth",
-              label: "Depth",
-              hint: "Depth of market around the current price",
-              render: () => <DepthOfMarket symbol={state.symbol} precision={2} />,
-            },
-            {
-              id: "objects",
-              label: "Objects",
-              hint: "Drawings and indicators on this chart",
-              badge: state.drawings.length,
-              render: () => <ObjectTree onClose={() => onSelectDockTab("objects")} />,
-            },
-            {
-              id: "tape",
-              label: "Tape",
-              hint: "Time & sales — recent prints for the active symbol",
-              render: () => <TimeAndSales />,
-            },
-          ]}
+          tabs={dockTabs}
         />
       </div>
 

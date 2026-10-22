@@ -34,7 +34,13 @@ export function CommandPalette({ open, onClose, groups }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const listId = useId();
 
-  const results = useMemo(() => matchCommands(toCommands(groups), query), [groups, query]);
+  // The command list is only flattened while the palette is open: the
+  // toolbar rebuilds its groups on every render, and the palette used to
+  // re-flatten them all even while it was closed.
+  const results = useMemo(
+    () => (open ? matchCommands(toCommands(groups), query) : []),
+    [open, groups, query],
+  );
 
   useEffect(() => {
     if (!open) return;

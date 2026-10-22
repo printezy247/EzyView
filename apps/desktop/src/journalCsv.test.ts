@@ -28,6 +28,18 @@ function dataRow(entries: readonly JournalEntry[]): string[] {
 }
 
 describe("entriesToCsv", () => {
+  it("neutralises a cell that would be a formula in Excel", () => {
+    const [row = ""] = dataRow([{ ...base, notes: "=cmd|'/c calc'!A0" }]);
+    // A leading apostrophe keeps the text a text when the export is opened.
+    expect(row).toContain("'=cmd|'/c calc'!A0");
+    expect(row.startsWith("=cmd")).toBe(false);
+  });
+
+  it("neutralises the other formula starters", () => {
+    const [row = ""] = dataRow([{ ...base, notes: "+SUM(A1)", setup: "@import" }]);
+    expect(row).toContain("'+SUM(A1)");
+    expect(row).toContain("'@import");
+  });
   it("empty input yields the header only", () => {
     expect(entriesToCsv([])).toBe(HEADER);
   });

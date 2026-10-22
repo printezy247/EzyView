@@ -42,10 +42,17 @@ export function entriesToCsv(entries: readonly JournalEntry[]): string {
   return rows.join("\r\n");
 }
 
-/** RFC 4180: quote when the value holds `"`, comma, CR or LF; double the quotes. */
+/**
+ * RFC 4180: quote when the value holds `"`, comma, CR or LF; double the quotes.
+ *
+ * A value that starts with `=`, `+`, `-` or `@` is a formula in Excel and
+ * LibreOffice, so it is neutralised with a leading apostrophe - otherwise a
+ * note like `=cmd|'/c calc'!A0` runs when the export is opened.
+ */
 function cell(value: unknown): string {
   if (value === undefined || value === null) return "";
-  const s = String(value);
+  let s = String(value);
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 

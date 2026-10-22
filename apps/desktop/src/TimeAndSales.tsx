@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { activeChartOf } from "./layout";
 import { precisionFor, quoteOf } from "./data";
@@ -13,6 +13,35 @@ const when = (ts: number): string => {
     ? "--:--:--"
     : d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 };
+
+/** One print. Memoised so a new print does not re-render the whole table. */
+const TapeRow = memo(function TapeRow({
+  ts,
+  price,
+  size,
+  side,
+  digits,
+}: {
+  ts: number;
+  price: number;
+  size: number;
+  side: string;
+  digits: number;
+}) {
+  const safePrice = Number.isFinite(price) ? price : 0;
+  const safeSize = Number.isFinite(size) ? size : 1;
+  return (
+    <tr className="ev-row border-b border-ev-panel">
+      <td className="px-2 text-micro text-ev-faint">{when(ts)}</td>
+      <td className={`num px-2 text-right font-medium ${side === "buy" ? "text-ev-up" : "text-ev-down"}`}>
+        {safePrice.toFixed(digits)}
+      </td>
+      <td className="num px-2 text-right text-ev-muted">
+        {safeSize >= 1 ? safeSize.toLocaleString() : safeSize.toFixed(3)}
+      </td>
+    </tr>
+  );
+});
 
 /** Generate a realistic individual trade size for a quote print. */
 function realisticSize(symbol: string, price: number): number {
@@ -165,21 +194,16 @@ export function TimeAndSales() {
               </tr>
             </thead>
             <tbody>
-              {filteredEntries.map((e) => {
-                const safePrice = Number.isFinite(e.price) ? e.price : 0;
-                const safeSize = Number.isFinite(e.size) ? e.size : 1;
-                return (
-                  <tr key={e.id} className="ev-row border-b border-ev-panel">
-                    <td className="px-2 text-micro text-ev-faint">{when(e.ts)}</td>
-                    <td className={`num px-2 text-right font-medium ${e.side === "buy" ? "text-ev-up" : "text-ev-down"}`}>
-                      {safePrice.toFixed(digits)}
-                    </td>
-                    <td className="num px-2 text-right text-ev-muted">
-                      {safeSize >= 1 ? safeSize.toLocaleString() : safeSize.toFixed(3)}
-                    </td>
-                  </tr>
-                );
-              })}
+              {filteredEntries.map((e) => (
+                <TapeRow
+                  key={e.id}
+                  ts={e.ts}
+                  price={e.price}
+                  size={e.size}
+                  side={e.side}
+                  digits={digits}
+                />
+              ))}
             </tbody>
           </table>
         )}

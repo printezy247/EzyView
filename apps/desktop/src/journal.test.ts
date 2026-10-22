@@ -27,14 +27,20 @@ function disarmLocalStorage(): void {
 
 type JournalModule = typeof import("./journal");
 
+/** The module instance the last `loadStore()` produced. */
+let current: JournalModule | null = null;
+
 /** Fresh module instance booted from whatever is currently in storage. */
 async function loadStore(): Promise<JournalModule> {
   armLocalStorage();
   vi.resetModules();
-  return await import("./journal");
+  current = await import("./journal");
+  return current;
 }
 
+/** What is on disk. Writes are debounced, so the pending one is flushed first. */
 function persisted(): Record<string, unknown> {
+  current?.flushJournal();
   const raw = h.storage.get(KEY);
   return raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
 }

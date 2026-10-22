@@ -54,10 +54,26 @@ export function ConnectionTab({ settings, save, busy, setBusy }: { settings: Mt5
         ))}
       </div>
       {draft.kind === "bridge" ? (
-        <label className="mb-2 block text-dense text-ev-muted">
-          Bridge URL
-          <input className={field} value={draft.bridgeUrl} onChange={(e) => setDraft({ ...draft, bridgeUrl: e.target.value })} spellCheck={false} />
-        </label>
+        <>
+          <label className="mb-2 block text-dense text-ev-muted">
+            Bridge URL
+            <input className={field} value={draft.bridgeUrl} onChange={(e) => setDraft({ ...draft, bridgeUrl: e.target.value })} spellCheck={false} />
+          </label>
+          <label className="mb-2 block text-dense text-ev-muted">
+            Bridge token
+            <input
+              className={field}
+              type="password"
+              value={draft.bridgeToken}
+              onChange={(e) => setDraft({ ...draft, bridgeToken: e.target.value })}
+              placeholder="only if the bridge was started with EZYVIEW_MT5_TOKEN"
+              spellCheck={false}
+            />
+            <span className="mt-0.5 block text-dense text-ev-muted">
+              {keyringAvailable() ? "Saved in your OS keyring." : "Kept for this session only."}
+            </span>
+          </label>
+        </>
       ) : (
         <>
           <label className="mb-2 block text-dense text-ev-muted">

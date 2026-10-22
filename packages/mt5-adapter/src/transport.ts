@@ -9,7 +9,7 @@
  *    no sidecar at all — but is only usable once MT5 issues a key it accepts.
  */
 import type { OrderRequest } from "@ezyview/data-adapters";
-import { McpClient } from "./mcp";
+import { McpClient, isLoopbackUrl } from "./mcp";
 import type { McpConfig } from "./mcp";
 import {
   MT5_TOOLS,
@@ -80,6 +80,8 @@ export interface TransportOptions {
   kind?: TransportKind;
   /** Bridge base URL, e.g. "http://127.0.0.1:8765". */
   bridgeUrl?: string;
+  /** Shared token for the bridge, when the operator set one. */
+  bridgeToken?: string;
   /** MCP endpoint + key (ignored by the bridge transport). */
   mcp?: Partial<McpConfig>;
   fetchFn?: McpConfig["fetchFn"];
@@ -95,12 +97,15 @@ export const DEFAULT_MCP_URL = "http://127.0.0.1:22346/mcp";
 class BridgeTransport implements Mt5Transport {
   private readonly baseUrl: string;
   private readonly fetchFn: NonNullable<McpConfig["fetchFn"]>;
+  /** Shared token, when the bridge operator set one. */
+  private readonly token: string | undefined;
   /** Session minted by `/connect`; in-memory only, never persisted. */
   private session: string | null = null;
 
-  constructor(baseUrl: string, fetchFn?: McpConfig["fetchFn"]) {
+  constructor(baseUrl: string, fetchFn?: McpConfig["fetchFn"], token?: string) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
     this.fetchFn = fetchFn ?? ((input, init) => fetch(input, init));
+    this.token = token?.trim() || undefined;
   }
 
   get connected(): boolean {
@@ -171,6 +176,12 @@ class BridgeTransport implements Mt5Transport {
   }
 
   async connect(credentials: Mt5Credentials): Promise<Mt5ConnectResult> {
+    // The broker password travels in this request, so it may only go to the
+    // bridge on this machine. A mistyped host would hand the password to a
+    // stranger.
+    if (!isLoopbackUrl(this.baseUrl)) {
+      throw new Error("Refusing to send broker credentials to a non-local host. The MT5 bridge runs on this machine.");
+    }
     const payload = await this.send<Mt5ConnectResult>("POST", "/connect", credentials);
     this.session = payload.session ?? null;
     return payload;
@@ -193,6 +204,16 @@ class BridgeTransport implements Mt5Transport {
     return extras;
   }
 
+  /** Full request URL, with the token as a query parameter when there is one. */
+  private url(path: string): string {
+    if (!this.token) return `${this.baseUrl}${path}`;
+    // The token rides in the query as well as the header: a custom header
+    // turns the request into a preflight, and this local server answers those
+    // unreliably.
+    const separator = path.includes("?") ? "&" : "?";
+    return `${this.baseUrl}${path}${separator}token=${encodeURIComponent(this.token)}`;
+  }
+
   private async send<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 12_000);
@@ -204,8 +225,11 @@ class BridgeTransport implements Mt5Transport {
       init.headers = { "content-type": "text/plain;charset=UTF-8" };
       init.body = JSON.stringify(body ?? {});
     }
+    if (this.token) {
+      init.headers = { ...init.headers, "x-bridge-token": this.token };
+    }
     try {
-      const response = await this.fetchFn(`${this.baseUrl}${path}`, init);
+      const response = await this.fetchFn(this.url(path), init);
       if (!response.ok) {
         if (response.status === 401) this.session = null;
         const detail = await response.text().catch(() => "");
@@ -306,5 +330,5 @@ class McpTransport implements Mt5Transport {
 export function createTransport(options: TransportOptions = {}): Mt5Transport {
   const fetchFn = options.fetchFn;
   if (options.kind === "mcp") return new McpTransport(options.mcp ?? {}, fetchFn);
-  return new BridgeTransport(options.bridgeUrl ?? DEFAULT_BRIDGE_URL, fetchFn);
+  return new BridgeTransport(options.bridgeUrl ?? DEFAULT_BRIDGE_URL, fetchFn, options.bridgeToken);
 }

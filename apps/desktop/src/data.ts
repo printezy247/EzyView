@@ -274,10 +274,22 @@ export function stopTicking(symbol: string): void {
   }
 }
 
+/**
+ * A short-lived cache of resolved histories.
+ *
+ * The chart and the replay bar both ask for the same series, and switching
+ * away and back used to re-download it. A bar only changes when it closes,
+ * so a short TTL is safe.
+ */
+const historyCache = new Map<string, { at: number; candles: Candle[] }>();
+const HISTORY_TTL_MS = 15_000;
+
 export async function loadHistory(symbol: string, resolution: Resolution, limit = 500): Promise<Candle[]> {
   const key = `${symbol}:${resolution}:${limit}`;
   const existing = inFlightHistory.get(key);
   if (existing) return existing;
+  const cached = historyCache.get(key);
+  if (cached && Date.now() - cached.at < HISTORY_TTL_MS) return cached.candles;
 
   const promise = (async () => {
     try {
@@ -288,8 +300,13 @@ export async function loadHistory(symbol: string, resolution: Resolution, limit 
       const request = { symbol, resolution, from: to - step * limit, to, limit };
       if (brokerFeed()) return await getMt5().data.getHistory(request);
       const live = await fetchPublicHistory(symbol, resolution, limit);
-      if (live && live.length > 0) return live;
-      return await market.getHistory(request);
+      if (live && live.length > 0) {
+        historyCache.set(key, { at: Date.now(), candles: live });
+        return live;
+      }
+      const demo = await market.getHistory(request);
+      historyCache.set(key, { at: Date.now(), candles: demo });
+      return demo;
     } finally {
       inFlightHistory.delete(key);
     }

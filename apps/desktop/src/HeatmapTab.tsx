@@ -73,9 +73,15 @@ export function HeatmapTab() {
         ),
       ).then((quotes) => {
         if (cancelled) return;
+        // A lookup table, not a scan: the old find-in-map was O(n^2) over the
+        // whole universe on every refresh.
+        const bySymbol = new Map<string, { last: number; changePercent: number }>();
+        for (const q of quotes) {
+          if (q) bySymbol.set(q.symbol, { last: q.last, changePercent: q.changePercent });
+        }
         setUniverseTiles((prev) =>
           prev.map((tile) => {
-            const found = quotes.find((q) => q?.symbol === tile.symbol);
+            const found = bySymbol.get(tile.symbol);
             if (!found) return tile;
             return { ...tile, price: found.last, changePct: found.changePercent };
           }),

@@ -9,6 +9,11 @@ fn spawn_chart_window(app: &AppHandle, query: &str) -> Result<tauri::WebviewWind
     if !query.starts_with("?detached=") {
         return Err("unexpected window query".into());
     }
+    // The query travels straight into a webview URL, so it is bounded and
+    // restricted to the characters a symbol and an interval need.
+    if query.len() > 512 || !query.chars().all(|c| c.is_ascii_alphanumeric() || "%-_.&=:".contains(c)) {
+        return Err("unexpected window query".into());
+    }
     let label = format!("chart-{}", NEXT_WINDOW.fetch_add(1, Ordering::Relaxed));
     WebviewWindowBuilder::new(app, label, WebviewUrl::App(format!("index.html{query}").into()))
         .title("EzyView chart")
@@ -98,6 +103,7 @@ fn write_snapshot(app: AppHandle, json: String) -> Result<(), String> {
     let dir = app_data(&app)?;
     let tmp = dir.join("workspace-snapshot.json.tmp");
     std::fs::write(&tmp, json).map_err(|e| e.to_string())?;
+    restrict_permissions(&tmp, 0o600);
     std::fs::rename(&tmp, dir.join("workspace-snapshot.json")).map_err(|e| e.to_string())
 }
 
@@ -160,7 +166,18 @@ fn app_data(app: &AppHandle) -> Result<std::path::PathBuf, String> {
     use tauri::Manager;
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    // The folder holds the trading journal, the workspace snapshot and the
+    // crash log. They are the user's private trading data, so the folder is
+    // for the owner only.
+    restrict_permissions(&dir, 0o700);
     Ok(dir)
+}
+
+/// Best-effort `chmod`: the file is the user's own data, and a filesystem
+/// that does not support unix modes is not a reason to fail the command.
+fn restrict_permissions(path: &std::path::Path, mode: u32) {
+    use std::os::unix::fs::PermissionsExt;
+    let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode));
 }
 
 #[tauri::command]
@@ -223,15 +240,22 @@ fn log_path(app: &AppHandle) -> Result<std::path::PathBuf, String> {
     use tauri::Manager;
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    restrict_permissions(&dir, 0o700);
     Ok(dir.join("crash.log"))
 }
 
 /// Append a crash block to the local log (capped); nothing leaves the machine.
 #[tauri::command]
 fn append_log(app: AppHandle, text: String) -> Result<(), String> {
+    // A webview can call this with any text, so the block is bounded before
+    // it reaches the disk.
+    let text: String = text.chars().take(64 * 1024).collect();
     let path = log_path(&app)?;
     let existing = std::fs::read_to_string(&path).unwrap_or_default();
-    std::fs::write(&path, trim_log(&format!("{existing}{text}"))).map_err(|e| e.to_string())
+    let next = trim_log(&format!("{existing}{text}"));
+    std::fs::write(&path, next).map_err(|e| e.to_string())?;
+    restrict_permissions(&path, 0o600);
+    Ok(())
 }
 
 #[tauri::command]
@@ -289,8 +313,9 @@ async fn save_file(
 
 /// Keyring service name; each provider key is stored under its own account.
 const KEYRING_SERVICE: &str = "EzyView";
-/// The only secrets the webview may read or write: data-provider keys and the MT5 MCP key.
-const API_KEY_NAMES: [&str; 3] = ["finnhub", "alphavantage", "mt5"];
+/// The only secrets the webview may read or write: data-provider keys, the MT5
+/// MCP key and the shared token for the local MT5 bridge.
+const API_KEY_NAMES: [&str; 4] = ["finnhub", "alphavantage", "mt5", "mt5-bridge"];
 /// Per-account broker passwords live under `mt5:<login>@<server>` (Phase 1).
 const MT5_ACCOUNT_PREFIX: &str = "mt5:";
 /// Charset guard for the dynamic account suffix: no spaces, no path chars, no `@`/`:` games beyond the single separator.
@@ -384,11 +409,9 @@ fn register_show_shortcut(app: &tauri::App) {
 pub fn run() {
     apply_shell_settings_early();
     tauri::Builder::default()
-        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_sql::Builder::default().build())
         .setup(|app| {
             // Rust panics (release builds abort) land in the same local log.
             use tauri::Manager;

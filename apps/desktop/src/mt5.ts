@@ -17,6 +17,7 @@ export type Mt5Status = "idle" | "connecting" | "online" | "error";
 export interface Mt5Settings {
   kind: TransportKind;
   bridgeUrl: string;
+  bridgeToken: string;
   mcpUrl: string;
   mcpKey: string;
 }
@@ -26,6 +27,7 @@ const STORAGE_KEY = "ezyview.mt5.v1";
 const DEFAULT_SETTINGS: Mt5Settings = {
   kind: "bridge",
   bridgeUrl: DEFAULT_BRIDGE_URL,
+  bridgeToken: "",
   mcpUrl: DEFAULT_MCP_URL,
   mcpKey: "",
 };
@@ -51,8 +53,8 @@ function readSettings(): { settings: Mt5Settings; source: ChartSource } {
 
 function persist(settings: Mt5Settings, source: ChartSource): void {
   if (typeof localStorage === "undefined") return;
-  // The MCP key is a secret: it lives in the OS keyring, never in localStorage.
-  const { mcpKey: _secret, ...rest } = settings;
+  // Secrets live in the OS keyring, never in localStorage.
+  const { mcpKey: _secret, bridgeToken: _token, ...rest } = settings;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...rest, source }));
   } catch {
@@ -64,6 +66,7 @@ function build(settings: Mt5Settings): Mt5Adapter {
   return createMt5({
     kind: settings.kind,
     bridgeUrl: settings.bridgeUrl,
+    bridgeToken: settings.bridgeToken || undefined,
     mcp: { url: settings.mcpUrl, key: settings.mcpKey || undefined },
   });
 }
@@ -136,7 +139,8 @@ export const useMt5 = create<Mt5State>((set, get) => ({
 
   async save(patch) {
     const settings = { ...get().settings, ...patch };
-    if (patch.mcpKey !== undefined) await storeKey(settings.mcpKey);
+    if (patch.mcpKey !== undefined) await storeKey("mt5", settings.mcpKey);
+    if (patch.bridgeToken !== undefined) await storeKey("mt5-bridge", settings.bridgeToken);
     instance = build(settings);
     persist(settings, get().source);
     set({ settings, status: "idle", error: null });
@@ -150,12 +154,14 @@ export const useMt5 = create<Mt5State>((set, get) => ({
 
 /** Keyring account for the MT5 MCP key (allow-listed in src-tauri/src/lib.rs). */
 const KEYRING_NAME = "mt5";
+/** Keyring account for the shared token of the local bridge. */
+const BRIDGE_KEYRING_NAME = "mt5-bridge";
 
-/** Save the MCP key to the OS keyring; outside the desktop app it stays in memory only. */
-async function storeKey(value: string): Promise<void> {
+/** Save a secret to the OS keyring; outside the desktop app it stays in memory only. */
+async function storeKey(name: string, value: string): Promise<void> {
   if (!keyringAvailable()) return;
   const { invoke } = await import("@tauri-apps/api/core");
-  await invoke("api_key_set", { name: KEYRING_NAME, value });
+  await invoke("api_key_set", { name, value });
 }
 
 /**
@@ -167,16 +173,26 @@ async function restoreKey(): Promise<void> {
   const legacy = boot.settings.mcpKey;
   try {
     if (legacy) {
-      await storeKey(legacy);
+      await storeKey(KEYRING_NAME, legacy);
       persist(useMt5.getState().settings, useMt5.getState().source);
-      return;
+    } else {
+      const { invoke } = await import("@tauri-apps/api/core");
+      const key = (await invoke<string | null>("api_key_get", { name: KEYRING_NAME })) ?? "";
+      if (key) {
+        const settings = { ...useMt5.getState().settings, mcpKey: key };
+        instance = build(settings);
+        useMt5.setState({ settings });
+      }
     }
+    // The bridge token is optional: the bridge only demands it when the
+    // operator set one.
     const { invoke } = await import("@tauri-apps/api/core");
-    const key = (await invoke<string | null>("api_key_get", { name: KEYRING_NAME })) ?? "";
-    if (!key) return;
-    const settings = { ...useMt5.getState().settings, mcpKey: key };
-    instance = build(settings);
-    useMt5.setState({ settings });
+    const token = (await invoke<string | null>("api_key_get", { name: BRIDGE_KEYRING_NAME })) ?? "";
+    if (token) {
+      const settings = { ...useMt5.getState().settings, bridgeToken: token };
+      instance = build(settings);
+      useMt5.setState({ settings });
+    }
   } catch {
     // No Secret Service: MCP calls go out without a key until one is saved.
   }
