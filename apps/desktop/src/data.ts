@@ -1,5 +1,8 @@
-import { DemoMarketAdapter } from "@ezyview/data-adapters";
-import type { Candle, Quote, Resolution, SymbolInfo } from "@ezyview/data-adapters";
+import { createLiveSources, DemoMarketAdapter } from "@ezyview/data-adapters";
+import type { Candle, LiveSource, LiveSourceId, Quote, Resolution, SymbolInfo, UnsubscribeFn } from "@ezyview/data-adapters";
+import { readApiKey, useApiKeys } from "./apiKeys";
+import { effectiveSource, isLiveSourceChoice } from "./chartSource";
+import type { DataSourceChoice, EffectiveSource } from "./chartSource";
 import { getMt5, useMt5 } from "./mt5";
 
 /** Single shared demo adapter. The broker feed is reached via `quoteOf`/`loadHistory`. */
@@ -68,6 +71,43 @@ export function precisionFor(price: number | null): number {
 
 /** True while the chart/ticket are reading the broker's feed. */
 export const brokerFeed = (): boolean => useMt5.getState().source === "mt5";
+
+/** The source a chart really reads from: its own choice, or the global feed switch for `auto`. */
+export const resolveSource = (choice?: DataSourceChoice): EffectiveSource => effectiveSource(choice, useMt5.getState().source);
+
+let liveSources: Record<LiveSourceId, LiveSource> | null = null;
+
+/**
+ * Binance / Kraken / Twelve Data, created once.
+ *
+ * The Twelve Data key comes from the keyring-backed `useApiKeys` store, with a
+ * direct keyring read as the fallback while that store is still loading.
+ * Detached chart windows never run the key loader, so unless their webview can
+ * reach the keyring they see no key and Twelve Data stays unavailable there.
+ */
+export function getLiveSources(): Record<LiveSourceId, LiveSource> {
+  liveSources ??= createLiveSources({
+    getKey: async (name) => {
+      if (name !== "twelvedata") return null;
+      return useApiKeys.getState().keys.twelvedata || (await readApiKey(name));
+    },
+  });
+  return liveSources;
+}
+
+/**
+ * Subscribe to pushed quotes (WebSocket, with the adapter's own polling
+ * fallback) for a live source. Resolves to null for sources that have no push
+ * feed (demo, MT5), so the caller keeps polling `quoteOf`.
+ */
+export async function subscribeLive(
+  symbol: string,
+  source: EffectiveSource,
+  onQuote: (quote: Quote) => void,
+): Promise<UnsubscribeFn | null> {
+  if (!isLiveSourceChoice(source)) return null;
+  return getLiveSources()[source].subscribe([symbol], onQuote);
+}
 
 /** Map common EzyView tickers to Binance public market data symbols (PAXGUSDT = 1 troy oz spot Gold). */
 const PUBLIC_PAIR_MAP: Record<string, string> = {
@@ -228,13 +268,16 @@ const unsubscribes = new Map<string, () => void>();
 const inFlightQuotes = new Map<string, Promise<Quote | null>>();
 const inFlightHistory = new Map<string, Promise<Candle[]>>();
 
-export async function quoteOf(symbol: string): Promise<Quote | null> {
-  const existing = inFlightQuotes.get(symbol);
+export async function quoteOf(symbol: string, source?: DataSourceChoice): Promise<Quote | null> {
+  const feed = resolveSource(source);
+  const flightKey = `${feed}:${symbol}`;
+  const existing = inFlightQuotes.get(flightKey);
   if (existing) return existing;
 
   const promise = (async () => {
     try {
-      if (brokerFeed()) return await getMt5().data.getQuote(symbol);
+      if (isLiveSourceChoice(feed)) return await getLiveSources()[feed].getQuote(symbol);
+      if (feed === "mt5") return await getMt5().data.getQuote(symbol);
       const live = await fetchPublicQuote(symbol);
       if (live) return live;
       if (!ticking.has(symbol)) {
@@ -253,11 +296,11 @@ export async function quoteOf(symbol: string): Promise<Quote | null> {
       }
       return await market.getQuote(symbol);
     } finally {
-      inFlightQuotes.delete(symbol);
+      inFlightQuotes.delete(flightKey);
     }
   })();
 
-  inFlightQuotes.set(symbol, promise);
+  inFlightQuotes.set(flightKey, promise);
   return promise;
 }
 
@@ -284,8 +327,14 @@ export function stopTicking(symbol: string): void {
 const historyCache = new Map<string, { at: number; candles: Candle[] }>();
 const HISTORY_TTL_MS = 15_000;
 
-export async function loadHistory(symbol: string, resolution: Resolution, limit = 500): Promise<Candle[]> {
-  const key = `${symbol}:${resolution}:${limit}`;
+export async function loadHistory(
+  symbol: string,
+  resolution: Resolution,
+  limit = 500,
+  source?: DataSourceChoice,
+): Promise<Candle[]> {
+  const feed = resolveSource(source);
+  const key = `${feed}:${symbol}:${resolution}:${limit}`;
   const existing = inFlightHistory.get(key);
   if (existing) return existing;
   const cached = historyCache.get(key);
@@ -298,7 +347,8 @@ export async function loadHistory(symbol: string, resolution: Resolution, limit 
       // Snap the window to the bar grid so the newest candle is always complete.
       const to = Math.floor(now / step) * step;
       const request = { symbol, resolution, from: to - step * limit, to, limit };
-      if (brokerFeed()) return await getMt5().data.getHistory(request);
+      if (isLiveSourceChoice(feed)) return await getLiveSources()[feed].getHistory(request);
+      if (feed === "mt5") return await getMt5().data.getHistory(request);
       const live = await fetchPublicHistory(symbol, resolution, limit);
       if (live && live.length > 0) {
         historyCache.set(key, { at: Date.now(), candles: live });

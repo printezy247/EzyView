@@ -1,3 +1,5 @@
+import { isDataSourceChoice } from "./chartSource";
+import type { DataSourceChoice } from "./chartSource";
 import type { Resolution } from "@ezyview/data-adapters";
 import type { ChartType } from "@ezyview/chart-engine";
 import type { Drawing, MagnetMode } from "@ezyview/drawing-tools";
@@ -80,6 +82,8 @@ export interface ChartState {
    * crosshair. Absent or blank = the cell is on its own.
    */
   linkGroup?: string;
+  /** Price feed for this cell. Optional so old saves load; absent = "auto" (the global feed switch). */
+  dataSource?: DataSourceChoice;
 }
 
 /** How a layout splits its chart area. */
@@ -165,6 +169,8 @@ function restoreChart(raw: unknown, fallback: ChartState, resolveDef: (id: strin
     const def = resolveDef(item.def.id);
     if (def) indicators.push({ ...(item as unknown as ActiveIndicator), def });
   }
+  // Unknown values are dropped; absent means "auto" everywhere it is read.
+  if (!isDataSourceChoice(raw.dataSource)) delete chart.dataSource;
   return {
     ...chart,
     indicators,

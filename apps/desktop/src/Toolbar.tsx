@@ -9,6 +9,7 @@ import {
   Camera,
   CandlestickChart,
   Clock,
+  Database,
   Eye,
   FlaskConical,
   Grid2x2,
@@ -22,7 +23,10 @@ import { CommandPalette } from "./CommandPalette";
 import { IntervalDialog } from "./IntervalDialog";
 import { buildNavCommands } from "./commandRegistry";
 import type { CommandGroup } from "./commandRegistry";
-import { PICKER_RESOLUTIONS, RESOLUTION_GROUPS, resolutionName } from "./data";
+import { PICKER_RESOLUTIONS, RESOLUTION_GROUPS, getLiveSources, resolutionName } from "./data";
+import { sourceLabel, sourceOptions } from "./chartSource";
+import type { DataSourceChoice } from "./chartSource";
+import { useApiKeys } from "./apiKeys";
 import type { DockTabId } from "./RightDock";
 import { Menu } from "./Menu";
 import type { MenuEntry } from "./Menu";
@@ -94,6 +98,9 @@ interface Props {
   priceScale: PriceScaleModeName;
   invertScale: boolean;
   timezone: string | undefined;
+  /** Price feed of the focused chart; "auto" follows the global switch. */
+  dataSource: DataSourceChoice;
+  onDataSource: (source: DataSourceChoice) => void;
   watermark: boolean;
   /** Shade bars outside the symbol's trading session. */
   sessionBreaks: boolean;
@@ -226,6 +233,27 @@ export function Toolbar(props: Props) {
   const applyChartTemplate = useWorkspace((s) => s.applyChartTemplate);
   const saveChartTemplate = useWorkspace((s) => s.saveChartTemplate);
   const addIndicator = useWorkspace((s) => s.addIndicator);
+
+  const hasTwelveKey = useApiKeys((s) => Boolean(s.keys.twelvedata));
+  const liveSources = getLiveSources();
+  const sourceOpts = sourceOptions(props.symbol, { supports: (id, sym) => liveSources[id].supports(sym), hasTwelveKey });
+  const sourceEntries: MenuEntry[] = sourceOpts.map(
+    (o): MenuEntry => ({
+      kind: "radio",
+      id: `source-${o.id}`,
+      label: o.label,
+      selected: props.dataSource === o.id,
+      ...(o.disabled ? { disabled: true } : {}),
+      ...(o.hint ? { hint: o.hint } : {}),
+      onSelect: () => props.onDataSource(o.id),
+    }),
+  );
+  if (sourceOpts.some((o) => o.id === "twelvedata")) {
+    sourceEntries.push(
+      { kind: "separator", id: "source-sep" },
+      { kind: "label", id: "source-help", label: "Twelve Data free keys update every ~8 s" },
+    );
+  }
 
   const quickSymbols: MenuEntry[] = [
     { kind: "label", id: "qs-metals", label: "Precious Metals & Forex" },
@@ -502,6 +530,7 @@ export function Toolbar(props: Props) {
     navGroup,
     { title: "Interval", entries: intervalEntries },
     { title: "Chart type", entries: typeEntries },
+    { title: "Data source", entries: sourceEntries },
     { title: "Studies", entries: studyEntries },
     { title: "Analysis", entries: analysisEntries },
     { title: "Trade", entries: tradeEntries },
@@ -521,7 +550,7 @@ export function Toolbar(props: Props) {
         icon={<PlusCircle size={13} aria-hidden />}
         entries={quickSymbols}
       />
-      <QuoteHeader symbol={props.symbol} />
+      <QuoteHeader symbol={props.symbol} dataSource={props.dataSource} />
 
       <div className="mx-1 h-4 w-px shrink-0 bg-ev-raised" />
 
@@ -554,6 +583,12 @@ export function Toolbar(props: Props) {
         caption="Chart type"
         icon={<CandlestickChart size={13} aria-hidden />}
         entries={typeEntries}
+      />
+      <Menu
+        label={sourceLabel(props.dataSource)}
+        caption="Data source"
+        icon={<Database size={13} aria-hidden />}
+        entries={sourceEntries}
       />
       {(props.chartType === "renko" || props.chartType === "kagi" || props.chartType === "pnf") && (
         <label

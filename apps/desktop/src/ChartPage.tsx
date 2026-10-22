@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FundamentalEventOverlay, TradingLine } from "@ezyview/chart-engine";
 import { buildSources } from "@ezyview/fundamentals";
 import { ChartHost } from "./ChartHost";
+import { SourceWarning } from "./SourceWarning";
 import { ChartCommandInput } from "./ChartCommandInput";
 import { DrawingToolbar } from "./DrawingToolbar";
 import { ReplayBar } from "./ReplayBar";
@@ -570,6 +571,7 @@ function ChartGrid({
               priceScale={chart.priceScale}
               invertScale={chart.invertScale}
               timezone={chart.timezone}
+              dataSource={chart.dataSource}
               watermark={chart.watermark}
               syncCrosshair={
                 !syncOn || hoverIndex === index
@@ -597,6 +599,7 @@ function ChartGrid({
               multi={multi}
               isMaximized={maximizedCell !== null}
               onToggleMaximize={() => setMaximizedCell((cur) => (cur === null ? index : null))}
+              dataSource={chart.dataSource}
             />
             {multi && focused && (
               <div className="pointer-events-none absolute inset-0 z-10 ring-1 ring-inset ring-ev-accent" aria-hidden />
@@ -620,6 +623,7 @@ function Readout({
   multi = false,
   isMaximized = false,
   onToggleMaximize,
+  dataSource,
 }: {
   symbol: string;
   rawSymbol: string;
@@ -632,6 +636,7 @@ function Readout({
   multi?: boolean;
   isMaximized?: boolean;
   onToggleMaximize?: () => void;
+  dataSource?: ChartState["dataSource"];
 }) {
   const submit = useTrading((s) => s.submit);
   const updateIndicator = useWorkspace((s) => s.updateIndicator);
@@ -653,7 +658,7 @@ function Readout({
   useEffect(() => {
     let cancelled = false;
     const poll = () => {
-      void quoteOf(rawSymbol).then((q) => {
+      void quoteOf(rawSymbol, dataSource).then((q) => {
         if (!cancelled && q) {
           setLivePrice((prev) => (prev === q.last ? prev : q.last));
           setLiveChangePct((prev) => (prev === q.changePercent ? prev : q.changePercent ?? null));
@@ -666,7 +671,7 @@ function Readout({
       cancelled = true;
       clearInterval(timer);
     };
-  }, [rawSymbol]);
+  }, [rawSymbol, dataSource]);
 
   const displayPrice = livePrice ?? watchedPrice;
   const digits = precisionFor(displayPrice);
@@ -827,6 +832,7 @@ function Readout({
             </button>
           </div>
         )}
+        {!collapsed && tradeBoxVisible && <SourceWarning source={dataSource} className="pointer-events-auto rounded bg-ev-bg/85 px-2 py-0.5" />}
 
         {/* Active Study Legend Chips */}
         {!collapsed && indicators.length > 0 && (

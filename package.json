@@ -1,6 +1,6 @@
 {
   "name": "ezyview",
-  "version": "0.2.10",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "Open-source TradingView-class trading terminal: charts, indicators, Pine editor, drawings, layouts, alerts, trading journal, MT5 integration, fundamentals. Desktop-first (Tauri v2).",

@@ -425,7 +425,7 @@ async fn save_file(
 const KEYRING_SERVICE: &str = "EzyView";
 /// The only secrets the webview may read or write: data-provider keys, the MT5
 /// MCP key and the shared token for the local MT5 bridge.
-const API_KEY_NAMES: [&str; 4] = ["finnhub", "alphavantage", "mt5", "mt5-bridge"];
+const API_KEY_NAMES: [&str; 5] = ["finnhub", "alphavantage", "twelvedata", "mt5", "mt5-bridge"];
 /// Per-account broker passwords live under `mt5:<login>@<server>` (Phase 1).
 const MT5_ACCOUNT_PREFIX: &str = "mt5:";
 /// Charset guard for the dynamic account suffix: no spaces, no path chars, no `@`/`:` games beyond the single separator.

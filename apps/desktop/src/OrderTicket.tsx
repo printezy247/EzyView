@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { OrderRequest, OrderSide, OrderType } from "@ezyview/data-adapters";
 import { precisionFor, quoteOf, tickerOf } from "./data";
+import { activeChartOf } from "./layout";
 import { useMt5 } from "./mt5";
+import { SourceWarning } from "./SourceWarning";
+import { useWorkspace } from "./store";
 import { useOrderDraft } from "./orderDraft";
 import { useTrading } from "./trading";
 import { riskQty } from "./tradeMath";
@@ -29,6 +32,7 @@ const LABEL = "block text-dense uppercase tracking-wider text-ev-muted";
 export function OrderTicket({ symbol }: Props) {
   const submit = useTrading((s) => s.submit);
   const source = useMt5((s) => s.source);
+  const chartSource = useWorkspace((s) => activeChartOf(s.activeLayout()).dataSource);
   const tradeMode = useTrading((s) => s.account?.tradeMode);
   const error = useTrading((s) => s.error);
   const note = useTrading((s) => s.note);
@@ -339,6 +343,8 @@ export function OrderTicket({ symbol }: Props) {
       >
         {side === "buy" ? "Buy" : "Sell"} {type === "market" ? "at market" : type}
       </button>
+
+      <SourceWarning source={chartSource} />
 
       <p className="text-dense leading-relaxed text-ev-faint">
         {source === "mt5"

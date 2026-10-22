@@ -223,6 +223,8 @@ export default function App() {
             onInvertScale={() => updateActive({ invertScale: !state.invertScale })}
             timezone={state.timezone}
             onTimezone={(timezone) => updateActive({ timezone })}
+            dataSource={state.dataSource ?? "auto"}
+            onDataSource={(dataSource) => updateActive({ dataSource })}
             watermark={state.watermark ?? false}
             onWatermark={() => updateActive({ watermark: !state.watermark })}
             sessionBreaks={state.showSessionBreaks !== false}

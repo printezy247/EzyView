@@ -11,7 +11,7 @@ import { Check, ChevronDown } from "lucide-react";
 export type MenuEntry =
   | { kind: "action"; id: string; label: string; hint?: string; disabled?: boolean; onSelect: () => void }
   | { kind: "toggle"; id: string; label: string; checked: boolean; onSelect: () => void }
-  | { kind: "radio"; id: string; label: string; selected: boolean; onSelect: () => void }
+  | { kind: "radio"; id: string; label: string; selected: boolean; disabled?: boolean; hint?: string; onSelect: () => void }
   | { kind: "separator"; id: string }
   | { kind: "label"; id: string; label: string };
 
@@ -196,7 +196,7 @@ export function MenuItems({ entries, onPick }: { entries: MenuEntry[]; onPick: (
 
         const on = entry.kind === "toggle" ? entry.checked : entry.kind === "radio" ? entry.selected : false;
         const role = entry.kind === "toggle" ? "menuitemcheckbox" : entry.kind === "radio" ? "menuitemradio" : "menuitem";
-        const disabled = entry.kind === "action" ? entry.disabled === true : false;
+        const disabled = entry.kind === "action" || entry.kind === "radio" ? entry.disabled === true : false;
 
         return (
           <button
@@ -215,7 +215,7 @@ export function MenuItems({ entries, onPick }: { entries: MenuEntry[]; onPick: (
               {on && <Check size={12} />}
             </span>
             <span className="flex-1">{entry.label}</span>
-            {entry.kind === "action" && entry.hint !== undefined && (
+            {(entry.kind === "action" || entry.kind === "radio") && entry.hint !== undefined && (
               <span className="text-dense text-ev-faint">{entry.hint}</span>
             )}
           </button>

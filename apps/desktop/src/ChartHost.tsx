@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Candle, Resolution } from "@ezyview/data-adapters";
+import type { Candle, Quote, Resolution } from "@ezyview/data-adapters";
 import { EzyChart } from "@ezyview/chart-engine";
 import type { ChartType, FundamentalEventOverlay, IndicatorInstance, ScriptPlotSpec, TradingLine } from "@ezyview/chart-engine";
 import type { Drawing, DrawingToolId } from "@ezyview/drawing-tools";
@@ -10,7 +10,10 @@ import type { PinePlot } from "@ezyview/pine-transpiler";
 import { THEME_OF, uid as newId, useWorkspace } from "./store";
 import type { ActiveIndicator, PineScriptRecord } from "./store";
 import type { ChartThemeName, CrosshairModeName, PriceScaleModeName } from "./layout";
-import { brokerFeed, loadHistory, quoteOf, RESOLUTION_SECONDS, tickerOf } from "./data";
+import { loadHistory, quoteOf, resolveSource, RESOLUTION_SECONDS, subscribeLive, tickerOf } from "./data";
+import { isLiveSourceChoice } from "./chartSource";
+import type { DataSourceChoice } from "./chartSource";
+import { useMt5 } from "./mt5";
 import { barsNeeded, rangeStart } from "./chartView";
 import { mergeQuote } from "./liveBars";
 import { summarizeChart } from "./chartSummary";
@@ -50,6 +53,8 @@ interface Props {
   onLevelCommit?: (symbol: string, levels: { stopLoss?: number; takeProfit?: number }) => void;
   /** Earnings markers + macro event lines; absent = none. */
   fundamentalEvents?: FundamentalEventOverlay;
+  /** Price feed for this chart; absent or "auto" = the global feed switch. */
+  dataSource?: DataSourceChoice;
   /** Crosshair interaction style; absent = normal. */
   crosshairMode?: CrosshairModeName;
   /** Right price-scale rendering; absent = linear. */
@@ -83,6 +88,9 @@ interface Props {
 export function ChartHost(props: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<EzyChart | null>(null);
+  // `auto` follows the global MT5 switch, so re-run the data effects when it flips.
+  const globalFeed = useMt5((s) => s.source);
+  const feed = resolveSource(props.dataSource);
   // The engine reads this at call time, so the latest callback is always used
   // without re-subscribing the chart.
   const crosshairRef = useRef(props.onCrosshairTime);
@@ -406,13 +414,18 @@ export function ChartHost(props: Props) {
     // Load enough history to reach back to `from` (capped); a symbol or
     // interval change mid-load drops the result.
     async function ensureHistory(from: number): Promise<void> {
-      const { symbol, resolution } = propsRef.current;
+      const { symbol, resolution, dataSource } = propsRef.current;
       const history = historyRef.current;
       if (history.length === 0 || history[0]!.time <= from) return;
       const need = barsNeeded(from, history[history.length - 1]!.time, RESOLUTION_SECONDS[resolution]);
       if (need <= history.length) return;
-      const more = await loadHistory(symbol, resolution, need);
-      if (propsRef.current.symbol !== symbol || propsRef.current.resolution !== resolution) return;
+      const more = await loadHistory(symbol, resolution, need, dataSource);
+      if (
+        propsRef.current.symbol !== symbol ||
+        propsRef.current.resolution !== resolution ||
+        propsRef.current.dataSource !== dataSource
+      )
+        return;
       if (more.length <= historyRef.current.length) return;
       if (propsRef.current.replayBar != null) return;
       historyRef.current = more;
@@ -423,11 +436,11 @@ export function ChartHost(props: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    void loadHistory(props.symbol, props.resolution)
+    void loadHistory(props.symbol, props.resolution, undefined, props.dataSource)
       .then((candles: Candle[]) => {
         if (cancelled) return;
         historyRef.current = candles;
-        historyKeyRef.current = `${props.symbol}|${props.resolution}`;
+        historyKeyRef.current = `${props.symbol}|${props.resolution}|${feed}`;
         // A stale replay cursor from another symbol would index past the end.
         const cursor = useWorkspace.getState().replayBar;
         const bars = sliceForReplay(candles, cursor);
@@ -445,7 +458,7 @@ export function ChartHost(props: Props) {
     return () => {
       cancelled = true;
     };
-  }, [props.symbol, props.resolution]);
+  }, [props.symbol, props.resolution, props.dataSource, globalFeed]);
 
   // Revealing bars one at a time re-slices the cached history; no refetch.
   useEffect(() => {
@@ -458,57 +471,90 @@ export function ChartHost(props: Props) {
     }
   }, [props.replayBar]);
 
-  // Live last bar: once a second, fold the feed's price into the newest candle
-  // (a new candle opens on a new period). Replay pauses it. The demo feed's
-  // quotes are not tied to its synthetic history, so the first live price is
-  // anchored to the last close; a broker feed needs no anchor.
+  // Live last bar: fold the feed's price into the newest candle (a new candle
+  // opens on a new period). Replay pauses it. Binance/Kraken/Twelve Data push
+  // quotes through `subscribeLive` (the adapter falls back to its own polling);
+  // if that cannot start, or for demo and MT5, `quoteOf` is polled. The demo
+  // feed's quotes are not tied to its synthetic history, so its first live
+  // price is anchored to the last close; real feeds need no anchor.
   useEffect(() => {
     if (props.replayBar != null) return;
     let cancelled = false;
     let busy = false;
     let anchor: number | null = null;
     const step = RESOLUTION_SECONDS[props.resolution];
+    const key = `${props.symbol}|${props.resolution}|${feed}`;
     let rafId: number | null = null;
-    const timer = setInterval(() => {
-      if (busy || historyRef.current.length === 0) return;
-      if (historyKeyRef.current !== `${props.symbol}|${props.resolution}`) return;
-      busy = true;
-      void quoteOf(props.symbol)
-        .then((q) => {
-          const history = historyRef.current;
-          if (cancelled || !q || history.length === 0) return;
-          if (historyKeyRef.current !== `${props.symbol}|${props.resolution}`) return;
-          if (!brokerFeed() && anchor === null) anchor = history[history.length - 1]!.close - q.last;
-          const price = q.last + (brokerFeed() ? 0 : (anchor ?? 0));
-          const merged = mergeQuote(history, price, q.time || Math.floor(Date.now() / 1000), step);
-          if (merged === history) return;
-          historyRef.current = merged;
-          shownRef.current = merged;
-          const applyLive = () => {
-            rafId = null;
-            if (cancelled) return;
-            chartRef.current?.setData(historyRef.current);
-            if (merged.length !== history.length) {
-              setShown(merged);
-            }
-          };
-          if (typeof requestAnimationFrame === "function") {
-            if (rafId === null) rafId = requestAnimationFrame(applyLive);
-          } else {
-            applyLive();
-          }
+    let timer: ReturnType<typeof setInterval> | null = null;
+    let unsubscribe: (() => void) | null = null;
+
+    const apply = (q: Quote) => {
+      const history = historyRef.current;
+      if (cancelled || history.length === 0) return;
+      // The bars belong to another symbol/interval/source: do not mix prices in.
+      if (historyKeyRef.current !== key) return;
+      if (feed === "demo" && anchor === null) anchor = history[history.length - 1]!.close - q.last;
+      const price = q.last + (feed === "demo" ? (anchor ?? 0) : 0);
+      const merged = mergeQuote(history, price, q.time || Math.floor(Date.now() / 1000), step);
+      if (merged === history) return;
+      historyRef.current = merged;
+      shownRef.current = merged;
+      const applyLive = () => {
+        rafId = null;
+        if (cancelled) return;
+        chartRef.current?.setData(historyRef.current);
+        if (merged.length !== history.length) {
+          setShown(merged);
+        }
+      };
+      if (typeof requestAnimationFrame === "function") {
+        if (rafId === null) rafId = requestAnimationFrame(applyLive);
+      } else {
+        applyLive();
+      }
+    };
+
+    const startPolling = () => {
+      if (timer !== null || cancelled) return;
+      // A broker quote is one cheap tick; Twelve Data's free key allows ~8 requests/minute.
+      const every = feed === "mt5" ? 500 : feed === "twelvedata" ? 8000 : 1000;
+      timer = setInterval(() => {
+        if (busy || historyRef.current.length === 0) return;
+        if (historyKeyRef.current !== key) return;
+        busy = true;
+        void quoteOf(props.symbol, props.dataSource)
+          .then((q) => {
+            if (q) apply(q);
+          })
+          .catch(() => {})
+          .finally(() => {
+            busy = false;
+          });
+      }, every);
+    };
+
+    if (isLiveSourceChoice(feed)) {
+      subscribeLive(props.symbol, feed, apply)
+        .then((u) => {
+          if (cancelled) u?.();
+          else if (u) unsubscribe = u;
+          else startPolling();
         })
-        .catch(() => {})
-        .finally(() => {
-          busy = false;
-        });
-    }, brokerFeed() ? 500 : 1000); // a broker quote is one cheap tick; the demo/public feeds stay at 1 s
+        .catch(startPolling);
+    } else {
+      startPolling();
+    }
     return () => {
       cancelled = true;
-      clearInterval(timer);
+      if (timer !== null) clearInterval(timer);
+      try {
+        unsubscribe?.();
+      } catch {
+        // ignore
+      }
       if (rafId !== null && typeof cancelAnimationFrame === "function") cancelAnimationFrame(rafId);
     };
-  }, [props.symbol, props.resolution, props.replayBar]);
+  }, [props.symbol, props.resolution, props.replayBar, props.dataSource, globalFeed]);
 
   useEffect(() => {
     const chart = chartRef.current;
