@@ -39,6 +39,10 @@ export interface JournalEntry {
   rules?: RuleCheck[];
   stopPrice?: number;
   targetPrice?: number;
+  /** Maximum Adverse Excursion: furthest drawdown suffered during the trade. */
+  mae?: number;
+  /** Maximum Favorable Excursion: highest unrealized profit reached during the trade. */
+  mfe?: number;
 }
 
 /** A free-form journal note: session observation, plan, screenshot. */

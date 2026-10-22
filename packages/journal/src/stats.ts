@@ -76,6 +76,8 @@ export interface JournalStats {
   bySetup: SetupBreakdown[];
   byTag: TagBreakdown[];
   byTimeOfDay: TimeOfDayBreakdown[];
+  avgMae?: number;
+  avgMfe?: number;
 }
 
 const EMPTY: JournalStats = {
@@ -101,7 +103,29 @@ const EMPTY: JournalStats = {
   bySetup: [],
   byTag: [],
   byTimeOfDay: [],
+  avgMae: 0,
+  avgMfe: 0,
 };
+
+/** Calculate Maximum Adverse Excursion (MAE) and Maximum Favorable Excursion (MFE) */
+export function computeMaeMfe(i: {
+  side: "long" | "short";
+  entryPrice: number;
+  lowestPrice: number;
+  highestPrice: number;
+}): { mae: number; mfe: number } {
+  const { side, entryPrice, lowestPrice, highestPrice } = i;
+  if (!Number.isFinite(entryPrice) || entryPrice <= 0) return { mae: 0, mfe: 0 };
+  if (side === "long") {
+    const mae = Math.max(0, entryPrice - lowestPrice);
+    const mfe = Math.max(0, highestPrice - entryPrice);
+    return { mae: Number(mae.toFixed(4)), mfe: Number(mfe.toFixed(4)) };
+  } else {
+    const mae = Math.max(0, highestPrice - entryPrice);
+    const mfe = Math.max(0, entryPrice - lowestPrice);
+    return { mae: Number(mae.toFixed(4)), mfe: Number(mfe.toFixed(4)) };
+  }
+}
 
 /** Fixed R histogram buckets, in display order. */
 const R_BUCKET_LABELS = ["≤-2", "-2..-1", "-1..0", "0..1", "1..2", "≥2"] as const;
@@ -140,6 +164,11 @@ export function computeStats(entries: readonly JournalEntry[]): JournalStats {
   const netPnl = grossProfit + grossLoss;
   const rMultiples = rMultiplesOf(closed);
 
+  const withMae = closed.filter((c) => c.mae !== undefined && Number.isFinite(c.mae));
+  const avgMae = withMae.length > 0 ? withMae.reduce((s, c) => s + c.mae!, 0) / withMae.length : 0;
+  const withMfe = closed.filter((c) => c.mfe !== undefined && Number.isFinite(c.mfe));
+  const avgMfe = withMfe.length > 0 ? withMfe.reduce((s, c) => s + c.mfe!, 0) / withMfe.length : 0;
+
   return {
     trades,
     wins,
@@ -163,6 +192,8 @@ export function computeStats(entries: readonly JournalEntry[]): JournalStats {
     bySetup: bySetup(closed),
     byTag: byTag(closed),
     byTimeOfDay: byTimeOfDay(closed),
+    avgMae: Number(avgMae.toFixed(2)),
+    avgMfe: Number(avgMfe.toFixed(2)),
   };
 }
 
