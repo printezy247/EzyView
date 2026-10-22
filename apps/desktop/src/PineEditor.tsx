@@ -639,6 +639,15 @@ function StrategyTester({ result, inputs }: { result: BacktestResult; inputs?: R
           value={result.profitFactor === null ? "∞" : result.profitFactor.toFixed(2)}
         />
         <Metric label="Max DD" value={`${(result.maxDrawdown * 100).toFixed(2)}%`} tone="neg" />
+        {result.sharpeRatio !== null && (
+          <Metric label="Sharpe" value={result.sharpeRatio.toFixed(2)} />
+        )}
+        {result.sortinoRatio !== null && (
+          <Metric label="Sortino" value={result.sortinoRatio.toFixed(2)} />
+        )}
+        {result.sqn !== null && (
+          <Metric label="SQN" value={result.sqn.toFixed(2)} />
+        )}
         <Metric label="Final equity" value={result.finalEquity.toFixed(2)} />
       </div>
       {inputEntries.length > 0 && (

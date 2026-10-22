@@ -17,6 +17,11 @@ function fakeResult(partial: Partial<BacktestResult> = {}): BacktestResult {
     profitFactor: null,
     maxDrawdown: 0,
     bars: 0,
+    sharpeRatio: null,
+    sortinoRatio: null,
+    sqn: null,
+    maxConsecutiveLosses: 0,
+    avgWinLossRatio: null,
     ...partial,
   };
 }

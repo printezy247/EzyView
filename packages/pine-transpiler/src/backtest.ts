@@ -20,6 +20,11 @@ export interface BacktestResult {
   profitFactor: number | null;
   maxDrawdown: number;
   bars: number;
+  sharpeRatio: number | null;
+  sortinoRatio: number | null;
+  sqn: number | null;
+  maxConsecutiveLosses: number;
+  avgWinLossRatio: number | null;
 }
 
 export interface BacktestOptions {
@@ -139,6 +144,52 @@ export function backtest(orders: PineOrder[], opts: BacktestOptions): BacktestRe
   const grossProfit = wins.reduce((s, t) => s + t.pnl, 0);
   const grossLoss = trades.filter((t) => t.pnl < 0).reduce((s, t) => s + Math.abs(t.pnl), 0);
 
+  const pnlList = trades.map((t) => t.pnl);
+  const n = pnlList.length;
+
+  let sharpeRatio: number | null = null;
+  let sortinoRatio: number | null = null;
+  let sqn: number | null = null;
+  let avgWinLossRatio: number | null = null;
+
+  if (n >= 2) {
+    const meanPnl = pnlList.reduce((s, p) => s + p, 0) / n;
+    const variance = pnlList.reduce((s, p) => s + Math.pow(p - meanPnl, 2), 0) / (n - 1);
+    const stdev = Math.sqrt(variance);
+
+    if (stdev > 0) {
+      sharpeRatio = Number((meanPnl / stdev).toFixed(2));
+      sqn = Number((Math.sqrt(n) * (meanPnl / stdev)).toFixed(2));
+    }
+
+    const downsideVariance =
+      pnlList.reduce((s, p) => s + (p < 0 ? Math.pow(p, 2) : 0), 0) / (n - 1);
+    const downsideDev = Math.sqrt(downsideVariance);
+    if (downsideDev > 0) {
+      sortinoRatio = Number((meanPnl / downsideDev).toFixed(2));
+    }
+  }
+
+  let maxConsecutiveLosses = 0;
+  let currentLossStreak = 0;
+  for (const t of trades) {
+    if (t.pnl < 0) {
+      currentLossStreak++;
+      if (currentLossStreak > maxConsecutiveLosses) maxConsecutiveLosses = currentLossStreak;
+    } else if (t.pnl > 0) {
+      currentLossStreak = 0;
+    }
+  }
+
+  const losingTrades = trades.filter((t) => t.pnl < 0);
+  if (wins.length > 0 && losingTrades.length > 0) {
+    const avgWin = grossProfit / wins.length;
+    const avgLoss = grossLoss / losingTrades.length;
+    if (avgLoss > 0) {
+      avgWinLossRatio = Number((avgWin / avgLoss).toFixed(2));
+    }
+  }
+
   return {
     trades,
     equity,
@@ -149,6 +200,11 @@ export function backtest(orders: PineOrder[], opts: BacktestOptions): BacktestRe
     profitFactor: grossLoss === 0 ? (grossProfit > 0 ? null : 0) : grossProfit / grossLoss,
     maxDrawdown: maxDrawdown(equity),
     bars: close.length,
+    sharpeRatio,
+    sortinoRatio,
+    sqn,
+    maxConsecutiveLosses,
+    avgWinLossRatio,
   };
 }
 
