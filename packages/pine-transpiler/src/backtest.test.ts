@@ -164,4 +164,60 @@ describe("backtest", () => {
     expect(result.maxDrawdown).toBe(0);
     expect(result.equity).toHaveLength(CLOSE.length);
   });
+
+  it("fills on next bar open when open is provided to prevent look-ahead bias", () => {
+    const OPEN = [99, 100.5, 101.5, 102.5, 103.5, 102.5, 101.5, 100.5, 99.5];
+    const orders = [
+      order({ action: "entry", barIndex: 1, side: "long", id: "L" }),
+      order({ action: "close", barIndex: 4, id: "L" }),
+    ];
+    // Entry generated on bar 1 fills at bar 2 open (101.5)
+    // Close generated on bar 4 fills at bar 5 open (102.5)
+    const result = backtest(orders, { close: CLOSE, open: OPEN });
+
+    expect(result.trades).toHaveLength(1);
+    expect(result.trades[0]).toMatchObject({
+      side: "long",
+      entryBar: 2,
+      entryPrice: 101.5,
+      exitBar: 5,
+      exitPrice: 102.5,
+    });
+    expect(result.trades[0]?.pnl).toBeCloseTo(1.0, 6);
+  });
+
+  it("applies slippage and commission accurately", () => {
+    const orders = [
+      order({ action: "entry", barIndex: 1, side: "long", id: "L" }),
+      order({ action: "close", barIndex: 4, id: "L" }),
+    ];
+    // Entry price = 101 + 0.1 slippage = 101.1
+    // Exit price = 104 - 0.1 slippage = 103.9
+    // Gross PnL = 103.9 - 101.1 = 2.8
+    // Commission = $1 entry + $1 exit ($2 round trip) -> Net PnL = 0.8
+    const result = backtest(orders, {
+      close: CLOSE,
+      slippage: 0.1,
+      commission: 1,
+    });
+
+    expect(result.trades[0]?.entryPrice).toBeCloseTo(101.1, 4);
+    expect(result.trades[0]?.exitPrice).toBeCloseTo(103.9, 4);
+    expect(result.trades[0]?.pnl).toBeCloseTo(0.8, 4);
+  });
+
+  it("multiplies PnL by contractMultiplier for metals/forex", () => {
+    const orders = [
+      order({ action: "entry", barIndex: 1, side: "long", id: "Gold", qty: 2 }),
+      order({ action: "close", barIndex: 4, id: "Gold" }),
+    ];
+    // Entry 101, Exit 104 -> Price move = $3.
+    // Qty = 2, Multiplier = 100 (Gold oz) -> Gross PnL = 3 * 2 * 100 = $600.
+    const result = backtest(orders, {
+      close: CLOSE,
+      contractMultiplier: 100,
+    });
+
+    expect(result.trades[0]?.pnl).toBeCloseTo(600, 4);
+  });
 });
