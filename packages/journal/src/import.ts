@@ -13,8 +13,11 @@ interface Group {
   deals: Deal[];
 }
 
+const isSound = (d: Deal): boolean =>
+  [d.qty, d.price, d.pnl, d.time].every((n) => typeof n === "number" && Number.isFinite(n));
+
 export function entriesFromDeals(deals: readonly Deal[], source?: JournalEntry["source"]): JournalEntry[] {
-  const ordered = [...deals].sort((a, b) => a.time - b.time);
+  const ordered = deals.filter(isSound).sort((a, b) => a.time - b.time);
   const groups = new Map<string, Group>();
   const ungrouped: Deal[] = [];
 

@@ -546,4 +546,13 @@ const DANGEROUS_GLOBALS = new Set([
   "Proxy",
 ]);
 
+// Names alone are a blocklist, and `Object.getOwnPropertyDescriptor(...)` reached
+// `Function` without ever naming it. Every capitalised host global (Object,
+// Array, JSON, Math, Date, Intl, HTML*...) is a built-in a Pine script has no use
+// for, so block them all. Lower-case globals stay allowed: `open`, `close`,
+// `name` and `length` are Pine series or common variable names.
+for (const name of Object.getOwnPropertyNames(globalThis)) {
+  if (/^[A-Z]/.test(name) && !BUILTIN_NAMES.has(name)) DANGEROUS_GLOBALS.add(name);
+}
+
 export { PineSyntaxError };

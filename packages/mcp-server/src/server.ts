@@ -61,9 +61,16 @@ const posNum = (a: Args, key: string, fallback?: number): number => {
 
 const VALID_SCREENER_FIELDS = new Set<ScreenerField>(["price", "changePct", "volume", "fromHighPct", "rsi"]);
 
+/**
+ * Private-data tools fail closed: a token is required unless the operator
+ * explicitly opts out with EZYVIEW_MCP_INSECURE=1.
+ */
 function checkAuth(a: Args): void {
   const requiredToken = process.env.EZYVIEW_MCP_TOKEN;
-  if (!requiredToken) return;
+  if (!requiredToken) {
+    if (process.env.EZYVIEW_MCP_INSECURE === "1") return;
+    throw new Error("Unauthorized: set EZYVIEW_MCP_TOKEN (or EZYVIEW_MCP_INSECURE=1 to allow unauthenticated access)");
+  }
   if (typeof a.token !== "string") {
     throw new Error("Unauthorized: Invalid or missing EZYVIEW_MCP_TOKEN");
   }

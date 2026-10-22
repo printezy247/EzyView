@@ -471,6 +471,17 @@ describe("sandbox (Phase A)", () => {
     expect(() => transpile("x = navigator.sendBeacon")).toThrow(PineUnsupportedError);
   });
 
+  it("rejects JS built-ins that reach Function without naming it", () => {
+    // Object.getOwnPropertyDescriptor(...constructor) used to give a script
+    // `Function` and with it the host realm.
+    const escape =
+      'g = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(ta.sma), "constructor").value("return 1")';
+    expect(() => transpile(escape)).toThrow(PineUnsupportedError);
+    for (const name of ["Object", "Array", "JSON", "Math", "Symbol", "Date", "Intl", "Map"]) {
+      expect(() => transpile(`x = ${name}`)).toThrow(PineUnsupportedError);
+    }
+  });
+
   it("rejects dangerous member access", () => {
     for (const m of ["constructor", "__proto__", "prototype", "then", "call", "apply", "bind", "toString", "valueOf"]) {
       expect(() => transpile(`close.${m}`)).toThrow(PineUnsupportedError);

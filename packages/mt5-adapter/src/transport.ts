@@ -220,7 +220,14 @@ class BridgeTransport implements Mt5Transport {
     }
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 12_000);
-    const init: RequestInit = { method, signal: controller.signal };
+    const init: RequestInit = { method, signal: controller.signal, redirect: "error" };
+    const redact = (text: string): string => {
+      let out = text;
+      if (this.token) {
+        out = out.split(this.token).join("[redacted]").split(encodeURIComponent(this.token)).join("[redacted]");
+      }
+      return out.replace(/([?&]token=)[^&\s]*/gi, "$1[redacted]");
+    };
     if (method === "POST") {
       // text/plain is a CORS "simple" header: it skips the preflight, which
       // this local server answers unreliably for some browsers. The bridge
@@ -229,11 +236,16 @@ class BridgeTransport implements Mt5Transport {
       init.body = JSON.stringify(body ?? {});
     }
     try {
-      const response = await this.fetchFn(this.url(path), init);
+      let response: Response;
+      try {
+        response = await this.fetchFn(this.url(path), init);
+      } catch (err) {
+        throw new Error(redact(err instanceof Error ? err.message : String(err)));
+      }
       if (!response.ok) {
         if (response.status === 401) this.session = null;
-        const detail = await response.text().catch(() => "");
-        throw new Error(`MT5 bridge ${method} ${path} → HTTP ${response.status} ${detail}`.trim());
+        const detail = (await response.text().catch(() => "")).slice(0, 200);
+        throw new Error(redact(`MT5 bridge ${method} ${path.split("?")[0]} → HTTP ${response.status} ${detail}`.trim()));
       }
       return (await response.json()) as T;
     } finally {

@@ -82,4 +82,21 @@ describe("mcp server tools", () => {
       delete process.env.EZYVIEW_MCP_TOKEN;
     }
   });
+
+  it("fails closed on private tools when no token is configured, unless INSECURE=1", async () => {
+    delete process.env.EZYVIEW_MCP_TOKEN;
+    delete process.env.EZYVIEW_MCP_INSECURE;
+    const tools = ["get_workspace", "get_journal", "list_alerts", "journal_review_pack"];
+    const results = await Promise.all(tools.map((t) => call(t, {})));
+    for (const res of results) {
+      expect(res.isError).toBe(true);
+      expect(res.data).toContain("Unauthorized");
+    }
+    process.env.EZYVIEW_MCP_INSECURE = "1";
+    try {
+      expect((await call("get_workspace", {})).isError).toBe(false);
+    } finally {
+      delete process.env.EZYVIEW_MCP_INSECURE;
+    }
+  });
 });

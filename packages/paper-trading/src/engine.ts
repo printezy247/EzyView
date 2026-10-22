@@ -50,7 +50,12 @@ export interface PaperPosition extends Position {
 export interface PaperOrder extends Order {
   takeProfit?: number;
   stopLoss?: number;
+  /** stop_limit only: the stop has tripped and the order now rests as a limit. */
+  triggered?: boolean;
 }
+
+/** Largest single order, so a typo (or a hostile caller) cannot size a nonsense position. */
+const MAX_ORDER_QTY = 1_000_000_000;
 
 /**
  * Persistable account state.
@@ -243,8 +248,8 @@ export class PaperTradingEngine implements TradingAdapter {
     if (!order || order.status !== "pending") {
       throw new PaperTradingError("not_open", `No open order ${id}`);
     }
-    if (patch.qty !== undefined && (patch.qty <= 0 || !Number.isFinite(patch.qty))) {
-      throw new PaperTradingError("invalid_qty", "qty must be greater than zero");
+    if (patch.qty !== undefined && (patch.qty <= 0 || !Number.isFinite(patch.qty) || patch.qty > MAX_ORDER_QTY)) {
+      throw new PaperTradingError("invalid_qty", `qty must be greater than zero and at most ${MAX_ORDER_QTY}`);
     }
     if (patch.price !== undefined && (patch.price <= 0 || !Number.isFinite(patch.price))) {
       throw new PaperTradingError("invalid_price", "price must be greater than zero");
@@ -341,15 +346,11 @@ export class PaperTradingEngine implements TradingAdapter {
     let triggeredAny = false;
     for (const order of Array.from(this.orders.values())) {
       if (order.status !== "pending" || order.symbol !== symbol) continue;
-      if (order.type === "stop_limit") {
-        const stopLevel = order.stopPrice ?? order.price;
-        if (finite(stopLevel)) {
-          const tripped = order.side === "buy" ? price >= stopLevel : price <= stopLevel;
-          if (tripped) {
-            order.type = "limit";
-            delete order.stopPrice;
-            triggeredAny = true;
-          }
+      if (order.type === "stop_limit" && !order.triggered && finite(order.stopPrice)) {
+        const tripped = order.side === "buy" ? price >= order.stopPrice : price <= order.stopPrice;
+        if (tripped) {
+          order.triggered = true;
+          triggeredAny = true;
         }
       }
       const trigger = this.triggered(order, price);
@@ -371,7 +372,8 @@ export class PaperTradingEngine implements TradingAdapter {
   // Internals
   // -------------------------------------------------------------------------
 
-  private triggered(order: Order, price: number): number | null {
+  private triggered(order: PaperOrder, price: number): number | null {
+    if (order.type === "stop_limit" && !order.triggered) return null;
     if (order.type === "stop") {
       const stopLevel = order.stopPrice ?? order.price;
       if (!finite(stopLevel)) return null;
@@ -489,6 +491,7 @@ export class PaperTradingEngine implements TradingAdapter {
 
   private validate(request: OrderRequest, price: number | undefined): string | null {
     if (request.qty <= 0 || !Number.isFinite(request.qty)) return "qty must be greater than zero";
+    if (request.qty > MAX_ORDER_QTY) return `qty must be at most ${MAX_ORDER_QTY}`;
     if (request.type === "market" && !finite(price)) return "no market price yet";
     if (request.type === "limit" && !finite(request.price)) return "limit orders need a price";
     if (request.type === "stop_limit" && (!finite(request.price) || !finite(request.stopPrice))) {

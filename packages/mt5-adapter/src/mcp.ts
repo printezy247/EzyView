@@ -45,7 +45,7 @@ export function isLoopbackUrl(rawUrl: string): boolean {
     const parsed = new URL(rawUrl);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
     const host = parsed.hostname;
-    return host === "127.0.0.1" || host === "localhost" || host === "::1" || host === "[::1]";
+    return host === "127.0.0.1" || host === "::1" || host === "[::1]";
   } catch {
     return false;
   }
@@ -159,6 +159,7 @@ export class McpClient {
       response = await fetchFn(url, {
         method: "POST",
         headers,
+        redirect: "error",
         body: JSON.stringify(message),
         signal: controller.signal,
       });
