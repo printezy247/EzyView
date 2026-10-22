@@ -220,4 +220,24 @@ describe("backtest", () => {
 
     expect(result.trades[0]?.pnl).toBeCloseTo(600, 4);
   });
+
+  it("calculates Sharpe, Sortino, SQN, and consecutive losses", () => {
+    // 3 trades: win (+3), loss (-1), loss (-2)
+    const orders = [
+      order({ action: "entry", barIndex: 0, side: "long", id: "T1" }),
+      order({ action: "close", barIndex: 3, id: "T1" }), // pnl: 103 - 100 = +3
+      order({ action: "entry", barIndex: 4, side: "long", id: "T2" }),
+      order({ action: "close", barIndex: 5, id: "T2" }), // pnl: 103 - 104 = -1
+      order({ action: "entry", barIndex: 6, side: "long", id: "T3" }),
+      order({ action: "close", barIndex: 8, id: "T3" }), // pnl: 100 - 102 = -2
+    ];
+    const result = backtest(orders, { close: CLOSE });
+
+    expect(result.trades).toHaveLength(3);
+    expect(result.maxConsecutiveLosses).toBe(2);
+    expect(result.sharpeRatio).toBeDefined();
+    expect(result.sortinoRatio).toBeDefined();
+    expect(result.sqn).toBeDefined();
+    expect(result.avgWinLossRatio).toBeCloseTo(3 / 1.5, 2); // 3 win vs avg 1.5 loss = 2.0
+  });
 });
