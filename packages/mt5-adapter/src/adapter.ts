@@ -90,6 +90,19 @@ export class Mt5MarketData implements MarketDataAdapter {
   }
 
   async getQuote(symbol: string): Promise<Quote | null> {
+    return this.fetchQuote(symbol);
+  }
+
+  /** One tick when the transport can, else the whole market watch (also the fallback on error). */
+  private async fetchQuote(symbol: string): Promise<Quote | null> {
+    if (this.transport.quote) {
+      try {
+        const quote = toQuote(await this.transport.quote(symbol), symbol);
+        if (quote) return quote;
+      } catch {
+        // fall through to the market watch
+      }
+    }
     try {
       return findQuote(await this.transport.marketWatch(), symbol);
     } catch {
@@ -104,12 +117,9 @@ export class Mt5MarketData implements MarketDataAdapter {
       if (!active || inFlight) return;
       inFlight = true;
       try {
-        const raw = await this.transport.marketWatch();
+        const quotes = await Promise.all(symbols.map((symbol) => this.fetchQuote(symbol)));
         if (!active) return;
-        for (const symbol of symbols) {
-          const quote = findQuote(raw, symbol);
-          if (quote) onQuote(quote);
-        }
+        for (const quote of quotes) if (quote) onQuote(quote);
       } catch {
         // network or server error; next tick will retry
       } finally {
