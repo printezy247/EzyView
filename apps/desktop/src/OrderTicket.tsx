@@ -7,7 +7,7 @@ import { SourceWarning } from "./SourceWarning";
 import { useWorkspace } from "./store";
 import { useOrderDraft } from "./orderDraft";
 import { useTrading } from "./trading";
-import { riskQty } from "./tradeMath";
+import { calculateRiskReward, getContractMultiplier, riskQty } from "./tradeMath";
 
 interface Props {
   symbol: string;
@@ -120,6 +120,14 @@ export function OrderTicket({ symbol }: Props) {
     levelsValid &&
     !sending;
 
+  const multiplier = getContractMultiplier(symbol);
+  const rr = calculateRiskReward({
+    side,
+    entry: workingPrice ?? last ?? 0,
+    stop: stopValue,
+    target: targetValue,
+  });
+
   const calcRiskQty = (riskPct: number) => {
     const equity = account?.equity ?? account?.balance ?? 10_000;
     const entry = workingPrice ?? last ?? 0;
@@ -130,7 +138,8 @@ export function OrderTicket({ symbol }: Props) {
       side,
       riskPct,
       // Never size beyond what the account's leverage could carry.
-      maxQty: entry > 0 ? (equity * maxLeverage) / entry : 0,
+      maxQty: entry > 0 ? (equity * maxLeverage) / (entry * multiplier) : 0,
+      contractMultiplier: multiplier,
     });
     if (qtyOut === null) {
       setNotice("Enter a valid stop loss on the correct side of the entry price to size by risk.");
@@ -295,11 +304,37 @@ export function OrderTicket({ symbol }: Props) {
 
       <dl className="space-y-1 border-t border-ev-raised pt-2 text-dense">
         <Row label="Reference" value={last === null ? "—" : last.toFixed(precision)} />
-        <Row label="Value" value={value === null ? "—" : value.toLocaleString(undefined, { maximumFractionDigits: 2 })} />
+        {multiplier > 1 && (
+          <Row
+            label="Contract size"
+            value={`${multiplier.toLocaleString()} / lot`}
+          />
+        )}
+        <Row
+          label="Value"
+          value={value === null ? "—" : (value * multiplier).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+        />
         <Row
           label={`Margin @ ${maxLeverage}×`}
-          value={margin === null ? "—" : margin.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+          value={margin === null ? "—" : (margin * multiplier).toLocaleString(undefined, { maximumFractionDigits: 2 })}
         />
+        {rr.ratio !== null && (
+          <div className="flex items-center justify-between pt-1">
+            <dt className="text-ev-muted">Risk : Reward</dt>
+            <dd className="flex items-center gap-1 font-medium">
+              <span className="text-ev-strong">1 : {rr.ratio.toFixed(2)}</span>
+              {rr.ratio < 1.5 ? (
+                <span className="rounded bg-ev-down/20 px-1 py-0.5 text-[10px] text-ev-down-text font-semibold">
+                  &lt; 1:1.5
+                </span>
+              ) : (
+                <span className="rounded bg-ev-up/20 px-1 py-0.5 text-[10px] text-ev-up-text font-semibold">
+                  Good
+                </span>
+              )}
+            </dd>
+          </div>
+        )}
       </dl>
 
       {!levelsValid && (

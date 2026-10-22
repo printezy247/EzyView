@@ -25,22 +25,42 @@ export interface BacktestResult {
 export interface BacktestOptions {
   /** Starting cash. */
   initialCash?: number;
-  /** Close prices, one per bar, used to fill orders. */
+  /** Close prices, one per bar, used to fill orders when fillOnClose is true. */
   close: number[];
+  /** Open prices, one per bar. When supplied and fillOnClose is false, orders fill on next bar open. */
+  open?: number[];
+  /** High prices, one per bar. */
+  high?: number[];
+  /** Low prices, one per bar. */
+  low?: number[];
+  /**
+   * If true, fills orders at bar close (TradingView process_orders_on_close = true).
+   * Defaults to true when open is omitted, and false when open is provided.
+   */
+  fillOnClose?: boolean;
+  /** Slippage in price units added to buys and subtracted from sells. */
+  slippage?: number;
+  /** Commission cash amount per trade execution. */
+  commission?: number;
+  /** Contract multiplier (e.g. 100 for Gold, 100,000 for Forex). Default 1. */
+  contractMultiplier?: number;
 }
 
 /**
  * Turn a script's recorded order intents into filled trades.
  *
- * Orders fill at the close of the bar that raised them — Pine's default when no
- * limit/stop is attached. A `close` order flattens the named position (or all
- * positions when the id is `"*"`). Positions are one unit unless the order
- * carried an explicit quantity.
+ * Orders can fill at next bar open (default when open is provided) or at the
+ * close of the bar that raised them (when fillOnClose is true).
+ * A `close` order flattens the named position (or all positions when the id is `"*"`).
  */
 export function backtest(orders: PineOrder[], opts: BacktestOptions): BacktestResult {
   const { close, initialCash = 10_000 } = opts;
+  const fillOnClose = opts.fillOnClose ?? (opts.open === undefined);
+  const slippage = opts.slippage ?? 0;
+  const commission = opts.commission ?? 0;
+  const multiplier = opts.contractMultiplier ?? 1;
 
-  const open = new Map<string, { side: "long" | "short"; price: number; qty: number; bar: number }>();
+  const openPositions = new Map<string, { side: "long" | "short"; price: number; qty: number; bar: number }>();
   const trades: Trade[] = [];
   const equity: number[] = [];
 
@@ -48,41 +68,56 @@ export function backtest(orders: PineOrder[], opts: BacktestOptions): BacktestRe
   const sorted = [...orders].sort((a, b) => a.barIndex - b.barIndex);
 
   for (const order of sorted) {
-    const price = close[order.barIndex];
+    const fillBar = fillOnClose ? order.barIndex : order.barIndex + 1;
+    if (fillBar >= close.length) continue;
+
+    const rawPrice = fillOnClose
+      ? close[fillBar]
+      : (opts.open?.[fillBar] ?? close[fillBar]);
+
     // A bar with no price cannot fill; skip rather than invent a level.
-    if (price === undefined || Number.isNaN(price)) continue;
+    if (rawPrice === undefined || Number.isNaN(rawPrice)) continue;
 
     if (order.action === "entry") {
+      const execPrice = order.side === "long" ? rawPrice + slippage : rawPrice - slippage;
       const key = order.id ?? order.side;
-      const existing = open.get(key);
-      if (existing) closePosition(existing, price, order.barIndex, trades);
-      open.set(key, { side: order.side, price, qty: order.qty || 1, bar: order.barIndex });
+      const existing = openPositions.get(key);
+      if (existing) {
+        const exitPrice = existing.side === "long" ? rawPrice - slippage : rawPrice + slippage;
+        closePosition(existing, exitPrice, fillBar, trades, multiplier, commission);
+      }
+      openPositions.set(key, { side: order.side, price: execPrice, qty: order.qty || 1, bar: fillBar });
       continue;
     }
 
     if (order.action === "close") {
       if (order.id === "*") {
-        for (const pos of open.values()) closePosition(pos, price, order.barIndex, trades);
-        open.clear();
+        for (const pos of openPositions.values()) {
+          const exitPrice = pos.side === "long" ? rawPrice - slippage : rawPrice + slippage;
+          closePosition(pos, exitPrice, fillBar, trades, multiplier, commission);
+        }
+        openPositions.clear();
         continue;
       }
       const key = order.id ?? "";
-      const pos = open.get(key);
+      const pos = openPositions.get(key);
       if (pos) {
-        closePosition(pos, price, order.barIndex, trades);
-        open.delete(key);
+        const exitPrice = pos.side === "long" ? rawPrice - slippage : rawPrice + slippage;
+        closePosition(pos, exitPrice, fillBar, trades, multiplier, commission);
+        openPositions.delete(key);
       }
       continue;
     }
 
     // `exit` carries a stop or target in `qty`; without one it flattens at the
-    // current close, which is the only price the bar guarantees.
+    // current execution price.
     if (order.action === "exit") {
       const key = order.id ?? "";
-      const pos = open.get(key);
+      const pos = openPositions.get(key);
       if (pos) {
-        closePosition(pos, price, order.barIndex, trades);
-        open.delete(key);
+        const exitPrice = pos.side === "long" ? rawPrice - slippage : rawPrice + slippage;
+        closePosition(pos, exitPrice, fillBar, trades, multiplier, commission);
+        openPositions.delete(key);
       }
     }
   }
@@ -90,8 +125,10 @@ export function backtest(orders: PineOrder[], opts: BacktestOptions): BacktestRe
   // Mark any still-open position to the last known close.
   const last = close[close.length - 1];
   if (last !== undefined) {
-    for (const pos of open.values()) closePosition(pos, last, close.length - 1, trades);
-    open.clear();
+    for (const pos of openPositions.values()) {
+      closePosition(pos, last, close.length - 1, trades, multiplier, 0);
+    }
+    openPositions.clear();
   }
 
   trades.sort((a, b) => a.entryBar - b.entryBar || a.exitBar - b.exitBar);
@@ -120,8 +157,11 @@ function closePosition(
   exitPrice: number,
   exitBar: number,
   trades: Trade[],
+  multiplier: number = 1,
+  commission: number = 0,
 ): void {
-  const gross = (exitPrice - pos.price) * pos.qty * (pos.side === "long" ? 1 : -1);
+  const gross = (exitPrice - pos.price) * pos.qty * multiplier * (pos.side === "long" ? 1 : -1);
+  const net = gross - commission * 2;
   trades.push({
     side: pos.side,
     entryBar: pos.bar,
@@ -129,7 +169,7 @@ function closePosition(
     exitBar,
     exitPrice,
     qty: pos.qty,
-    pnl: gross,
+    pnl: net,
     returnPct: pos.price === 0 ? 0 : ((exitPrice - pos.price) / pos.price) * (pos.side === "long" ? 1 : -1),
   });
 }
