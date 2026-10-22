@@ -27,7 +27,7 @@ export function IndicatorDialog({ open, onClose }: Props) {
     <Modal
       onClose={onClose}
       labelledBy="indicator-dialog-title"
-      className="flex h-[26rem] w-[30rem] flex-col rounded-md border border-ev-line bg-ev-panel shadow-2xl"
+      className="flex h-[26rem] w-[min(30rem,92vw)] flex-col rounded-md border border-ev-line bg-ev-panel shadow-2xl"
     >
       <div className="flex items-center justify-between border-b border-ev-raised px-4 py-2.5">
         <h2 id="indicator-dialog-title" className="text-body font-semibold text-ev-strong">

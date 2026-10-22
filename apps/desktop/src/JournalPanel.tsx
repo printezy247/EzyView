@@ -174,7 +174,7 @@ export function JournalPanel({ onClose }: Props) {
             type="button"
             onClick={onClose}
             aria-label="Close journal"
-            className="flex size-5 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+            className="flex size-6 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
           >
             <X size={13} aria-hidden />
           </button>
@@ -310,7 +310,7 @@ function TradeRow({ entry, onDelete }: { entry: JournalEntry; onDelete: () => vo
         type="button"
         aria-label={`Delete trade ${entry.symbol}`}
         onClick={onDelete}
-        className="ml-auto flex size-5 items-center justify-center rounded text-ev-faint hover:bg-ev-raised hover:text-ev-down"
+        className="ml-auto flex size-6 items-center justify-center rounded text-ev-faint hover:bg-ev-raised hover:text-ev-down"
       >
         <Trash2 size={12} aria-hidden />
       </button>
@@ -348,7 +348,7 @@ function NoteRow({
         type="button"
         aria-label="Delete note"
         onClick={onDelete}
-        className="ml-auto flex size-5 items-center justify-center rounded text-ev-faint hover:bg-ev-raised hover:text-ev-down"
+        className="ml-auto flex size-6 items-center justify-center rounded text-ev-faint hover:bg-ev-raised hover:text-ev-down"
       >
         <Trash2 size={12} aria-hidden />
       </button>

@@ -144,7 +144,9 @@ export function JournalCalendar({ entries, selectedDay, onSelectDay }: Props) {
             aria-hidden
             className="h-2 w-24 rounded-sm"
             style={{
-              background: "linear-gradient(to right, rgba(239,83,80,0.7), rgba(30,34,45,0.4), rgba(38,166,154,0.7))",
+              // The brand's profit and loss colours, so the calendar matches
+              // every other P&L surface in the app.
+              background: "linear-gradient(to right, var(--ev-down), var(--ev-raised), var(--ev-up))",
             }}
           />
           <span>Profit</span>

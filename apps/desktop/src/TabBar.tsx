@@ -17,6 +17,7 @@ import { useNavigate } from "react-router";
 import { Menu } from "./Menu";
 import type { MenuEntry } from "./Menu";
 import { useWorkspace } from "./store";
+import { notice } from "./notice";
 import { linkGroupOf } from "./linkGroups";
 import { openChartWindow } from "./windows";
 import { useZen } from "./zen";
@@ -173,8 +174,18 @@ export function TabBar() {
                   type="button"
                   title={`Close ${layout.name}`}
                   aria-label={`Close layout ${layout.name}`}
-                  onClick={() => deleteLayout(layout.id)}
-                  className="mr-1 flex size-5 items-center justify-center rounded text-ev-faint hover:bg-ev-line hover:text-ev-strong"
+                  onClick={() => {
+                    // Closing a layout throws away its charts and drawings.
+                    void notice
+                      .confirm(`Close ${layout.name}?`, {
+                        body: "The layout's charts, drawings and indicators are removed with it.",
+                        confirmLabel: "Close layout",
+                      })
+                      .then((ok) => {
+                        if (ok) deleteLayout(layout.id);
+                      });
+                  }}
+                  className="mr-1 flex size-6 items-center justify-center rounded text-ev-faint hover:bg-ev-line hover:text-ev-strong"
                 >
                   <X size={12} aria-hidden />
                 </button>
@@ -222,7 +233,16 @@ export function TabBar() {
               id: "close",
               label: "Close active layout",
               disabled: layouts.length <= 1,
-              onSelect: () => deleteLayout(activeId),
+              onSelect: () => {
+                void notice
+                  .confirm("Close the active layout?", {
+                    body: "The layout's charts, drawings and indicators are removed with it.",
+                    confirmLabel: "Close layout",
+                  })
+                  .then((ok) => {
+                    if (ok) deleteLayout(activeId);
+                  });
+              },
             },
           ] satisfies MenuEntry[]
         }

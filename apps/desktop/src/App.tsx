@@ -501,7 +501,7 @@ function SourceToggle() {
         <Modal
           onClose={() => setSwitchWarning(null)}
           labelledBy="switch-warn-title"
-          className="w-[26rem] rounded-md border border-ev-warn/40 bg-ev-panel text-base shadow-2xl"
+          className="w-[min(26rem,92vw)] rounded-md border border-ev-warn/40 bg-ev-panel text-base shadow-2xl"
         >
           <div className="space-y-3 p-4">
             <h2 id="switch-warn-title" className="text-body font-semibold text-ev-warn">
@@ -537,7 +537,7 @@ function SourceToggle() {
         <Modal
           onClose={refuseRisk}
           labelledBy="real-source-title"
-          className="w-[24rem] rounded-md border border-ev-warn/40 bg-ev-panel text-base shadow-2xl"
+          className="w-[min(24rem,92vw)] rounded-md border border-ev-warn/40 bg-ev-panel text-base shadow-2xl"
         >
           <div className="space-y-3 p-4">
             <h2 id="real-source-title" className="text-body font-semibold text-ev-warn">

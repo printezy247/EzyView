@@ -75,7 +75,7 @@ export function TradeConfirmDialog() {
     <Modal
       onClose={decline}
       labelledBy="trade-confirm-title"
-      className="w-[26rem] rounded-md border border-ev-line bg-ev-panel text-base shadow-2xl"
+      className="w-[min(26rem,92vw)] rounded-md border border-ev-line bg-ev-panel text-base shadow-2xl"
     >
       <div className="flex items-center justify-between border-b border-ev-raised px-4 py-2.5">
         <h2 id="trade-confirm-title" className="flex items-center gap-2 text-body font-semibold text-ev-strong">

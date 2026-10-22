@@ -358,6 +358,8 @@ export function ChartHost(props: Props) {
 
   // Screen readers get a text summary in place of the canvas.
   const [shown, setShown] = useState<Candle[]>([]);
+  /** Why the history could not be loaded, if it could not. */
+  const [loadError, setLoadError] = useState<string | null>(null);
   shownRef.current = shown;
 
   // Export bridge: publish this cell while it is mounted (id = layout cell
@@ -421,18 +423,25 @@ export function ChartHost(props: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    void loadHistory(props.symbol, props.resolution).then((candles: Candle[]) => {
-      if (cancelled) return;
-      historyRef.current = candles;
-      historyKeyRef.current = `${props.symbol}|${props.resolution}`;
-      // A stale replay cursor from another symbol would index past the end.
-      const cursor = useWorkspace.getState().replayBar;
-      const bars = sliceForReplay(candles, cursor);
-      chartRef.current?.setData(bars);
-      setShown(bars);
-      // The bars changed, so the per-bar break flags did too.
-      applySessionShading();
-    });
+    void loadHistory(props.symbol, props.resolution)
+      .then((candles: Candle[]) => {
+        if (cancelled) return;
+        historyRef.current = candles;
+        historyKeyRef.current = `${props.symbol}|${props.resolution}`;
+        // A stale replay cursor from another symbol would index past the end.
+        const cursor = useWorkspace.getState().replayBar;
+        const bars = sliceForReplay(candles, cursor);
+        chartRef.current?.setData(bars);
+        setShown(bars);
+        // The bars changed, so the per-bar break flags did too.
+        applySessionShading();
+        setLoadError(null);
+      })
+      .catch((err: unknown) => {
+        // A failed load used to leave an empty chart with no explanation.
+        if (cancelled) return;
+        setLoadError(err instanceof Error ? err.message : String(err));
+      });
     return () => {
       cancelled = true;
     };
@@ -648,6 +657,13 @@ export function ChartHost(props: Props) {
           className="pointer-events-none absolute z-20 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-dashed border-ev-accent"
           style={{ left: ghost.x, top: ghost.y }}
         />
+      )}
+      {loadError && (
+        <div role="alert" className="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
+          <p className="max-w-xs rounded border border-ev-down/40 bg-ev-panel/95 px-3 py-2 text-center text-base text-ev-down">
+            Could not load {props.symbol}: {loadError}
+          </p>
+        </div>
       )}
       {flash && (
         <p className="pointer-events-none absolute bottom-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-ev-panel/90 px-2 py-1 text-dense text-ev-muted">

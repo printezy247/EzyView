@@ -50,7 +50,7 @@ export function AlertDialog({
     <Modal
       onClose={onClose}
       labelledBy="alert-dialog-title"
-      className="flex h-[28rem] w-[32rem] flex-col rounded-md border border-ev-line bg-ev-panel shadow-2xl"
+      className="flex h-[28rem] w-[min(32rem,92vw)] flex-col rounded-md border border-ev-line bg-ev-panel shadow-2xl"
     >
       <div className="flex items-center justify-between border-b border-ev-raised px-4 py-2.5">
         <h2 id="alert-dialog-title" className="flex items-center gap-2 text-body font-semibold text-ev-strong">

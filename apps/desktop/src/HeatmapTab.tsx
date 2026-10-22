@@ -42,24 +42,29 @@ export function HeatmapTab() {
   const [filter, setFilter] = useState<Scope>("all");
   const [universeTiles, setUniverseTiles] = useState<HeatTile[]>([]);
   const [loading, setLoading] = useState(false);
+  /** Why the universe could not be loaded, if it could not. */
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Load universe symbols on mount
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    void market.searchSymbols("").then((symbols: SymbolInfo[]) => {
-      if (cancelled) return;
-      const initial: HeatTile[] = symbols.map((s) => ({
-        symbol: s.symbol,
-        ticker: s.ticker,
-        description: s.description,
-        assetClass: s.assetClass,
-        price: null,
-        changePct: null,
-        precision: s.precision,
-      }));
-      setUniverseTiles(initial);
-      setLoading(false);
+    void market
+      .searchSymbols("")
+      .then((symbols: SymbolInfo[]) => {
+        if (cancelled) return;
+        const initial: HeatTile[] = symbols.map((s) => ({
+          symbol: s.symbol,
+          ticker: s.ticker,
+          description: s.description,
+          assetClass: s.assetClass,
+          price: null,
+          changePct: null,
+          precision: s.precision,
+        }));
+        setUniverseTiles(initial);
+        setLoading(false);
+        setLoadError(null);
 
       // Fetch live/sim quotes for universe symbols
       void Promise.all(
@@ -86,7 +91,13 @@ export function HeatmapTab() {
             return { ...tile, price: found.last, changePct: found.changePercent };
           }),
         );
-      });
+      })
+        .catch((err: unknown) => {
+          // Without this the panel stayed on "Loading market heatmap…" for ever.
+          if (cancelled) return;
+          setLoading(false);
+          setLoadError(err instanceof Error ? err.message : String(err));
+        });
     });
 
     return () => {
@@ -200,8 +211,14 @@ export function HeatmapTab() {
       {/* Heatmap visualization grid */}
       <div className="flex min-h-0 flex-1 flex-wrap content-start gap-2 overflow-y-auto p-4">
         {loading && universeTiles.length === 0 ? (
-          <div className="flex flex-1 items-center justify-center p-8 text-base text-ev-muted">
+          <div role="status" className="flex flex-1 items-center justify-center p-8 text-base text-ev-muted">
             Loading market heatmap…
+          </div>
+        ) : loadError ? (
+          <div role="alert" className="flex flex-1 items-center justify-center p-8">
+            <p className="max-w-sm rounded border border-ev-down/40 bg-ev-panel px-3 py-2 text-center text-base text-ev-down">
+              Could not load the market heatmap: {loadError}
+            </p>
           </div>
         ) : filteredTiles.length === 0 ? (
           <p className="p-4 text-base text-ev-faint">No market instruments match the active filter.</p>

@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
 
 /**
@@ -34,6 +35,10 @@ interface Props {
  * items, Escape closes and returns focus to the trigger, a click anywhere
  * outside closes it. Checkbox items (panels, volume) and radio items (chart
  * type, theme) report state through aria-checked rather than colour alone.
+ *
+ * The popup is rendered in a portal: the toolbar is a scroll container, and an
+ * absolutely positioned menu inside it is clipped to the 36px strip - the
+ * menus were effectively invisible.
  */
 export function Menu({ label, caption, entries, icon, badge, triggerActive, align = "left" }: Props) {
   const [open, setOpen] = useState(false);
@@ -58,11 +63,12 @@ export function Menu({ label, caption, entries, icon, badge, triggerActive, alig
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (!rootRef.current?.contains(target) && !listRef.current?.contains(target)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        // App shortcuts listen for Escape too; a open menu swallows it first.
+        // App shortcuts listen for Escape too; an open menu swallows it first.
         e.stopPropagation();
         setOpen(false);
         triggerRef.current?.focus();
@@ -83,7 +89,6 @@ export function Menu({ label, caption, entries, icon, badge, triggerActive, alig
     const target = openToEnd.current ? all.at(-1) : all[0];
     openToEnd.current = false;
     target?.focus();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const pick = (entry: MenuEntry) => {
@@ -121,6 +126,7 @@ export function Menu({ label, caption, entries, icon, badge, triggerActive, alig
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
+        aria-label={label === "" ? caption : undefined}
         onClick={() => setOpen((v) => !v)}
         onKeyDown={(e) => {
           if (e.key === "ArrowDown" || e.key === "ArrowUp") {
@@ -139,22 +145,37 @@ export function Menu({ label, caption, entries, icon, badge, triggerActive, alig
         <ChevronDown size={12} aria-hidden />
       </button>
 
-      {open && (
-        <div
-          id={menuId}
-          ref={listRef}
-          role="menu"
-          aria-label={caption ?? label}
-          onKeyDown={onListKey}
-          className={`absolute top-full z-30 mt-1 min-w-44 whitespace-nowrap rounded border border-ev-line bg-ev-panel py-1 shadow-xl ${
-            align === "right" ? "right-0" : "left-0"
-          }`}
-        >
-          <MenuItems entries={entries} onPick={pick} />
-        </div>
-      )}
+      {open &&
+        createPortal(
+          <div
+            id={menuId}
+            ref={listRef}
+            role="menu"
+            aria-label={caption ?? label}
+            onKeyDown={onListKey}
+            className="fixed z-[var(--z-dropdown)] min-w-44 whitespace-nowrap rounded border border-ev-line bg-ev-panel py-1 shadow-xl"
+            style={popupPosition(triggerRef.current, align)}
+          >
+            <MenuItems entries={entries} onPick={pick} />
+          </div>,
+          document.body,
+        )}
     </div>
   );
+}
+
+/** Where the popup goes: under the trigger, kept inside the window. */
+function popupPosition(trigger: HTMLElement | null, align: "left" | "right"): React.CSSProperties {
+  if (!trigger) return { top: 0, left: 0 };
+  const rect = trigger.getBoundingClientRect();
+  const width = 220;
+  const left = align === "right" ? Math.max(8, rect.right - width) : Math.min(rect.left, window.innerWidth - width - 8);
+  return {
+    top: Math.min(rect.bottom + 4, window.innerHeight - 40),
+    left: Math.max(8, left),
+    maxHeight: "min(70vh, 520px)",
+    overflowY: "auto",
+  };
 }
 
 /** The rows of a menu popup; shared by dropdown menus and the chart's right-click menu. */

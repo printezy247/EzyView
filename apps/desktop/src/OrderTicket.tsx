@@ -129,10 +129,11 @@ export function OrderTicket({ symbol }: Props) {
         <span className="text-dense text-ev-faint">{ticker}</span>
       </div>
 
-      <div className="grid grid-cols-2 gap-1">
+      <div className="grid grid-cols-2 gap-1" role="group" aria-label="Order side">
         <button
           type="button"
           onClick={() => setSide("buy")}
+          aria-pressed={side === "buy"}
           className={
             side === "buy"
               ? "rounded bg-ev-up-solid py-1.5 text-base font-semibold text-white"
@@ -144,6 +145,7 @@ export function OrderTicket({ symbol }: Props) {
         <button
           type="button"
           onClick={() => setSide("sell")}
+          aria-pressed={side === "sell"}
           className={
             side === "sell"
               ? "rounded bg-ev-down-solid py-1.5 text-base font-semibold text-white"
@@ -156,12 +158,13 @@ export function OrderTicket({ symbol }: Props) {
 
       <div>
         <span className={LABEL}>Type</span>
-        <div className="mt-1 flex gap-1">
+        <div className="mt-1 flex gap-1" role="group" aria-label="Order type">
           {ORDER_TYPES.map((o) => (
             <button
               key={o.id}
               type="button"
               onClick={() => setType(o.id)}
+              aria-pressed={type === o.id}
               className={
                 type === o.id
                   ? "flex-1 rounded bg-ev-raised px-1 py-1 text-base font-medium text-ev-strong"

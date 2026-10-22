@@ -37,7 +37,7 @@ export function IntervalDialog({ open, onClose, onPick }: Props) {
       open={open}
       onClose={onClose}
       labelledBy="interval-dialog-title"
-      className="w-[22rem] rounded-lg border border-ev-line bg-ev-panel p-4 shadow-xl"
+      className="w-[min(22rem,92vw)] rounded-lg border border-ev-line bg-ev-panel p-4 shadow-xl"
     >
       <h2 id="interval-dialog-title" className="text-title font-semibold text-ev-strong">
         Custom interval

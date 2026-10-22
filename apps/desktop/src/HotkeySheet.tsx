@@ -9,7 +9,7 @@ import { Button } from "./ui";
 export function HotkeySheet({ onClose }: { onClose: () => void }) {
   return (
     <Modal onClose={onClose} labelledBy="hotkeys-title">
-      <div className="max-h-[80vh] w-[34rem] overflow-y-auto rounded-md border border-ev-line bg-ev-panel p-5 shadow-2xl">
+      <div className="max-h-[80vh] w-[min(34rem,92vw)] overflow-y-auto rounded-md border border-ev-line bg-ev-panel p-5 shadow-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 id="hotkeys-title" className="text-title font-semibold text-ev-strong">
             Keyboard shortcuts
