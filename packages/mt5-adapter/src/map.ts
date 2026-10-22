@@ -260,6 +260,9 @@ export function toPositions(payload: unknown): Position[] {
         unrealizedPnl: num(rec, "profit", "pnl") ?? 0,
         time: normaliseTime(num(rec, "time", "time_msc")),
       };
+      // Amending a position's SL/TP needs the broker ticket, not the symbol.
+      const ticket = num(rec, "ticket", "id");
+      if (ticket !== null) position.id = String(ticket);
       const sl = num(rec, "sl", "stopLoss");
       const tp = num(rec, "tp", "takeProfit");
       if (sl !== null && sl > 0) position.stopLoss = sl;

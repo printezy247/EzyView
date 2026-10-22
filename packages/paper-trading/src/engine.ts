@@ -275,7 +275,13 @@ export class PaperTradingEngine implements TradingAdapter {
     const position = this.positions.get(symbol);
     if (!position) throw new PaperTradingError("no_position", `No open position on ${symbol}`);
     const size = qty === undefined ? position.qty : Math.min(qty, position.qty);
-    return this.marketOrder(symbol, position.side === "long" ? "sell" : "buy", size);
+    const order = this.marketOrder(symbol, position.side === "long" ? "sell" : "buy", size);
+    // A close that the engine refuses must not look like a close. `closeAll`
+    // and the UI both used to ignore the rejected Order and report success.
+    if (order.status === "rejected") {
+      throw new PaperTradingError(order.reason ?? "rejected", `Close rejected: ${order.reason ?? "unknown reason"}`);
+    }
+    return order;
   }
 
   /**
@@ -312,6 +318,13 @@ export class PaperTradingEngine implements TradingAdapter {
       const position = this.positions.get(symbol);
       if (!position) continue;
       closed.push(this.marketOrder(symbol, position.side === "long" ? "sell" : "buy", position.qty));
+    }
+    const failed = closed.filter((order) => order.status === "rejected");
+    if (failed.length > 0) {
+      throw new PaperTradingError(
+        "rejected",
+        `Close rejected: ${failed.map((order) => `${order.symbol} ${order.reason ?? "unknown reason"}`).join("; ")}`,
+      );
     }
     return closed;
   }
@@ -508,8 +521,16 @@ export class PaperTradingEngine implements TradingAdapter {
       return "take profit must be a positive number";
     }
     // Margin is taken at the order's own entry price, at the account ceiling.
-    const notional = (price ?? request.price ?? 0) * request.qty;
-    if (notional / this.options.maxLeverage > this.freeMargin()) return "not enough free margin";
+    // A reducing order frees margin instead of consuming it, so only the part
+    // that opens new exposure is charged (a flip's remainder). Charging the
+    // whole close locked a fully-margined account out of its own exit.
+    const existing = this.positions.get(request.symbol);
+    const reduces =
+      existing !== undefined &&
+      ((existing.side === "long" && request.side === "sell") || (existing.side === "short" && request.side === "buy"));
+    const openingQty = reduces && existing ? Math.max(0, request.qty - existing.qty) : request.qty;
+    const notional = (price ?? request.price ?? 0) * openingQty;
+    if (openingQty > 0 && notional / this.options.maxLeverage > this.freeMargin()) return "not enough free margin";
     return null;
   }
 

@@ -136,6 +136,54 @@ describe("MT5 actions pass the safety gate", () => {
     expect(h.transport.cancel).toHaveBeenCalledWith("42", { dryRun: false });
   });
 
+  it("amends a position by broker ticket, not by symbol", async () => {
+    demoSession();
+    useTrading.setState({
+      positions: [
+        {
+          id: "77",
+          symbol: "XAUUSD",
+          side: "long",
+          qty: 0.1,
+          entryPrice: 4000,
+          markPrice: 4010,
+          unrealizedPnl: 1,
+          time: 1,
+          stopLoss: 4000,
+          takeProfit: 4100,
+        },
+      ],
+    });
+    expect(await useTrading.getState().amend("XAUUSD", { stopLoss: 3990 })).toBe(false);
+    expect(useTrading.getState().pending?.kind).toBe("amend");
+    expect(await useTrading.getState().approve()).toBe(true);
+    expect(h.transport.modify).toHaveBeenCalledWith("77", 3990, undefined, { dryRun: false });
+  });
+
+  it("passes null through as 0 so a bracket can be cleared", async () => {
+    demoSession();
+    useTrading.setState({
+      positions: [
+        { id: "77", symbol: "XAUUSD", side: "long", qty: 0.1, entryPrice: 4000, markPrice: 4010, unrealizedPnl: 1, time: 1, stopLoss: 4000, takeProfit: 4100 },
+      ],
+    });
+    await useTrading.getState().amend("XAUUSD", { takeProfit: null });
+    expect(await useTrading.getState().approve()).toBe(true);
+    expect(h.transport.modify).toHaveBeenCalledWith("77", undefined, 0, { dryRun: false });
+  });
+
+  it("refuses to amend a position with no broker ticket", async () => {
+    demoSession();
+    useTrading.setState({
+      positions: [
+        { symbol: "XAUUSD", side: "long", qty: 0.1, entryPrice: 4000, markPrice: 4010, unrealizedPnl: 1, time: 1, stopLoss: 4000 },
+      ],
+    });
+    expect(await useTrading.getState().amend("XAUUSD", { stopLoss: 3990 })).toBe(false);
+    expect(useTrading.getState().pending).toBeNull();
+    expect(useTrading.getState().error).toMatch(/ticket/);
+  });
+
   it("close-all snapshots the open rows at request time", async () => {
     demoSession();
     h.transport.openPositions = vi.fn(async () => ({

@@ -150,14 +150,14 @@ describe("Mt5Trading", () => {
     const trading = new Mt5Trading(
       fakeTransport({
         openPositions: async () => ({
-          positions: [{ symbol: "XAUUSD", type: 0, volume: 0.1, price_open: 4000, price_current: 4100, profit: 100, sl: 0, tp: 0, time: 10 }],
+          positions: [{ ticket: 77, symbol: "XAUUSD", type: 0, volume: 0.1, price_open: 4000, price_current: 4100, profit: 100, sl: 0, tp: 0, time: 10 }],
           orders: [{ ticket: 5, symbol: "XAUUSD", type: 0, volume_initial: 1, price_open: 3900, state: 1, time_setup: 11 }],
         }),
       }),
     );
     const positions = await trading.getPositions();
     const orders = await trading.getOrders();
-    expect(positions[0]).toMatchObject({ symbol: "XAUUSD", side: "long", unrealizedPnl: 100 });
+    expect(positions[0]).toMatchObject({ id: "77", symbol: "XAUUSD", side: "long", unrealizedPnl: 100 });
     expect(orders[0]).toMatchObject({ id: "5", status: "pending", price: 3900 });
   });
 
