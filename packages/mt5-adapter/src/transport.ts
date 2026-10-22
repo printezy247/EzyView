@@ -35,6 +35,8 @@ export interface Mt5Transport {
   openPositions(): Promise<unknown>;
   deals(from?: number, to?: number): Promise<unknown>;
   marketWatch(): Promise<unknown>;
+  /** One symbol's latest tick (bridge only): far cheaper than the whole market watch. */
+  quote?(symbol: string): Promise<unknown>;
   history(request: { symbol: string; resolution: Resolution; from: number; to: number }): Promise<unknown>;
   placeOrder(request: OrderRequest, options?: Mt5WriteOptions): Promise<unknown>;
   close(symbol: string, qty?: number, options?: Mt5WriteOptions): Promise<unknown>;
@@ -136,6 +138,10 @@ class BridgeTransport implements Mt5Transport {
 
   marketWatch(): Promise<unknown> {
     return this.send("GET", "/symbols");
+  }
+
+  quote(symbol: string): Promise<unknown> {
+    return this.send("GET", `/quote?symbol=${encodeURIComponent(symbol)}`);
   }
 
   history(request: { symbol: string; resolution: Resolution; from: number; to: number }): Promise<unknown> {

@@ -502,7 +502,7 @@ export function ChartHost(props: Props) {
         .finally(() => {
           busy = false;
         });
-    }, 1000);
+    }, brokerFeed() ? 500 : 1000); // a broker quote is one cheap tick; the demo/public feeds stay at 1 s
     return () => {
       cancelled = true;
       clearInterval(timer);

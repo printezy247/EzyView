@@ -39,3 +39,4 @@ rea-out/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+tools/mt5-bridge/audit.db

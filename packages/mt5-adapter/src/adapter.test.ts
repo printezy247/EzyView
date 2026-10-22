@@ -62,6 +62,27 @@ describe("Mt5MarketData", () => {
     await expect(data.ping()).resolves.toBe(false);
   });
 
+  it("asks the transport for one symbol's tick instead of the whole market watch", async () => {
+    const marketWatch = vi.fn(async () => ({ symbols: [] }));
+    const quote = vi.fn(async () => ({ symbol: "XAUUSD", bid: 4086.37, ask: 4086.99, time: 300 }));
+    const data = new Mt5MarketData(fakeTransport({ marketWatch, quote }));
+    await expect(data.getQuote("XAUUSD")).resolves.toMatchObject({ symbol: "XAUUSD", last: 4086.37, ask: 4086.99 });
+    expect(quote).toHaveBeenCalledWith("XAUUSD");
+    expect(marketWatch).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the market watch when the single-tick call fails", async () => {
+    const data = new Mt5MarketData(
+      fakeTransport({
+        quote: async () => {
+          throw new Error("no tick");
+        },
+        marketWatch: async () => ({ symbols: [{ symbol: "XAUUSD", bid: 1, ask: 2, time: 1 }] }),
+      }),
+    );
+    await expect(data.getQuote("XAUUSD")).resolves.toMatchObject({ symbol: "XAUUSD", last: 1 });
+  });
+
   it("finds one quote inside the market watch list", async () => {
     const data = new Mt5MarketData(
       fakeTransport({
