@@ -68,6 +68,8 @@ export function OrderTicket({ symbol }: Props) {
     setSide(draft.side);
     setType(draft.type);
     setLimitPrice(draft.price);
+    if (draft.stopLoss !== undefined) setStopLoss(draft.stopLoss);
+    if (draft.takeProfit !== undefined) setTakeProfit(draft.takeProfit);
     // Consume it, so reopening the panel later does not replay an old draft.
     useOrderDraft.setState({ draft: null });
     // Keyed on the sequence so a repeated identical draft still applies.
