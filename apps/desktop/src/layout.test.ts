@@ -97,6 +97,9 @@ describe("updateChart", () => {
   });
 });
 
+const load = (dataSource: unknown) =>
+  restoreLayout({ id: "x", charts: [{ ...chart("A"), dataSource }] }, chart("DEF"), resolveDef)!.charts[0]!.dataSource;
+
 describe("restoreLayout", () => {
   it("re-resolves indicator definitions and drops unknown ones", () => {
     const saved = JSON.parse(
@@ -116,6 +119,14 @@ describe("restoreLayout", () => {
     expect(indicators).toHaveLength(1);
     expect(indicators[0]!.def).toBe(SMA); // compute function is back
     expect(indicators[0]).toMatchObject({ hidden: true, name: "Fast", params: { length: 20 } });
+  });
+
+  it("whitelists dataSource; invalid or missing is dropped (= auto)", () => {
+    expect(load("binance")).toBe("binance");
+    expect(load("mt5")).toBe("mt5");
+    expect(load("bogus")).toBeUndefined();
+    expect(load(undefined)).toBeUndefined();
+    expect(load(7)).toBeUndefined();
   });
 
   it("fills missing cells for the saved grid and clamps a bad active index", () => {

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 
 import { Chip } from "./ui";
+import { isLiveSourceChoice } from "./chartSource";
+import type { DataSourceChoice } from "./chartSource";
 import { isLivePublicSymbol, precisionFor, quoteOf } from "./data";
 import { useMt5 } from "./mt5";
 import { useWorkspace } from "./store";
@@ -18,7 +20,7 @@ import type { Quote } from "@ezyview/data-adapters";
  * The quote is polled rather than pushed, because the app's feeds expose a
  * pull quote; a one-second poll is what the rest of the app already does.
  */
-export function QuoteHeader({ symbol }: { symbol: string }) {
+export function QuoteHeader({ symbol, dataSource }: { symbol: string; dataSource?: DataSourceChoice }) {
   const source = useMt5((s) => s.source);
   const status = useMt5((s) => s.status);
   const isReplay = useWorkspace((s) => s.replayBar !== null);
@@ -31,7 +33,7 @@ export function QuoteHeader({ symbol }: { symbol: string }) {
     if (isReplay) return;
     let cancelled = false;
     const tick = () => {
-      void quoteOf(symbol).then((q) => {
+      void quoteOf(symbol, dataSource).then((q) => {
         if (!cancelled && q) {
           if (prevLastRef.current !== null && q.last !== prevLastRef.current) {
             setFlash(q.last > prevLastRef.current ? "up" : "down");
@@ -47,7 +49,7 @@ export function QuoteHeader({ symbol }: { symbol: string }) {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [symbol, isReplay]);
+  }, [symbol, isReplay, dataSource, source]);
 
   useEffect(() => {
     if (!flash) return;
@@ -56,8 +58,13 @@ export function QuoteHeader({ symbol }: { symbol: string }) {
   }, [flash]);
 
   const ageSeconds = quote ? Math.floor(Date.now() / 1000) - quote.time : undefined;
-  const baseProvenance = provenanceOf({ source, status, ageSeconds });
-  const provenance = baseProvenance === "demo" && isLivePublicSymbol(symbol) ? "live" : baseProvenance;
+  const baseProvenance = provenanceOf({ source: dataSource === "mt5" ? "mt5" : dataSource === "demo" ? "ezyview" : source, status, ageSeconds });
+  const provenance =
+    isLiveSourceChoice(dataSource ?? "auto") && quote
+      ? "live"
+      : baseProvenance === "demo" && isLivePublicSymbol(symbol)
+        ? "live"
+        : baseProvenance;
   const digits = precisionFor(quote?.last ?? null);
   const up = (quote?.changePercent ?? 0) >= 0;
 

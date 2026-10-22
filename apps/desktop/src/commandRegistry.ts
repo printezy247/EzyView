@@ -39,7 +39,7 @@ export function flattenGroups(groups: readonly CommandGroup[]): Command[] {
   for (const group of groups) {
     for (const entry of group.entries) {
       if (entry.kind === "separator" || entry.kind === "label") continue;
-      if (entry.kind === "action" && entry.disabled) continue;
+      if ((entry.kind === "action" || entry.kind === "radio") && entry.disabled) continue;
       out.push({
         key: `${group.title}:${entry.id}`,
         group: group.title,

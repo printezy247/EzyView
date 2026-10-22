@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { KeyRound } from "lucide-react";
-import type { ApiKeyName } from "@ezyview/fundamentals";
+import type { KeyName } from "./apiKeys";
 import { keyringAvailable, saveApiKey, useApiKeys } from "./apiKeys";
 import { Modal } from "./Modal";
 
-const PROVIDERS: { name: ApiKeyName; label: string; signup: string; covers: string; limit: string }[] = [
+const PROVIDERS: { name: KeyName; label: string; signup: string; covers: string; limit: string }[] = [
   {
     name: "finnhub",
     label: "Finnhub",
@@ -18,6 +18,13 @@ const PROVIDERS: { name: ApiKeyName; label: string; signup: string; covers: stri
     signup: "https://www.alphavantage.co/support/#api-key",
     covers: "Company profile, dividends (and earnings without Finnhub)",
     limit: "Free plan: 25 requests / day",
+  },
+  {
+    name: "twelvedata",
+    label: "Twelve Data",
+    signup: "https://twelvedata.com/pricing",
+    covers: "Live gold and forex prices for charts (pick it in the chart's Data source menu)",
+    limit: "Free key from twelvedata.com; about 8 requests/minute",
   },
 ];
 
@@ -43,7 +50,7 @@ export function ApiKeysDialog() {
       </div>
       <div className="space-y-4 p-4">
         <p className="text-ev-muted">
-          Both providers have free plans. Keys are stored in your system keyring (never in a file), and
+          All providers have free plans. Keys are stored in your system keyring (never in a file), and
           any panel without a key keeps showing demo data.
         </p>
         {!canStore && (
