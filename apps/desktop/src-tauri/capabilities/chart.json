@@ -1,0 +1,26 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "chart-windows",
+  "description": "Detached chart windows: crash logging and image export only",
+  "windows": [
+    "chart-*"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging",
+    "core:window:allow-internal-toggle-maximize",
+    "core:event:default",
+    "core:window:allow-set-fullscreen",
+    "notification:default",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        {
+          "url": "https://github.com/printezy247/EzyView/*"
+        }
+      ]
+    },
+    "allow-append-log",
+    "allow-save-file"
+  ]
+}

@@ -2,6 +2,76 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use tauri::{AppHandle, WebviewUrl, WebviewWindowBuilder};
 
 static NEXT_WINDOW: AtomicU32 = AtomicU32::new(1);
+/// Set once the app is shutting down, so closing chart windows then does not overwrite windows.json.
+static QUITTING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Write `bytes` to `path` atomically: a sibling temp file (created with `mode`),
+/// flushed to disk, then renamed over the target. The temp file is removed on error.
+fn atomic_write(path: &std::path::Path, bytes: &[u8], mode: u32) -> std::io::Result<()> {
+    use std::io::Write;
+    use std::os::unix::fs::OpenOptionsExt;
+    let mut name = path.file_name().unwrap_or_default().to_os_string();
+    name.push(".tmp");
+    let tmp = path.with_file_name(name);
+    let result = (|| {
+        let mut f = std::fs::OpenOptions::new().write(true).create(true).truncate(true).mode(mode).open(&tmp)?;
+        f.write_all(bytes)?;
+        f.sync_all()?;
+        drop(f);
+        restrict_permissions(&tmp, mode);
+        std::fs::rename(&tmp, path)
+    })();
+    if result.is_err() {
+        let _ = std::fs::remove_file(&tmp);
+    }
+    result
+}
+
+/// A window rectangle in physical pixels: x, y, width, height.
+type Rect = (i32, i32, u32, u32);
+const MAX_WINDOW_DIM: u32 = 16384;
+
+/// Make a saved window rect safe to restore: cap its size, and if its centre is
+/// not on any monitor, centre it on the first one; otherwise nudge it fully on-screen.
+fn clamp_rect(r: Rect, monitors: &[Rect]) -> Rect {
+    let (x, y, w, h) = (r.0, r.1, r.2.min(MAX_WINDOW_DIM), r.3.min(MAX_WINDOW_DIM));
+    let Some(first) = monitors.first() else { return (x, y, w, h) };
+    let (cx, cy) = (x as i64 + w as i64 / 2, y as i64 + h as i64 / 2);
+    let hit = monitors.iter().find(|m| {
+        cx >= m.0 as i64 && cx < m.0 as i64 + m.2 as i64 && cy >= m.1 as i64 && cy < m.1 as i64 + m.3 as i64
+    });
+    let (m, on_screen) = match hit {
+        Some(m) => (m, true),
+        None => (first, false),
+    };
+    let (w, h) = (w.min(m.2), h.min(m.3));
+    let (max_x, max_y) = (m.0 as i64 + (m.2 - w) as i64, m.1 as i64 + (m.3 - h) as i64);
+    if on_screen {
+        (((x as i64).clamp(m.0 as i64, max_x)) as i32, ((y as i64).clamp(m.1 as i64, max_y)) as i32, w, h)
+    } else {
+        (((m.0 as i64 + max_x) / 2) as i32, ((m.1 as i64 + max_y) / 2) as i32, w, h)
+    }
+}
+
+/// Linux data folder from env values: `XDG_DATA_HOME` only when absolute (per the spec), else `$HOME/.local/share`.
+fn data_dir_from(xdg: Option<std::ffi::OsString>, home: Option<std::ffi::OsString>) -> Option<std::path::PathBuf> {
+    let base = xdg
+        .map(std::path::PathBuf::from)
+        .filter(|p| p.is_absolute())
+        .or_else(|| home.filter(|h| !h.is_empty()).map(|h| std::path::PathBuf::from(h).join(".local/share")))?;
+    Some(base.join("com.printezy247.ezyview"))
+}
+
+/// Existing `no_proxy` plus the loopback hosts, without duplicates.
+fn merge_no_proxy(existing: Option<&str>) -> String {
+    let mut parts: Vec<String> = Vec::new();
+    for item in existing.unwrap_or("").split(',').map(str::trim).filter(|s| !s.is_empty()).chain(["127.0.0.1", "localhost", "::1"]) {
+        if !parts.iter().any(|p| p == item) {
+            parts.push(item.to_string());
+        }
+    }
+    parts.join(",")
+}
 
 /// Open a chart in its own window so it can be moved to another monitor.
 /// `query` is the already-encoded query string, e.g. `?detached=BINANCE%3ABTCUSDT&res=1h`.
@@ -45,17 +115,26 @@ const MAX_RESTORED_WINDOWS: usize = 8;
 fn restorable(records: Vec<WindowRecord>) -> Vec<WindowRecord> {
     records
         .into_iter()
-        .filter(|r| r.query.starts_with("?detached=") && r.query.len() <= 512 && r.width >= 200 && r.height >= 150)
+        .filter(|r| {
+            r.query.starts_with("?detached=")
+                && r.query.len() <= 512
+                && (200..=MAX_WINDOW_DIM).contains(&r.width)
+                && (150..=MAX_WINDOW_DIM).contains(&r.height)
+        })
         .take(MAX_RESTORED_WINDOWS)
         .collect()
 }
 
 /// Remember every open chart window (symbol, interval, position, size) as the main window closes.
 fn save_chart_windows(app: &AppHandle) {
+    save_chart_windows_except(app, None);
+}
+
+fn save_chart_windows_except(app: &AppHandle, skip: Option<&str>) {
     use tauri::Manager;
     let mut records = Vec::new();
     for (label, window) in app.webview_windows() {
-        if !label.starts_with("chart-") {
+        if !label.starts_with("chart-") || Some(label.as_str()) == skip {
             continue;
         }
         let (Ok(url), Ok(pos), Ok(size)) = (window.url(), window.outer_position(), window.outer_size()) else {
@@ -68,7 +147,7 @@ fn save_chart_windows(app: &AppHandle) {
     let path = dir.join(WINDOWS_FILE);
     match serde_json::to_string(&records) {
         Ok(json) if !records.is_empty() => {
-            let _ = std::fs::write(path, json);
+            let _ = atomic_write(&path, json.as_bytes(), 0o600);
         }
         _ => {
             let _ = std::fs::remove_file(path);
@@ -84,10 +163,17 @@ fn restore_chart_windows(app: &AppHandle) {
     // Consume the file first: a window that crashes on open must not loop forever.
     let _ = std::fs::remove_file(&path);
     let Ok(records) = serde_json::from_str::<Vec<WindowRecord>>(&text) else { return };
+    let monitors: Vec<Rect> = app
+        .available_monitors()
+        .unwrap_or_default()
+        .iter()
+        .map(|m| (m.position().x, m.position().y, m.size().width, m.size().height))
+        .collect();
     for record in restorable(records) {
+        let (x, y, w, h) = clamp_rect((record.x, record.y, record.width, record.height), &monitors);
         if let Ok(window) = spawn_chart_window(app, &record.query) {
-            let _ = window.set_size(tauri::PhysicalSize::new(record.width, record.height));
-            let _ = window.set_position(tauri::PhysicalPosition::new(record.x, record.y));
+            let _ = window.set_size(tauri::PhysicalSize::new(w, h));
+            let _ = window.set_position(tauri::PhysicalPosition::new(x, y));
         }
     }
 }
@@ -96,15 +182,15 @@ fn restore_chart_windows(app: &AppHandle) {
 /// the webview chooses contents only; the write is atomic (temp + rename) so a
 /// reader never sees half a file.
 #[tauri::command]
-fn write_snapshot(app: AppHandle, json: String) -> Result<(), String> {
+async fn write_snapshot(app: AppHandle, json: String) -> Result<(), String> {
     if json.len() > 20 * 1024 * 1024 {
         return Err("snapshot too large".into());
     }
-    let dir = app_data(&app)?;
-    let tmp = dir.join("workspace-snapshot.json.tmp");
-    std::fs::write(&tmp, json).map_err(|e| e.to_string())?;
-    restrict_permissions(&tmp, 0o600);
-    std::fs::rename(&tmp, dir.join("workspace-snapshot.json")).map_err(|e| e.to_string())
+    let path = app_data(&app)?.join("workspace-snapshot.json");
+    tauri::async_runtime::spawn_blocking(move || atomic_write(&path, json.as_bytes(), 0o600))
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
 }
 
 /// Shell settings the user can change in Settings → Desktop. They are read
@@ -131,10 +217,7 @@ fn valid_proxy(proxy: &str) -> bool {
 /// Linux data folder before the app handle exists (mirrors Tauri's `app_data_dir`).
 #[cfg(target_os = "linux")]
 fn early_data_dir() -> Option<std::path::PathBuf> {
-    let base = std::env::var_os("XDG_DATA_HOME")
-        .map(std::path::PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|h| std::path::PathBuf::from(h).join(".local/share")))?;
-    Some(base.join("com.printezy247.ezyview"))
+    data_dir_from(std::env::var_os("XDG_DATA_HOME"), std::env::var_os("HOME"))
 }
 
 /// Apply saved shell settings before Tauri starts. Linux only: the variables
@@ -153,9 +236,8 @@ fn apply_shell_settings_early() {
             std::env::set_var(var, &settings.proxy);
         }
         // Local services (MT5 bridge, sd-server, Ollama) must never go via the proxy.
-        if std::env::var_os("no_proxy").is_none() {
-            std::env::set_var("no_proxy", "127.0.0.1,localhost,::1");
-        }
+        let merged = merge_no_proxy(std::env::var("no_proxy").ok().as_deref());
+        std::env::set_var("no_proxy", merged);
     }
 }
 
@@ -193,30 +275,50 @@ fn set_shell_settings(app: AppHandle, settings: ShellSettings) -> Result<(), Str
     }
     let json = serde_json::to_string_pretty(&settings).map_err(|e| e.to_string())?;
     let path = app_data(&app)?.join(SHELL_SETTINGS_FILE);
-    std::fs::write(&path, json).map_err(|e| e.to_string())?;
-    restrict_permissions(&path, 0o600);
-    Ok(())
+    atomic_write(&path, json.as_bytes(), 0o600).map_err(|e| e.to_string())
 }
 
 /// Restart so saved shell settings take effect.
 #[tauri::command]
 fn relaunch_app(app: AppHandle) {
+    save_chart_windows(&app);
     app.restart();
 }
 
-/// Factory reset: wipe the webview's local data (workspace, journal, layouts)
-/// and EzyView's own files, then restart. Keyring secrets are left alone and
-/// are removed from Settings → Data.
+/// Factory reset: wipe the webview's local data (workspace, journal, layouts),
+/// EzyView's own files and the keyring secrets, then restart. Every step runs
+/// even if an earlier one failed; failures are reported together (no restart then).
 #[tauri::command]
-fn factory_reset(app: AppHandle, window: tauri::WebviewWindow) -> Result<(), String> {
-    window.clear_all_browsing_data().map_err(|e| e.to_string())?;
-    let dir = app_data(&app)?;
-    for name in ["crash.log", "workspace-snapshot.json", WINDOWS_FILE, SHELL_SETTINGS_FILE] {
-        match std::fs::remove_file(dir.join(name)) {
-            Ok(()) => {}
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
-            Err(e) => return Err(e.to_string()),
+async fn factory_reset(app: AppHandle, window: tauri::WebviewWindow) -> Result<(), String> {
+    use tauri::Manager;
+    QUITTING.store(true, Ordering::Relaxed);
+    let mut errors: Vec<String> = Vec::new();
+    for (label, w) in app.webview_windows() {
+        if label.starts_with("chart-") {
+            let _ = w.destroy();
         }
+    }
+    if let Err(e) = window.clear_all_browsing_data() {
+        errors.push(e.to_string());
+    }
+    let dir = app_data(&app)?;
+    {
+        let _guard = LOG_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        for name in ["crash.log", "workspace-snapshot.json", WINDOWS_FILE, SHELL_SETTINGS_FILE] {
+            match std::fs::remove_file(dir.join(name)) {
+                Ok(()) => {}
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+                Err(e) => errors.push(format!("{name}: {e}")),
+            }
+        }
+    }
+    match tauri::async_runtime::spawn_blocking(|| clear_secrets(None)).await {
+        Ok(Ok(())) => {}
+        Ok(Err(e)) => errors.push(e),
+        Err(e) => errors.push(e.to_string()),
+    }
+    if !errors.is_empty() {
+        return Err(errors.join("; "));
     }
     app.restart();
 }
@@ -252,23 +354,19 @@ static LOG_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 /// Append a crash block to the local log (capped); nothing leaves the machine.
 #[tauri::command]
 fn append_log(app: AppHandle, text: String) -> Result<(), String> {
-    let _guard = LOG_LOCK.lock().map_err(|e| e.to_string())?;
+    let _guard = LOG_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     // A webview can call this with any text, so the block is bounded before
     // it reaches the disk.
     let text: String = text.chars().take(64 * 1024).collect();
     let path = log_path(&app)?;
-    let existing = std::fs::read_to_string(&path).unwrap_or_default();
+    let existing = String::from_utf8_lossy(&std::fs::read(&path).unwrap_or_default()).into_owned();
     let next = trim_log(&format!("{existing}{text}"));
-    let tmp = path.with_extension("log.tmp");
-    std::fs::write(&tmp, &next).map_err(|e| e.to_string())?;
-    restrict_permissions(&tmp, 0o600);
-    std::fs::rename(&tmp, &path).map_err(|e| e.to_string())?;
-    Ok(())
+    atomic_write(&path, next.as_bytes(), 0o600).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn read_log(app: AppHandle) -> Result<String, String> {
-    Ok(std::fs::read_to_string(log_path(&app)?).unwrap_or_default())
+    Ok(String::from_utf8_lossy(&std::fs::read(log_path(&app)?).unwrap_or_default()).into_owned())
 }
 
 #[tauri::command]
@@ -357,20 +455,16 @@ fn key_entry(name: &str) -> Result<keyring::Entry, String> {
     keyring::Entry::new(KEYRING_SERVICE, name).map_err(|e| e.to_string())
 }
 
-/// Read a provider API key from the OS keyring; `None` when it was never set.
-#[tauri::command]
-fn api_key_get(name: String) -> Result<Option<String>, String> {
-    match key_entry(&name)?.get_password() {
+fn key_get(name: &str) -> Result<Option<String>, String> {
+    match key_entry(name)?.get_password() {
         Ok(value) => Ok(Some(value)),
         Err(keyring::Error::NoEntry) => Ok(None),
         Err(e) => Err(e.to_string()),
     }
 }
 
-/// Store a provider API key in the OS keyring; an empty value deletes it.
-#[tauri::command]
-fn api_key_set(name: String, value: String) -> Result<(), String> {
-    let entry = key_entry(&name)?;
+fn key_set(name: &str, value: &str) -> Result<(), String> {
+    let entry = key_entry(name)?;
     let value = value.trim();
     if value.is_empty() {
         return match entry.delete_credential() {
@@ -381,9 +475,7 @@ fn api_key_set(name: String, value: String) -> Result<(), String> {
     entry.set_password(value).map_err(|e| e.to_string())
 }
 
-/// Wipe provider keys and optional dynamic broker credentials from the OS keyring on explicit user request.
-#[tauri::command]
-fn clear_keyring_secrets(extra_keys: Option<Vec<String>>) -> Result<(), String> {
+fn clear_secrets(extra_keys: Option<Vec<String>>) -> Result<(), String> {
     for name in API_KEY_NAMES {
         if let Ok(entry) = key_entry(name) {
             match entry.delete_credential() {
@@ -402,6 +494,29 @@ fn clear_keyring_secrets(extra_keys: Option<Vec<String>>) -> Result<(), String> 
         }
     }
     Ok(())
+}
+
+/// Keyring calls can block (D-Bus / unlock prompts), so they run off the async runtime threads.
+async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T, String> + Send + 'static) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(f).await.map_err(|e| e.to_string())?
+}
+
+/// Read a provider API key from the OS keyring; `None` when it was never set.
+#[tauri::command]
+async fn api_key_get(name: String) -> Result<Option<String>, String> {
+    blocking(move || key_get(&name)).await
+}
+
+/// Store a provider API key in the OS keyring; an empty value deletes it.
+#[tauri::command]
+async fn api_key_set(name: String, value: String) -> Result<(), String> {
+    blocking(move || key_set(&name, &value)).await
+}
+
+/// Wipe provider keys and optional dynamic broker credentials from the OS keyring on explicit user request.
+#[tauri::command]
+async fn clear_keyring_secrets(extra_keys: Option<Vec<String>>) -> Result<(), String> {
+    blocking(move || clear_secrets(extra_keys)).await
 }
 
 /// Ctrl+Alt+E brings the main window to the front from anywhere. Registration
@@ -438,12 +553,15 @@ pub fn run() {
             use tauri::Manager;
             if let Ok(dir) = app.path().app_data_dir() {
                 let path = dir.join("crash.log");
+                let previous = std::panic::take_hook();
                 std::panic::set_hook(Box::new(move |info| {
                     use std::io::Write;
+                    use std::os::unix::fs::OpenOptionsExt;
                     let _ = std::fs::create_dir_all(&dir);
-                    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&path) {
+                    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).mode(0o600).open(&path) {
                         let _ = writeln!(f, "[rust panic] {info}");
                     }
+                    previous(info);
                 }));
             }
             register_show_shortcut(app);
@@ -455,6 +573,14 @@ pub fn run() {
             if window.label() == "main" {
                 if let tauri::WindowEvent::CloseRequested { .. } = event {
                     save_chart_windows(window.app_handle());
+                    QUITTING.store(true, Ordering::Relaxed);
+                }
+            } else if window.label().starts_with("chart-") {
+                // Keep windows.json current as charts are closed (a crash then restores what was open).
+                if let tauri::WindowEvent::Destroyed = event {
+                    if !QUITTING.load(Ordering::Relaxed) {
+                        save_chart_windows_except(window.app_handle(), Some(window.label()));
+                    }
                 }
             }
         })
@@ -473,8 +599,16 @@ pub fn run() {
             relaunch_app,
             factory_reset
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running EzyView");
+        .build(tauri::generate_context!())
+        .expect("error while building EzyView")
+        .run(|app, event| {
+            if let tauri::RunEvent::ExitRequested { .. } = event {
+                // Only save while chart windows still exist: after they close, the main window's save already ran.
+                if !QUITTING.swap(true, Ordering::Relaxed) {
+                    save_chart_windows(app);
+                }
+            }
+        });
 }
 
 #[cfg(test)]
@@ -483,8 +617,8 @@ mod tests {
 
     #[test]
     fn rejects_unknown_key_names() {
-        assert!(api_key_get("../etc".into()).is_err());
-        assert!(api_key_set("github".into(), "x".into()).is_err());
+        assert!(key_get("../etc").is_err());
+        assert!(key_set("github", "x").is_err());
     }
 
     #[test]
@@ -558,8 +692,70 @@ mod tests {
             "other:4123@host",
         ] {
             assert!(!is_mt5_account_name(bad), "should reject {bad}");
-            assert!(api_key_get(bad.into()).is_err(), "should reject {bad}");
+            assert!(key_get(bad).is_err(), "should reject {bad}");
         }
+    }
+
+    fn scratch(name: &str) -> std::path::PathBuf {
+        let d = std::env::temp_dir().join(format!("ezyview-test-{}-{name}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        d
+    }
+
+    #[test]
+    fn atomic_write_replaces_file_with_private_mode_and_no_tmp() {
+        use std::os::unix::fs::PermissionsExt;
+        let d = scratch("atomic");
+        let p = d.join("a.json");
+        atomic_write(&p, b"one", 0o600).unwrap();
+        atomic_write(&p, b"two", 0o600).unwrap();
+        assert_eq!(std::fs::read(&p).unwrap(), b"two");
+        assert_eq!(std::fs::metadata(&p).unwrap().permissions().mode() & 0o777, 0o600);
+        assert!(!d.join("a.json.tmp").exists());
+        // Failure (target is a directory) leaves no temp file behind.
+        let dir_target = d.join("sub");
+        std::fs::create_dir(&dir_target).unwrap();
+        assert!(atomic_write(&dir_target, b"x", 0o600).is_err());
+        assert!(!d.join("sub.tmp").exists());
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn xdg_data_home_must_be_absolute_and_non_empty() {
+        use std::ffi::OsString as S;
+        let home = Some(S::from("/home/u"));
+        let want = std::path::PathBuf::from("/home/u/.local/share/com.printezy247.ezyview");
+        assert_eq!(data_dir_from(Some(S::from("")), home.clone()), Some(want.clone()));
+        assert_eq!(data_dir_from(Some(S::from("rel/dir")), home.clone()), Some(want.clone()));
+        assert_eq!(data_dir_from(None, home), Some(want));
+        assert_eq!(
+            data_dir_from(Some(S::from("/x/data")), None),
+            Some(std::path::PathBuf::from("/x/data/com.printezy247.ezyview"))
+        );
+        assert_eq!(data_dir_from(Some(S::from("")), Some(S::from(""))), None);
+    }
+
+    #[test]
+    fn no_proxy_always_gains_loopback_without_duplicates() {
+        assert_eq!(merge_no_proxy(None), "127.0.0.1,localhost,::1");
+        assert_eq!(merge_no_proxy(Some("")), "127.0.0.1,localhost,::1");
+        assert_eq!(merge_no_proxy(Some("corp.local, localhost")), "corp.local,localhost,127.0.0.1,::1");
+    }
+
+    #[test]
+    fn window_rect_is_clamped_onto_a_monitor() {
+        let mons = [(0, 0, 1920, 1080), (1920, 0, 1280, 1024)];
+        // Already fine.
+        assert_eq!(clamp_rect((100, 50, 800, 600), &mons), (100, 50, 800, 600));
+        // Unplugged monitor far off-screen: centred on the first monitor.
+        assert_eq!(clamp_rect((-5000, 40, 800, 600), &mons), (560, 240, 800, 600));
+        // Centre on the second monitor but hanging off its edge: pulled fully inside it.
+        assert_eq!(clamp_rect((1700, 700, 800, 600), &mons), (1920, 424, 800, 600));
+        // Oversized: capped to the monitor.
+        assert_eq!(clamp_rect((0, 0, 99999, 99999), &mons), (0, 0, 1920, 1080));
+        // No monitor info: only the size cap applies.
+        assert_eq!(clamp_rect((5, 5, 99999, 700), &[]), (5, 5, MAX_WINDOW_DIM, 700));
     }
 
     /// Touches the real OS keyring, so it only runs on demand:
@@ -567,9 +763,9 @@ mod tests {
     #[test]
     #[ignore]
     fn keyring_round_trip() {
-        api_key_set("finnhub".into(), "test-value".into()).unwrap();
-        assert_eq!(api_key_get("finnhub".into()).unwrap().as_deref(), Some("test-value"));
-        api_key_set("finnhub".into(), "  ".into()).unwrap();
-        assert_eq!(api_key_get("finnhub".into()).unwrap(), None);
+        key_set("finnhub", "test-value").unwrap();
+        assert_eq!(key_get("finnhub").unwrap().as_deref(), Some("test-value"));
+        key_set("finnhub", "  ").unwrap();
+        assert_eq!(key_get("finnhub").unwrap(), None);
     }
 }

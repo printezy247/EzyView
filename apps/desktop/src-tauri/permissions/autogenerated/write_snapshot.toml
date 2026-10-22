@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-write-snapshot"
+description = "Enables the write_snapshot command without any pre-configured scope."
+commands.allow = ["write_snapshot"]
+
+[[permission]]
+identifier = "deny-write-snapshot"
+description = "Denies the write_snapshot command without any pre-configured scope."
+commands.deny = ["write_snapshot"]
