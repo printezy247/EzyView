@@ -42,6 +42,10 @@ function d1d2(o: OptionInput): { d1: number; d2: number } {
   const r = o.rate ?? 0;
   const q = o.div ?? 0;
   const sd = o.vol * Math.sqrt(o.years);
+  if (sd <= 1e-12) {
+    const intrinsicDelta = o.spot > o.strike ? Infinity : o.spot < o.strike ? -Infinity : 0;
+    return { d1: intrinsicDelta, d2: intrinsicDelta };
+  }
   const d1 = (Math.log(o.spot / o.strike) + (r - q + 0.5 * o.vol * o.vol) * o.years) / sd;
   return { d1, d2: d1 - sd };
 }
@@ -93,9 +97,20 @@ export function greeks(o: OptionInput): Greeks {
  * Returns null when the price is outside the no-arbitrage range.
  */
 export function impliedVol(o: Omit<OptionInput, "vol">, marketPrice: number): number | null {
+  if (
+    o.spot <= 0 ||
+    o.strike <= 0 ||
+    o.years <= 0 ||
+    !Number.isFinite(marketPrice) ||
+    marketPrice <= 0 ||
+    !Number.isFinite(o.spot) ||
+    !Number.isFinite(o.strike)
+  ) {
+    return null;
+  }
   const lo0 = 1e-4;
   const hi0 = 5;
-  if (o.years <= 0 || marketPrice < price({ ...o, vol: lo0 }) - 1e-9 || marketPrice > price({ ...o, vol: hi0 })) return null;
+  if (marketPrice < price({ ...o, vol: lo0 }) - 1e-9 || marketPrice > price({ ...o, vol: hi0 })) return null;
   let lo = lo0;
   let hi = hi0;
   for (let i = 0; i < 100; i++) {

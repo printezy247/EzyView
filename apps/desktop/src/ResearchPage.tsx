@@ -26,7 +26,7 @@ export function ResearchPage() {
   const navigate = useNavigate();
   const layout = useWorkspace((s) => s.activeLayout());
   const state = activeChartOf(layout);
-  const updateActive = useWorkspace((s) => s.updateActive);
+  const setSymbol = useWorkspace((s) => s.setSymbol);
   const [params, setParams] = useSearchParams();
   const requested = TABS.find((t) => t.id === params.get("tab"))?.id;
   const tab: Tab = requested ?? "fundamentals";
@@ -69,7 +69,7 @@ export function ResearchPage() {
             <FundamentalsPanel
               symbol={state.symbol}
               onClose={() => navigate("/chart")}
-              onPickSymbol={(symbol) => updateActive({ symbol })}
+              onPickSymbol={(symbol) => setSymbol(symbol)}
             />
           )}
           {tab === "options" && <OptionsPanel symbol={state.symbol} onClose={() => navigate("/chart")} />}

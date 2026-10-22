@@ -34,7 +34,18 @@ export function DetachedChart({ symbol, resolution: initial }: Props) {
       }),
     [symbol],
   );
-  document.title = `${tickerOf(symbol)} · EzyView`;
+  useEffect(() => {
+    document.title = `${tickerOf(symbol)} · EzyView`;
+  }, [symbol]);
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "ezyview.workspace" && useWorkspace.persist?.rehydrate) {
+        void useWorkspace.persist.rehydrate();
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   return (
     <div className="flex h-full flex-col bg-ev-bg text-ev-text">

@@ -35,7 +35,7 @@ export function MarketClock() {
           key={s.id}
           className={
             s.open
-              ? "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-micro font-medium text-ev-up"
+              ? "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-micro font-medium text-ev-up-text"
               : "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-micro text-ev-faint"
           }
           title={`${s.label}: ${s.open ? "open" : "closed"}`}

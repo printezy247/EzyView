@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Resolution } from "@ezyview/data-adapters";
 
 import { parseInterval } from "./intervalBuilder";
@@ -22,6 +22,10 @@ interface Props {
  */
 export function IntervalDialog({ open, onClose, onPick }: Props) {
   const [value, setValue] = useState("");
+
+  useEffect(() => {
+    if (open) setValue("");
+  }, [open]);
   const result = value.trim() === "" ? null : parseInterval(value);
 
   const submit = () => {
@@ -71,9 +75,9 @@ export function IntervalDialog({ open, onClose, onPick }: Props) {
           {result === null ? (
             <span className="text-ev-faint">Waiting for an interval.</span>
           ) : result.ok ? (
-            <span className="text-ev-up">Shows {result.label} bars.</span>
+            <span className="text-ev-up-text">Shows {result.label} bars.</span>
           ) : (
-            <span className="text-ev-down">
+            <span className="text-ev-down-text">
               {result.reason}
               {result.suggestion && (
                 <>

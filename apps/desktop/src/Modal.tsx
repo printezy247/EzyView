@@ -4,6 +4,16 @@ import type { KeyboardEvent, ReactNode } from "react";
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+/** Focusable descendants that are actually shown (not hidden, inert or display:none). */
+function visibleFocusables(box: HTMLElement): HTMLElement[] {
+  return [...box.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
+    (el) =>
+      !el.closest("[hidden], [inert], [aria-hidden='true']") &&
+      getComputedStyle(el).display !== "none" &&
+      getComputedStyle(el).visibility !== "hidden",
+  );
+}
+
 /** Index to focus after Tab (or Shift+Tab) from `current`, wrapping at both ends. */
 export function nextFocusIndex(count: number, current: number, backwards: boolean): number {
   if (count === 0) return -1;
@@ -43,7 +53,7 @@ export function Modal({
     const opener = document.activeElement as HTMLElement | null;
     const box = ref.current;
     if (box && !box.contains(document.activeElement)) {
-      (box.querySelector<HTMLElement>("[autofocus]") ?? box.querySelector<HTMLElement>(FOCUSABLE) ?? box).focus();
+      (box.querySelector<HTMLElement>("[autofocus]") ?? visibleFocusables(box)[0] ?? box).focus();
     }
     return () => opener?.focus?.();
     // Re-running on `open` keeps the focus/keyboard wiring honest when a host
@@ -59,7 +69,7 @@ export function Modal({
       return;
     }
     if (e.key !== "Tab" || !ref.current) return;
-    const items = [...ref.current.querySelectorAll<HTMLElement>(FOCUSABLE)];
+    const items = visibleFocusables(ref.current);
     const current = items.indexOf(document.activeElement as HTMLElement);
     const atEdge = current === -1 || (e.shiftKey ? current === 0 : current === items.length - 1);
     if (!atEdge) return;

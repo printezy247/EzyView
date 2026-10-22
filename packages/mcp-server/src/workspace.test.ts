@@ -40,10 +40,12 @@ beforeAll(() => {
   dir = mkdtempSync(join(tmpdir(), "ezyview-mcp-"));
   writeFileSync(join(dir, "snap.json"), JSON.stringify(SNAPSHOT));
   process.env.EZYVIEW_SNAPSHOT = join(dir, "snap.json");
+  process.env.EZYVIEW_MCP_INSECURE = "1";
 });
 afterAll(() => {
   if (saved === undefined) delete process.env.EZYVIEW_SNAPSHOT;
   else process.env.EZYVIEW_SNAPSHOT = saved;
+  delete process.env.EZYVIEW_MCP_INSECURE;
   rmSync(dir, { recursive: true, force: true });
 });
 

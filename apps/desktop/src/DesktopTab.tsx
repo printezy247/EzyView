@@ -196,7 +196,7 @@ export function DesktopTab() {
         <h2 className={heading}>Factory reset</h2>
         <p className="mb-2 text-dense text-ev-muted">Wipes local app data and restarts. API keys in the OS keyring are kept unless cleared separately.</p>
         <div className="flex flex-wrap gap-2">
-          <button type="button" className={`${button} text-ev-down`} onClick={() => void reset()}>
+          <button type="button" className={`${button} text-ev-down-text`} onClick={() => void reset()}>
             Factory reset…
           </button>
           <button

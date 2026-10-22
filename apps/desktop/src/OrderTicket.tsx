@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { OrderRequest, OrderSide, OrderType } from "@ezyview/data-adapters";
 import { precisionFor, quoteOf, tickerOf } from "./data";
 import { useMt5 } from "./mt5";
 import { useOrderDraft } from "./orderDraft";
 import { useTrading } from "./trading";
+import { riskQty } from "./tradeMath";
 
 interface Props {
   symbol: string;
@@ -32,6 +33,7 @@ export function OrderTicket({ symbol }: Props) {
   const error = useTrading((s) => s.error);
   const note = useTrading((s) => s.note);
   const clearError = useTrading((s) => s.clearError);
+  const account = useTrading((s) => s.account);
   const maxLeverage = useTrading((s) => s.account?.leverage ?? 100);
 
   const [side, setSide] = useState<OrderSide>("buy");
@@ -41,6 +43,18 @@ export function OrderTicket({ symbol }: Props) {
   const [stopLoss, setStopLoss] = useState("");
   const [takeProfit, setTakeProfit] = useState("");
   const [last, setLast] = useState<number | null>(null);
+
+  /** Screen-reader confirmation of the last order sent. */
+  const [notice, setNotice] = useState("");
+  // A different symbol is a different instrument: stale prices and levels
+  // from the old one must not carry into an order for the new one.
+  useEffect(() => {
+    setLimitPrice("");
+    setStopLoss("");
+    setTakeProfit("");
+    setNotice("");
+    setLast(null);
+  }, [symbol]);
 
   // A prefilled order from the chart's right-click menu. The form is the
   // user's: this only loads side/type/price, it never sends anything.
@@ -56,8 +70,8 @@ export function OrderTicket({ symbol }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft?.seq]);
   const [sending, setSending] = useState(false);
-  /** Screen-reader confirmation of the last order sent. */
-  const [notice, setNotice] = useState("");
+  /** Synchronous in-flight guard: state alone lets a fast double click send twice. */
+  const inFlight = useRef(false);
 
   // Poll for the reference price. Market orders fill at the engine's own last
   // tick, so this is display and sizing only — never the fill price itself.
@@ -102,8 +116,28 @@ export function OrderTicket({ symbol }: Props) {
     levelsValid &&
     !sending;
 
+  const calcRiskQty = (riskPct: number) => {
+    const equity = account?.equity ?? account?.balance ?? 10_000;
+    const entry = workingPrice ?? last ?? 0;
+    const qtyOut = riskQty({
+      equity,
+      entry,
+      stop: stopValue,
+      side,
+      riskPct,
+      // Never size beyond what the account's leverage could carry.
+      maxQty: entry > 0 ? (equity * maxLeverage) / entry : 0,
+    });
+    if (qtyOut === null) {
+      setNotice("Enter a valid stop loss on the correct side of the entry price to size by risk.");
+      return;
+    }
+    setQty(qtyOut >= 10 ? Math.round(qtyOut).toString() : qtyOut.toFixed(2));
+  };
+
   const send = async () => {
-    if (!ready) return;
+    if (!ready || inFlight.current) return;
+    inFlight.current = true;
     setSending(true);
     const request: OrderRequest = {
       symbol,
@@ -115,8 +149,13 @@ export function OrderTicket({ symbol }: Props) {
       ...(stopValue !== undefined ? { stopLoss: stopValue } : {}),
       ...(targetValue !== undefined ? { takeProfit: targetValue } : {}),
     };
-    const ok = await submit(request);
-    setSending(false);
+    let ok = false;
+    try {
+      ok = await submit(request);
+    } finally {
+      inFlight.current = false;
+      setSending(false);
+    }
     if (ok) setNotice(`${side === "buy" ? "Buy" : "Sell"} ${type} order for ${quantity} ${ticker} sent.`);
     else if (useTrading.getState().pending)
       setNotice(`${side === "buy" ? "Buy" : "Sell"} ${type} order for ${quantity} ${ticker} — awaiting confirmation.`);
@@ -178,9 +217,24 @@ export function OrderTicket({ symbol }: Props) {
       </div>
 
       <div>
-        <label className={LABEL} htmlFor="order-qty">
-          Quantity
-        </label>
+        <div className="flex items-center justify-between">
+          <label className={LABEL} htmlFor="order-qty">
+            Quantity
+          </label>
+          <div className="flex items-center gap-1 text-[11px] text-ev-muted">
+            <span>Risk:</span>
+            {[1, 2, 5].map((pct) => (
+              <button
+                key={pct}
+                type="button"
+                onClick={() => calcRiskQty(pct)}
+                className="rounded border border-ev-line bg-ev-panel px-1 py-px hover:border-ev-dim hover:text-ev-strong cursor-pointer"
+              >
+                {pct}%
+              </button>
+            ))}
+          </div>
+        </div>
         <input
           id="order-qty"
           inputMode="decimal"
@@ -245,12 +299,12 @@ export function OrderTicket({ symbol }: Props) {
       </dl>
 
       {!levelsValid && (
-        <p role="alert" className="rounded border border-ev-down/40 bg-ev-down/10 px-2 py-1.5 text-dense text-ev-down">
+        <p role="alert" className="rounded border border-ev-down/40 bg-ev-down/10 px-2 py-1.5 text-dense text-ev-down-text">
           Stop loss and take profit must be positive numbers.
         </p>
       )}
       {type !== "market" && !ready && limitValue === null && (
-        <p role="alert" className="rounded border border-ev-down/40 bg-ev-down/10 px-2 py-1.5 text-dense text-ev-down">
+        <p role="alert" className="rounded border border-ev-down/40 bg-ev-down/10 px-2 py-1.5 text-dense text-ev-down-text">
           Enter a {type === "limit" ? "limit" : "stop"} price above zero.
         </p>
       )}
@@ -261,7 +315,7 @@ export function OrderTicket({ symbol }: Props) {
       {error && (
         <p
           role="alert"
-          className="rounded border border-ev-down/40 bg-ev-down/10 px-2 py-1.5 text-dense leading-snug text-ev-down"
+          className="rounded border border-ev-down/40 bg-ev-down/10 px-2 py-1.5 text-dense leading-snug text-ev-down-text"
         >
           {error}
         </p>

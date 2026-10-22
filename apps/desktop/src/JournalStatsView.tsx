@@ -22,15 +22,15 @@ export function JournalStatsView({ entries }: Props) {
   return (
     <div className="min-h-0 flex-1 space-y-4 overflow-auto p-3">
       <div className="flex flex-wrap gap-2">
-        <Card label="Net" value={money(stats.netPnl)} tone={stats.netPnl >= 0 ? "text-ev-up" : "text-ev-down"} />
+        <Card label="Net" value={money(stats.netPnl)} tone={stats.netPnl >= 0 ? "text-ev-up-text" : "text-ev-down-text"} />
         <Card label="Trades" value={String(stats.trades)} />
         <Card label="Win rate" value={stats.trades === 0 ? "—" : `${Math.round(stats.winRate * 100)}%`} />
-        <Card label="Avg R" value={avgR === null ? "—" : `${avgR >= 0 ? "+" : ""}${avgR.toFixed(2)}R`} tone={avgR === null ? undefined : avgR >= 0 ? "text-ev-up" : "text-ev-down"} />
+        <Card label="Avg R" value={avgR === null ? "—" : `${avgR >= 0 ? "+" : ""}${avgR.toFixed(2)}R`} tone={avgR === null ? undefined : avgR >= 0 ? "text-ev-up-text" : "text-ev-down-text"} />
         <Card
           label="Profit factor"
           value={stats.trades === 0 ? "—" : Number.isFinite(stats.profitFactor) ? stats.profitFactor.toFixed(2) : "∞"}
         />
-        <Card label="Max DD" value={money(stats.maxDrawdown)} tone="text-ev-down" />
+        <Card label="Max DD" value={money(stats.maxDrawdown)} tone="text-ev-down-text" />
       </div>
 
       <section>
@@ -92,7 +92,7 @@ function EquityPolyline({ points }: { points: readonly { time: number; equity: n
       preserveAspectRatio="none"
     >
       <line x1={pad} y1={zeroY} x2={W - pad} y2={zeroY} stroke="currentColor" className="text-ev-line" strokeWidth={1} />
-      <polyline points={coords} fill="none" stroke="currentColor" className={up ? "text-ev-up" : "text-ev-down"} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+      <polyline points={coords} fill="none" stroke="currentColor" className={up ? "text-ev-up-text" : "text-ev-down-text"} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }
@@ -146,7 +146,7 @@ function BreakdownTable({ title, rows }: { title: string; rows: readonly { label
               <tr key={row.label} className="border-b border-ev-panel last:border-0">
                 <td className="max-w-32 truncate px-2 py-1 text-ev-text">{row.label}</td>
                 <td className="px-2 py-1 text-right num text-ev-muted">{row.trades}</td>
-                <td className={`px-2 py-1 text-right num ${row.net >= 0 ? "text-ev-up" : "text-ev-down"}`}>
+                <td className={`px-2 py-1 text-right num ${row.net >= 0 ? "text-ev-up-text" : "text-ev-down-text"}`}>
                   {row.net >= 0 ? "+" : ""}
                   {money(row.net)}
                 </td>

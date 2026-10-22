@@ -283,13 +283,15 @@ export function toOrders(payload: unknown): Order[] {
       if (!symbol) return null;
       const rawType = num(rec, "type", "order_type") ?? 0;
       const volume = num(rec, "volume_initial", "volumeInitial", "volume") ?? 0;
+      const volumeCurrent = num(rec, "volume_current", "volumeCurrent");
+      const filledQty = volumeCurrent !== null ? Math.max(0, volume - volumeCurrent) : 0;
       const order: Order = {
         id: text(rec, "ticket", "id") ?? String(pick(rec, "ticket") ?? ""),
         symbol,
         side: rawType === 1 || rawType === 3 || rawType === 5 ? "sell" : "buy",
         type: pendingKind(rawType),
         qty: volume,
-        filledQty: num(rec, "volume_current", "volumeCurrent") ?? 0,
+        filledQty,
         price: num(rec, "price_open", "priceOpen") ?? undefined,
         status: mapOrderState(num(rec, "state", "status")),
         time: normaliseTime(num(rec, "time_setup", "timeSetup", "time")),

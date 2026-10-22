@@ -184,6 +184,7 @@ export interface Position {
   stopLoss?: number;
   takeProfit?: number;
   time: EpochSeconds;
+  id?: string;
 }
 
 export interface AccountInfo {

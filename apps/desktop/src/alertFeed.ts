@@ -82,6 +82,6 @@ export async function tickAlertFeed(): Promise<void> {
 }
 
 export function startAlertFeed(intervalMs = 5000): () => void {
-  const timer = setInterval(() => void tickAlertFeed(), intervalMs);
+  const timer = setInterval(() => void tickAlertFeed().catch(() => undefined), intervalMs);
   return () => clearInterval(timer);
 }

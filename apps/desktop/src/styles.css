@@ -54,6 +54,9 @@
   --ev-down: #d91400;
   --ev-up-solid: #0a7d00;
   --ev-down-solid: #b91100;
+  /* Text-safe up/down (>= 4.5:1 on bg, panel and raised); chart candles keep --ev-up/--ev-down. */
+  --ev-up-text: #1db30f;
+  --ev-down-text: #ff5a4d;
   --ev-link: #4a90e2;
   --ev-warn: #f2a93b;
   --ev-orange: #ff9800;
@@ -79,6 +82,8 @@
   --ev-down: #d91400;
   --ev-up-solid: #0a7d00;
   --ev-down-solid: #b91100;
+  --ev-up-text: #0a7d00;
+  --ev-down-text: #c11200;
   --ev-link: #1256a0;
   --ev-warn: #8a7000;
   --ev-orange: #b1560f;
@@ -93,7 +98,7 @@
   --ev-line: #3b4261;
   --ev-line-strong: #565f89;
   --ev-dim: #565f89;
-  --ev-faint: #787c99;
+  --ev-faint: #8a8fae;
   --ev-muted: #9aa5ce;
   --ev-text: #c0caf5;
   --ev-strong: #ffffff;
@@ -104,6 +109,8 @@
   --ev-down: #f7768e;
   --ev-up-solid: #4c7a3f;
   --ev-down-solid: #a53a4a;
+  --ev-up-text: #9ece6a;
+  --ev-down-text: #f7768e;
   --ev-link: #7aa2f7;
   --ev-warn: #e0af68;
   --ev-orange: #ff9e64;
@@ -126,6 +133,8 @@
   --color-ev-accent-text: var(--ev-accent-text);
   --color-ev-up: var(--ev-up);
   --color-ev-down: var(--ev-down);
+  --color-ev-up-text: var(--ev-up-text);
+  --color-ev-down-text: var(--ev-down-text);
   --color-ev-up-solid: var(--ev-up-solid);
   --color-ev-down-solid: var(--ev-down-solid);
   --color-ev-link: var(--ev-link);
@@ -225,6 +234,11 @@ textarea:focus-visible,
 [tabindex]:focus-visible {
   outline: 2px solid var(--ev-accent);
   outline-offset: -1px;
+  /* Inner ring in the page colour + outer ring in the text colour, so the
+     focus shows on accent-filled buttons too. */
+  box-shadow:
+    0 0 0 1px var(--ev-bg),
+    0 0 0 3px var(--ev-strong);
 }
 
 /* Press feedback: buttons must react on mousedown, not only on hover. */

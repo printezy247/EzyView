@@ -79,7 +79,7 @@ function crossed(prev: number | undefined, price: number, level: number): boolea
 }
 
 function risingFor(history: readonly number[], bars: number): boolean {
-  if (history.length <= bars) return false;
+  if (bars < 1 || history.length <= bars) return false;
   const start = history[history.length - 1 - bars];
   const end = history.at(-1);
   if (start === undefined || end === undefined) return false;
@@ -90,7 +90,7 @@ function risingFor(history: readonly number[], bars: number): boolean {
 }
 
 function fallingFor(history: readonly number[], bars: number): boolean {
-  if (history.length <= bars) return false;
+  if (bars < 1 || history.length <= bars) return false;
   for (let i = history.length - bars; i < history.length; i++) {
     if (history[i]! >= history[i - 1]!) return false;
   }
@@ -140,14 +140,17 @@ export function evaluateAlert(
   const price = candle.close;
   const fired = shouldTrigger(alert.condition, price, alert.lastPrice, history);
 
+  const shouldHoldLastPrice = alert.frequency === "once_per_bar_close" && !barClosed && alert.lastPrice !== undefined;
+  const nextPrice = shouldHoldLastPrice ? alert.lastPrice : price;
+
   const next: PriceAlert = {
     ...alert,
     state: effectiveState,
-    lastPrice: price,
+    lastPrice: nextPrice,
     lastBarTime: candle.time,
   };
   if (!fired) {
-    return alert.lastPrice === price &&
+    return alert.lastPrice === nextPrice &&
       alert.state === effectiveState &&
       (alert.lastBarTime === undefined || alert.lastBarTime === candle.time)
       ? null

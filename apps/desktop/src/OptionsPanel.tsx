@@ -46,9 +46,13 @@ export function OptionsPanel({ symbol, onClose }: Props) {
   useEffect(() => {
     let cancelled = false;
     setSpot(null);
-    void loadHistory(symbol, "1D").then((bars) => {
-      if (!cancelled) setSpot(bars[bars.length - 1]?.close ?? null);
-    });
+    void loadHistory(symbol, "1D")
+      .then((bars) => {
+        if (!cancelled) setSpot(bars[bars.length - 1]?.close ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setSpot(null);
+      });
     return () => {
       cancelled = true;
     };
@@ -220,8 +224,8 @@ function Payoff({ rows, spot, strategy, onStrategy }: { rows: ChainRow[]; spot: 
             <option key={s}>{s}</option>
           ))}
         </select>
-        <p className="text-ev-muted">Max profit in range: <span className="text-ev-up">{f(Math.max(...pnls))}</span></p>
-        <p className="text-ev-muted">Max loss in range: <span className="text-ev-down">{f(Math.min(...pnls))}</span></p>
+        <p className="text-ev-muted">Max profit in range: <span className="text-ev-up-text">{f(Math.max(...pnls))}</span></p>
+        <p className="text-ev-muted">Max loss in range: <span className="text-ev-down-text">{f(Math.min(...pnls))}</span></p>
         <p className="text-ev-muted">Break-even: {be.length ? be.map((b) => f(b)).join(" / ") : "none in range"}</p>
         <p className="text-ev-muted">Per 1 unit of underlying, premiums from the model.</p>
       </div>

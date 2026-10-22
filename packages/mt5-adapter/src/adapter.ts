@@ -99,14 +99,24 @@ export class Mt5MarketData implements MarketDataAdapter {
 
   async subscribe(symbols: string[], onQuote: SubscribeHandler): Promise<UnsubscribeFn> {
     let active = true;
-    const tick = () => {
-      for (const symbol of symbols) {
-        void this.getQuote(symbol).then((quote) => {
-          if (active && quote) onQuote(quote);
-        });
+    let inFlight = false;
+    const tick = async () => {
+      if (!active || inFlight) return;
+      inFlight = true;
+      try {
+        const raw = await this.transport.marketWatch();
+        if (!active) return;
+        for (const symbol of symbols) {
+          const quote = findQuote(raw, symbol);
+          if (quote) onQuote(quote);
+        }
+      } catch {
+        // network or server error; next tick will retry
+      } finally {
+        inFlight = false;
       }
     };
-    tick();
+    void tick();
     const timer = setInterval(tick, POLL_MS);
     return async () => {
       active = false;
@@ -122,6 +132,7 @@ export class Mt5Trading implements TradingAdapter {
 
   private readonly transport: Mt5Transport;
   private accountInfo: AccountInfo | null = null;
+  private readonly recentIds = new Map<string, number>();
 
   constructor(transport: Mt5Transport) {
     this.transport = transport;
@@ -144,11 +155,7 @@ export class Mt5Trading implements TradingAdapter {
   }
 
   async getPositions(): Promise<Position[]> {
-    try {
-      return toPositions(await this.transport.openPositions());
-    } catch {
-      return [];
-    }
+    return toPositions(await this.transport.openPositions());
   }
 
   async getOrders(): Promise<Order[]> {
@@ -170,23 +177,35 @@ export class Mt5Trading implements TradingAdapter {
   }
 
   async placeOrder(request: OrderRequest): Promise<Order> {
+    validateOrder(request);
+    const id = request.clientOrderId;
+    if (id !== undefined) {
+      const now = Date.now();
+      for (const [k, t] of this.recentIds) if (now - t > DUPLICATE_WINDOW_MS) this.recentIds.delete(k);
+      if (this.recentIds.has(id)) throw new Error(`Duplicate clientOrderId "${id}" seen in the last 60 s; order not sent`);
+      // Kept even if the send fails: the outcome may be unknown, so never auto-retry.
+      this.recentIds.set(id, now);
+    }
     const payload = await this.transport.placeOrder(request);
     return orderFromPayload(payload, request);
   }
 
   async cancelOrder(id: string): Promise<boolean> {
-    await this.transport.cancel(id);
-    return true;
+    return resultOk(await this.transport.cancel(id));
   }
 
+  /** MT5 only applies stop loss / take profit; other patch fields are ignored, not echoed. */
   async modifyOrder(id: string, patch: Partial<OrderRequest>): Promise<Order> {
-    await this.transport.modify(id, patch.stopLoss, patch.takeProfit);
+    const result = await this.transport.modify(id, patch.stopLoss, patch.takeProfit);
+    if (!resultOk(result)) throw new Error(`MT5 refused to modify order ${id}`);
+    const existing = (await this.getOrders()).find((o) => o.id === id);
+    if (existing) return existing;
     return {
       id,
-      symbol: patch.symbol ?? "",
-      side: patch.side ?? "buy",
-      type: patch.type ?? "market",
-      qty: patch.qty ?? 0,
+      symbol: "",
+      side: "buy",
+      type: "market",
+      qty: 0,
       filledQty: 0,
       status: "pending",
       time: Math.floor(Date.now() / 1000),
@@ -194,14 +213,20 @@ export class Mt5Trading implements TradingAdapter {
   }
 
   async closePosition(symbol: string, qty?: number): Promise<Order> {
-    await this.transport.close(symbol, qty);
+    const positions = await this.getPositions();
+    const position = positions.find((p) => p.symbol === symbol);
+    if (!position) throw new Error(`No open position for ${symbol}`);
+    const side = position.side === "short" ? "buy" : "sell";
+    const closeQty = qty ?? position.qty;
+    const result = await this.transport.close(symbol, qty);
+    if (!resultOk(result)) throw new Error(`MT5 refused to close ${symbol}`);
     return {
       id: `${symbol}-close`,
       symbol,
-      side: "sell",
+      side,
       type: "market",
-      qty: qty ?? 0,
-      filledQty: qty ?? 0,
+      qty: closeQty,
+      filledQty: closeQty,
       status: "filled",
       time: Math.floor(Date.now() / 1000),
     };
@@ -263,4 +288,22 @@ function orderFromPayload(payload: unknown, request: OrderRequest): Order {
     status: request.type === "market" ? "filled" : "pending",
     time: Math.floor(Date.now() / 1000),
   };
+}
+
+const MAX_ORDER_QTY = 1000;
+const DUPLICATE_WINDOW_MS = 60_000;
+
+function resultOk(payload: unknown): boolean {
+  const rec = asRecord(payload);
+  return !(rec && rec.ok === false);
+}
+
+function validateOrder(r: OrderRequest): void {
+  if (!Number.isFinite(r.qty) || r.qty <= 0 || r.qty > MAX_ORDER_QTY) {
+    throw new Error(`Invalid qty ${r.qty}: must be finite, > 0 and <= ${MAX_ORDER_QTY}`);
+  }
+  for (const key of ["price", "stopPrice", "takeProfit", "stopLoss"] as const) {
+    const v = r[key];
+    if (v !== undefined && !Number.isFinite(v)) throw new Error(`Invalid ${key}: must be a finite number`);
+  }
 }

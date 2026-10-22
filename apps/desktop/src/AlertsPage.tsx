@@ -52,7 +52,7 @@ export function AlertsPage() {
   const removeAlert = useWorkspace((s) => s.removeAlert);
   const layout = useWorkspace((s) => s.activeLayout());
   const state = activeChartOf(layout);
-  const updateActive = useWorkspace((s) => s.updateActive);
+  const setSymbol = useWorkspace((s) => s.setSymbol);
   const [expanded, setExpanded] = useState<string | null>(null);
 
   return (
@@ -97,7 +97,7 @@ export function AlertsPage() {
                   expanded={expanded === a.id}
                   onToggle={() => setExpanded(expanded === a.id ? null : a.id)}
                   onOpenSymbol={() => {
-                    updateActive({ symbol: a.symbol });
+                    setSymbol(a.symbol);
                     navigate("/chart");
                   }}
                   onDelete={() => removeAlert(a.id)}
@@ -164,7 +164,7 @@ function FragmentRow({ alert: a, closes, expanded, onToggle, onOpenSymbol, onDel
               e.stopPropagation();
               onDelete();
             }}
-            className="text-ev-down"
+            className="text-ev-down-text"
           >
             <Trash2 size={13} aria-hidden />
           </IconButton>

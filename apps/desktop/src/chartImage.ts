@@ -17,14 +17,18 @@ export function compositeCanvasesToPng(container: Element, background = "#0e1117
   if (canvases.length === 0) return null;
 
   const hostRect = container.getBoundingClientRect();
+  const dpr = typeof window !== "undefined" && window.devicePixelRatio ? Math.max(1, window.devicePixelRatio) : 1;
   const out = document.createElement("canvas");
-  out.width = Math.max(1, Math.round(hostRect.width));
-  out.height = Math.max(1, Math.round(hostRect.height));
+  const cssWidth = Math.max(1, Math.round(hostRect.width));
+  const cssHeight = Math.max(1, Math.round(hostRect.height));
+  out.width = Math.round(cssWidth * dpr);
+  out.height = Math.round(cssHeight * dpr);
   const ctx = out.getContext("2d");
   if (!ctx) return null;
 
+  ctx.scale(dpr, dpr);
   ctx.fillStyle = background;
-  ctx.fillRect(0, 0, out.width, out.height);
+  ctx.fillRect(0, 0, cssWidth, cssHeight);
   for (const canvas of canvases) {
     const rect = canvas.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) continue;

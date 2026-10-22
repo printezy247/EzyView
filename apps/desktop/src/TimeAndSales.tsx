@@ -33,7 +33,7 @@ const TapeRow = memo(function TapeRow({
   return (
     <tr className="ev-row border-b border-ev-panel">
       <td className="px-2 text-micro text-ev-faint">{when(ts)}</td>
-      <td className={`num px-2 text-right font-medium ${side === "buy" ? "text-ev-up" : "text-ev-down"}`}>
+      <td className={`num px-2 text-right font-medium ${side === "buy" ? "text-ev-up-text" : "text-ev-down-text"}`}>
         {safePrice.toFixed(digits)}
       </td>
       <td className="num px-2 text-right text-ev-muted">
@@ -154,7 +154,7 @@ export function TimeAndSales() {
           onClick={() => setPaused((v) => !v)}
           title={paused ? "Resume tape" : "Pause tape"}
         >
-          {paused ? <Play size={13} className="text-ev-up" aria-hidden /> : <Pause size={13} aria-hidden />}
+          {paused ? <Play size={13} className="text-ev-up-text" aria-hidden /> : <Pause size={13} aria-hidden />}
         </IconButton>
 
         <Button variant="outline" size="sm" onClick={() => navigate("/chart")} title="Open the chart">

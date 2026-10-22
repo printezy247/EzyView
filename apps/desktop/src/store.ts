@@ -179,6 +179,8 @@ interface WorkspaceStore {
   setActiveLayout(id: string): void;
   /** Patch the focused chart cell. */
   updateActive(patch: Partial<ChartState>): void;
+  /** Patch a specific chart cell by index in the active layout. */
+  updateChart(index: number, patch: Partial<ChartState>): void;
   /** Set the focused cell's symbol, and every cell in its link group. */
   setSymbol(symbol: string): void;
   /** Set the focused cell's interval, and every cell in its link group. */
@@ -263,8 +265,12 @@ interface WorkspaceStore {
 
 /** Apply `fn` to the active layout and flag it as edited. */
 function editActive(s: WorkspaceStore, fn: (layout: Layout) => Layout): Partial<WorkspaceStore> {
+  const current = s.layouts.find((l) => l.id === s.activeLayoutId);
+  if (!current) return {};
+  const updated = fn(current);
+  if (updated === current) return {};
   return {
-    layouts: s.layouts.map((l) => (l.id === s.activeLayoutId ? fn(l) : l)),
+    layouts: s.layouts.map((l) => (l.id === s.activeLayoutId ? updated : l)),
     dirty: { ...s.dirty, [s.activeLayoutId]: true },
   };
 }
@@ -341,7 +347,6 @@ type PersistedState = PersistedWorkspace & {
   appTheme: AppTheme;
   density: Density;
   alerts: PriceAlert[];
-  alertHistory: AlertHistory;
   watchlist: WatchEntry[];
 };
 
@@ -450,7 +455,8 @@ export const useWorkspace = create<WorkspaceStore>()(
 
       activeChart: () => activeChartOf(get().activeLayout()),
 
-      setActiveLayout: (id) => set({ activeLayoutId: id, activeTool: null, selectedDrawingId: null }),
+      setActiveLayout: (id) =>
+        set({ activeLayoutId: id, activeTool: null, selectedDrawingId: null, drawingUndo: [], drawingRedo: [] }),
 
       // Per-cell settings. The linked fields (symbol, interval) have their own
       // actions below, because they propagate to the cell's link group.
@@ -465,6 +471,19 @@ export const useWorkspace = create<WorkspaceStore>()(
           );
           if (!hasChange) return s;
           return editChart(s, (c) => ({ ...c, ...patch }));
+        }),
+
+      updateChart: (index, patch) =>
+        set((s) => {
+          const layout = s.layouts.find((l) => l.id === s.activeLayoutId) ?? s.layouts[0];
+          if (!layout) return s;
+          const current = layout.charts[index];
+          if (!current) return s;
+          const hasChange = Object.entries(patch).some(
+            ([k, v]) => (current as unknown as Record<string, unknown>)[k] !== v,
+          );
+          if (!hasChange) return s;
+          return editActive(s, (l) => updateChart(l, index, (c) => ({ ...c, ...patch })));
         }),
 
       // The focused cell's symbol, and every cell in its link group.
@@ -492,7 +511,12 @@ export const useWorkspace = create<WorkspaceStore>()(
           const layout = get().activeLayout();
           const next = setActiveChart(layout, index);
           if (next === layout) return s;
-          return { layouts: s.layouts.map((l) => (l.id === layout.id ? next : l)), replayBar: null };
+          return {
+            layouts: s.layouts.map((l) => (l.id === layout.id ? next : l)),
+            replayBar: null,
+            drawingUndo: [],
+            drawingRedo: [],
+          };
         }),
 
       addLayout: () =>
@@ -563,7 +587,10 @@ export const useWorkspace = create<WorkspaceStore>()(
 
       updateIndicatorParams: (target, params) =>
         set((s) =>
-          editChart(s, (c) => ({ ...c, indicators: c.indicators.map((i) => (i.uid === target ? { ...i, params } : i)) })),
+          editChart(s, (c) => ({
+            ...c,
+            indicators: c.indicators.map((i) => (i.uid === target ? { ...i, params: { ...i.params, ...params } } : i)),
+          })),
         ),
 
       updateIndicator: (target, patch) =>
@@ -727,7 +754,11 @@ export const useWorkspace = create<WorkspaceStore>()(
         // Keep the array identity when nothing fired or changed, so subscribers
         // (the MCP snapshot sync) are not woken by every quote poll.
         const prev = get().alerts;
-        set({ alerts: alerts.every((a, i) => a === prev[i]) ? prev : alerts, alertHistory: history });
+        const alertsSame = alerts.every((a, i) => a === prev[i]);
+        const historyChanged = !historySame(get().alertHistory, history);
+        if (!alertsSame || historyChanged) {
+          set({ alerts: alertsSame ? prev : alerts, alertHistory: history });
+        }
         return fired;
       },
 
@@ -895,6 +926,8 @@ export const useWorkspace = create<WorkspaceStore>()(
     {
       name: "ezyview.workspace",
       version: 1,
+      // No shape change yet; the hook exists so a future bump has somewhere to land.
+      migrate: (state) => state as PersistedState,
       storage: workspaceStorage,
       partialize: (s): PersistedState => ({
         layouts: s.layouts,
@@ -908,8 +941,9 @@ export const useWorkspace = create<WorkspaceStore>()(
         eventOptions: s.eventOptions,
         chartTemplates: s.chartTemplates,
         alerts: s.alerts,
-        alertHistory: s.alertHistory,
-        watchlist: s.watchlist,
+        // Live quotes go stale the moment they are saved, and the rolling
+        // close history is rebuilt from the feed - neither is persisted.
+        watchlist: s.watchlist.map((w) => ({ ...w, price: null, changePct: null })),
       }),
       merge: (persisted, current) => {
         const raw = (persisted ?? {}) as Record<string, unknown>;
@@ -939,17 +973,37 @@ export const useWorkspace = create<WorkspaceStore>()(
   ),
 );
 
-function restoreAlerts(raw: unknown, fallback: PriceAlert[]): PriceAlert[] {
+const ALERT_STATES = new Set(["armed", "triggered"]);
+const ALERT_FREQUENCIES = new Set(["once", "once_per_bar", "once_per_bar_close"]);
+
+/** Keep only well-formed alerts; a bad state/frequency would never evaluate right. */
+/** Same keys, and each key's closes equal element by element. */
+function historySame(a: AlertHistory, b: AlertHistory): boolean {
+  const ka = Object.keys(a);
+  if (ka.length !== Object.keys(b).length) return false;
+  return ka.every((k) => {
+    const x = a[k];
+    const y = b[k];
+    return y !== undefined && x !== undefined && x.length === y.length && x.every((n, i) => n === y[i]);
+  });
+}
+
+export function restoreAlerts(raw: unknown, fallback: PriceAlert[]): PriceAlert[] {
   if (!Array.isArray(raw)) return fallback;
-  return raw.filter(
-    (a): a is PriceAlert =>
-      typeof a === "object" &&
-      a !== null &&
-      typeof (a as Partial<PriceAlert>).id === "string" &&
-      typeof (a as Partial<PriceAlert>).symbol === "string" &&
-      typeof (a as Partial<PriceAlert>).condition === "object" &&
-      (a as Partial<PriceAlert>).condition !== null,
-  );
+  return raw.filter((a): a is PriceAlert => {
+    if (typeof a !== "object" || a === null) return false;
+    const x = a as Partial<PriceAlert>;
+    return (
+      typeof x.id === "string" &&
+      typeof x.symbol === "string" &&
+      typeof x.condition === "object" &&
+      x.condition !== null &&
+      typeof x.state === "string" &&
+      ALERT_STATES.has(x.state) &&
+      typeof x.frequency === "string" &&
+      ALERT_FREQUENCIES.has(x.frequency)
+    );
+  });
 }
 
 function restoreAlertHistory(raw: unknown): AlertHistory {
@@ -964,15 +1018,26 @@ function restoreAlertHistory(raw: unknown): AlertHistory {
   return out;
 }
 
-function restoreWatchlist(raw: unknown, fallback: WatchEntry[]): WatchEntry[] {
+const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+
+export function restoreWatchlist(raw: unknown, fallback: WatchEntry[]): WatchEntry[] {
   if (!Array.isArray(raw)) return fallback;
-  return raw.filter(
-    (w): w is WatchEntry =>
-      typeof w === "object" &&
-      w !== null &&
-      typeof (w as Partial<WatchEntry>).symbol === "string" &&
-      typeof (w as Partial<WatchEntry>).ticker === "string",
-  );
+  const out: WatchEntry[] = [];
+  for (const w of raw) {
+    if (typeof w !== "object" || w === null) continue;
+    const x = w as Partial<Record<keyof WatchEntry, unknown>>;
+    if (typeof x.symbol !== "string" || typeof x.ticker !== "string") continue;
+    out.push({
+      symbol: x.symbol,
+      ticker: x.ticker,
+      description: typeof x.description === "string" ? x.description : x.ticker,
+      assetClass: typeof x.assetClass === "string" ? x.assetClass : "",
+      precision: typeof x.precision === "number" && Number.isFinite(x.precision) ? Math.max(0, Math.min(10, Math.trunc(x.precision))) : 2,
+      price: num(x.price),
+      changePct: num(x.changePct),
+    });
+  }
+  return out;
 }
 
 /** Prepend a superseded head to the archive: newest first, capped. */

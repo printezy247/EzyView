@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { KeyRound, X } from "lucide-react";
-import type { DividendEvent, IpoEvent } from "@ezyview/data-adapters";
+import type { IpoEvent } from "@ezyview/data-adapters";
 import {
   buildSources,
   heatColor,
@@ -10,8 +10,8 @@ import {
 } from "@ezyview/fundamentals";
 import type { FundamentalsSources, ScreenerField, ScreenerRow, SourceSlot } from "@ezyview/fundamentals";
 import { useApiKeys } from "./apiKeys";
-import { market, tickerOf } from "./data";
-import { CalendarTab, DAY, day, EarningsTab, Empty, Failed, NewsTab, pct, tone, useLoad } from "./FundamentalsTabs";
+import { market } from "./data";
+import { CalendarTab, DAY, day, DividendsTab, EarningsTab, Empty, Failed, NewsTab, pct, tone, useLoad } from "./FundamentalsTabs";
 import type { Src } from "./FundamentalsTabs";
 import { inputClass } from "./ui";
 
@@ -100,7 +100,7 @@ export function FundamentalsPanel({ symbol, onClose, onPickSymbol }: Props) {
 
 /** Says, for the open tab, whether the rows are live and from whom, or demo data. */
 function SourceBadge({ slots, live, keyError }: { slots: SourceSlot[]; live: FundamentalsSources["live"]; keyError: string | null }) {
-  if (keyError) return <span className="ml-3 truncate text-ev-down">{keyError}</span>;
+  if (keyError) return <span className="ml-3 truncate text-ev-down-text">{keyError}</span>;
   if (slots.length === 0) return <span className="ml-3 text-ev-muted">Scans the current market feed</span>;
   const names = [...new Set(slots.map((s) => live[s]).filter((n) => n !== null))];
   const demo = slots.some((s) => live[s] === null);
@@ -111,7 +111,7 @@ function SourceBadge({ slots, live, keyError }: { slots: SourceSlot[]; live: Fun
     );
   }
   return (
-    <span className="ml-3 rounded bg-ev-up/15 px-1.5 py-0.5 text-ev-up">
+    <span className="ml-3 rounded bg-ev-up/15 px-1.5 py-0.5 text-ev-up-text">
       LIVE · {names.join(" + ")}
       {demo && <span className="text-ev-warn"> (part demo)</span>}
     </span>
@@ -149,38 +149,6 @@ function IposTab({ src }: { src: Src }) {
             <td className="text-right">{r.price ?? "—"}</td>
             <td className="text-right">{r.shares ? r.shares.toLocaleString() : "—"}</td>
             <td className="pr-3 text-right text-ev-muted">{r.status ?? "—"}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
-function DividendsTab({ symbol, src }: { symbol: string; src: Src }) {
-  const { data: rows, error } = useLoad<DividendEvent[]>(() => {
-    const now = Math.floor(Date.now() / 1000);
-    return src.sources.corporate.getDividends(symbol, now - 3 * 365 * DAY, now + 120 * DAY);
-  }, `${symbol}:${src.version}`);
-  if (error) return <Failed text={error} />;
-  if (rows === null) return <Empty text="Loading…" />;
-  if (rows.length === 0) return <Empty text={`No dividends for ${tickerOf(symbol)} in the last 3 years (stocks only).`} />;
-  return (
-    <table className="w-full text-dense">
-      <thead className="text-left text-ev-muted">
-        <tr>
-          <th scope="col" className="px-3 py-1 font-normal">Ex-date</th>
-          <th scope="col" className="font-normal">Pay date</th>
-          <th scope="col" className="pr-3 text-right font-normal">Amount</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r) => (
-          <tr key={r.exDate} className="border-t border-ev-raised">
-            <td className="px-3 py-1">{day(r.exDate)}</td>
-            <td className="text-ev-muted">{r.payDate ? day(r.payDate) : "—"}</td>
-            <td className="pr-3 text-right">
-              {r.amount.toFixed(4).replace(/0{1,2}$/, "")} {r.currency ?? ""}
-            </td>
           </tr>
         ))}
       </tbody>

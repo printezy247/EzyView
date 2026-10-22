@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import type { Candle } from "@ezyview/data-adapters";
-import { PineEditor } from "./PineEditor";
 import { activeChartOf } from "./layout";
 import { useWorkspace } from "./store";
 import { loadHistory } from "./data";
+
+const PineEditor = lazy(() => import("./PineEditor").then((m) => ({ default: m.PineEditor })));
 
 /**
  * Strategies destination: the Pine editor, strategy tester and optimizer.
@@ -21,13 +22,21 @@ export function StrategiesPage() {
 
   useEffect(() => {
     let cancelled = false;
-    void loadHistory(state.symbol, state.resolution).then((candles) => {
-      if (!cancelled) setBars(candles);
-    });
+    void loadHistory(state.symbol, state.resolution)
+      .then((candles) => {
+        if (!cancelled) setBars(candles);
+      })
+      .catch(() => {
+        if (!cancelled) setBars([]);
+      });
     return () => {
       cancelled = true;
     };
   }, [state.symbol, state.resolution]);
 
-  return <PineEditor onClose={() => navigate("/chart")} bars={bars} symbol={state.symbol} uiTheme={uiTheme} />;
+  return (
+    <Suspense fallback={<div className="flex flex-1 items-center justify-center text-dense text-ev-muted">Loading Pine Editor…</div>}>
+      <PineEditor onClose={() => navigate("/chart")} bars={bars} symbol={state.symbol} uiTheme={uiTheme} />
+    </Suspense>
+  );
 }

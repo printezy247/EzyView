@@ -1,8 +1,10 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Default capabilities for the main window",
-  "windows": ["main", "chart-*"],
+  "description": "Main window: all app commands",
+  "windows": [
+    "main"
+  ],
   "permissions": [
     "core:default",
     "core:window:allow-start-dragging",
@@ -12,7 +14,24 @@
     "notification:default",
     {
       "identifier": "opener:allow-open-url",
-      "allow": [{ "url": "https://github.com/printezy247/EzyView/*" }]
-    }
+      "allow": [
+        {
+          "url": "https://github.com/printezy247/EzyView/*"
+        }
+      ]
+    },
+    "allow-open-chart-window",
+    "allow-api-key-get",
+    "allow-api-key-set",
+    "allow-clear-keyring-secrets",
+    "allow-save-file",
+    "allow-write-snapshot",
+    "allow-append-log",
+    "allow-read-log",
+    "allow-clear-log",
+    "allow-get-shell-settings",
+    "allow-set-shell-settings",
+    "allow-relaunch-app",
+    "allow-factory-reset"
   ]
 }

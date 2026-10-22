@@ -345,6 +345,162 @@
       "description": "Permission identifier",
       "oneOf": [
         {
+          "description": "Enables the api_key_get command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-api-key-get",
+          "markdownDescription": "Enables the api_key_get command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the api_key_set command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-api-key-set",
+          "markdownDescription": "Enables the api_key_set command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the append_log command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-append-log",
+          "markdownDescription": "Enables the append_log command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the clear_keyring_secrets command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-clear-keyring-secrets",
+          "markdownDescription": "Enables the clear_keyring_secrets command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the clear_log command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-clear-log",
+          "markdownDescription": "Enables the clear_log command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the factory_reset command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-factory-reset",
+          "markdownDescription": "Enables the factory_reset command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_shell_settings command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-shell-settings",
+          "markdownDescription": "Enables the get_shell_settings command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the open_chart_window command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-open-chart-window",
+          "markdownDescription": "Enables the open_chart_window command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the read_log command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-read-log",
+          "markdownDescription": "Enables the read_log command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the relaunch_app command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-relaunch-app",
+          "markdownDescription": "Enables the relaunch_app command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the save_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-save-file",
+          "markdownDescription": "Enables the save_file command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the set_shell_settings command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-set-shell-settings",
+          "markdownDescription": "Enables the set_shell_settings command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the write_snapshot command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-write-snapshot",
+          "markdownDescription": "Enables the write_snapshot command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the api_key_get command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-api-key-get",
+          "markdownDescription": "Denies the api_key_get command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the api_key_set command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-api-key-set",
+          "markdownDescription": "Denies the api_key_set command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the append_log command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-append-log",
+          "markdownDescription": "Denies the append_log command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the clear_keyring_secrets command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-clear-keyring-secrets",
+          "markdownDescription": "Denies the clear_keyring_secrets command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the clear_log command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-clear-log",
+          "markdownDescription": "Denies the clear_log command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the factory_reset command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-factory-reset",
+          "markdownDescription": "Denies the factory_reset command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_shell_settings command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-shell-settings",
+          "markdownDescription": "Denies the get_shell_settings command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the open_chart_window command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-open-chart-window",
+          "markdownDescription": "Denies the open_chart_window command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the read_log command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-read-log",
+          "markdownDescription": "Denies the read_log command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the relaunch_app command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-relaunch-app",
+          "markdownDescription": "Denies the relaunch_app command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the save_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-save-file",
+          "markdownDescription": "Denies the save_file command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the set_shell_settings command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-set-shell-settings",
+          "markdownDescription": "Denies the set_shell_settings command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the write_snapshot command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-write-snapshot",
+          "markdownDescription": "Denies the write_snapshot command without any pre-configured scope."
+        },
+        {
           "description": "Default core plugins set.\n#### This default permission set includes:\n\n- `core:path:default`\n- `core:event:default`\n- `core:window:default`\n- `core:webview:default`\n- `core:app:default`\n- `core:image:default`\n- `core:resources:default`\n- `core:menu:default`\n- `core:tray:default`",
           "type": "string",
           "const": "core:default",

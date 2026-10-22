@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { handleMessage, PROTOCOL_VERSION } from "./server.js";
 
 const call = async (name: string, args: Record<string, unknown> = {}) => {
@@ -7,6 +10,18 @@ const call = async (name: string, args: Record<string, unknown> = {}) => {
   const text = result.content[0]!.text;
   return { isError: result.isError === true, data: result.isError ? text : JSON.parse(text) };
 };
+
+// The auth tests read a snapshot; use a temp one so they do not depend on this machine.
+const savedSnapshot = process.env.EZYVIEW_SNAPSHOT;
+beforeAll(() => {
+  const file = join(mkdtempSync(join(tmpdir(), "ezyview-mcp-auth-")), "snap.json");
+  writeFileSync(file, JSON.stringify({ format: "ezyview-workspace", version: 1, updatedAt: 1, layouts: [], alerts: [], watchlist: [], journal: { entries: [], notes: [] } }));
+  process.env.EZYVIEW_SNAPSHOT = file;
+});
+afterAll(() => {
+  if (savedSnapshot === undefined) delete process.env.EZYVIEW_SNAPSHOT;
+  else process.env.EZYVIEW_SNAPSHOT = savedSnapshot;
+});
 
 describe("mcp server protocol", () => {
   it("answers initialize and lists tools", async () => {
@@ -80,6 +95,23 @@ describe("mcp server tools", () => {
       expect(auth.isError).toBe(false);
     } finally {
       delete process.env.EZYVIEW_MCP_TOKEN;
+    }
+  });
+
+  it("fails closed on private tools when no token is configured, unless INSECURE=1", async () => {
+    delete process.env.EZYVIEW_MCP_TOKEN;
+    delete process.env.EZYVIEW_MCP_INSECURE;
+    const tools = ["get_workspace", "get_journal", "list_alerts", "journal_review_pack"];
+    const results = await Promise.all(tools.map((t) => call(t, {})));
+    for (const res of results) {
+      expect(res.isError).toBe(true);
+      expect(res.data).toContain("Unauthorized");
+    }
+    process.env.EZYVIEW_MCP_INSECURE = "1";
+    try {
+      expect((await call("get_workspace", {})).isError).toBe(false);
+    } finally {
+      delete process.env.EZYVIEW_MCP_INSECURE;
     }
   });
 });

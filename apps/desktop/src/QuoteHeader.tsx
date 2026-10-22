@@ -68,7 +68,7 @@ export function QuoteHeader({ symbol }: { symbol: string }) {
           {quote ? quote.last.toFixed(digits) : "—"}
         </span>
         {quote && quote.changePercent !== undefined && (
-          <span className={`num text-dense font-medium ${up ? "text-ev-up" : "text-ev-down"}`} data-volatile="price">
+          <span className={`num text-dense font-medium ${up ? "text-ev-up-text" : "text-ev-down-text"}`} data-volatile="price">
             {up ? "+" : ""}
             {quote.changePercent.toFixed(2)}%
           </span>

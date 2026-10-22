@@ -189,6 +189,9 @@ class Emitter {
         return;
       }
       case "AssignExpr": {
+        if (node.target.kind !== "Identifier") {
+          throw new PineUnsupportedError("reassignment target must be an identifier", node.line, node.col);
+        }
         // Pine's `:=` reassigns; JS uses `=` for both declare and reassign, so
         // the operator normalizes here rather than reaching the output verbatim.
         this.line(`${this.expr(node.target)} = ${this.expr(node.value)};`);
@@ -217,7 +220,6 @@ class Emitter {
         const v = this.safeName(node.variable, node.line, node.col);
         this.line("{");
         this.indent(() => {
-          this.line("let __iters = 0;");
           this.line(`for (let ${v} = num(${this.expr(node.from)}); ${v} <= num(${this.expr(node.to)}); ${v} += ${node.step ? `num(${this.expr(node.step)})` : "1"}) {`);
           this.indent(() => {
             this.line("if (++__iters > 100000) throw new Error(\"pine: too many iterations\");");
@@ -231,7 +233,6 @@ class Emitter {
       case "WhileStmt": {
         this.line("{");
         this.indent(() => {
-          this.line("let __iters = 0;");
           this.line(`while (truthy(${this.expr(node.test)}, barIndex)) {`);
           this.indent(() => {
             this.line("if (++__iters > 100000) throw new Error(\"pine: too many iterations\");");
@@ -402,7 +403,8 @@ class Emitter {
         return orderCall(helper);
       }
 
-      const fn = ns ? `${ns}.${callee.property}` : callee.property;
+      const target = ns ? ns : this.expr(obj);
+      const fn = `${target}.${callee.property}`;
       return `${fn}(${args.join(", ")})`;
     }
 
@@ -543,5 +545,14 @@ const DANGEROUS_GLOBALS = new Set([
   "Reflect",
   "Proxy",
 ]);
+
+// Names alone are a blocklist, and `Object.getOwnPropertyDescriptor(...)` reached
+// `Function` without ever naming it. Every capitalised host global (Object,
+// Array, JSON, Math, Date, Intl, HTML*...) is a built-in a Pine script has no use
+// for, so block them all. Lower-case globals stay allowed: `open`, `close`,
+// `name` and `length` are Pine series or common variable names.
+for (const name of Object.getOwnPropertyNames(globalThis)) {
+  if (/^[A-Z]/.test(name) && !BUILTIN_NAMES.has(name)) DANGEROUS_GLOBALS.add(name);
+}
 
 export { PineSyntaxError };

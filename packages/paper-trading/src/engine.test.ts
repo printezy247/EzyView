@@ -324,4 +324,35 @@ describe("rejected orders", () => {
     ).rejects.toThrow(PaperTradingError);
     await expect(engine.getPositions()).resolves.toEqual([]);
   });
+
+  describe("hardening", () => {
+    it("stop_limit keeps its type and stopPrice, flags triggered, then fills as a limit", async () => {
+      engine.updateQuote("S", 100);
+      const o = await engine.placeOrder({ symbol: "S", side: "buy", type: "stop_limit", qty: 1, price: 106, stopPrice: 105 });
+      engine.updateQuote("S", 104);
+      expect((await engine.getOrders())[0]).toMatchObject({ type: "stop_limit", stopPrice: 105 });
+      expect((await engine.getOrders())[0]!.triggered).toBeFalsy();
+      engine.updateQuote("S", 107); // stop tripped, but above the 106 limit: parked
+      const parked = (await engine.getOrders()).find((x) => x.id === o.id)!;
+      expect(parked).toMatchObject({ type: "stop_limit", stopPrice: 105, triggered: true, status: "pending" });
+      engine.updateQuote("S", 105.5);
+      expect((await engine.getPositions())[0]?.symbol).toBe("S");
+    });
+
+    it("stop_limit without stopPrice is rejected", async () => {
+      engine.updateQuote("S", 100);
+      await expect(engine.placeOrder({ symbol: "S", side: "buy", type: "stop_limit", qty: 1, price: 106 })).rejects.toThrow(/stop price/);
+    });
+
+    it("modifyOrder enforces the max qty", async () => {
+      engine.updateQuote("S", 100);
+      const o = await engine.placeOrder({ symbol: "S", side: "buy", type: "limit", qty: 1, price: 50 });
+      await expect(engine.modifyOrder(o.id, { qty: 1e12 })).rejects.toThrow(/qty/);
+    });
+
+    it("placement rejects an absurd qty", async () => {
+      engine.updateQuote("S", 100);
+      await expect(engine.placeOrder({ symbol: "S", side: "buy", type: "limit", qty: 1e12, price: 1 })).rejects.toThrow(/qty/);
+    });
+  });
 });

@@ -758,8 +758,9 @@ branch and merged with `--no-ff`.
 - Pine still runs through `new Function`, so the CSP keeps `unsafe-eval`.
   Moving the evaluator into a Worker is the real fix and is a rewrite.
 - The MCP server is stdio-only, so it is reachable by local processes only.
-  Its journal tools could require `EZYVIEW_MCP_TOKEN`; that would break the
-  current setup, so it stays optional and documented.
+  Its private-data tools (`get_workspace`, `get_journal`, `list_alerts`,
+  `journal_review_pack`) now fail closed: set `EZYVIEW_MCP_TOKEN` and pass it as
+  the `token` argument, or set `EZYVIEW_MCP_INSECURE=1` to allow open access.
 - The ten panels that poll a quote still poll on their own schedules; a single
   shared per-symbol poller is the next step.
 - `highest`/`lowest` and the other O(n x period) indicator helpers are still

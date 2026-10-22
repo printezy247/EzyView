@@ -83,24 +83,56 @@ export function stdev(values: number[], period: number): SeriesValue[] {
   return out;
 }
 
-/** Highest value over a rolling window (inclusive of current bar). */
+/** Highest value over a rolling window (inclusive of current bar) in O(N) using a monotonic deque. */
 export function highest(values: number[], period: number): SeriesValue[] {
-  const out: SeriesValue[] = Array.from({ length: values.length }, () => null);
-  for (let i = period - 1; i < values.length; i++) {
-    let m = -Infinity;
-    for (let j = i - period + 1; j <= i; j++) m = Math.max(m, values[j]!);
-    out[i] = m;
+  const p = Math.max(1, Math.floor(period));
+  const n = values.length;
+  const out: SeriesValue[] = Array.from({ length: n }, () => null);
+  if (p <= 0 || n < p) return out;
+
+  const deque: number[] = [];
+  let head = 0;
+
+  for (let i = 0; i < n; i++) {
+    const val = values[i]!;
+    while (head < deque.length && deque[head]! <= i - p) {
+      head++;
+    }
+    while (deque.length > head && values[deque[deque.length - 1]!]! <= val) {
+      deque.pop();
+    }
+    deque.push(i);
+
+    if (i >= p - 1) {
+      out[i] = values[deque[head]!]!;
+    }
   }
   return out;
 }
 
-/** Lowest value over a rolling window (inclusive of current bar). */
+/** Lowest value over a rolling window (inclusive of current bar) in O(N) using a monotonic deque. */
 export function lowest(values: number[], period: number): SeriesValue[] {
-  const out: SeriesValue[] = Array.from({ length: values.length }, () => null);
-  for (let i = period - 1; i < values.length; i++) {
-    let m = Infinity;
-    for (let j = i - period + 1; j <= i; j++) m = Math.min(m, values[j]!);
-    out[i] = m;
+  const p = Math.max(1, Math.floor(period));
+  const n = values.length;
+  const out: SeriesValue[] = Array.from({ length: n }, () => null);
+  if (p <= 0 || n < p) return out;
+
+  const deque: number[] = [];
+  let head = 0;
+
+  for (let i = 0; i < n; i++) {
+    const val = values[i]!;
+    while (head < deque.length && deque[head]! <= i - p) {
+      head++;
+    }
+    while (deque.length > head && values[deque[deque.length - 1]!]! >= val) {
+      deque.pop();
+    }
+    deque.push(i);
+
+    if (i >= p - 1) {
+      out[i] = values[deque[head]!]!;
+    }
   }
   return out;
 }
@@ -139,13 +171,15 @@ export function map2(a: SeriesValue[], b: SeriesValue[], fn: (x: number, y: numb
   return out;
 }
 
-/** Fill leading/interior nulls with the previous known value (or `fallback`). */
+/** Fill leading/interior nulls with the previous known value (or backfilled first valid value). */
 export function fillForward(values: SeriesValue[], fallback = 0): number[] {
+  const firstNonNull = values.find((v): v is number => v !== null && v !== undefined && Number.isFinite(v));
+  const initial = firstNonNull !== undefined ? firstNonNull : fallback;
   const out: number[] = Array.from<number>({ length: values.length });
-  let last = fallback;
+  let last = initial;
   for (let i = 0; i < values.length; i++) {
     const v = values[i] ?? null;
-    if (v !== null) last = v;
+    if (v !== null && Number.isFinite(v)) last = v;
     out[i] = last;
   }
   return out;
@@ -174,13 +208,9 @@ export function wma(values: number[], period: number): SeriesValue[] {
 export function hma(values: number[], period: number): SeriesValue[] {
   const half = Math.max(1, Math.floor(period / 2));
   const sqrtP = Math.max(1, Math.round(Math.sqrt(period)));
-  const raw = map2(
-    map2(wma(values, half), wma(values, period), (a, b) => 2 * a - b),
-    wma(values, sqrtP),
-    (a, b) => a + b,
-  );
+  const raw = map2(wma(values, half), wma(values, period), (a, b) => 2 * a - b);
   // Map2 output feeds WMA; nulls become 0 so the window math stays aligned.
-  return wma(fillForward(raw), sqrtP).map((v, i) => (raw[i] === null && i < period ? null : v));
+  return wma(fillForward(raw), sqrtP).map((v, i) => (i < period - 1 + sqrtP - 1 ? null : v));
 }
 
 /** Arnaud Legoux MA — gaussian-weighted, configurable lag/sigma tradeoff. */

@@ -13,8 +13,11 @@ interface Group {
   deals: Deal[];
 }
 
+const isSound = (d: Deal): boolean =>
+  [d.qty, d.price, d.pnl, d.time].every((n) => typeof n === "number" && Number.isFinite(n));
+
 export function entriesFromDeals(deals: readonly Deal[], source?: JournalEntry["source"]): JournalEntry[] {
-  const ordered = [...deals].sort((a, b) => a.time - b.time);
+  const ordered = deals.filter(isSound).sort((a, b) => a.time - b.time);
   const groups = new Map<string, Group>();
   const ungrouped: Deal[] = [];
 
@@ -69,13 +72,24 @@ function fromGroup(group: Group, source?: JournalEntry["source"]): JournalEntry 
   // without position ids); a lone entry leg with no P&L is still open.
   const closed = rest.length > 0 || head.pnl !== 0;
 
+  // A lone closing deal (e.g. from an engine that only logged exits):
+  // selling closes a long position; buying closes a short position.
+  const isLoneClosingDeal = rest.length === 0 && head.pnl !== 0;
+  const side = isLoneClosingDeal
+    ? (head.side === "sell" ? "long" : "short")
+    : (head.side === "buy" ? "long" : "short");
+
+  const openingDeals = rest.length > 0 ? group.deals.filter((d) => d.side === head.side) : [head];
+  const totalQty = openingDeals.reduce((sum, d) => sum + d.qty, 0);
+  const totalNotional = openingDeals.reduce((sum, d) => sum + d.qty * d.price, 0);
+  const entryPrice = totalQty > 0 ? totalNotional / totalQty : head.price;
+
   const entry: JournalEntry = {
     id: group.key,
     symbol: head.symbol,
-    // The opening leg decides direction: a long opens on a buy.
-    side: head.side === "buy" ? "long" : "short",
-    qty: head.qty,
-    entryPrice: head.price,
+    side,
+    qty: totalQty,
+    entryPrice,
     entryTime: head.time,
     source,
   };

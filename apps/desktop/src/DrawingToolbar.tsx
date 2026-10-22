@@ -223,7 +223,7 @@ export function DrawingToolbar() {
               if (ok) setDrawings([]);
             });
         }}
-        className="flex size-8 items-center justify-center rounded text-dense font-medium text-ev-muted hover:bg-ev-raised hover:text-ev-down disabled:opacity-40"
+        className="flex size-8 items-center justify-center rounded text-dense font-medium text-ev-muted hover:bg-ev-raised hover:text-ev-down-text disabled:opacity-40"
       >
         <Trash2 size={15} aria-hidden />
       </button>

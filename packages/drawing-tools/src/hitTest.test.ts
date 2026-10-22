@@ -73,6 +73,38 @@ describe("hitTest", () => {
     expect(hitTest(h, [{ x: 999, y: 200 }], { x: 10, y: 240 }, 6)).toBeNull();
   });
 
+  it("ray only hits forward in ray direction, not behind origin", () => {
+    const ray = line("r1", "ray", [
+      { time: 0, price: 100 },
+      { time: 10, price: 100 },
+    ]);
+    const screen = [
+      { x: 100, y: 100 },
+      { x: 200, y: 100 },
+    ];
+    // Forward along ray
+    expect(hitTest(ray, screen, { x: 300, y: 100 }, 6)?.handle).toBe(-1);
+    // Behind origin anchor (x < 100)
+    expect(hitTest(ray, screen, { x: 50, y: 100 }, 6)).toBeNull();
+  });
+
+  it("hits fib_extension anchor segments and levels", () => {
+    const fibExt = line("fe1", "fib_extension", [
+      { time: 0, price: 100 },
+      { time: 5, price: 150 },
+      { time: 10, price: 120 },
+    ]);
+    const screen = [
+      { x: 0, y: 100 },
+      { x: 50, y: 50 },
+      { x: 100, y: 80 },
+    ];
+    // Hit along anchor segment 1 (a to b)
+    expect(hitTest(fibExt, screen, { x: 25, y: 75 }, 6)?.handle).toBe(-1);
+    // Hit along 100% extension level: y = c.y + (b.y - a.y) * 1.0 = 80 + (50 - 100) * 1 = 30
+    expect(hitTest(fibExt, screen, { x: 40, y: 30 }, 6)?.handle).toBe(-1);
+  });
+
   it("hits a rectangle from anywhere inside", () => {
     const r = line("r1", "rectangle", [
       { time: 0, price: 100 },

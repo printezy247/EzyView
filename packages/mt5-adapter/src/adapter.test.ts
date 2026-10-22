@@ -149,14 +149,15 @@ describe("Mt5Trading", () => {
       }),
     );
     await expect(trading.getAccount()).rejects.toThrow("no bridge");
-    // Reads that back the panels stay safe.
-    await expect(trading.getPositions()).resolves.toEqual([]);
+    // Order and history reads that back the panels stay safe.
     await expect(trading.getOrders()).resolves.toEqual([]);
     await expect(trading.getHistory()).resolves.toEqual([]);
   });
 
   it("places an order, closes and cancels through the transport", async () => {
-    const transport = fakeTransport();
+    const transport = fakeTransport({
+      openPositions: async () => ({ positions: [{ symbol: "XAUUSD", type: 0, volume: 0.1, price_open: 1, price_current: 1, profit: 0, sl: 0, tp: 0, time: 1 }] }),
+    });
     const trading = new Mt5Trading(transport);
     const order = await trading.placeOrder({ symbol: "XAUUSD", side: "buy", type: "market", qty: 0.1 });
     expect(order).toMatchObject({ id: "42", symbol: "XAUUSD", status: "filled" });

@@ -53,9 +53,35 @@ export class BgBandsPrimitive implements IPanePrimitive<Time> {
     target.useMediaCoordinateSpace((scope) => {
       const ctx = scope.context;
       const { height } = scope.mediaSize;
+      const range = this.chart?.timeScale().getVisibleRange();
+      const fromTime = range ? Number(range.from) : Number.NEGATIVE_INFINITY;
+      const toTime = range ? Number(range.to) : Number.POSITIVE_INFINITY;
+
+      let startIdx = 0;
+      let endIdx = this.times.length;
+      if (this.times.length > 0 && range) {
+        let lo = 0;
+        let hi = this.times.length;
+        while (lo < hi) {
+          const mid = (lo + hi) >> 1;
+          if (Number(this.times[mid]!) < fromTime) lo = mid + 1;
+          else hi = mid;
+        }
+        startIdx = Math.max(0, lo - 1);
+
+        lo = startIdx;
+        hi = this.times.length;
+        while (lo < hi) {
+          const mid = (lo + hi) >> 1;
+          if (Number(this.times[mid]!) <= toTime) lo = mid + 1;
+          else hi = mid;
+        }
+        endIdx = Math.min(this.times.length, lo + 1);
+      }
+
       for (const band of this.bands) {
         ctx.fillStyle = band.color;
-        for (let i = 0; i < this.times.length; i++) {
+        for (let i = startIdx; i < endIdx; i++) {
           if (!band.flags[i]) continue;
           const x = this.barX(i);
           if (x === null) continue;

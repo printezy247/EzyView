@@ -17,7 +17,20 @@ export function distToSegment(p: ScreenPoint, a: ScreenPoint, b: ScreenPoint): n
   return Math.sqrt(distSqToSegment(p, a, b));
 }
 
-/** Distance from a point to an infinite line through a and b (for ray/extended). */
+/** Distance from a point to a ray starting at a and passing through b infinitely. */
+export function distToRay(p: ScreenPoint, a: ScreenPoint, b: ScreenPoint): number {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+  let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq;
+  t = Math.max(0, t); // Clamp only at origin a (t >= 0), extends infinitely along b
+  const px = a.x + t * dx;
+  const py = a.y + t * dy;
+  return Math.hypot(p.x - px, p.y - py);
+}
+
+/** Distance from a point to an infinite line through a and b (for extended line). */
 export function distToInfiniteLine(p: ScreenPoint, a: ScreenPoint, b: ScreenPoint): number {
   const dx = b.x - a.x;
   const dy = b.y - a.y;

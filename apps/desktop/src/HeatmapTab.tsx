@@ -216,7 +216,7 @@ export function HeatmapTab() {
           </div>
         ) : loadError ? (
           <div role="alert" className="flex flex-1 items-center justify-center p-8">
-            <p className="max-w-sm rounded border border-ev-down/40 bg-ev-panel px-3 py-2 text-center text-base text-ev-down">
+            <p className="max-w-sm rounded border border-ev-down/40 bg-ev-panel px-3 py-2 text-center text-base text-ev-down-text">
               Could not load the market heatmap: {loadError}
             </p>
           </div>

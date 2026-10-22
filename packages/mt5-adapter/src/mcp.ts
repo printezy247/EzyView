@@ -43,7 +43,9 @@ const REQUEST_TIMEOUT_MS = 10_000;
 export function isLoopbackUrl(rawUrl: string): boolean {
   try {
     const parsed = new URL(rawUrl);
-    return parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost" || parsed.hostname === "::1";
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+    const host = parsed.hostname;
+    return host === "127.0.0.1" || host === "::1" || host === "[::1]";
   } catch {
     return false;
   }
@@ -157,6 +159,7 @@ export class McpClient {
       response = await fetchFn(url, {
         method: "POST",
         headers,
+        redirect: "error",
         body: JSON.stringify(message),
         signal: controller.signal,
       });
@@ -172,7 +175,7 @@ export class McpClient {
     }
 
     if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
+      if (response.status === 401 || response.status === 403 || response.status === 404) {
         this.sessionId = null;
         this.ready = null;
       }

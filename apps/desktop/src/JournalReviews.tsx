@@ -175,7 +175,7 @@ export function JournalReviews({ entries, notes, selectedDay, onSelectDay }: Pro
                   type="button"
                   aria-label={`Remove review ${review.key}`}
                   onClick={() => removeReview(review.id)}
-                  className="flex size-6 items-center justify-center rounded text-ev-faint hover:bg-ev-raised hover:text-ev-down"
+                  className="flex size-6 items-center justify-center rounded text-ev-faint hover:bg-ev-raised hover:text-ev-down-text"
                 >
                   <Trash2 size={12} aria-hidden />
                 </button>

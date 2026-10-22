@@ -90,7 +90,7 @@ export function AlertDialog({
                 <button
                   type="button"
                   onClick={() => onRemove(a.id)}
-                  className="ml-auto text-ev-faint hover:text-ev-down"
+                  className="ml-auto text-ev-faint hover:text-ev-down-text"
                   aria-label="Delete alert"
                 >
                   <Trash2 size={13} aria-hidden />

@@ -90,3 +90,17 @@ describe("entriesFromDeals", () => {
     expect(keys.has("pos:6")).toBe(false);
   });
 });
+
+describe("entriesFromDeals bad data", () => {
+  it("drops deals with non-finite qty, price, pnl or time", () => {
+    const entries = entriesFromDeals([
+      deal({ id: "a", qty: NaN, pnl: 5 }),
+      deal({ id: "b", price: Infinity, pnl: 5 }),
+      deal({ id: "c", pnl: NaN }),
+      deal({ id: "d", time: NaN, pnl: 5 }),
+      deal({ id: "e", pnl: 5 }),
+    ]);
+    expect(entries.map((e) => e.id)).toEqual(["deal:e"]);
+    for (const e of entries) expect(Number.isFinite(e.pnl)).toBe(true);
+  });
+});

@@ -84,7 +84,9 @@ export function runPine(source: string, ctx: Context): PineResult {
      const Reflect = undefined;
      const Proxy = undefined;
      let barIndexUsed = 0;
+     let __iters = 0;
      return function (ctx) {
+       __iters = 0;
        ${code}
      };`,
   ) as (h: unknown) => (ctx: Context) => EmittedResult;
@@ -130,6 +132,7 @@ function validateContext(ctx: Context): void {
  * derived here once per run rather than carried on every caller's Context.
  */
 function withDerivedSeries(ctx: Context): Context {
+  if (!ctx.inputs) ctx.inputs = {};
   return {
     ...ctx,
     hl2: mid([ctx.high, ctx.low]),
@@ -384,6 +387,8 @@ function bgcolorCall(
 }
 
 /** `input.int()` / `input.float()` / `input.bool()` / `input.string()`. */
+const DENIED_INPUT_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
 function inputCall(
   inputs: Record<string, PineValue>,
   site: number,
@@ -399,8 +404,9 @@ function inputCall(
   // emitter assigns each call site a compile-time index, so the positional
   // key is stable across bars — seeding `ctx.inputs["0"]` (the optimizer's
   // mechanism) lands on the same key the script reads.
-  const key = id ?? optStr(kwargs, "id") ?? String(site);
-  if (!(key in inputs)) inputs[key] = defval ?? kwargs.defval ?? NA;
+  const rawKey = id ?? optStr(kwargs, "id") ?? String(site);
+  const key = DENIED_INPUT_KEYS.has(rawKey) ? `_safe_${rawKey}` : rawKey;
+  if (!Object.hasOwn(inputs, key)) inputs[key] = defval ?? kwargs.defval ?? NA;
   return inputs[key] ?? NA;
 }
 
@@ -495,12 +501,12 @@ function buildHelpers(): Record<string, unknown> {
     NA,
     isNa,
     nz,
-    ta,
-    math,
-    color,
-    shape,
-    location,
-    size,
+    ta: Object.freeze({ ...ta }),
+    math: Object.freeze({ ...math }),
+    color: Object.freeze({ ...color }),
+    shape: Object.freeze({ ...shape }),
+    location: Object.freeze({ ...location }),
+    size: Object.freeze({ ...size }),
     // Bare `crossover(…)`/`crossunder(…)` are v4 aliases of the ta.* pair.
     crossover: ta.crossover,
     crossunder: ta.crossunder,
@@ -525,7 +531,7 @@ function buildHelpers(): Record<string, unknown> {
     bgcolorCall,
     inputCall,
     inputScalar,
-    strategy,
+    strategy: Object.freeze({ ...strategy }),
     strategyEntry,
     strategyClose,
     strategyExit,

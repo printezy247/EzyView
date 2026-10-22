@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { DemoMarketAdapter } from "@ezyview/data-adapters";
 import type { Resolution } from "@ezyview/data-adapters";
 import { DemoCalendarAdapter, DemoFundamentalsAdapter, runScreener, scanUniverse } from "@ezyview/fundamentals";
@@ -60,10 +61,22 @@ const posNum = (a: Args, key: string, fallback?: number): number => {
 
 const VALID_SCREENER_FIELDS = new Set<ScreenerField>(["price", "changePct", "volume", "fromHighPct", "rsi"]);
 
+/**
+ * Private-data tools fail closed: a token is required unless the operator
+ * explicitly opts out with EZYVIEW_MCP_INSECURE=1.
+ */
 function checkAuth(a: Args): void {
   const requiredToken = process.env.EZYVIEW_MCP_TOKEN;
-  if (!requiredToken) return;
-  if (typeof a.token !== "string" || a.token !== requiredToken) {
+  if (!requiredToken) {
+    if (process.env.EZYVIEW_MCP_INSECURE === "1") return;
+    throw new Error("Unauthorized: set EZYVIEW_MCP_TOKEN (or EZYVIEW_MCP_INSECURE=1 to allow unauthenticated access)");
+  }
+  if (typeof a.token !== "string") {
+    throw new Error("Unauthorized: Invalid or missing EZYVIEW_MCP_TOKEN");
+  }
+  const tokenBuf = Buffer.from(a.token);
+  const reqBuf = Buffer.from(requiredToken);
+  if (tokenBuf.length !== reqBuf.length || !crypto.timingSafeEqual(tokenBuf, reqBuf)) {
     throw new Error("Unauthorized: Invalid or missing EZYVIEW_MCP_TOKEN");
   }
 }
@@ -283,7 +296,10 @@ const TOOLS: Tool[] = [
         .filter((e) => typeof e === "object" && e !== null && typeof e.entryTime === "number")
         .filter((e) => symbol === null || e.symbol === symbol)
         .sort((x, y) => y.entryTime - x.entryTime);
-      return { stats: computeStats(entries), entries: entries.slice(0, limit), notes: snap.journal.notes.slice(0, limit) };
+      const notes = ((snap.journal.notes ?? []) as JournalNote[])
+        .filter((n) => typeof n === "object" && n !== null)
+        .filter((n) => symbol === null || !n.symbol || n.symbol === symbol);
+      return { stats: computeStats(entries), entries: entries.slice(0, limit), notes: notes.slice(0, limit) };
     },
   },
   {

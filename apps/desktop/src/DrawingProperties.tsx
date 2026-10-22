@@ -222,7 +222,7 @@ export function DrawingProperties() {
         <button
           type="button"
           onClick={() => remove(d.id)}
-          className={`${btn} flex items-center gap-1 text-ev-down hover:opacity-80`}
+          className={`${btn} flex items-center gap-1 text-ev-down-text hover:opacity-80`}
         >
           <Trash2 size={12} aria-hidden />
           Delete

@@ -110,6 +110,11 @@ export function utcOffsetLabel(hours: number): string {
   const sign = hours > 0 ? "+" : "-";
   const abs = Math.abs(hours);
   const whole = Math.floor(abs);
-  const minutes = Math.round((abs - whole) * 60);
-  return minutes === 0 ? `UTC${sign}${whole}` : `UTC${sign}${whole}:${String(minutes).padStart(2, "0")}`;
+  let minutes = Math.round((abs - whole) * 60);
+  let h = whole;
+  if (minutes >= 60) {
+    h += 1;
+    minutes = 0;
+  }
+  return minutes === 0 ? `UTC${sign}${h}` : `UTC${sign}${h}:${String(minutes).padStart(2, "0")}`;
 }

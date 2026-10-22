@@ -102,7 +102,7 @@ function KeyRow({
         <label htmlFor={id} className="font-medium text-ev-strong">
           {provider.label}
         </label>
-        <span className={saved ? "text-ev-up" : "text-ev-muted"}>{saved ? "Key saved · live" : "No key · demo data"}</span>
+        <span className={saved ? "text-ev-up-text" : "text-ev-muted"}>{saved ? "Key saved · live" : "No key · demo data"}</span>
       </div>
       <p className="text-dense text-ev-muted">
         {provider.covers}. {provider.limit}. Get a free key at{" "}
@@ -141,7 +141,7 @@ function KeyRow({
         )}
       </div>
       {status && (
-        <p role="status" className={status.ok ? "text-ev-up" : "text-ev-down"}>
+        <p role="status" className={status.ok ? "text-ev-up-text" : "text-ev-down-text"}>
           {status.text}
         </p>
       )}

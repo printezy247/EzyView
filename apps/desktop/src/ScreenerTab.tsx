@@ -16,7 +16,7 @@ export function ScreenerTab() {
   const navigate = useNavigate();
   const watchlist = useWorkspace((s) => s.watchlist);
   const updateWatchPrice = useWorkspace((s) => s.updateWatchPrice);
-  const updateActive = useWorkspace((s) => s.updateActive);
+  const setSymbol = useWorkspace((s) => s.setSymbol);
   const [query, setQuery] = useState("");
   const [minChange, setMinChange] = useState("");
   const [sort, setSort] = useState<SortKey>("change");
@@ -126,7 +126,7 @@ export function ScreenerTab() {
                   key={w.symbol}
                   className={rowClass({ className: "cursor-pointer hover:bg-ev-raised" })}
                   onClick={() => {
-                    updateActive({ symbol: w.symbol });
+                    setSymbol(w.symbol);
                     navigate("/chart");
                   }}
                   onKeyDown={(e) => {
@@ -134,7 +134,7 @@ export function ScreenerTab() {
                     // to answer the keyboard too.
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      updateActive({ symbol: w.symbol });
+                      setSymbol(w.symbol);
                       navigate("/chart");
                     }
                   }}
@@ -144,7 +144,7 @@ export function ScreenerTab() {
                 >
                   <td className="font-medium text-ev-strong">{w.ticker}</td>
                   <td className="text-right text-ev-text">{w.price === null ? "—" : w.price.toFixed(w.precision)}</td>
-                  <td className={w.changePct === null ? "text-right text-ev-faint" : w.changePct >= 0 ? "text-right text-ev-up" : "text-right text-ev-down"}>
+                  <td className={w.changePct === null ? "text-right text-ev-faint" : w.changePct >= 0 ? "text-right text-ev-up-text" : "text-right text-ev-down-text"}>
                     {w.changePct === null ? "—" : `${w.changePct >= 0 ? "+" : ""}${w.changePct.toFixed(2)}%`}
                   </td>
                   <td className="text-ev-muted">{w.assetClass}</td>

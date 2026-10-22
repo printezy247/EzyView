@@ -5,7 +5,7 @@ import { useWorkspace } from "./store";
 import { OrderTicket } from "./OrderTicket";
 import { TradingPanel } from "./TradingPanel";
 import { DepthOfMarket } from "./DepthOfMarket";
-import { precisionFor, market } from "./data";
+import { precisionFor, quoteOf } from "./data";
 import { useTrading } from "./trading";
 import { Button, rowClass } from "./ui";
 import { CurrencyConverter } from "./CurrencyConverter";
@@ -38,9 +38,11 @@ export function TradePage() {
   useEffect(() => {
     let cancelled = false;
     const tick = () => {
-      void market.getQuote(state.symbol).then((q) => {
-        if (!cancelled && q) setLast(q.last);
-      });
+      void quoteOf(state.symbol)
+        .then((q) => {
+          if (!cancelled && q) setLast(q.last);
+        })
+        .catch(() => {});
     };
     tick();
     const t = setInterval(tick, 3000);

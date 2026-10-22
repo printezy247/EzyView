@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Modal } from "./Modal";
 import { Button, Input } from "./ui";
@@ -26,6 +26,10 @@ interface Props {
  */
 export function LinkGroupDialog({ open, onClose, current, available, onPick }: Props) {
   const [value, setValue] = useState(current ?? "");
+
+  useEffect(() => {
+    setValue(current ?? "");
+  }, [open, current]);
 
   const apply = (name: string) => {
     onPick(name.trim());
