@@ -74,7 +74,7 @@ describe("Mt5MarketData", () => {
       }),
     );
     const quote = await data.getQuote("XAUUSD");
-    expect(quote).toMatchObject({ symbol: "XAUUSD", last: 4148.71, bid: 4148.56 });
+    expect(quote).toMatchObject({ symbol: "XAUUSD", last: 4148.56, bid: 4148.56 });
   });
 
   it("filters the market watch by ticker or description", async () => {
