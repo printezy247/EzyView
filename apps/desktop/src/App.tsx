@@ -4,6 +4,7 @@ import { useShallow } from "zustand/react/shallow";
 import { ChartPage } from "./ChartPage";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { IndicatorDialog } from "./IndicatorDialog";
+import { ChartSettingsDialog } from "./ChartSettingsDialog";
 import { TabBar } from "./TabBar";
 import { Toolbar } from "./Toolbar";
 import type { DockTabId } from "./Toolbar";
@@ -109,12 +110,50 @@ export default function App() {
     void useApiKeys.getState().reload();
   }, []);
   const [tradingOpen, setTradingOpen] = useState(true);
-  // One right-hand dock, one visible tab. The watchlist used to default open;
-  // the dock starts on watchlist so the default view is unchanged.
-  const [dockTab, setDockTab] = useState<DockTabId | null>("watchlist");
+  // One right-hand dock, one visible tab. Collapsed by default so chart has maximum workspace (TradingView style).
+  const [dockTab, setDockTab] = useState<DockTabId | null>(null);
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertSeedPrice, setAlertSeedPrice] = useState<number | null>(null);
   const [hotkeysOpen, setHotkeysOpen] = useState(false);
+  const [chartSettingsOpen, setChartSettingsOpen] = useState(false);
+  const [shortcutFeedback, setShortcutFeedback] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.altKey && (e.code === "KeyE" || e.key.toLowerCase() === "e")) {
+        e.preventDefault();
+        setShortcutFeedback("⚡ EzyView Focus Active (Ctrl+Alt+E)");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
+      import("@tauri-apps/api/event")
+        .then(({ listen }) => {
+          listen("shortcut-focused", () => {
+            setShortcutFeedback("⚡ EzyView Focus Active (Ctrl+Alt+E)");
+          })
+            .then((u) => {
+              unlisten = u;
+            })
+            .catch(() => {});
+        })
+        .catch(() => {});
+    }
+    return () => {
+      unlisten?.();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!shortcutFeedback) return;
+    const t = setTimeout(() => setShortcutFeedback(null), 2000);
+    return () => clearTimeout(t);
+  }, [shortcutFeedback]);
 
   useEffect(() => {
     if (!alertOpen) return;
@@ -237,6 +276,7 @@ export default function App() {
             onOpenWindow={() => void openChartWindow(state.symbol, state.resolution)}
             onOpenAlerts={() => setAlertOpen(true)}
             onOpenApiKeys={openApiKeys}
+            onOpenSettings={() => setChartSettingsOpen(true)}
             onSelectDockTab={selectDockTab}
             onToggleTrading={toggleTrading}
             grid={layout.grid}
@@ -294,6 +334,7 @@ export default function App() {
                       onToggleTrading={toggleTrading}
                       onOpenAlerts={() => setAlertOpen(true)}
                       onOpenHotkeys={() => setHotkeysOpen(true)}
+                      onOpenSettings={() => setChartSettingsOpen(true)}
                     />
                   </ErrorBoundary>
                 }
@@ -315,6 +356,16 @@ export default function App() {
         </div>
 
         <IndicatorDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
+        <ChartSettingsDialog open={chartSettingsOpen} onClose={() => setChartSettingsOpen(false)} />
+        {shortcutFeedback && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="fixed top-3 right-6 z-[9999] rounded bg-ev-accent px-3 py-1.5 text-dense font-semibold text-white shadow-lg animate-fade-in pointer-events-none"
+          >
+            {shortcutFeedback}
+          </div>
+        )}
         {apiKeysOpen && <ApiKeysDialog />}
         <TradeConfirmDialog />
         <AlertDialog

@@ -532,6 +532,8 @@ fn register_show_shortcut(app: &tauri::App) {
                     let _ = window.show();
                     let _ = window.unminimize();
                     let _ = window.set_focus();
+                    use tauri::Emitter;
+                    let _ = window.emit("shortcut-focused", ());
                 }
             }
         })

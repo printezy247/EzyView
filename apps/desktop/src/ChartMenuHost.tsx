@@ -35,6 +35,7 @@ interface Props {
   onSaveTemplate: () => void;
   /** Open the link-group dialog for the focused cell. */
   onOpenLinkGroup: () => void;
+  onOpenSettings?: () => void;
   onClose: () => void;
 }
 
@@ -43,7 +44,18 @@ interface Props {
  * store and the cursor position, and gives each one its action. Order items
  * only prefill the order ticket; they never send anything.
  */
-export function ChartMenuHost({ request, tradingOpen, dockTab, onOpenDockTab, onToggleTrading, onOpenTable, onSaveTemplate, onOpenLinkGroup, onClose }: Props) {
+export function ChartMenuHost({
+  request,
+  tradingOpen,
+  dockTab,
+  onOpenDockTab,
+  onToggleTrading,
+  onOpenTable,
+  onSaveTemplate,
+  onOpenLinkGroup,
+  onOpenSettings,
+  onClose,
+}: Props) {
   const navigate = useNavigate();
   const ws = useWorkspace();
   const chart = ws.activeChart();
@@ -82,7 +94,7 @@ export function ChartMenuHost({ request, tradingOpen, dockTab, onOpenDockTab, on
     deleteTemplate: ws.deleteChartTemplate,
     removeIndicator: ws.removeIndicator,
     toggleEvent: (key) => toggleEventSwitch(useWorkspace.getState().eventOptions, key),
-    openSettings: () => navigate("/settings?tab=appearance"),
+    openSettings: () => (onOpenSettings ? onOpenSettings() : navigate("/settings?tab=appearance")),
     openLinkGroup: onOpenLinkGroup,
   };
 

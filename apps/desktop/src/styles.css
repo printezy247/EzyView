@@ -198,7 +198,10 @@ html,
 body,
 #root {
   height: 100%;
+  width: 100%;
   margin: 0;
+  padding: 0;
+  overflow: hidden;
 }
 
 body {
@@ -272,8 +275,8 @@ button[aria-disabled="true"] {
 }
 
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track,
@@ -281,22 +284,19 @@ button[aria-disabled="true"] {
   background: transparent;
 }
 
-/* Transparent border + padding-box clip keeps the visible thumb ~6px. */
+/* Modern translucent overlay thumb matching TradingView */
 ::-webkit-scrollbar-thumb {
-  background: var(--ev-line);
+  background: rgba(255, 255, 255, 0.16);
   background-clip: padding-box;
-  border: 2px solid transparent;
   border-radius: 999px;
 }
 
 *:hover::-webkit-scrollbar-thumb {
-  background: var(--ev-line-strong);
-  background-clip: padding-box;
+  background: rgba(255, 255, 255, 0.28);
 }
 
 *:hover::-webkit-scrollbar-thumb:hover {
-  background: var(--ev-dim);
-  background-clip: padding-box;
+  background: rgba(255, 255, 255, 0.45);
 }
 
 /* Respect the OS "reduce motion" setting. */
