@@ -202,23 +202,23 @@ export function HeatmapTab() {
         ) : (
           filteredTiles.map((tile) => {
             const pct = tile.changePct ?? 0;
-            const up = pct >= 0;
             const weight = Math.min(1, Math.abs(pct) / maxAbs);
             const digits = tile.precision ?? precisionFor(tile.price);
 
-            // Tiered color grading (Investing.com palette)
-            let tileBg = "rgba(42, 47, 56, 0.4)";
+            // Tiered color grading, from the theme tokens so Tokyo Night and
+            // the light theme stay in step with the rest of the app.
+            let tileBg = "var(--ev-raised)";
             let textColor = "text-ev-text";
 
             if (pct > 0.05) {
-              if (pct >= 3.0) tileBg = "#0ea600";
-              else if (pct >= 1.0) tileBg = "rgba(14, 166, 0, 0.75)";
-              else tileBg = "rgba(14, 166, 0, 0.40)";
+              if (pct >= 3.0) tileBg = "var(--ev-up)";
+              else if (pct >= 1.0) tileBg = "color-mix(in srgb, var(--ev-up) 75%, transparent)";
+              else tileBg = "color-mix(in srgb, var(--ev-up) 40%, transparent)";
               textColor = "text-white";
             } else if (pct < -0.05) {
-              if (pct <= -3.0) tileBg = "#d91400";
-              else if (pct <= -1.0) tileBg = "rgba(217, 20, 0, 0.75)";
-              else tileBg = "rgba(217, 20, 0, 0.40)";
+              if (pct <= -3.0) tileBg = "var(--ev-down)";
+              else if (pct <= -1.0) tileBg = "color-mix(in srgb, var(--ev-down) 75%, transparent)";
+              else tileBg = "color-mix(in srgb, var(--ev-down) 40%, transparent)";
               textColor = "text-white";
             }
 

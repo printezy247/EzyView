@@ -8,7 +8,7 @@ import type { Drawing, DrawingToolId, MagnetMode } from "@ezyview/drawing-tools"
 import { catalog, getIndicator } from "@ezyview/indicators";
 import type { IndicatorDef } from "@ezyview/indicators";
 import type { PinePlot, PineOrder, ScriptOptions } from "@ezyview/pine-transpiler";
-import { DEFAULT_SYMBOL } from "./data";
+import { DEFAULT_SYMBOL, stopTicking } from "./data";
 import { DEFAULT_EVENT_OPTIONS, restoreEventOptions } from "./eventOptions";
 import type { EventOptions } from "./eventOptions";
 import { applyTemplate, restoreTemplates, templateFromChart } from "./chartTemplates";
@@ -324,9 +324,116 @@ const memoryStorage = (): Storage => {
   };
 };
 
-const workspaceStorage = createJSONStorage(() =>
-  typeof localStorage === "undefined" || readDetached(globalThis.location?.search ?? "") ? memoryStorage() : localStorage,
-);
+/**
+ * A detached window reads the real workspace but keeps its writes to itself,
+ * so two windows never fight over one blob.
+ */
+const detachedStorage = (): Storage => {
+  const local = new Map<string, string>();
+  return {
+    get length() {
+      return localStorage.length;
+    },
+    clear: () => local.clear(),
+    getItem: (k) => {
+      try {
+        return localStorage.getItem(k) ?? local.get(k) ?? null;
+      } catch {
+        return local.get(k) ?? null;
+      }
+    },
+    key: (i) => localStorage.key(i),
+    removeItem: (k) => void local.delete(k),
+    setItem: (k, v) => void local.set(k, v),
+  };
+};
+
+/** Write one workspace blob, surviving a full disk. */
+function writeWorkspace(name: string, value: string): void {
+  try {
+    localStorage.setItem(name, value);
+  } catch {
+    // Quota exceeded. The corrupt-payload backup is the first thing to go.
+    try {
+      localStorage.removeItem(`${name}.corrupt`);
+      localStorage.setItem(name, value);
+    } catch {
+      // Still full: the workspace stays in memory and is lost on quit.
+    }
+  }
+}
+
+/**
+ * Workspace persistence that survives the two ways localStorage hurts:
+ * a truncated payload (which used to wipe every layout, drawing and script)
+ * and a full disk (which used to throw out of the store's `set`).
+ *
+ * Writes are also debounced: a drawing drag updates the store on every
+ * pointer move, and serialising the whole workspace each time was the
+ * app's biggest source of jank.
+ */
+const workspaceStorage = createJSONStorage(() => {
+  if (typeof localStorage === "undefined") return memoryStorage();
+  if (readDetached(globalThis.location?.search ?? "")) return detachedStorage();
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let queued: { name: string; value: string } | null = null;
+
+  const flush = () => {
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
+    if (queued) {
+      const { name, value } = queued;
+      queued = null;
+      writeWorkspace(name, value);
+    }
+  };
+
+  if (typeof window !== "undefined") window.addEventListener("pagehide", flush);
+
+  return {
+    get length() {
+      return localStorage.length;
+    },
+    clear: () => localStorage.clear(),
+    key: (i: number) => localStorage.key(i),
+    removeItem: (k) => {
+      try {
+        localStorage.removeItem(k);
+      } catch {
+        // ignore
+      }
+    },
+    getItem: (k) => {
+      let raw: string | null = null;
+      try {
+        raw = localStorage.getItem(k);
+      } catch {
+        return null;
+      }
+      if (raw === null) return null;
+      try {
+        JSON.parse(raw);
+      } catch {
+        // Corrupt payload: keep a copy for support and start from defaults
+        // instead of letting the next write destroy the good data.
+        try {
+          localStorage.setItem(`${k}.corrupt`, raw);
+        } catch {
+          // ignore
+        }
+        return null;
+      }
+      return raw;
+    },
+    setItem: (k, v) => {
+      queued = { name: k, value: v };
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(flush, 400);
+    },
+  };
+});
 
 export const useWorkspace = create<WorkspaceStore>()(
   persist(
@@ -654,6 +761,10 @@ export const useWorkspace = create<WorkspaceStore>()(
       removeFromWatchlist: (symbol) =>
         set((s) => {
           const next = s.watchlist.filter((w) => w.symbol !== symbol);
+          // Release the demo ticker when no chart needs the symbol any more.
+          if (!next.some((w) => w.symbol === symbol) && !s.layouts.some((l) => l.charts.some((c) => c.symbol === symbol))) {
+            stopTicking(symbol);
+          }
           return { watchlist: next, watchlistSymbolKey: next.map((w) => w.symbol).join(",") };
         }),
 

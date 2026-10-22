@@ -264,4 +264,64 @@ describe("amending an open position's stop and target", () => {
     engine.updateQuote("DEMO:BTCUSDT", 97);
     await expect(engine.getPositions()).resolves.toEqual([]);
   });
+
+  it("restores a snapshot that is missing its order and deal lists", () => {
+    const partial = {
+      version: 1,
+      balance: 1000,
+      positions: [],
+      sequence: 3,
+    } as unknown as Parameters<typeof PaperTradingEngine.restore>[0];
+    // A truncated blob used to throw while the module was imported, which
+    // took the whole app down.
+    const restored = PaperTradingEngine.restore(partial);
+    expect(restored).toBeInstanceOf(PaperTradingEngine);
+  });
+});
+
+describe("rejected orders", () => {
+  let engine: PaperTradingEngine;
+
+  beforeEach(async () => {
+    engine = makeEngine();
+    await engine.connect();
+    engine.updateQuote("DEMO:BTCUSDT", 100);
+  });
+
+  it("refuses a limit order priced at zero instead of filling it at zero", async () => {
+    // An empty ticket field reaches the engine as 0. It is finite, so it used
+    // to pass validation and open a position at price 0.
+    await expect(
+      engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "sell", type: "limit", price: 0, qty: 1 }),
+    ).rejects.toThrow(PaperTradingError);
+    await expect(engine.getPositions()).resolves.toEqual([]);
+  });
+
+  it("refuses a stop order priced at zero", async () => {
+    await expect(
+      engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "stop", price: 0, qty: 1 }),
+    ).rejects.toThrow(PaperTradingError);
+  });
+
+  it("refuses a non-numeric stop loss or take profit", async () => {
+    await expect(
+      engine.placeOrder({
+        symbol: "DEMO:BTCUSDT",
+        side: "buy",
+        type: "market",
+        qty: 1,
+        stopLoss: Number.NaN,
+      }),
+    ).rejects.toThrow(PaperTradingError);
+    await expect(
+      engine.placeOrder({
+        symbol: "DEMO:BTCUSDT",
+        side: "buy",
+        type: "market",
+        qty: 1,
+        takeProfit: Number.NaN,
+      }),
+    ).rejects.toThrow(PaperTradingError);
+    await expect(engine.getPositions()).resolves.toEqual([]);
+  });
 });

@@ -192,6 +192,11 @@ export function TradingPanel({ symbol }: Props) {
                         onClick={() => {
                           void (async () => {
                             await close(p.symbol);
+                            // On MT5 the close parks at the confirmation gate, so
+                            // the reverse has to wait for the trader to confirm
+                            // that close first - otherwise the two orders race
+                            // and the position is doubled instead of reversed.
+                            if (useTrading.getState().pending) return;
                             await submit({
                               symbol: p.symbol,
                               side: p.side === "long" ? "sell" : "buy",

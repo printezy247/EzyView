@@ -87,8 +87,8 @@ describe("toAccount", () => {
       tradeMode: "demo",
       name: "Jack",
     });
-    // Leverage arrives as 1:1000 and is stored as a ratio.
-    expect(account?.leverage).toBeCloseTo(0.001, 6);
+    // Leverage arrives as 1:1000 and is kept as a multiplier.
+    expect(account?.leverage).toBeCloseTo(1000, 6);
   });
 
   it("treats a live account as real money", () => {

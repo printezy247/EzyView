@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ShieldAlert } from "lucide-react";
 import { useMt5Accounts } from "./mt5Accounts";
 import { useTrading } from "./trading";
@@ -52,6 +52,14 @@ export function TradeConfirmDialog() {
   const session = useMt5Accounts((s) => s.session);
   const [riskOk, setRiskOk] = useState(false);
   const [sending, setSending] = useState(false);
+
+  // The dialog stays mounted between actions, so the real-money
+  // acknowledgement has to be re-earned for every new order.
+  const token = pending?.token ?? null;
+  useEffect(() => {
+    setRiskOk(false);
+    setSending(false);
+  }, [token]);
 
   if (!pending) return null;
   const { title, lines } = describe(pending);

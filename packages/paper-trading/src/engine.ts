@@ -209,10 +209,11 @@ export class PaperTradingEngine implements TradingAdapter {
     const engine = new PaperTradingEngine(options);
     if (snapshot.version !== SNAPSHOT_VERSION) return engine;
     engine.balance = snapshot.balance;
-    for (const position of snapshot.positions) engine.positions.set(position.symbol, { ...position });
-    for (const order of snapshot.orders) engine.orders.set(order.id, { ...order });
-    for (const deal of snapshot.deals) engine.deals.push({ ...deal });
-    engine.sequence = snapshot.sequence;
+    // A truncated or hand-edited file must not throw during module import.
+    for (const position of snapshot.positions ?? []) engine.positions.set(position.symbol, { ...position });
+    for (const order of snapshot.orders ?? []) engine.orders.set(order.id, { ...order });
+    for (const deal of snapshot.deals ?? []) engine.deals.push({ ...deal });
+    engine.sequence = Number.isFinite(snapshot.sequence) ? snapshot.sequence : 0;
     engine.connected = true;
     return engine;
   }
@@ -458,6 +459,15 @@ export class PaperTradingEngine implements TradingAdapter {
     if (request.type === "market" && !finite(price)) return "no market price yet";
     if (request.type === "limit" && !finite(request.price)) return "limit orders need a price";
     if (request.type === "stop" && !finite(request.price)) return "stop orders need a price";
+    // A price of zero (an empty ticket field) is finite but not tradable: it
+    // would fill a sell limit against any quote and open a position at 0.
+    if (request.type !== "market" && (request.price ?? 0) <= 0) return "price must be greater than zero";
+    if (request.stopLoss !== undefined && (!Number.isFinite(request.stopLoss) || request.stopLoss <= 0)) {
+      return "stop loss must be a positive number";
+    }
+    if (request.takeProfit !== undefined && (!Number.isFinite(request.takeProfit) || request.takeProfit <= 0)) {
+      return "take profit must be a positive number";
+    }
     // Margin is taken at the order's own entry price, at the account ceiling.
     const notional = (price ?? request.price ?? 0) * request.qty;
     if (notional / this.options.maxLeverage > this.freeMargin()) return "not enough free margin";

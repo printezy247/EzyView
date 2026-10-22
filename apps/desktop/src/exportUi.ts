@@ -23,7 +23,7 @@ export function sanitizeExportFilename(name: string, fallback: string): string {
       return !'<>:"/\\|?*'.includes(ch);
     })
     .join("")
-    .replace(/^(\.\.[\/\\]?)+/, "")
+    .replace(/^(\.\.[/\\]?)+/, "")
     .replace(/^\.+/, "")
     .trim();
   return cleaned || fallback;
@@ -133,15 +133,30 @@ export function saveLayoutJson(layout: Layout): void {
 export function pickTextFile(accept: string): Promise<string | null> {
   if (typeof document === "undefined") return Promise.resolve(null);
   return new Promise((resolve) => {
+    let done = false;
+    const finish = (value: string | null) => {
+      if (done) return;
+      done = true;
+      window.removeEventListener("focus", onFocus);
+      resolve(value);
+    };
+    // Not every webview fires `cancel`; if the dialog is dismissed the window
+    // regains focus without a change event, so the promise would hang forever.
+    const onFocus = () => {
+      window.setTimeout(() => {
+        if (!input.files?.length) finish(null);
+      }, 300);
+    };
     const input = document.createElement("input");
     input.type = "file";
     input.accept = accept;
     input.addEventListener("change", () => {
       const file = input.files?.[0];
-      if (!file) return resolve(null);
-      file.text().then(resolve, () => resolve(null));
+      if (!file) return finish(null);
+      file.text().then(finish, () => finish(null));
     });
-    input.addEventListener("cancel", () => resolve(null));
+    input.addEventListener("cancel", () => finish(null));
+    window.addEventListener("focus", onFocus, { once: true });
     input.click();
   });
 }

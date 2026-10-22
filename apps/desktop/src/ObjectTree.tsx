@@ -50,13 +50,17 @@ export function ObjectTree({ onClose }: Props) {
   };
 
   const importFile = async (file: File) => {
-    const res = parseDrawings(await file.text());
-    if (!res.ok) {
-      setIoError(res.error);
-      return;
+    try {
+      const res = parseDrawings(await file.text());
+      if (!res.ok) {
+        setIoError(res.error);
+        return;
+      }
+      setIoError(null);
+      importDrawings(res.drawings);
+    } catch (err) {
+      setIoError(err instanceof Error ? err.message : "Could not read the file.");
     }
-    setIoError(null);
-    importDrawings(res.drawings);
   };
 
   return (
@@ -194,7 +198,7 @@ export function ObjectTree({ onClose }: Props) {
             onChange={(e) => {
               const file = e.target.files?.[0];
               e.target.value = ""; // same file can be picked twice
-              if (file) void importFile(file);
+              if (file) void importFile(file).catch(() => setIoError("Could not read the file."));
             }}
           />
         </div>

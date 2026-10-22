@@ -26,19 +26,29 @@ export function SymbolSearch({ symbol, onSelect }: Props) {
   useEffect(() => {
     if (!open) return;
     setBusy(true);
+    // The guard has to live in the effect body: a cleanup returned from the
+    // timeout callback is discarded, so a slow search used to overwrite the
+    // results of a newer one.
+    let cancelled = false;
     const t = setTimeout(() => {
-      let cancelled = false;
-      void searchSymbols(query).then((found) => {
-        if (cancelled) return;
-        setResults(found);
-        setActiveIndex(0);
-        setBusy(false);
-      });
-      return () => {
-        cancelled = true;
-      };
+      void searchSymbols(query)
+        .then((found) => {
+          if (cancelled) return;
+          setResults(found);
+          setActiveIndex(0);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setResults([]);
+        })
+        .finally(() => {
+          if (!cancelled) setBusy(false);
+        });
     }, 150);
-    return () => clearTimeout(t);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
   }, [query, open]);
 
   useEffect(() => {

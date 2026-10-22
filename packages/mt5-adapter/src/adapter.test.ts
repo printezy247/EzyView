@@ -115,7 +115,7 @@ describe("Mt5Trading", () => {
     const trading = new Mt5Trading(fakeTransport());
     const account = await trading.connect();
     expect(account.balance).toBe(3300.83);
-    expect(account.leverage).toBeCloseTo(0.001, 6);
+    expect(account.leverage).toBeCloseTo(1000, 6);
     expect(trading.mode).toBe("demo");
   });
 

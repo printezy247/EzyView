@@ -81,11 +81,26 @@ export function OrderTicket({ symbol }: Props) {
   const precision = precisionFor(last);
   const ticker = tickerOf(symbol);
 
-  const workingPrice = type === "market" ? last : Number(limitPrice);
+  // An empty field is not a price: `Number("")` is 0, which would send a live
+  // order at zero and fill a sell limit against any quote.
+  const limitValue = limitPrice.trim() === "" ? null : Number(limitPrice);
+  const workingPrice = type === "market" ? last : limitValue;
   const quantity = Number(qty);
   const value = workingPrice !== null && Number.isFinite(workingPrice) ? workingPrice * quantity : null;
   const margin = value !== null ? value / maxLeverage : null;
-  const ready = Number.isFinite(quantity) && quantity > 0 && workingPrice !== null && !sending;
+  const stopValue = stopLoss.trim() === "" ? undefined : Number(stopLoss);
+  const targetValue = takeProfit.trim() === "" ? undefined : Number(takeProfit);
+  const levelsValid =
+    (stopValue === undefined || (Number.isFinite(stopValue) && stopValue > 0)) &&
+    (targetValue === undefined || (Number.isFinite(targetValue) && targetValue > 0));
+  const ready =
+    Number.isFinite(quantity) &&
+    quantity > 0 &&
+    workingPrice !== null &&
+    Number.isFinite(workingPrice) &&
+    workingPrice > 0 &&
+    levelsValid &&
+    !sending;
 
   const send = async () => {
     if (!ready) return;
@@ -96,9 +111,9 @@ export function OrderTicket({ symbol }: Props) {
       type,
       qty: quantity,
       // The engine reads `price` for both limit and stop triggers.
-      ...(type === "market" ? {} : { price: Number(limitPrice) }),
-      ...(stopLoss.trim() ? { stopLoss: Number(stopLoss) } : {}),
-      ...(takeProfit.trim() ? { takeProfit: Number(takeProfit) } : {}),
+      ...(type === "market" ? {} : { price: limitValue ?? undefined }),
+      ...(stopValue !== undefined ? { stopLoss: stopValue } : {}),
+      ...(targetValue !== undefined ? { takeProfit: targetValue } : {}),
     };
     const ok = await submit(request);
     setSending(false);
@@ -225,6 +240,17 @@ export function OrderTicket({ symbol }: Props) {
           value={margin === null ? "—" : margin.toLocaleString(undefined, { maximumFractionDigits: 2 })}
         />
       </dl>
+
+      {!levelsValid && (
+        <p role="alert" className="rounded border border-ev-down/40 bg-ev-down/10 px-2 py-1.5 text-dense text-ev-down">
+          Stop loss and take profit must be positive numbers.
+        </p>
+      )}
+      {type !== "market" && !ready && limitValue === null && (
+        <p role="alert" className="rounded border border-ev-down/40 bg-ev-down/10 px-2 py-1.5 text-dense text-ev-down">
+          Enter a {type === "limit" ? "limit" : "stop"} price above zero.
+        </p>
+      )}
 
       <p role="status" className="sr-only">
         {notice}

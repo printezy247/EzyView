@@ -229,7 +229,10 @@ export function toAccount(payload: unknown): AccountInfo | null {
     freeMargin: num(rec, "free_margin", "margin_free", "free") ?? 0,
   };
   const leverage = num(rec, "leverage");
-  if (leverage !== null && leverage > 0) account.leverage = 1 / leverage;
+  // Leverage is a multiplier everywhere else (100 means 1:100), so keep the
+  // broker's value as-is. Inverting it here showed 0.01x in the UI and made
+  // the order ticket reserve 100x too much margin.
+  if (leverage !== null && leverage > 0) account.leverage = leverage;
   if (mode !== null) account.tradeMode = mode === 0 ? "demo" : "real";
   const name = text(rec, "name", "owner");
   if (name) account.name = name;

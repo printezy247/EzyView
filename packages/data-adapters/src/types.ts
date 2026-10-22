@@ -194,7 +194,7 @@ export interface AccountInfo {
   equity: number;
   margin: number;
   freeMargin: number;
-  /** 0..1, used by risk veto. */
+  /** Leverage multiplier, e.g. 100 for 1:100. */
   leverage?: number;
   tradeMode?: "demo" | "real" | "contest";
   name?: string;
