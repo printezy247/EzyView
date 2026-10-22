@@ -3,7 +3,7 @@ import { create } from "zustand";
 import type { AccountInfo, Deal, Order, OrderRequest, Position } from "@ezyview/data-adapters";
 import { PaperTradingEngine, PaperTradingError } from "@ezyview/paper-trading";
 import type { PaperSnapshot } from "@ezyview/paper-trading";
-import { market } from "./data";
+import { quoteOf } from "./data";
 import { accountKindOf, useMt5Accounts } from "./mt5Accounts";
 import { getMt5, useMt5 } from "./mt5";
 import { approvalTokens, gateAction } from "./tradingSafety";
@@ -20,7 +20,13 @@ function readSnapshot(): PaperSnapshot | null {
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== "object" || parsed === null) return null;
     const candidate = parsed as Partial<PaperSnapshot>;
-    return typeof candidate.balance === "number" && Array.isArray(candidate.positions)
+    // A partial blob used to pass the check and then throw while the engine
+    // restored it, which took the whole app down at import time.
+    return typeof candidate.balance === "number" &&
+      Array.isArray(candidate.positions) &&
+      Array.isArray(candidate.orders) &&
+      Array.isArray(candidate.deals) &&
+      typeof candidate.sequence === "number"
       ? (candidate as PaperSnapshot)
       : null;
   } catch {
@@ -118,6 +124,15 @@ function park(set: (patch: Partial<TradingState>) => void, gate: GateResult, pen
   if (gate.decision === "block") {
     approvalTokens.consume(pending.token);
     set({ error: gate.reasons.join("; ") || "blocked by the safety rails", pending: null, note: null });
+    return false;
+  }
+  // One action at a time. Overwriting the parked action used to drop it
+  // silently - a reverse order parked a close and then replaced it with the
+  // place, so the position was doubled instead of reversed.
+  const waiting = useTrading.getState().pending;
+  if (waiting) {
+    approvalTokens.consume(pending.token);
+    set({ error: "Another action is waiting for confirmation. Confirm or discard it first." });
     return false;
   }
   set({ pending, error: null, note: null });
@@ -298,8 +313,13 @@ export const useTrading = create<TradingState & TradingActions>((set, get) => ({
 
 type SetState = (patch: Partial<TradingState>) => void;
 
+/** Guards against overlapping refreshes: the newest request wins. */
+let refreshSeq = 0;
+
 /** Pull everything the panels read in one pass, so no view sees half a fill. */
 async function refreshInto(set: SetState): Promise<void> {
+  const seq = ++refreshSeq;
+  const stale = () => seq !== refreshSeq;
   if (useMt5.getState().source === "mt5") {
     const broker = getMt5().trading;
     try {
@@ -309,10 +329,13 @@ async function refreshInto(set: SetState): Promise<void> {
         broker.getOrders(),
         broker.getHistory(),
       ]);
+      // A slower earlier refresh must not overwrite a newer snapshot.
+      if (stale()) return;
       set({ account, positions, orders, deals });
       if (useMt5.getState().status !== "online") useMt5.setState({ status: "online", error: null });
     } catch (err) {
       // Keep the last good rows on screen and say why they stopped moving.
+      if (stale()) return;
       set({ error: message(err) });
       useMt5.setState({ status: "error", error: message(err) });
     }
@@ -325,6 +348,7 @@ async function refreshInto(set: SetState): Promise<void> {
     paperEngine.getOrders(),
     paperEngine.getHistory(),
   ]);
+  if (stale()) return;
   const current = useTrading.getState();
   if (
     current.account?.equity === account?.equity &&
@@ -368,9 +392,16 @@ export function useTradingTicks(symbolsKey: string): void {
 
     const tick = () => {
       for (const symbol of symbols) {
-        void market.getQuote(symbol).then((quote) => {
-          if (!cancelled && quote) paperEngine.updateQuote(symbol, quote.last);
-        });
+        // Mark against the feed that is actually on: the demo adapter shows
+        // prices the broker does not have, and the paper account then drifts
+        // from the chart.
+        void quoteOf(symbol)
+          .then((quote) => {
+            if (!cancelled && quote) paperEngine.updateQuote(symbol, quote.last);
+          })
+          .catch(() => {
+            // A missing quote just leaves the mark where it was.
+          });
       }
     };
 

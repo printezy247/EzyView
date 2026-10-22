@@ -102,6 +102,14 @@ export function Watchlist({ onOpenAlerts }: Props) {
     setQuery("");
   }, [adding]);
 
+  // The search debounce must not outlive the panel.
+  useEffect(
+    () => () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    },
+    [],
+  );
+
   useEffect(() => {
     if (!symbolKey || isReplay) return;
     const symbols = symbolKey.split(",");

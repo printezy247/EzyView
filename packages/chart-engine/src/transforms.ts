@@ -74,12 +74,17 @@ export interface PriceBox {
  * Close-based Renko. A brick prints each time the close travels one box past
  * the last brick; turning around needs two boxes, from the far end.
  */
+/** Hard cap on bricks: a tiny box over a long history would otherwise print
+ * millions of bricks and freeze the tab. */
+const MAX_RENKO_BRICKS = 5000;
+
 export function renko(candles: readonly Candle[], box: number): PriceBox[] {
   const out: PriceBox[] = [];
   if (candles.length === 0 || !(box > 0)) return out;
   const first = candles[0]!.close;
   for (const c of candles) {
     for (;;) {
+      if (out.length >= MAX_RENKO_BRICKS) return out;
       const last = out.at(-1);
       const top = last ? Math.max(last.open, last.close) : first;
       const bottom = last ? Math.min(last.open, last.close) : first;

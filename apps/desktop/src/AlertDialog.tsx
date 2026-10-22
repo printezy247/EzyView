@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bell, BellRing, Trash2 } from "lucide-react";
 import type { AlertCondition, AlertFrequency, PriceAlert } from "@ezyview/data-adapters";
 import { Modal } from "./Modal";
@@ -121,6 +121,15 @@ function AlertForm({
   const [message, setMessage] = useAlertField<string>("");
   const [busy, setBusy] = useState(false);
 
+  // The live price usually arrives after the dialog opens, so fill the field
+  // in once it lands - unless the trader already typed their own level.
+  const touched = useRef(false);
+  useEffect(() => {
+    if (touched.current) return;
+    if (lastPrice === null) return;
+    setValue(String(lastPrice));
+  }, [lastPrice, setValue]);
+
   const needsValue = ["crossing", "crossing_up", "crossing_down", "greater", "less"].includes(kind);
   const needsBars = kind.startsWith("moving_");
   const needsMult = kind.startsWith("channel_exit_");
@@ -129,7 +138,7 @@ function AlertForm({
     if (disabled || busy) return;
     setBusy(true);
     const condition: AlertCondition = needsValue
-      ? ({ kind, value: Number(value) } as AlertCondition)
+      ? ({ kind, value: valueNumber ?? 0 } as AlertCondition)
       : needsBars
         ? ({ kind, bars: Number(bars) } as AlertCondition)
         : ({ kind, mult: Number(mult) } as AlertCondition);
@@ -141,7 +150,13 @@ function AlertForm({
     }
   };
 
-  const disabled = (needsValue && !Number.isFinite(Number(value))) || (needsBars && Number(bars) < 1) || busy;
+  // An empty field is not a price: `Number("")` is 0, which armed an alert at
+  // zero that could never fire while looking armed on screen.
+  const valueNumber = value.trim() === "" ? null : Number(value);
+  const disabled =
+    (needsValue && (valueNumber === null || !Number.isFinite(valueNumber) || valueNumber <= 0)) ||
+    (needsBars && Number(bars) < 1) ||
+    busy;
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-ev-raised px-4 py-3">
@@ -162,7 +177,10 @@ function AlertForm({
         <input
           aria-label="Alert price"
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => {
+            touched.current = true;
+            setValue(e.target.value);
+          }}
           placeholder="Price"
           inputMode="decimal"
           className="w-24 rounded border border-ev-line bg-ev-bg px-2 py-1 text-base text-ev-strong"

@@ -25,18 +25,18 @@ export function catalogByFamily(): Record<string, IndicatorDef[]> {
 export async function loadIndicator(id: string): Promise<IndicatorDef | null> {
   const sync = getIndicator(id);
   if (sync) return sync;
-  const [{ CATALOG }, { CATALOG_2 }] = await Promise.all([
+  const [{ CATALOG: primary }, { CATALOG_2: secondary }] = await Promise.all([
     import("./catalog.js"),
     import("./catalog2.js"),
   ]);
-  return [...CATALOG, ...CATALOG_2].find((d) => d.id === id) ?? null;
+  return [...primary, ...secondary].find((d) => d.id === id) ?? null;
 }
 
 /** Dynamically load the full indicator catalogue. */
 export async function loadCatalog(): Promise<IndicatorDef[]> {
-  const [{ CATALOG }, { CATALOG_2 }] = await Promise.all([
+  const [{ CATALOG: primary }, { CATALOG_2: secondary }] = await Promise.all([
     import("./catalog.js"),
     import("./catalog2.js"),
   ]);
-  return [...CATALOG, ...CATALOG_2];
+  return [...primary, ...secondary];
 }

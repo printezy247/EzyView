@@ -223,6 +223,8 @@ export async function searchSymbols(query: string): Promise<SymbolInfo[]> {
 /** One quote, from whichever feed the chart is on. */
 /** Demo symbols already ticking; the demo feed only moves while subscribed to. */
 const ticking = new Set<string>();
+/** Unsubscribers for those ticks, so a symbol can be stopped again. */
+const unsubscribes = new Map<string, () => void>();
 const inFlightQuotes = new Map<string, Promise<Quote | null>>();
 const inFlightHistory = new Map<string, Promise<Candle[]>>();
 
@@ -237,7 +239,17 @@ export async function quoteOf(symbol: string): Promise<Quote | null> {
       if (live) return live;
       if (!ticking.has(symbol)) {
         ticking.add(symbol);
-        void market.subscribe([symbol], () => {});
+        // Keep the unsubscribe handle: the demo adapter runs a 1 Hz timer per
+        // subscription, and dropping it leaked a timer for every symbol ever
+        // quoted.
+        void market
+          .subscribe([symbol], () => {})
+          .then((unsubscribe) => {
+            unsubscribes.set(symbol, unsubscribe);
+          })
+          .catch(() => {
+            ticking.delete(symbol);
+          });
       }
       return await market.getQuote(symbol);
     } finally {
@@ -247,6 +259,19 @@ export async function quoteOf(symbol: string): Promise<Quote | null> {
 
   inFlightQuotes.set(symbol, promise);
   return promise;
+}
+
+/** Stop the demo ticker for a symbol nothing references any more. */
+export function stopTicking(symbol: string): void {
+  const unsubscribe = unsubscribes.get(symbol);
+  if (!unsubscribe) return;
+  unsubscribes.delete(symbol);
+  ticking.delete(symbol);
+  try {
+    unsubscribe();
+  } catch {
+    // ignore
+  }
 }
 
 export async function loadHistory(symbol: string, resolution: Resolution, limit = 500): Promise<Candle[]> {

@@ -50,7 +50,7 @@ export function JournalReviews({ entries, notes, selectedDay, onSelectDay }: Pro
     const windowEntries = entries.filter((e) => e.entryTime >= win.start && e.entryTime < win.end);
     const stats = computeStats(windowEntries);
     const winPct = (stats.winRate * 100).toFixed(1);
-    const pf = stats.profitFactor === null ? "∞" : stats.profitFactor.toFixed(2);
+    const pf = !Number.isFinite(stats.profitFactor) ? "∞" : stats.profitFactor.toFixed(2);
     const narrative = [
       composed,
       "",
