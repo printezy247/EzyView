@@ -1,0 +1,44 @@
+.TH EZYVIEW 1 "23 October 2026" "EzyView 0.3.0" "User Commands"
+.SH NAME
+ezyview \- open-source charting and trading terminal
+.SH SYNOPSIS
+.B ezyview
+.RI [ options ]
+.SH DESCRIPTION
+.B EzyView
+is a desktop trading terminal built on Tauri and WebKitGTK. It provides
+charts, indicators, drawing tools, a Pine Script editor, paper trading, a
+trading journal, market research panels and an optional connection to a local
+MetaTrader 5 bridge.
+.PP
+The application stores its workspace, journal, crash log and MCP snapshot in
+.IR $XDG_DATA_HOME/com.printezy247.ezyview
+(usually
+.IR ~/.local/share/com.printezy247.ezyview ).
+Provider API keys and MT5 passwords are kept in the operating system keyring,
+not in that folder.
+.SH ENVIRONMENT
+.TP
+.B WEBKIT_DISABLE_DMABUF_RENDERER=1
+Disable the WebKitGTK DMA-BUF renderer on drivers that produce a blank window
+or a crash. The same effect is available from Settings under Desktop.
+.TP
+.B WEBKIT_DISABLE_COMPOSITING_MODE=1
+Disable accelerated compositing as a last-resort graphics workaround.
+.TP
+.B EZYVIEW_MT5_TOKEN
+Shared token the optional MetaTrader 5 bridge requires on every request.
+.SH FILES
+.TP
+.I /usr/lib/EzyView/mcp/ezyview-mcp.mjs
+The stdio MCP server. It needs Node.js 22 or newer.
+.TP
+.I /usr/lib/EzyView/mt5-bridge/bridge.py
+The optional MetaTrader 5 REST bridge (requires a Windows Python installation
+with the MetaTrader5 package inside the Wine prefix).
+.SH SEE ALSO
+The project home page at
+.IR https://github.com/printezy247/EzyView .
+.SH BUGS
+Report bugs at
+.IR https://github.com/printezy247/EzyView/issues .

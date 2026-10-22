@@ -17,6 +17,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run check:versions
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test
@@ -39,13 +40,27 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev build-essential curl wget file \
-            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev \
+            lintian desktop-file-utils appstream
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: apps/desktop/src-tauri
       - run: npm ci
       - run: npm run build:desktop
+      - name: Debian package policy checks
+        run: |
+          set -euo pipefail
+          deb=$(find apps/desktop/src-tauri/target/release/bundle/deb -name 'EzyView_*.deb' | sort | tail -1)
+          test -n "$deb"
+          lintian --fail-on error "$deb"
+          dpkg-deb -I "$deb"
+          dpkg-deb -c "$deb" | grep -q 'usr/share/doc/ezy-view/copyright'
+          dpkg-deb -c "$deb" | grep -q 'usr/share/man/man1/ezyview.1.gz'
+          rm -rf /tmp/ezyview-deb && mkdir -p /tmp/ezyview-deb
+          dpkg-deb -x "$deb" /tmp/ezyview-deb
+          desktop-file-validate /tmp/ezyview-deb/usr/share/applications/EzyView.desktop
+          appstreamcli validate --no-net /tmp/ezyview-deb/usr/share/metainfo/com.printezy247.ezyview.metainfo.xml
       - name: Rust unit tests
         run: cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
 

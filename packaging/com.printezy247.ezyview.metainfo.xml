@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.printezy247.ezyview</id>
+  <name>EzyView</name>
+  <summary>Open-source charting and trading terminal</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <developer id="com.printezy247">
+    <name>printezy247</name>
+  </developer>
+  <description>
+    <p>
+      EzyView is a self-hosted trading terminal with charts, indicators,
+      drawing tools, a Pine Script editor, paper trading, a trading journal,
+      market research panels and optional MetaTrader 5 connectivity.
+    </p>
+    <p>
+      All charting features are available without a subscription. Provider API
+      keys and broker credentials are stored in the operating system keyring.
+    </p>
+  </description>
+  <launchable type="desktop-id">EzyView.desktop</launchable>
+  <provides>
+    <binary>ezyview</binary>
+  </provides>
+  <url type="homepage">https://github.com/printezy247/EzyView</url>
+  <url type="bugtracker">https://github.com/printezy247/EzyView/issues</url>
+  <project_license>MIT</project_license>
+  <categories>
+    <category>Finance</category>
+    <category>Office</category>
+  </categories>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.3.0" date="2026-10-22"/>
+  </releases>
+</component>
