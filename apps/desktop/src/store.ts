@@ -77,6 +77,17 @@ export interface WatchEntry {
   changePct: number | null;
 }
 
+export const DEFAULT_WATCHLIST: WatchEntry[] = [
+  { symbol: "BINANCE:BTCUSDT", ticker: "BTCUSDT", description: "Bitcoin / Tether", assetClass: "Crypto", precision: 2, price: null, changePct: null },
+  { symbol: "BINANCE:ETHUSDT", ticker: "ETHUSDT", description: "Ethereum / Tether", assetClass: "Crypto", precision: 2, price: null, changePct: null },
+  { symbol: "OANDA:XAUUSD", ticker: "XAUUSD", description: "Gold / US Dollar", assetClass: "Commodity", precision: 2, price: null, changePct: null },
+  { symbol: "OANDA:EURUSD", ticker: "EURUSD", description: "Euro / US Dollar", assetClass: "Forex", precision: 4, price: null, changePct: null },
+  { symbol: "OANDA:GBPUSD", ticker: "GBPUSD", description: "British Pound / US Dollar", assetClass: "Forex", precision: 4, price: null, changePct: null },
+  { symbol: "NASDAQ:AAPL", ticker: "AAPL", description: "Apple Inc.", assetClass: "Stock", precision: 2, price: null, changePct: null },
+  { symbol: "NASDAQ:NVDA", ticker: "NVDA", description: "NVIDIA Corp.", assetClass: "Stock", precision: 2, price: null, changePct: null },
+  { symbol: "AMEX:SPY", ticker: "SPY", description: "SPDR S&P 500 ETF Trust", assetClass: "Index", precision: 2, price: null, changePct: null },
+];
+
 const LAYOUT_COLORS = ["#d91400", "#0ea600", "#f2a93b", "#4a90e2", "#9c27b0", "#00bcd4"];
 
 /** How many superseded sources a script keeps in its version list. */
@@ -434,8 +445,8 @@ export const useWorkspace = create<WorkspaceStore>()(
       dirty: {},
       alerts: [],
       alertHistory: {},
-      watchlist: [],
-      watchlistSymbolKey: "",
+      watchlist: DEFAULT_WATCHLIST,
+      watchlistSymbolKey: DEFAULT_WATCHLIST.map((w) => w.symbol).join(","),
       pineScripts: {},
       replayBar: null,
       magnet: "off",
@@ -1021,7 +1032,8 @@ function restoreAlertHistory(raw: unknown): AlertHistory {
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
 
 export function restoreWatchlist(raw: unknown, fallback: WatchEntry[]): WatchEntry[] {
-  if (!Array.isArray(raw)) return fallback;
+  const safeFallback = fallback.length > 0 ? fallback : DEFAULT_WATCHLIST;
+  if (!Array.isArray(raw)) return safeFallback;
   const out: WatchEntry[] = [];
   for (const w of raw) {
     if (typeof w !== "object" || w === null) continue;
@@ -1037,7 +1049,7 @@ export function restoreWatchlist(raw: unknown, fallback: WatchEntry[]): WatchEnt
       changePct: num(x.changePct),
     });
   }
-  return out;
+  return out.length > 0 ? out : safeFallback;
 }
 
 /** Prepend a superseded head to the archive: newest first, capped. */

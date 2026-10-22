@@ -47,6 +47,160 @@ export function resolveAppTheme(appTheme: AppTheme, chartTheme: ChartThemeName):
 /** Right price-scale rendering. */
 export type PriceScaleModeName = "normal" | "log" | "percentage";
 
+export interface ChartSettings {
+  symbol: {
+    bodyUpColor: string;
+    bodyDownColor: string;
+    borderUpColor: string;
+    borderDownColor: string;
+    wickUpColor: string;
+    wickDownColor: string;
+    colorBarsBasedOnPrevClose: boolean;
+    precision: string;
+    timezone: string;
+  };
+  statusLine: {
+    showLogo: boolean;
+    titleMode: "both" | "ticker" | "description";
+    showOpenMarketStatus: boolean;
+    showOhlc: boolean;
+    showBarChange: boolean;
+    showVolume: boolean;
+    indicatorTitles: boolean;
+    indicatorArguments: boolean;
+    indicatorValues: boolean;
+    indicatorBackground: boolean;
+    showBuySellButtons: boolean;
+  };
+  scales: {
+    placement: "right" | "left";
+    currencyAndUnit: boolean;
+    symbolNameLabel: boolean;
+    symbolLastPriceLabel: boolean;
+    highLowPriceLabels: boolean;
+    averageClosePriceLabel: boolean;
+    countdownToBarClose: boolean;
+    plusButton: boolean;
+    scalesLines: boolean;
+    scalesLinesColor: string;
+    priceScaleMode: PriceScaleModeName;
+    invertScale: boolean;
+  };
+  canvas: {
+    backgroundType: "solid" | "gradient";
+    backgroundColor: string;
+    backgroundGradientColor: string;
+    vertGridLines: boolean;
+    vertGridColor: string;
+    horzGridLines: boolean;
+    horzGridColor: string;
+    crosshairColor: string;
+    crosshairStyle: "dashed" | "dotted" | "solid";
+    watermark: boolean;
+    scalesFontSize: number;
+    topMarginPct: number;
+    bottomMarginPct: number;
+    rightMarginBars: number;
+  };
+  trading: {
+    showPositions: boolean;
+    showOrders: boolean;
+    showExecutions: boolean;
+    extendedPriceLine: boolean;
+    instantOrders: boolean;
+    soundOnExecution: boolean;
+    pnlDisplay: "money" | "percent" | "ticks";
+  };
+  alerts: {
+    alertLines: boolean;
+    alertLineColor: string;
+    playSound: boolean;
+    soundVolume: number;
+  };
+  events: {
+    showSessionBreaks: boolean;
+    showEconomicEvents: boolean;
+    showNewsHeadlines: boolean;
+  };
+}
+
+export const DEFAULT_CHART_SETTINGS: ChartSettings = {
+  symbol: {
+    bodyUpColor: "#089981",
+    bodyDownColor: "#f23645",
+    borderUpColor: "#089981",
+    borderDownColor: "#f23645",
+    wickUpColor: "#089981",
+    wickDownColor: "#f23645",
+    colorBarsBasedOnPrevClose: false,
+    precision: "default",
+    timezone: "exchange",
+  },
+  statusLine: {
+    showLogo: true,
+    titleMode: "both",
+    showOpenMarketStatus: true,
+    showOhlc: true,
+    showBarChange: true,
+    showVolume: true,
+    indicatorTitles: true,
+    indicatorArguments: true,
+    indicatorValues: true,
+    indicatorBackground: true,
+    showBuySellButtons: true,
+  },
+  scales: {
+    placement: "right",
+    currencyAndUnit: true,
+    symbolNameLabel: true,
+    symbolLastPriceLabel: true,
+    highLowPriceLabels: false,
+    averageClosePriceLabel: false,
+    countdownToBarClose: true,
+    plusButton: true,
+    scalesLines: true,
+    scalesLinesColor: "#2a2e39",
+    priceScaleMode: "normal",
+    invertScale: false,
+  },
+  canvas: {
+    backgroundType: "solid",
+    backgroundColor: "#131722",
+    backgroundGradientColor: "#1e222d",
+    vertGridLines: true,
+    vertGridColor: "#1e222d",
+    horzGridLines: true,
+    horzGridColor: "#1e222d",
+    crosshairColor: "#758696",
+    crosshairStyle: "dashed",
+    watermark: false,
+    scalesFontSize: 12,
+    topMarginPct: 10,
+    bottomMarginPct: 8,
+    rightMarginBars: 10,
+  },
+  trading: {
+    showPositions: true,
+    showOrders: true,
+    showExecutions: true,
+    extendedPriceLine: true,
+    instantOrders: false,
+    soundOnExecution: true,
+    pnlDisplay: "money",
+  },
+  alerts: {
+    alertLines: true,
+    alertLineColor: "#2962ff",
+    playSound: true,
+    soundVolume: 80,
+  },
+  events: {
+    showSessionBreaks: true,
+    showEconomicEvents: true,
+    showNewsHeadlines: false,
+  },
+};
+
 /** Everything the user can change about one chart cell. */
 export interface ChartState {
   symbol: string;
@@ -61,6 +215,8 @@ export interface ChartState {
   theme: ChartThemeName;
   indicators: ActiveIndicator[];
   drawings: Drawing[];
+  /** Detailed TradingView chart settings (Symbol, Status line, Scales, Canvas, Trading, Alerts, Events). */
+  chartSettings?: ChartSettings;
   /** Absent = normal. Magnet snaps the crosshair to bar OHLC. */
   crosshairMode?: CrosshairModeName;
   /** Absent = normal. Log and percentage change the right scale. */

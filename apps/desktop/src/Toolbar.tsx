@@ -16,6 +16,7 @@ import {
   PlusCircle,
   Rewind,
   Search,
+  Settings,
   Share2,
   Telescope,
 } from "lucide-react";
@@ -127,6 +128,7 @@ interface Props {
   onToggleReplay: () => void;
   onSelectDockTab: (id: DockTabId) => void;
   onToggleTrading: () => void;
+  onOpenSettings?: () => void;
   onOpenWindow: () => void;
   onOpenAlerts: () => void;
   onOpenApiKeys: () => void;
@@ -687,6 +689,16 @@ export function Toolbar(props: Props) {
         className="flex size-6 shrink-0 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong disabled:opacity-40"
       >
         <Camera size={13} aria-hidden />
+      </button>
+
+      <button
+        type="button"
+        title="Chart settings"
+        aria-label="Chart settings"
+        onClick={props.onOpenSettings}
+        className="flex size-6 shrink-0 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+      >
+        <Settings size={13} aria-hidden />
       </button>
 
       <button

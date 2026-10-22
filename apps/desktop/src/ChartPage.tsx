@@ -48,6 +48,7 @@ interface ChartPageProps {
   onOpenAlerts: () => void;
   /** Opens the `?` shortcut sheet from the chart's bottom bar. */
   onOpenHotkeys: () => void;
+  onOpenSettings?: () => void;
 }
 
 /**
@@ -55,7 +56,16 @@ interface ChartPageProps {
  * replay bar and the quick command input. Navigation destinations live on
  * their own routes; only these side panels stay page-local booleans.
  */
-export function ChartPage({ dockTab, onSelectDockTab, onSetDockTab, tradingOpen, onToggleTrading, onOpenAlerts, onOpenHotkeys }: ChartPageProps) {
+export function ChartPage({
+  dockTab,
+  onSelectDockTab,
+  onSetDockTab,
+  tradingOpen,
+  onToggleTrading,
+  onOpenAlerts,
+  onOpenHotkeys,
+  onOpenSettings,
+}: ChartPageProps) {
   const layout = useWorkspace((s) => s.activeLayout());
   const state = activeChartOf(layout);
   const setLinkGroup = useWorkspace((s) => s.setLinkGroup);
@@ -409,6 +419,7 @@ export function ChartPage({ dockTab, onSelectDockTab, onSetDockTab, tradingOpen,
           onOpenTable={() => setTableOpen(true)}
           onSaveTemplate={() => setNameOpen(true)}
           onOpenLinkGroup={() => setLinkGroupOpen(true)}
+          onOpenSettings={onOpenSettings}
           onClose={() => setMenu(null)}
         />
       )}
