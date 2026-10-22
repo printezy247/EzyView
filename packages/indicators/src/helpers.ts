@@ -210,7 +210,7 @@ export function hma(values: number[], period: number): SeriesValue[] {
   const sqrtP = Math.max(1, Math.round(Math.sqrt(period)));
   const raw = map2(wma(values, half), wma(values, period), (a, b) => 2 * a - b);
   // Map2 output feeds WMA; nulls become 0 so the window math stays aligned.
-  return wma(fillForward(raw), sqrtP).map((v, i) => (raw[i] === null && i < period ? null : v));
+  return wma(fillForward(raw), sqrtP).map((v, i) => (i < period - 1 + sqrtP - 1 ? null : v));
 }
 
 /** Arnaud Legoux MA — gaussian-weighted, configurable lag/sigma tradeoff. */

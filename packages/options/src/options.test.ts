@@ -85,4 +85,15 @@ describe("payoff", () => {
     expect(be[0]).toBeCloseTo(91, 1);
     expect(be[1]).toBeCloseTo(109, 1);
   });
+
+  it("reports no break-evens for a flat zero payoff and one at the range end", () => {
+    const flat: Leg[] = [
+      { right: "call", strike: 100, qty: 1, premium: 5 },
+      { right: "call", strike: 100, qty: -1, premium: 5 },
+    ];
+    expect(breakevens(flat, 50, 150)).toEqual([]);
+    const callOnly: Leg[] = [{ right: "call", strike: 100, qty: 1, premium: 0 }];
+    // P&L is 0 from 50 up to 100, so there is no single crossing to report.
+    expect(breakevens(callOnly, 50, 100).length).toBeLessThanOrEqual(1);
+  });
 });

@@ -264,9 +264,14 @@ export class EzyChart {
   private sharedOhlcv: { open: number[]; high: number[]; low: number[]; close: number[]; volume: number[] } | null = null;
   private sharedOhlcvKey = "";
 
+  /** A tick can move high, low or volume while the close lands where it was, so the key covers the whole last bar. */
+  private lastBarKey(last: Candle | undefined): string {
+    return `${this.data.length}|${last?.time ?? 0}|${last?.open ?? 0}|${last?.high ?? 0}|${last?.low ?? 0}|${last?.close ?? 0}|${last?.volume ?? 0}`;
+  }
+
   private getSharedOhlcv(): { open: number[]; high: number[]; low: number[]; close: number[]; volume: number[] } {
     const last = this.data.at(-1);
-    const key = `${this.data.length}|${last?.time ?? 0}|${last?.close ?? 0}`;
+    const key = this.lastBarKey(last);
     if (this.sharedOhlcv && this.sharedOhlcvKey === key) return this.sharedOhlcv;
     const n = this.data.length;
     const open: number[] = [];
@@ -649,6 +654,8 @@ export class EzyChart {
    */
   setIndicators(instances: IndicatorInstance[]): void {
     this.currentInstances = instances;
+    const live = new Set(instances.map((i) => i.uid));
+    for (const uid of this.indicatorCache.keys()) if (!live.has(uid)) this.indicatorCache.delete(uid);
     this.reconcileLayers();
   }
 
@@ -829,7 +836,7 @@ export class EzyChart {
    */
   private indicatorValues(inst: IndicatorInstance): SeriesResult {
     const last = this.data.at(-1);
-    const key = `${inst.uid}|${this.data.length}|${last?.time ?? 0}|${last?.close ?? 0}|${JSON.stringify(inst.params)}`;
+    const key = `${inst.uid}|${this.lastBarKey(last)}|${JSON.stringify(inst.params)}`;
     const cached = this.indicatorCache.get(inst.uid);
     if (cached && cached.key === key) return cached.values;
     const values = inst.def.compute(
@@ -1026,6 +1033,8 @@ export class EzyChart {
   }
 
   destroy(): void {
+    this.indicatorCache.clear();
+    this.sharedOhlcv = null;
     this.chart.remove();
   }
 
