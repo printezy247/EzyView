@@ -115,7 +115,7 @@ export function JournalEntryDialog({ onClose }: Props) {
     <Modal
       onClose={onClose}
       labelledBy="manual-entry-title"
-      className="flex max-h-[90vh] w-[40rem] flex-col rounded-md border border-ev-line bg-ev-panel shadow-2xl"
+      className="flex max-h-[90vh] w-[min(40rem,92vw)] flex-col rounded-md border border-ev-line bg-ev-panel shadow-2xl"
     >
       <div className="flex shrink-0 items-center justify-between border-b border-ev-raised px-4 py-2.5">
         <h2 id="manual-entry-title" className="text-body font-semibold text-ev-strong">

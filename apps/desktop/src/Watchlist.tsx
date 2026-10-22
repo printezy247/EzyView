@@ -70,7 +70,7 @@ function WatchRow({
         type="button"
         title={`Remove ${item.ticker}`}
         onClick={onRemove}
-        className="text-ev-line opacity-0 transition-opacity hover:text-ev-down group-hover:opacity-100"
+        className="text-ev-line opacity-0 transition-opacity hover:text-ev-down focus-visible:opacity-100 focus-visible:text-ev-down group-hover:opacity-100 group-focus-within:opacity-100"
       >
         <Trash2 size={12} aria-hidden />
       </button>
@@ -178,7 +178,7 @@ export function Watchlist({ onOpenAlerts }: Props) {
             type="button"
             title="Add symbol"
             onClick={() => setAdding((v) => !v)}
-            className="flex size-5 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+            className="flex size-6 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
           >
             <Plus size={13} aria-hidden />
           </button>

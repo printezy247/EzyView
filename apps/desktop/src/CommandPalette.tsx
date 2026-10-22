@@ -32,6 +32,7 @@ export function CommandPalette({ open, onClose, groups }: Props) {
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const listId = useId();
 
   // The command list is only flattened while the palette is open: the
@@ -47,6 +48,13 @@ export function CommandPalette({ open, onClose, groups }: Props) {
     setQuery("");
     setActive(0);
     inputRef.current?.focus();
+  }, [open]);
+
+  // Focus goes back where it came from when the palette closes.
+  useEffect(() => {
+    if (!open) return;
+    const opener = document.activeElement as HTMLElement | null;
+    return () => opener?.focus?.();
   }, [open]);
 
   useEffect(() => setActive(0), [query]);
@@ -78,12 +86,17 @@ export function CommandPalette({ open, onClose, groups }: Props) {
       e.preventDefault();
       e.stopPropagation();
       onClose();
+    } else if (e.key === "Tab") {
+      // The palette is modal: Tab must not walk into the page behind it.
+      e.preventDefault();
+      inputRef.current?.focus();
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 pt-[12vh]" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-[var(--z-palette)] flex items-start justify-center bg-black/40 pt-[12vh]" onMouseDown={onClose}>
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"

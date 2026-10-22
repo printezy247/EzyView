@@ -64,7 +64,7 @@ export function ResearchPage() {
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col">
-        <Suspense fallback={null}>
+        <Suspense fallback={<div role="status" className="p-6 text-base text-ev-muted">Loading…</div>}>
           {tab === "fundamentals" && (
             <FundamentalsPanel
               symbol={state.symbol}

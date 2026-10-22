@@ -129,6 +129,17 @@ export function ScreenerTab() {
                     updateActive({ symbol: w.symbol });
                     navigate("/chart");
                   }}
+                  onKeyDown={(e) => {
+                    // The row is the only way to open a symbol here, so it has
+                    // to answer the keyboard too.
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      updateActive({ symbol: w.symbol });
+                      navigate("/chart");
+                    }
+                  }}
+                  tabIndex={0}
+                  role="link"
                   title={`Open ${w.description} on the chart`}
                 >
                   <td className="font-medium text-ev-strong">{w.ticker}</td>

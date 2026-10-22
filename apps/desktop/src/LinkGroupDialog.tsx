@@ -37,7 +37,7 @@ export function LinkGroupDialog({ open, onClose, current, available, onPick }: P
       open={open}
       onClose={onClose}
       labelledBy="link-group-title"
-      className="w-[24rem] rounded-lg border border-ev-line bg-ev-panel p-4 shadow-xl"
+      className="w-[min(24rem,92vw)] rounded-lg border border-ev-line bg-ev-panel p-4 shadow-xl"
     >
       <h2 id="link-group-title" className="text-title font-semibold text-ev-strong">
         Link this chart

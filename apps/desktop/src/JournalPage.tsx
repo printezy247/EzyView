@@ -7,7 +7,7 @@ const JournalPanel = lazy(() => import("./JournalPanel").then((m) => ({ default:
 export function JournalPage() {
   const navigate = useNavigate();
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<div role="status" className="p-6 text-base text-ev-muted">Loading…</div>}>
       <JournalPanel onClose={() => navigate("/chart")} />
     </Suspense>
   );

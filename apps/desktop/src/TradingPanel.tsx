@@ -4,6 +4,7 @@ import { precisionFor } from "./data";
 import { OrderTicket } from "./OrderTicket";
 import { useMt5 } from "./mt5";
 import { useTrading } from "./trading";
+import { notice } from "./notice";
 
 interface Props {
   symbol: string;
@@ -89,8 +90,24 @@ export function TradingPanel({ symbol }: Props) {
           <span className="text-ev-faint">{openPositions} open</span>
           <button
             type="button"
-            onClick={() => void closeAll()}
+            onClick={() => {
+              // The broker feed confirms at the safety gate; the paper feed
+              // has no gate, so it asks here instead.
+              if (source === "mt5") {
+                void closeAll();
+                return;
+              }
+              void notice
+                .confirm("Close every open position?", {
+                  body: `${openPositions} position${openPositions === 1 ? "" : "s"} will be closed at the current price.`,
+                  confirmLabel: "Close all",
+                })
+                .then((ok) => {
+                  if (ok) void closeAll();
+                });
+            }}
             disabled={openPositions === 0}
+            title="Close every open position"
             className="rounded px-2 py-0.5 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong disabled:opacity-40"
           >
             Close all
@@ -99,7 +116,18 @@ export function TradingPanel({ symbol }: Props) {
             <button
               type="button"
               title="Reset the paper account to its starting balance"
-              onClick={() => void reset()}
+              onClick={() => {
+                // The reset wipes the paper balance and the whole deal
+                // history, which is the journal's source - so it asks.
+                void notice
+                  .confirm("Reset the paper account?", {
+                    body: "This clears the paper balance, every position and the whole trade history.",
+                    confirmLabel: "Reset",
+                  })
+                  .then((ok) => {
+                    if (ok) void reset();
+                  });
+              }}
               className="rounded px-2 py-0.5 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
             >
               Reset

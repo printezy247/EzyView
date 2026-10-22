@@ -72,7 +72,7 @@ export function ObjectTree({ onClose }: Props) {
           aria-label="Close object tree"
           title="Close"
           onClick={onClose}
-          className="flex size-5 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+          className="flex size-6 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
         >
           <X size={13} aria-hidden />
         </button>
@@ -246,12 +246,21 @@ function Row({ label, swatch, hidden, selected, locked, onSelect, onToggle, onLo
   };
 
   const iconBtn =
-    "flex size-5 shrink-0 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong";
+    "flex size-6 shrink-0 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong";
 
   return (
     <li
-      aria-selected={selected}
+      aria-current={selected ? "true" : undefined}
       onClick={onSelect}
+      onKeyDown={(e) => {
+        // The row selects a drawing, so it must be reachable by keyboard.
+        if ((e.key === "Enter" || e.key === " ") && onSelect) {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+      tabIndex={0}
+      role="button"
       className={`flex h-7 items-center gap-1.5 px-3 hover:bg-ev-panel ${
         selected ? "bg-ev-raised ring-1 ring-inset ring-ev-accent" : ""
       }`}

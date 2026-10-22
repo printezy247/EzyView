@@ -659,6 +659,7 @@ function Readout({
           <button
             type="button"
             title={tradeBoxVisible ? "Hide 1-click Buy/Sell buttons" : "Show 1-click Buy/Sell buttons"}
+            aria-pressed={tradeBoxVisible}
             onClick={(e) => {
               e.stopPropagation();
               setTradeBoxVisible((v) => !v);

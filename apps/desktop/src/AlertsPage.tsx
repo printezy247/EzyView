@@ -126,6 +126,14 @@ function FragmentRow({ alert: a, closes, expanded, onToggle, onOpenSymbol, onDel
       <tr
         className={rowClass({ className: "cursor-pointer border-b border-ev-panel hover:bg-ev-raised" })}
         onClick={onToggle}
+        onKeyDown={(e) => {
+          // The row expands the close history, so it answers the keyboard.
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onToggle();
+          }
+        }}
+        tabIndex={0}
         title={expanded ? "Hide close history" : "Show close history"}
       >
         <td>

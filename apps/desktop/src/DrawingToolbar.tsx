@@ -27,6 +27,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import type { DrawingToolId, MagnetMode } from "@ezyview/drawing-tools";
 import { useWorkspace } from "./store";
+import { notice } from "./notice";
 
 interface ToolEntry {
   id: DrawingToolId;
@@ -125,7 +126,7 @@ export function DrawingToolbar() {
           title="Show drawing tools toolbar"
           aria-label="Show drawing tools"
           onClick={() => setCollapsed(false)}
-          className="flex size-5 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+          className="flex size-6 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
         >
           <PanelLeftOpen size={13} aria-hidden />
         </button>
@@ -211,7 +212,17 @@ export function DrawingToolbar() {
         title="Remove all drawings on this chart"
         aria-label="Remove all drawings"
         disabled={drawingCount === 0}
-        onClick={() => setDrawings([])}
+        onClick={() => {
+          // Every drawing on the chart goes, so it asks first.
+          void notice
+            .confirm("Remove all drawings?", {
+              body: `${drawingCount} drawing${drawingCount === 1 ? "" : "s"} on this chart will be deleted.`,
+              confirmLabel: "Remove all",
+            })
+            .then((ok) => {
+              if (ok) setDrawings([]);
+            });
+        }}
         className="flex size-8 items-center justify-center rounded text-dense font-medium text-ev-muted hover:bg-ev-raised hover:text-ev-down disabled:opacity-40"
       >
         <Trash2 size={15} aria-hidden />

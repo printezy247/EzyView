@@ -81,7 +81,30 @@ export function RightDock({ tabs, active, onSelect, width }: Props) {
       className="flex shrink-0 flex-col border-l border-ev-raised bg-ev-bg transition-[width] duration-150"
       style={{ width: resolvedWidth }}
     >
-      <div role="tablist" aria-label="Panel" className="flex h-8 shrink-0 items-center gap-0.5 border-b border-ev-raised bg-ev-chrome px-1">
+      <div
+        role="tablist"
+        aria-label="Panel"
+        className="flex h-8 shrink-0 items-center gap-0.5 border-b border-ev-raised bg-ev-chrome px-1"
+        onKeyDown={(e) => {
+          // The ARIA tabs pattern wants arrow keys to move between tabs.
+          const ids = tabs.map((t) => t.id);
+          const index = ids.indexOf(active);
+          if (index === -1) return;
+          let next = index;
+          if (e.key === "ArrowRight" || e.key === "ArrowDown") next = (index + 1) % ids.length;
+          else if (e.key === "ArrowLeft" || e.key === "ArrowUp") next = (index - 1 + ids.length) % ids.length;
+          else if (e.key === "Home") next = 0;
+          else if (e.key === "End") next = ids.length - 1;
+          else return;
+          e.preventDefault();
+          const id = ids[next];
+          if (!id) return;
+          onSelect(id);
+          // Move the focus with the selection.
+          const buttons = e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]');
+          buttons[next]?.focus();
+        }}
+      >
         {tabs.map((tab) => {
           const on = active === tab.id;
           return (
@@ -128,7 +151,7 @@ export function RightDock({ tabs, active, onSelect, width }: Props) {
         </div>
       </div>
 
-      <div key={active} className="flex min-h-0 flex-1 flex-col">
+      <div key={active} role="tabpanel" aria-label={tabs.find((t) => t.id === active)?.label ?? "Panel"} className="flex min-h-0 flex-1 flex-col">
         {tabs.find((t) => t.id === active)?.render() ?? null}
       </div>
     </aside>

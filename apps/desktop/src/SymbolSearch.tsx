@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, Search } from "lucide-react";
 import type { SymbolInfo } from "@ezyview/data-adapters";
 import { searchSymbols } from "./data";
@@ -16,6 +17,8 @@ export function SymbolSearch({ symbol, onSelect }: Props) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [busy, setBusy] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -54,7 +57,9 @@ export function SymbolSearch({ symbol, onSelect }: Props) {
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (!boxRef.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      // The popup lives in a portal, so it is not inside the trigger's box.
+      if (!boxRef.current?.contains(target) && !popupRef.current?.contains(target)) setOpen(false);
     };
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
@@ -63,6 +68,7 @@ export function SymbolSearch({ symbol, onSelect }: Props) {
   return (
     <div className="relative" ref={boxRef}>
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-1.5 rounded px-2 py-1 text-body font-semibold text-ev-strong hover:bg-ev-raised"
@@ -71,8 +77,13 @@ export function SymbolSearch({ symbol, onSelect }: Props) {
         <ChevronDown size={13} aria-hidden className="text-ev-muted" />
       </button>
 
-      {open && (
-        <div className="absolute left-0 top-full z-30 mt-1 w-80 rounded border border-ev-line bg-ev-panel shadow-xl">
+      {open &&
+        createPortal(
+          <div
+            ref={popupRef}
+            className="fixed z-[var(--z-dropdown)] w-80 rounded border border-ev-line bg-ev-panel shadow-xl"
+            style={popupPosition(buttonRef.current)}
+          >
           <div className="flex items-center gap-2 border-b border-ev-raised px-3 py-2">
             <Search size={14} aria-hidden className="text-ev-muted" />
             <input
@@ -123,8 +134,20 @@ export function SymbolSearch({ symbol, onSelect }: Props) {
                 </li>
               ))}
           </ul>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
+}
+
+/** Where the search popup goes: under the trigger, kept inside the window. */
+function popupPosition(trigger: HTMLElement | null): React.CSSProperties {
+  if (!trigger) return { top: 0, left: 0 };
+  const rect = trigger.getBoundingClientRect();
+  const width = 320;
+  return {
+    top: Math.min(rect.bottom + 4, window.innerHeight - 40),
+    left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)),
+  };
 }
