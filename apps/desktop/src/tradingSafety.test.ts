@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   ApprovalTokens,
+  DailyRiskTracker,
   DEFAULT_SAFETY,
+  dailyRiskTracker,
   gateAction,
   maskLogin,
   mt5KeyringName,
@@ -59,6 +61,46 @@ describe("gateAction", () => {
     const result = gateAction({ action: "place", volume: 0.1, accountKind: "demo" }, rails({ dryRun: true }));
     expect(result.dryRun).toBe(true);
     expect(result.reasons.join(" ")).toMatch(/not sent/);
+  });
+
+  it("blocks place orders when daily drawdown exceeds maxDailyLossPct", () => {
+    const tracker = new DailyRiskTracker();
+    tracker.initSession(10_000);
+    // Drawdown of $600 on $10,000 = 6% loss
+    const check = tracker.checkDailyDrawdown(9_400, 5);
+    expect(check.tripped).toBe(true);
+    expect(check.drawdownPct).toBe(6);
+
+    dailyRiskTracker.reset();
+    dailyRiskTracker.initSession(10_000);
+    const result = gateAction(
+      { action: "place", symbol: "EURUSD", volume: 0.1, accountKind: "demo", currentEquity: 9_400 },
+      rails({ maxDailyLossPct: 5 }),
+    );
+    expect(result.decision).toBe("block");
+    expect(result.reasons.join(" ")).toMatch(/daily drawdown circuit breaker tripped/);
+    dailyRiskTracker.reset();
+  });
+
+  it("blocks orders during symbol cooldown window after a loss", () => {
+    dailyRiskTracker.reset();
+    const now = Date.now();
+    dailyRiskTracker.recordClosedTrade("EURUSD", -150, now);
+
+    const blocked = gateAction(
+      { action: "place", symbol: "EURUSD", volume: 0.1, accountKind: "demo" },
+      rails({ lossCooldownSeconds: 60 }),
+    );
+    expect(blocked.decision).toBe("block");
+    expect(blocked.reasons.join(" ")).toMatch(/cooldown active for EURUSD/);
+
+    // Another symbol is not blocked
+    const allowed = gateAction(
+      { action: "place", symbol: "GBPUSD", volume: 0.1, accountKind: "demo" },
+      rails({ lossCooldownSeconds: 60 }),
+    );
+    expect(allowed.decision).toBe("confirm");
+    dailyRiskTracker.reset();
   });
 });
 
@@ -144,6 +186,12 @@ describe("parseSafety", () => {
 
   it("trims and keeps valid entries", () => {
     const result = parseSafety({ maxOrderVolume: 0.5, symbolAllowList: [" EURUSD ", "", 7], dryRun: true });
-    expect(result).toEqual({ maxOrderVolume: 0.5, symbolAllowList: ["EURUSD"], dryRun: true });
+    expect(result).toEqual({
+      maxOrderVolume: 0.5,
+      symbolAllowList: ["EURUSD"],
+      dryRun: true,
+      maxDailyLossPct: 0,
+      lossCooldownSeconds: 0,
+    });
   });
 });

@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Bell, Eye, EyeOff, Lock, LockOpen, Trash2 } from "lucide-react";
+import { ArrowRightLeft, Bell, Eye, EyeOff, Lock, LockOpen, Trash2 } from "lucide-react";
 import { useWorkspace } from "./store";
 import { drawingLabel } from "./ObjectTree";
 import { applyDrawingTemplate, listDrawingTemplates, saveDrawingTemplate } from "./drawingTemplates";
 import type { DrawingTemplate } from "./drawingTemplates";
+import { syncPositionDrawingToOrderTicket } from "./orderDraft";
 
 const COLORS = ["#d91400", "#0ea600", "#f2a93b", "#4a90e2", "#9c27b0", "#00bcd4", "#ffd700", "#ffffff"];
 const WIDTHS = [1, 2, 3, 4];
@@ -36,6 +37,8 @@ export function DrawingProperties() {
   const level = d.points[0]?.price;
   const canAlert = d.tool === "horizontal_line" && level !== undefined && Number.isFinite(level);
   const alertBound = alerts.some((a) => a.drawingId === d.id);
+  const isPositionTool = (d.tool === "long_position" || d.tool === "short_position") && d.points.length >= 3;
+  const activeSymbol = useWorkspace.getState().activeChart().symbol;
 
   const btn =
     "rounded border border-ev-line px-2 py-1 text-dense text-ev-text hover:bg-ev-raised hover:text-ev-strong";
@@ -48,12 +51,27 @@ export function DrawingProperties() {
     setDrawings(to === "front" ? [...rest, d] : [d, ...rest], idx);
   };
 
+  const applyToOrder = () => {
+    syncPositionDrawingToOrderTicket(d, activeSymbol);
+  };
+
   return (
     <div className="border-t border-ev-raised px-3 py-2 text-base" aria-label="Drawing properties">
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-dense font-semibold uppercase tracking-wider text-ev-faint">Properties</h3>
         <span className="truncate text-dense text-ev-muted">{drawingLabel(d)}</span>
       </div>
+
+      {isPositionTool && (
+        <button
+          type="button"
+          onClick={applyToOrder}
+          className="mb-2.5 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded border border-ev-accent/60 bg-ev-accent/20 px-2 py-1.5 text-dense font-medium text-ev-accent transition-colors hover:bg-ev-accent hover:text-white"
+        >
+          <ArrowRightLeft size={12} aria-hidden />
+          <span>Apply to Order Ticket</span>
+        </button>
+      )}
 
       <label className="mb-2 block">
         <span className="mb-1 block text-dense text-ev-muted">Name</span>

@@ -18,15 +18,26 @@ export interface SafetyConfig {
   symbolAllowList: string[];
   /** Validate at the bridge but never send. */
   dryRun: boolean;
+  /** Max daily loss percentage (e.g. 5 = 5%). Once tripped, blocks all new orders. Default 0 (disabled). */
+  maxDailyLossPct?: number;
+  /** Cooldown window in seconds after a closed loss before allowing a new entry on that symbol. Default 0 (disabled). */
+  lossCooldownSeconds?: number;
 }
 
-export const DEFAULT_SAFETY: SafetyConfig = { maxOrderVolume: 1.0, symbolAllowList: [], dryRun: false };
+export const DEFAULT_SAFETY: SafetyConfig = {
+  maxOrderVolume: 1.0,
+  symbolAllowList: [],
+  dryRun: false,
+  maxDailyLossPct: 0,
+  lossCooldownSeconds: 0,
+};
 
 export interface GateInput {
   action: GateActionKind;
   symbol?: string;
   volume?: number;
   accountKind: AccountKind;
+  currentEquity?: number;
 }
 
 export interface GateResult {
@@ -44,6 +55,88 @@ const ACTION_LABEL: Record<GateActionKind, string> = {
   cancel: "order delete",
   modify: "SL/TP modify",
 };
+
+export interface LossEvent {
+  symbol: string;
+  lossAmount: number;
+  timestamp: number;
+}
+
+export class DailyRiskTracker {
+  private startingBalance: number | null = null;
+  private sessionDate: string = "";
+  private losses: LossEvent[] = [];
+  private tripped: boolean = false;
+
+  private todayDate(): string {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  private ensureSession(): void {
+    const today = this.todayDate();
+    if (this.sessionDate !== today) {
+      this.sessionDate = today;
+      this.startingBalance = null;
+      this.losses = [];
+      this.tripped = false;
+    }
+  }
+
+  initSession(startingBalance: number): void {
+    this.ensureSession();
+    if (this.startingBalance === null && Number.isFinite(startingBalance) && startingBalance > 0) {
+      this.startingBalance = startingBalance;
+    }
+  }
+
+  recordClosedTrade(symbol: string, pnl: number, timestamp: number = Date.now()): void {
+    this.ensureSession();
+    if (pnl < 0) {
+      this.losses.push({ symbol: symbol.toUpperCase(), lossAmount: Math.abs(pnl), timestamp });
+    }
+  }
+
+  checkDailyDrawdown(currentEquity: number, maxLossPct: number): { tripped: boolean; drawdownPct: number } {
+    this.ensureSession();
+    if (!maxLossPct || maxLossPct <= 0 || !this.startingBalance || this.startingBalance <= 0) {
+      return { tripped: false, drawdownPct: 0 };
+    }
+    const drop = this.startingBalance - currentEquity;
+    if (drop <= 0) return { tripped: false, drawdownPct: 0 };
+    const dropPct = (drop / this.startingBalance) * 100;
+    if (dropPct >= maxLossPct) {
+      this.tripped = true;
+      return { tripped: true, drawdownPct: Number(dropPct.toFixed(2)) };
+    }
+    return { tripped: false, drawdownPct: Number(dropPct.toFixed(2)) };
+  }
+
+  isSymbolInCooldown(symbol: string, cooldownSeconds: number, now: number = Date.now()): { inCooldown: boolean; remainingSec: number } {
+    if (!cooldownSeconds || cooldownSeconds <= 0 || !symbol) {
+      return { inCooldown: false, remainingSec: 0 };
+    }
+    this.ensureSession();
+    const sym = symbol.toUpperCase();
+    const recent = this.losses
+      .filter((l) => l.symbol === sym)
+      .sort((a, b) => b.timestamp - a.timestamp)[0];
+
+    if (!recent) return { inCooldown: false, remainingSec: 0 };
+    const elapsed = (now - recent.timestamp) / 1000;
+    if (elapsed < cooldownSeconds) {
+      return { inCooldown: true, remainingSec: Math.ceil(cooldownSeconds - elapsed) };
+    }
+    return { inCooldown: false, remainingSec: 0 };
+  }
+
+  reset(): void {
+    this.startingBalance = null;
+    this.losses = [];
+    this.tripped = false;
+  }
+}
+
+export const dailyRiskTracker = new DailyRiskTracker();
 
 /**
  * The single decision point for MT5 trade actions. Blocking beats asking:
@@ -68,6 +161,29 @@ export function gateAction(input: GateInput, config: SafetyConfig): GateResult {
       return { decision: "block", reasons, secondConfirm: false, dryRun: config.dryRun };
     }
   }
+
+  if (input.action === "place") {
+    if (config.maxDailyLossPct && config.maxDailyLossPct > 0 && input.currentEquity !== undefined) {
+      const dd = dailyRiskTracker.checkDailyDrawdown(input.currentEquity, config.maxDailyLossPct);
+      if (dd.tripped) {
+        reasons.push(
+          `daily drawdown circuit breaker tripped: current loss is ${dd.drawdownPct}% (max allowed: ${config.maxDailyLossPct}%)`,
+        );
+        return { decision: "block", reasons, secondConfirm: false, dryRun: config.dryRun };
+      }
+    }
+
+    if (config.lossCooldownSeconds && config.lossCooldownSeconds > 0 && input.symbol) {
+      const cd = dailyRiskTracker.isSymbolInCooldown(input.symbol, config.lossCooldownSeconds);
+      if (cd.inCooldown) {
+        reasons.push(
+          `cooldown active for ${input.symbol}: ${cd.remainingSec}s remaining after loss before new orders allowed`,
+        );
+        return { decision: "block", reasons, secondConfirm: false, dryRun: config.dryRun };
+      }
+    }
+  }
+
   if (config.symbolAllowList.length === 0) {
     reasons.push("allow-list empty: every symbol can trade");
   }
@@ -172,5 +288,20 @@ export function parseSafety(raw: unknown): SafetyConfig {
   const symbolAllowList = Array.isArray(candidate.symbolAllowList)
     ? candidate.symbolAllowList.filter((s): s is string => typeof s === "string" && s.trim() !== "").map((s) => s.trim())
     : [];
-  return { maxOrderVolume, symbolAllowList, dryRun: candidate.dryRun === true };
+  const maxDailyLossPct =
+    typeof candidate.maxDailyLossPct === "number" && Number.isFinite(candidate.maxDailyLossPct) && candidate.maxDailyLossPct >= 0
+      ? candidate.maxDailyLossPct
+      : DEFAULT_SAFETY.maxDailyLossPct;
+  const lossCooldownSeconds =
+    typeof candidate.lossCooldownSeconds === "number" && Number.isFinite(candidate.lossCooldownSeconds) && candidate.lossCooldownSeconds >= 0
+      ? candidate.lossCooldownSeconds
+      : DEFAULT_SAFETY.lossCooldownSeconds;
+
+  return {
+    maxOrderVolume,
+    symbolAllowList,
+    dryRun: candidate.dryRun === true,
+    maxDailyLossPct,
+    lossCooldownSeconds,
+  };
 }
