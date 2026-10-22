@@ -160,11 +160,11 @@ describe("toDeals", () => {
 });
 
 describe("toQuote", () => {
-  it("derives last from bid/ask and change from previous close", () => {
+  it("uses the bid as last (MT5 candles are bid-based) and derives change from previous close", () => {
     const quote = toQuote({ bid: 4148.56, ask: 4148.86, prev_close: 4100, time: 1792430308 }, "XAUUSD");
-    expect(quote?.last).toBeCloseTo(4148.71, 6);
+    expect(quote?.last).toBe(4148.56);
     expect(quote?.bid).toBe(4148.56);
-    expect(quote?.changePercent).toBeCloseTo(1.188, 3);
+    expect(quote?.changePercent).toBeCloseTo(1.184, 3);
   });
 
   it("converts millisecond timestamps to seconds", () => {

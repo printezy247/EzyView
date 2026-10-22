@@ -192,7 +192,9 @@ export function toQuote(payload: unknown, symbol: string): Quote | null {
   const bid = num(nested, "bid");
   const ask = num(nested, "ask");
   const time = num(nested, "time", "timestamp", "time_msc") ?? Math.floor(Date.now() / 1000);
-  const last = num(nested, "last", "close") ?? (bid !== null && ask !== null ? (bid + ask) / 2 : bid ?? ask);
+  // No traded "last" on FX/CFD symbols: MT5 draws its candles on the bid, so the live
+  // price must be the bid too, or the live bar sits half a spread above its neighbours.
+  const last = num(nested, "last", "close") ?? bid ?? ask;
   if (last === null) return null;
   const previous = num(nested, "prev_close", "previousClose");
   const quote: Quote = {
