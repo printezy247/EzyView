@@ -1167,7 +1167,7 @@ dependencies = [
 
 [[package]]
 name = "ezyview"
-version = "0.2.5"
+version = "0.2.6"
 dependencies = [
  "keyring",
  "serde",

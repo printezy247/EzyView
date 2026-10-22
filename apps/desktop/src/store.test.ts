@@ -392,4 +392,22 @@ describe("performance optimizations", () => {
     useWorkspace.getState().updateActive({ chartType: chart.chartType });
     expect(useWorkspace.getState().layouts).toBe(prevLayouts);
   });
+
+  it("avoids state reallocations in updateWatchPrice when price and changePct are unchanged", () => {
+    useWorkspace.setState({
+      watchlist: [{ symbol: "BINANCE:BTCUSDT", ticker: "BTCUSDT", description: "Bitcoin", assetClass: "crypto", precision: 2, price: 65000, changePct: 2.5 }],
+      watchlistSymbolKey: "BINANCE:BTCUSDT",
+    });
+    const prevWatchlist = useWorkspace.getState().watchlist;
+    useWorkspace.getState().updateWatchPrice("BINANCE:BTCUSDT", 65000, 2.5);
+    expect(useWorkspace.getState().watchlist).toBe(prevWatchlist);
+  });
+
+  it("caps drawingUndo stack at 30 entries", () => {
+    useWorkspace.setState({ drawingUndo: [] });
+    for (let i = 0; i < 40; i++) {
+      useWorkspace.getState().setDrawings([line(`line-${i}`)]);
+    }
+    expect(useWorkspace.getState().drawingUndo.length).toBe(30);
+  });
 });

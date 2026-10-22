@@ -65,8 +65,8 @@ export function ChartPage({ dockTab, onSelectDockTab, onSetDockTab, tradingOpen,
   const positions = useTrading((s) => s.positions);
   const orders = useTrading((s) => s.orders);
 
-  const watchlist = useWorkspace((s) => s.watchlist);
-  const symbols = watchlist.map((w) => w.symbol);
+  const watchlistSymbolKey = useWorkspace((s) => s.watchlistSymbolKey);
+  const symbols = useMemo(() => (watchlistSymbolKey ? watchlistSymbolKey.split(",") : []), [watchlistSymbolKey]);
   const eventOptions = useWorkspace((s) => s.eventOptions);
   const apiKeys = useApiKeys((s) => s.keys);
   const [commandOpen, setCommandOpen] = useState(false);
@@ -228,7 +228,7 @@ export function ChartPage({ dockTab, onSelectDockTab, onSetDockTab, tradingOpen,
   const exposure = new Set<string>(positions.map((p) => p.symbol));
   for (const order of orders) exposure.add(order.symbol);
   if (tradingOpen) exposure.add(state.symbol);
-  useTradingTicks([...exposure].join("|"));
+  useTradingTicks([...exposure].sort().join("|"));
 
   // Entry/stop/target for the position on this chart, as constant price lines.
   // Built once per positions change, so each cell gets a stable array and the

@@ -5,6 +5,14 @@ import { MemoryRouter } from "react-router";
 import { TimeAndSales } from "./TimeAndSales";
 import { useTape, resetTapeStore } from "./tapeStore";
 
+vi.mock("./data", async () => {
+  const actual = await vi.importActual<typeof import("./data")>("./data");
+  return {
+    ...actual,
+    quoteOf: vi.fn().mockImplementation(() => new Promise(() => {})),
+  };
+});
+
 describe("TimeAndSales", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -15,22 +23,26 @@ describe("TimeAndSales", () => {
     vi.useRealTimers();
   });
 
-  it("renders empty state initially", () => {
-    render(
-      <MemoryRouter>
-        <TimeAndSales />
-      </MemoryRouter>,
-    );
+  it("renders empty state initially", async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <TimeAndSales />
+        </MemoryRouter>,
+      );
+    });
     expect(screen.getByText("0 prints")).toBeTruthy();
     expect(screen.getByText(/Waiting for prints/i)).toBeTruthy();
   });
 
-  it("displays prints pushed to the tape store", () => {
-    render(
-      <MemoryRouter>
-        <TimeAndSales />
-      </MemoryRouter>,
-    );
+  it("displays prints pushed to the tape store", async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <TimeAndSales />
+        </MemoryRouter>,
+      );
+    });
 
     act(() => {
       useTape.getState().push("OANDA:XAUUSD", 4128.5, 1.25);
@@ -40,12 +52,14 @@ describe("TimeAndSales", () => {
     expect(screen.getByText("4128.50")).toBeTruthy();
   });
 
-  it("filters prints by minimum size", () => {
-    render(
-      <MemoryRouter>
-        <TimeAndSales />
-      </MemoryRouter>,
-    );
+  it("filters prints by minimum size", async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <TimeAndSales />
+        </MemoryRouter>,
+      );
+    });
 
     act(() => {
       useTape.getState().push("OANDA:XAUUSD", 4120.0, 0.2);
@@ -64,12 +78,14 @@ describe("TimeAndSales", () => {
     expect(screen.queryByText("4120.00")).toBeNull();
   });
 
-  it("clears tape when clear button is clicked", () => {
-    render(
-      <MemoryRouter>
-        <TimeAndSales />
-      </MemoryRouter>,
-    );
+  it("clears tape when clear button is clicked", async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <TimeAndSales />
+        </MemoryRouter>,
+      );
+    });
 
     act(() => {
       useTape.getState().push("OANDA:XAUUSD", 4120.0, 1.0);
@@ -82,12 +98,14 @@ describe("TimeAndSales", () => {
     expect(screen.queryByText("4120.00")).toBeNull();
   });
 
-  it("allows toggling pause state", () => {
-    render(
-      <MemoryRouter>
-        <TimeAndSales />
-      </MemoryRouter>,
-    );
+  it("allows toggling pause state", async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <TimeAndSales />
+        </MemoryRouter>,
+      );
+    });
 
     const pauseBtn = screen.getByLabelText("Pause live tape stream");
     fireEvent.click(pauseBtn);

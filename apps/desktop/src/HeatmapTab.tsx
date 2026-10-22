@@ -36,7 +36,7 @@ export function HeatmapTab() {
   const watchlist = useWorkspace((s) => s.watchlist);
   const symbolKey = useWorkspace((s) => s.watchlistSymbolKey);
   const updateWatchPrice = useWorkspace((s) => s.updateWatchPrice);
-  const updateActive = useWorkspace((s) => s.updateActive);
+  const setSymbol = useWorkspace((s) => s.setSymbol);
 
   const [mode, setMode] = useState<"universe" | "watchlist">("universe");
   const [filter, setFilter] = useState<Scope>("all");
@@ -230,7 +230,7 @@ export function HeatmapTab() {
                 key={tile.symbol}
                 type="button"
                 onClick={() => {
-                  updateActive({ symbol: tile.symbol });
+                  setSymbol(tile.symbol);
                   navigate("/chart");
                 }}
                 className={`flex flex-col justify-between rounded border border-white/10 p-3 text-left transition hover:scale-[1.01] hover:brightness-110 shadow-sm ${textColor}`}

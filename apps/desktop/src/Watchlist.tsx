@@ -91,7 +91,7 @@ export function Watchlist({ onOpenAlerts }: Props) {
   const addToWatchlist = useWorkspace((s) => s.addToWatchlist);
   const removeFromWatchlist = useWorkspace((s) => s.removeFromWatchlist);
   const updateWatchPrice = useWorkspace((s) => s.updateWatchPrice);
-  const updateActive = useWorkspace((s) => s.updateActive);
+  const setSymbol = useWorkspace((s) => s.setSymbol);
 
   const [adding, setAdding] = useState(false);
   const [query, setQuery] = useState("");
@@ -205,7 +205,7 @@ export function Watchlist({ onOpenAlerts }: Props) {
               <WatchRow
                 key={w.symbol}
                 item={w}
-                onSelect={() => updateActive({ symbol: w.symbol })}
+                onSelect={() => setSymbol(w.symbol)}
                 onRemove={() => removeFromWatchlist(w.symbol)}
               />
             ))}

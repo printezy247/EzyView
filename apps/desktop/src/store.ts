@@ -81,6 +81,14 @@ const LAYOUT_COLORS = ["#d91400", "#0ea600", "#f2a93b", "#4a90e2", "#9c27b0", "#
 /** How many superseded sources a script keeps in its version list. */
 const MAX_PINE_VERSIONS = 20;
 
+/** Maximum undo/redo drawing states kept in memory per layout. */
+const MAX_DRAWING_UNDO = 30;
+
+function pushUndo(stack: Drawing[][], item: Drawing[]): Drawing[][] {
+  const next = [...stack, structuredClone(item)];
+  return next.length > MAX_DRAWING_UNDO ? next.slice(-MAX_DRAWING_UNDO) : next;
+}
+
 export const uid = (): string => Math.random().toString(36).slice(2, 10);
 
 export function defaultChartState(): ChartState {
@@ -482,7 +490,7 @@ export const useWorkspace = create<WorkspaceStore>()(
           const idx = chartIndex ?? layout.activeChart;
           const prev = layout.charts[idx]?.drawings ?? [];
           const next = editActive(s, (l) => updateChart(l, idx, (c) => ({ ...c, drawings })));
-          return { ...next, drawingUndo: [...s.drawingUndo, structuredClone(prev)], drawingRedo: [] };
+          return { ...next, drawingUndo: pushUndo(s.drawingUndo, prev), drawingRedo: [] };
         }),
 
       undoDrawing: () =>
@@ -493,7 +501,7 @@ export const useWorkspace = create<WorkspaceStore>()(
           const current = layout.charts[idx]?.drawings ?? [];
           const previous = s.drawingUndo[s.drawingUndo.length - 1]!;
           const next = editActive(s, (l) => updateChart(l, idx, (c) => ({ ...c, drawings: structuredClone(previous) })));
-          return { ...next, drawingUndo: s.drawingUndo.slice(0, -1), drawingRedo: [...s.drawingRedo, structuredClone(current)] };
+          return { ...next, drawingUndo: s.drawingUndo.slice(0, -1), drawingRedo: pushUndo(s.drawingRedo, current) };
         }),
 
       redoDrawing: () =>
@@ -504,7 +512,7 @@ export const useWorkspace = create<WorkspaceStore>()(
           const current = layout.charts[idx]?.drawings ?? [];
           const nextArr = s.drawingRedo[s.drawingRedo.length - 1]!;
           const next = editActive(s, (l) => updateChart(l, idx, (c) => ({ ...c, drawings: structuredClone(nextArr) })));
-          return { ...next, drawingRedo: s.drawingRedo.slice(0, -1), drawingUndo: [...s.drawingUndo, structuredClone(current)] };
+          return { ...next, drawingRedo: s.drawingRedo.slice(0, -1), drawingUndo: pushUndo(s.drawingUndo, current) };
         }),
 
       updateDrawing: (id, patch) =>
@@ -520,7 +528,7 @@ export const useWorkspace = create<WorkspaceStore>()(
           }));
           return {
             ...syncBoundAlert({ ...edited, alerts: s.alerts }, id, target, patch),
-            drawingUndo: [...s.drawingUndo, structuredClone(prev)],
+            drawingUndo: pushUndo(s.drawingUndo, prev),
             drawingRedo: [],
           };
         }),
@@ -540,7 +548,7 @@ export const useWorkspace = create<WorkspaceStore>()(
 
       commitDrawingHistory: (previous) =>
         set((s) => ({
-          drawingUndo: [...s.drawingUndo, structuredClone([...previous])],
+          drawingUndo: pushUndo(s.drawingUndo, [...previous]),
           drawingRedo: [],
         })),
 
@@ -564,7 +572,7 @@ export const useWorkspace = create<WorkspaceStore>()(
             alerts,
             alertHistory,
             selectedDrawingId: selection,
-            drawingUndo: [...s.drawingUndo, structuredClone(prev)],
+            drawingUndo: pushUndo(s.drawingUndo, prev),
             drawingRedo: [],
           };
         }),
@@ -578,7 +586,7 @@ export const useWorkspace = create<WorkspaceStore>()(
           const next = editActive(s, (l) =>
             updateChart(l, idx, (c) => ({ ...c, drawings: [...c.drawings, ...fresh] })),
           );
-          return { ...next, drawingUndo: [...s.drawingUndo, structuredClone(prev)], drawingRedo: [] };
+          return { ...next, drawingUndo: pushUndo(s.drawingUndo, prev), drawingRedo: [] };
         }),
 
       selectDrawing: (id) => set({ selectedDrawingId: id }),
@@ -650,9 +658,13 @@ export const useWorkspace = create<WorkspaceStore>()(
         }),
 
       updateWatchPrice: (symbol, price, changePct) =>
-        set((s) => ({
-          watchlist: s.watchlist.map((w) => (w.symbol === symbol ? { ...w, price, changePct } : w)),
-        })),
+        set((s) => {
+          const current = s.watchlist.find((w) => w.symbol === symbol);
+          if (!current || (current.price === price && current.changePct === changePct)) return s;
+          return {
+            watchlist: s.watchlist.map((w) => (w.symbol === symbol ? { ...w, price, changePct } : w)),
+          };
+        }),
 
       savePineScript: (id, name, source) =>
         set((s) => {

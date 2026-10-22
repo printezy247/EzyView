@@ -3,6 +3,8 @@ import { useNavigate } from "react-router";
 import { activeChartOf } from "./layout";
 import { useWorkspace } from "./store";
 import { Watchlist } from "./Watchlist";
+import { ScreenerTab } from "./ScreenerTab";
+import { HeatmapTab } from "./HeatmapTab";
 import { Button } from "./ui";
 
 type Tab = "watchlists" | "screener" | "heatmap";
@@ -64,6 +66,3 @@ export function MarketsPage() {
     </section>
   );
 }
-
-import { ScreenerTab } from "./ScreenerTab";
-import { HeatmapTab } from "./HeatmapTab";

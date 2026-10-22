@@ -27,6 +27,7 @@ export function QuoteHeader({ symbol }: { symbol: string }) {
   const prevLastRef = useRef<number | null>(null);
 
   useEffect(() => {
+    prevLastRef.current = null;
     if (isReplay) return;
     let cancelled = false;
     const tick = () => {

@@ -474,11 +474,14 @@ export function ChartHost(props: Props) {
           const merged = mergeQuote(history, price, q.time || Math.floor(Date.now() / 1000), step);
           if (merged === history) return;
           historyRef.current = merged;
+          shownRef.current = merged;
           const applyLive = () => {
             rafId = null;
             if (cancelled) return;
             chartRef.current?.setData(historyRef.current);
-            setShown(historyRef.current);
+            if (merged.length !== history.length) {
+              setShown(merged);
+            }
           };
           if (typeof requestAnimationFrame === "function") {
             if (rafId === null) rafId = requestAnimationFrame(applyLive);
