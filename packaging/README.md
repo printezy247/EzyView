@@ -8,6 +8,10 @@ under `bundle.linux.deb.files`.
 | `copyright` (DEP-5) | `/usr/share/doc/ezy-view/copyright` |
 | `changelog.gz` | `/usr/share/doc/ezy-view/changelog.gz` |
 | `ezyview.1.gz` | `/usr/share/man/man1/ezyview.1.gz` |
+| `ezyview-mt5-bridge` | `/usr/bin/ezyview-mt5-bridge` |
+| `ezyview-mt5-bridge.1.gz` | `/usr/share/man/man1/ezyview-mt5-bridge.1.gz` |
+| `../tools/mt5-bridge/README.md` | `/usr/share/doc/ezy-view/mt5-bridge.md` |
+| `../tools/mt5-bridge/bridge.py` | `/usr/lib/EzyView/mt5-bridge/` (Tauri resource) |
 | `com.printezy247.ezyview.metainfo.xml` | `/usr/share/metainfo/` |
 | `EzyView.desktop.hbs` | rendered desktop entry (via `desktopTemplate`) |
 
@@ -18,6 +22,7 @@ editing `changelog` or `ezyview.1`, regenerate the copies deterministically:
 ```bash
 gzip -9 -n -c packaging/changelog > packaging/changelog.gz
 gzip -9 -n -c packaging/ezyview.1 > packaging/ezyview.1.gz
+gzip -9 -n -c packaging/ezyview-mt5-bridge.1 > packaging/ezyview-mt5-bridge.1.gz
 ```
 
 `scripts/check-deb.sh` runs `lintian --fail-on error`, checks the required

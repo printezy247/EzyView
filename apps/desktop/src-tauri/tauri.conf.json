@@ -72,7 +72,9 @@
     "copyright": "Copyright (c) 2026 printezy247",
     "longDescription": "EzyView is an open-source, TradingView-class trading terminal.\nIt provides charts, 50+ indicators, drawing tools, a Pine Script editor,\npaper trading, MetaTrader 5 integration, a trading journal, fundamentals,\na screener, options analytics and an MCP server for AI assistants.",
     "resources": {
-      "../../../packages/mcp-server/dist/ezyview-mcp.mjs": "mcp/ezyview-mcp.mjs"
+      "../../../packages/mcp-server/dist/ezyview-mcp.mjs": "mcp/ezyview-mcp.mjs",
+      "../../../tools/mt5-bridge/bridge.py": "mt5-bridge/bridge.py",
+      "../../../tools/mt5-bridge/README.md": "mt5-bridge/README.md"
     },
     "linux": {
       "deb": {
@@ -91,7 +93,10 @@
           "/usr/share/doc/ezy-view/LICENSE": "../../../LICENSE",
           "/usr/share/doc/ezy-view/NOTICE": "../../../NOTICE",
           "/usr/share/man/man1/ezyview.1.gz": "../../../packaging/ezyview.1.gz",
-          "/usr/share/metainfo/com.printezy247.ezyview.metainfo.xml": "../../../packaging/com.printezy247.ezyview.metainfo.xml"
+          "/usr/share/man/man1/ezyview-mt5-bridge.1.gz": "../../../packaging/ezyview-mt5-bridge.1.gz",
+          "/usr/share/metainfo/com.printezy247.ezyview.metainfo.xml": "../../../packaging/com.printezy247.ezyview.metainfo.xml",
+          "/usr/share/doc/ezy-view/mt5-bridge.md": "../../../tools/mt5-bridge/README.md",
+          "/usr/bin/ezyview-mt5-bridge": "../../../packaging/ezyview-mt5-bridge"
         }
       }
     }

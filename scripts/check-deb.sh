@@ -27,6 +27,8 @@ trap 'rm -rf "$work"' EXIT
 dpkg-deb -c "$deb" > "$work/contents.txt"
 grep -q 'usr/share/doc/ezy-view/copyright' "$work/contents.txt"
 grep -q 'usr/share/man/man1/ezyview.1.gz' "$work/contents.txt"
+grep -q 'usr/bin/ezyview-mt5-bridge' "$work/contents.txt"
+grep -q 'usr/lib/EzyView/mt5-bridge/bridge.py' "$work/contents.txt"
 dpkg-deb -x "$deb" "$work/root"
 
 desktop-file-validate "$work/root/usr/share/applications/EzyView.desktop"

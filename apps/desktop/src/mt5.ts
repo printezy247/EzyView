@@ -184,10 +184,17 @@ async function restoreKey(): Promise<void> {
         useMt5.setState({ settings });
       }
     }
-    // The bridge token is optional: the bridge only demands it when the
-    // operator set one.
+    // The bridge token is optional: the packaged launcher generates one, a
+    // hand-started bridge may have none. The keyring wins over the file.
     const { invoke } = await import("@tauri-apps/api/core");
-    const token = (await invoke<string | null>("api_key_get", { name: BRIDGE_KEYRING_NAME })) ?? "";
+    let token = (await invoke<string | null>("api_key_get", { name: BRIDGE_KEYRING_NAME })) ?? "";
+    if (!token) {
+      try {
+        token = await invoke<string>("read_bridge_token");
+      } catch {
+        token = "";
+      }
+    }
     if (token) {
       const settings = { ...useMt5.getState().settings, bridgeToken: token };
       instance = build(settings);

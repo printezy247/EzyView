@@ -513,6 +513,32 @@ async fn api_key_set(name: String, value: String) -> Result<(), String> {
     blocking(move || key_set(&name, &value)).await
 }
 
+/// Token file written by `/usr/bin/ezyview-mt5-bridge` (0600, per install).
+fn bridge_token_path() -> Option<std::path::PathBuf> {
+    let base = std::env::var_os("XDG_CONFIG_HOME")
+        .map(std::path::PathBuf::from)
+        .filter(|path| path.is_absolute())
+        .or_else(|| {
+            std::env::var_os("HOME")
+                .map(|home| std::path::PathBuf::from(home).join(".config"))
+        })?;
+    Some(base.join("ezyview").join("mt5-bridge.token"))
+}
+
+/// Read the shared token the packaged bridge launcher generated, so the user
+/// does not have to copy it by hand. The keyring value still wins when set.
+#[tauri::command]
+fn read_bridge_token() -> Result<String, String> {
+    let path = bridge_token_path().ok_or_else(|| "no config directory".to_string())?;
+    let text = std::fs::read_to_string(&path)
+        .map_err(|error| format!("{}: {error}", path.display()))?;
+    let token = text.trim().to_string();
+    if token.is_empty() {
+        return Err("bridge token file is empty".to_string());
+    }
+    Ok(token)
+}
+
 /// Wipe provider keys and optional dynamic broker credentials from the OS keyring on explicit user request.
 #[tauri::command]
 async fn clear_keyring_secrets(extra_keys: Option<Vec<String>>) -> Result<(), String> {
@@ -590,6 +616,7 @@ pub fn run() {
             open_chart_window,
             api_key_get,
             api_key_set,
+            read_bridge_token,
             clear_keyring_secrets,
             save_file,
             write_snapshot,
