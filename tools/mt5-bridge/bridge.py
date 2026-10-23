@@ -21,6 +21,7 @@ session is live, writes must carry its `session` id.
 """
 from __future__ import annotations
 
+import hmac
 import json
 import math
 import os
@@ -74,6 +75,34 @@ RATE_MAX_REQ = 60
 _rate_buckets: dict[str, list[float]] = {}
 
 
+def _constant_time_eq(a: str, b: str) -> bool:
+    """Compare two secrets without leaking their prefix through timing.
+
+    A plain `==` returns early on the first differing byte, so an attacker can
+    guess the token one character at a time from response latency. This is a
+    localhost bridge, but the token is the only thing standing between any
+    local process and the broker, so it is worth doing right.
+    """
+    return hmac.compare_digest(a.encode("utf-8"), b.encode("utf-8"))
+
+
+def token_ok(provided: str) -> bool:
+    """True when `provided` matches the configured bridge token (constant-time)."""
+    if not BRIDGE_TOKEN:
+        return False
+    return _constant_time_eq((provided or "").strip(), BRIDGE_TOKEN)
+
+
+def session_ok(provided) -> bool:
+    """True when there is no live session or `provided` carries its id.
+
+    Constant-time like `token_ok`: the session id gates every trade write.
+    """
+    if SESSION is None:
+        return True
+    return _constant_time_eq(str(provided or ""), SESSION)
+
+
 def check_rate_limit(ip: str) -> bool:
     now = time.monotonic()
     with RATE_LOCK:
@@ -84,6 +113,18 @@ def check_rate_limit(ip: str) -> bool:
         stamps.append(now)
         _rate_buckets[ip] = stamps
         return True
+
+
+def _prune_rate_buckets() -> None:
+    """Drop idle per-IP buckets so the table cannot grow without bound.
+
+    Called under `RATE_LOCK` from a janitor; harmless on localhost where there
+    is a handful of IPs, but the bridge should not leak on a busy interface.
+    """
+    now = time.monotonic()
+    for ip in list(_rate_buckets):
+        if not [t for t in _rate_buckets[ip] if now - t < RATE_WINDOW_SEC]:
+            del _rate_buckets[ip]
 
 # In-app login session (Phase 1): minted by /connect, dropped by /disconnect.
 # While it is None the bridge keeps its legacy attach-to-terminal behaviour;
@@ -359,7 +400,7 @@ class Handler(BaseHTTPRequestHandler):
         if not provided:
             query = urllib.parse.urlparse(self.path).query
             provided = urllib.parse.parse_qs(query).get("token", [""])[0].strip()
-        return provided == BRIDGE_TOKEN
+        return token_ok(provided)
 
     def _send(self, payload, status=200):
         body = json.dumps(payload).encode("utf-8")
@@ -446,7 +487,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._fail("MetaTrader 5 terminal is not running", 503)
             # Once /connect has minted a session, trade writes must carry it:
             # nobody trades on a terminal the app did not log into.
-            if SESSION is not None and body.get("session") != SESSION:
+            if not session_ok(body.get("session")):
                 return self._fail("stale or missing session — reconnect from EzyView", 401)
             if url.path == "/order":
                 return self._order(body)
@@ -851,6 +892,14 @@ def main() -> int:
         sys.stderr.write(f"warning: MT5 not attached yet: {_last_error}\n")
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     server.daemon_threads = True
+
+    def _rate_janitor() -> None:
+        while True:
+            time.sleep(RATE_WINDOW_SEC)
+            with RATE_LOCK:
+                _prune_rate_buckets()
+
+    threading.Thread(target=_rate_janitor, daemon=True).start()
     print(f"EzyView MT5 bridge listening on http://{HOST}:{PORT} (terminal attached: {_last_error is None})")
     try:
         server.serve_forever()
