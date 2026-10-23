@@ -31,6 +31,12 @@
   </categories>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.3.1" date="2026-10-23">
+      <description>
+        <p>Trading safety fixes for paper and MetaTrader 5 closes and stops.</p>
+        <p>Policy-compliant Debian package with licence and documentation files.</p>
+      </description>
+    </release>
     <release version="0.3.0" date="2026-10-22"/>
   </releases>
 </component>

@@ -11,9 +11,23 @@ Open-source, self-hosted TradingView-class trading terminal — built to exceed 
 - **Research**: economic calendar, news, earnings, dividends, options, screener, heatmap.
 - **Collaboration**: shareable chart links, embeddable widgets, real-time co-editing (later).
 
-Status: **v0.2.0 shipped.** See [`MASTERPLAN.md`](MASTERPLAN.md) for the full plan and
+Status: **v0.3.1.** See [`MASTERPLAN.md`](MASTERPLAN.md) for the full plan and
 [`docs/superpowers/specs/2026-10-21-investing-com-brand-redesign.md`](docs/superpowers/specs/2026-10-21-investing-com-brand-redesign.md)
 for the Investing.com brand redesign.
+
+## Install (Linux)
+
+Download the `.deb` from [Releases](https://github.com/printezy247/EzyView/releases/latest)
+and verify it against the published `SHA256SUMS`:
+
+```bash
+sha256sum -c SHA256SUMS --ignore-missing
+sudo apt install ./EzyView_<version>_amd64.deb
+```
+
+The portable AppImage needs FUSE 2 (`libfuse2t64` on Mint 22 / Ubuntu 24.04);
+without it use `--appimage-extract-and-run`. See [`docs/RELEASING.md`](docs/RELEASING.md)
+for the release and update process.
 
 ## Running it
 

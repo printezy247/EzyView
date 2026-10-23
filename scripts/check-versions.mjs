@@ -26,4 +26,4 @@ if (distinct.size !== 1 || distinct.has(undefined)) {
   process.exit(1);
 }
 
-console.log(`Version ${[...distinct][0]} is consistent across ${versions.size} files.`);
+process.stdout.write(`Version ${[...distinct][0]} is consistent across ${versions.size} files.\n`);
