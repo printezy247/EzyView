@@ -1,0 +1,55 @@
+.TH EZYVIEW-MT5-BRIDGE 1 "2026-10-23" "EzyView 0.3.1" "User Commands"
+.SH NAME
+ezyview-mt5-bridge \- start the local MetaTrader 5 bridge used by EzyView
+.SH SYNOPSIS
+.B ezyview-mt5-bridge
+[\fB\-\-check\fR | \fB\-\-token\fR | \fB\-\-help\fR]
+.SH DESCRIPTION
+Starts the local REST bridge on 127.0.0.1:8765. The bridge attaches to a running
+MetaTrader 5 terminal through Windows Python and the official MetaTrader5
+package inside the Wine prefix that runs the terminal.
+.PP
+On first use a random token is written to
+.I ~/.config/ezyview/mt5-bridge.token
+with mode 0600 and exported as
+.BR EZYVIEW_MT5_TOKEN .
+The app reads the same file, so the Bridge token field fills itself in. Without
+a token the bridge refuses trade writes.
+.PP
+Wine and MetaTrader 5 are not bundled with EzyView. The launcher reports which
+prerequisite is missing.
+.SH OPTIONS
+.TP
+.B \-\-check
+Request /health from a running bridge and print the JSON answer.
+.TP
+.B \-\-token
+Print the per-install token, for pasting into Settings \-> MT5 setup.
+.TP
+.B \-\-help
+Show usage.
+.SH ENVIRONMENT
+.TP
+.B EZYVIEW_MT5_BRIDGE_DIR
+Directory containing bridge.py (default /usr/lib/EzyView/mt5-bridge).
+.TP
+.B EZYVIEW_MT5_PYTHON
+Windows Python executable inside the prefix.
+.TP
+.B WINEPREFIX
+Wine prefix that runs MetaTrader 5 (default ~/.mt5).
+.TP
+.B EZYVIEW_MT5_URL
+Health-check base URL (default http://127.0.0.1:8765).
+.SH FILES
+.TP
+.I ~/.config/ezyview/mt5-bridge.token
+Per-install shared token, mode 0600.
+.TP
+.I /usr/lib/EzyView/mt5-bridge/bridge.py
+The bridge server.
+.TP
+.I /usr/share/doc/ezy-view/mt5-bridge.md
+Setup guide, including the Wine Python one-time steps.
+.SH SEE ALSO
+.BR ezyview (1)

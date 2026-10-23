@@ -44,6 +44,13 @@ AUDIT_DB = os.environ.get(
 
 # Optional shared secret token and server-side safety limits.
 BRIDGE_TOKEN = os.environ.get("EZYVIEW_MT5_TOKEN", "").strip()
+# Reads stay open without a token; writes do not. The packaged launcher always
+# generates one, so this only relaxes a deliberate development setup.
+ALLOW_INSECURE_WRITES = os.environ.get("EZYVIEW_MT5_ALLOW_INSECURE", "").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+)
 MAX_ORDER_VOLUME = float(os.environ.get("EZYVIEW_MT5_MAX_VOLUME", "50.0"))
 SYMBOL_ALLOW_LIST = [
     s.strip().upper()
@@ -342,7 +349,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def _authorized(self) -> bool:
         if not BRIDGE_TOKEN:
-            return True
+            # A bridge with no token must not be able to place orders: any
+            # program on this machine could otherwise drive the broker.
+            return self.command != "POST" or ALLOW_INSECURE_WRITES
         # The token may arrive as a header or as a query parameter: a custom
         # header would make the browser send a preflight, which this local
         # server answers unreliably.

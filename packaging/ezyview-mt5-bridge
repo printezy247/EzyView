@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+# Start the MetaTrader 5 bridge with a per-install shared token.
+#
+# The token is generated once at ~/.config/ezyview/mt5-bridge.token (0600) and
+# exported to the bridge. Paste the same value into Settings -> MT5 setup ->
+# Bridge token, or run `ezyview-mt5-bridge --token` to print it. Without a
+# token the packaged bridge refuses trade writes.
+set -euo pipefail
+
+BRIDGE_DIR=${EZYVIEW_MT5_BRIDGE_DIR:-/usr/lib/EzyView/mt5-bridge}
+TOKEN_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/ezyview"
+TOKEN_FILE="$TOKEN_DIR/mt5-bridge.token"
+BRIDGE_URL=${EZYVIEW_MT5_URL:-http://127.0.0.1:8765}
+
+ensure_token() {
+  mkdir -p "$TOKEN_DIR"
+  chmod 700 "$TOKEN_DIR"
+  if [[ ! -s "$TOKEN_FILE" ]]; then
+    umask 077
+    python3 -c 'import secrets; print(secrets.token_hex(32))' > "$TOKEN_FILE"
+  fi
+  chmod 600 "$TOKEN_FILE"
+}
+
+ensure_token
+TOKEN=$(<"$TOKEN_FILE")
+export EZYVIEW_MT5_TOKEN="$TOKEN"
+
+case "${1:-}" in
+  --token)
+    printf '%s\n' "$TOKEN"
+    exit 0
+    ;;
+  --check)
+    python3 - "$BRIDGE_URL" "$TOKEN" <<'PY'
+import sys
+import urllib.request
+
+url, token = sys.argv[1], sys.argv[2]
+request = urllib.request.Request(url + "/health", headers={"X-Bridge-Token": token})
+try:
+    with urllib.request.urlopen(request, timeout=3) as response:
+        print(response.read().decode("utf-8"))
+except Exception as error:
+    print(f"Bridge not reachable at {url}: {error}", file=sys.stderr)
+    print("Start it in another terminal with: ezyview-mt5-bridge", file=sys.stderr)
+    raise SystemExit(1)
+PY
+    exit 0
+    ;;
+  -h|--help)
+    cat <<'EOF'
+Usage: ezyview-mt5-bridge [--check | --token | --help]
+
+Starts the local MT5 bridge (127.0.0.1:8765) using the per-install token.
+
+  --check   Ask the running bridge for /health
+  --token   Print the token to paste into Settings -> MT5 setup
+  --help    This text
+
+The bridge needs Windows Python with the MetaTrader5 package inside the Wine
+prefix that runs your terminal. It does not install Wine or MetaTrader 5.
+See /usr/share/doc/ezy-view/mt5-bridge.md for the one-time setup.
+EOF
+    exit 0
+    ;;
+esac
+
+if [[ ! -f "$BRIDGE_DIR/bridge.py" ]]; then
+  echo "bridge.py not found at $BRIDGE_DIR (set EZYVIEW_MT5_BRIDGE_DIR)." >&2
+  exit 1
+fi
+
+WINEPREFIX=${WINEPREFIX:-$HOME/.mt5}
+PYTHON=${EZYVIEW_MT5_PYTHON:-"$WINEPREFIX/drive_c/ezyview-py/python.exe"}
+
+if ! command -v wine >/dev/null 2>&1; then
+  echo "Wine is not installed. EzyView does not bundle Wine or MetaTrader 5." >&2
+  echo "Install Wine and run the terminal in a prefix, then see:" >&2
+  echo "  /usr/share/doc/ezy-view/mt5-bridge.md" >&2
+  exit 1
+fi
+if [[ ! -f "$PYTHON" ]]; then
+  echo "Windows Python not found at $PYTHON." >&2
+  echo "The bridge needs Windows Python + 'pip install MetaTrader5' inside the" >&2
+  echo "Wine prefix that runs MetaTrader 5; Wine alone is not enough." >&2
+  echo "Setup: /usr/share/doc/ezy-view/mt5-bridge.md" >&2
+  echo "Override the interpreter with EZYVIEW_MT5_PYTHON." >&2
+  exit 1
+fi
+
+# Wine's Python wants a Windows path; `winepath` may not answer before the
+# prefix exists, so fall back to Wine's Z: mapping of the Linux root.
+win_bridge=$(winepath -w "$BRIDGE_DIR/bridge.py" 2>/dev/null || true)
+if [[ -z "$win_bridge" ]]; then
+  win_bridge="Z:$(printf '%s' "$BRIDGE_DIR/bridge.py" | sed 's|/|\\|g')"
+fi
+
+echo "Starting the MT5 bridge on $BRIDGE_URL"
+echo "Token: $TOKEN_FILE (paste it in Settings -> MT5 setup)"
+exec wine "$PYTHON" "$win_bridge"

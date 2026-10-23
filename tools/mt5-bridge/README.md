@@ -26,7 +26,23 @@ py -3 -m pip install MetaTrader5
 py -3 tools\mt5-bridge\bridge.py
 ```
 
-### Linux (Wine prefix, as set up here)
+### Linux from the EzyView package
+
+The `.deb` ships this bridge and a launcher. It creates a per-install token at
+`~/.config/ezyview/mt5-bridge.token` (0600) on first use and exports it to the
+bridge:
+
+```bash
+ezyview-mt5-bridge            # start it (needs the Wine Python below)
+ezyview-mt5-bridge --check    # ask the running bridge for /health
+ezyview-mt5-bridge --token    # print the token for Settings → MT5 setup
+```
+
+The app also reads that file on startup, so the Bridge token field fills itself
+in when the packaged launcher created it. Wine and MetaTrader 5 are **not**
+bundled; install them yourself. The launcher explains what is missing.
+
+### Linux (Wine prefix, manual)
 
 ```bash
 # one-time: embeddable Python inside the prefix
@@ -45,6 +61,7 @@ wine "$WINEPREFIX/drive_c/ezyview-py/python.exe" Z:/path/to/tools/mt5-bridge/bri
 | --- | --- | --- |
 | `EZYVIEW_MT5_PORT` | `8765` | Listen port (127.0.0.1 only) |
 | `EZYVIEW_MT5_TOKEN` | — | Shared secret every request must carry (header `X-Bridge-Token` or `?token=`) |
+| `EZYVIEW_MT5_ALLOW_INSECURE` | — | Allow POST/write endpoints when no token is set (development only) |
 | `MT5_PATH` | auto-detected | `terminal64.exe` path |
 | `MT5_LOGIN` / `MT5_SERVER` / `MT5_PASSWORD` | — | Optional explicit login |
 | `EZYVIEW_MT5_DEVIATION` | `20` | Slippage points on market orders |
@@ -57,11 +74,14 @@ The bridge can place real orders, so two things protect it:
 - **CORS** — only the app's own origins (`tauri://localhost`, the dev server
   on port 1420) may talk to it. Any other page on this machine is refused.
 - **Token** — set `EZYVIEW_MT5_TOKEN` and every request must carry it. The
-  app asks for it in *MT5 setup → Bridge token* and keeps it in your OS
-  keyring, never in `localStorage`.
+  packaged launcher generates one and the app reads it automatically; a token
+  pasted in *MT5 setup → Bridge token* is kept in your OS keyring, never in
+  `localStorage`.
 
-Without a token the bridge is still bound to `127.0.0.1` and origin-checked,
-but any program running on this machine can talk to it.
+Without a token the bridge still answers reads on `127.0.0.1`, but **refuses
+POST/write endpoints** — otherwise any program on this machine could place
+orders. `EZYVIEW_MT5_ALLOW_INSECURE=1` restores the old behaviour for a
+deliberate development setup; do not use it on a trading machine.
 
 ## Endpoints
 
