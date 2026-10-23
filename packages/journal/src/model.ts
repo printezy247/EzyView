@@ -55,6 +55,49 @@ export interface JournalNote {
   screenshots?: string[];
 }
 
+/** Where a pre-trade plan ended up. */
+export type TradePlanStatus = "planned" | "executed" | "missed" | "cancelled";
+
+/**
+ * A trade thesis recorded before the entry.
+ *
+ * Plans are deliberately separate from `JournalEntry`: the point is to compare
+ * what was intended with what was executed, and a plan can be missed or
+ * cancelled without ever becoming a trade.
+ */
+export interface TradePlan {
+  id: string;
+  symbol: string;
+  side: "long" | "short";
+  createdAt: number;
+  entry?: number;
+  stop?: number;
+  target?: number;
+  setup?: string;
+  thesis?: string;
+  status: TradePlanStatus;
+}
+
+export interface PlanRiskReward {
+  /** Distance from entry to stop, in price. */
+  risk: number;
+  /** Distance from entry to target, in price. */
+  reward: number;
+  /** reward / risk; 2 means a 2R plan. */
+  ratio: number;
+}
+
+/** R:R from the plan's own levels, or null when a level is missing/zero-risk. */
+export function planRewardRisk(plan: Pick<TradePlan, "entry" | "stop" | "target">): PlanRiskReward | null {
+  const { entry, stop, target } = plan;
+  if (entry === undefined || stop === undefined || target === undefined) return null;
+  if (![entry, stop, target].every((value) => Number.isFinite(value))) return null;
+  const risk = Math.abs(entry - stop);
+  const reward = Math.abs(target - entry);
+  if (risk <= 0 || reward <= 0) return null;
+  return { risk, reward, ratio: reward / risk };
+}
+
 export type JournalItem =
   | { kind: "trade"; entry: JournalEntry }
   | { kind: "note"; note: JournalNote };

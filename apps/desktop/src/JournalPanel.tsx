@@ -9,6 +9,7 @@ import { useMt5 } from "./mt5";
 import { useTrading } from "./trading";
 import { JournalCalendar } from "./JournalCalendar";
 import { JournalEntryDialog } from "./JournalEntryDialog";
+import { JournalPlans } from "./JournalPlans";
 import { JournalPropFirmBar } from "./JournalPropFirmBar";
 import { JournalReviews } from "./JournalReviews";
 import { JournalStatsView } from "./JournalStatsView";
@@ -24,10 +25,11 @@ interface Row {
   node: ReactNode;
 }
 
-type Tab = "feed" | "calendar" | "stats" | "reviews";
+type Tab = "feed" | "plans" | "calendar" | "stats" | "reviews";
 
 const TABS: readonly { id: Tab; label: string }[] = [
   { id: "feed", label: "Feed" },
+  { id: "plans", label: "Plans" },
   { id: "calendar", label: "Calendar" },
   { id: "stats", label: "Stats" },
   { id: "reviews", label: "Reviews" },
@@ -259,6 +261,7 @@ export function JournalPanel({ onClose }: Props) {
         </div>
       )}
 
+      {tab === "plans" && <JournalPlans />}
       {tab === "calendar" && <JournalCalendar entries={entries} selectedDay={selectedDay} onSelectDay={setSelectedDay} />}
       {tab === "stats" && <JournalStatsView entries={entries} />}
       {tab === "reviews" && (
