@@ -55,8 +55,11 @@ jobs:
           test -n "$deb"
           lintian --fail-on error "$deb"
           dpkg-deb -I "$deb"
-          dpkg-deb -c "$deb" | grep -q 'usr/share/doc/ezy-view/copyright'
-          dpkg-deb -c "$deb" | grep -q 'usr/share/man/man1/ezyview.1.gz'
+          # List once to a file: grep -q closes the pipe early, which makes
+          # dpkg-deb's tar fail with SIGPIPE under `set -o pipefail`.
+          dpkg-deb -c "$deb" > /tmp/deb-contents.txt
+          grep -q 'usr/share/doc/ezy-view/copyright' /tmp/deb-contents.txt
+          grep -q 'usr/share/man/man1/ezyview.1.gz' /tmp/deb-contents.txt
           rm -rf /tmp/ezyview-deb && mkdir -p /tmp/ezyview-deb
           dpkg-deb -x "$deb" /tmp/ezyview-deb
           desktop-file-validate /tmp/ezyview-deb/usr/share/applications/EzyView.desktop
