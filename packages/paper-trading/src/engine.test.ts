@@ -393,4 +393,88 @@ describe("rejected orders", () => {
       await expect(engine.placeOrder({ symbol: "S", side: "buy", type: "limit", qty: 1e12, price: 1 })).rejects.toThrow(/qty/);
     });
   });
+
+  describe("trailing stop", () => {
+    it("seeds the stop at entry minus distance and ratchets up for a long", async () => {
+      const stopOf = async (): Promise<number | undefined> => (await engine.getPositions())[0]?.stopLoss;
+      engine.updateQuote("S", 100);
+      await engine.placeOrder({ symbol: "S", side: "buy", type: "market", qty: 1 });
+      await engine.setTrailingStop("S", 10);
+
+      // Seed: 100 - 10 = 90.
+      await expect(stopOf()).resolves.toBe(90);
+
+      // Price rises to 120 → stop trails to 110.
+      engine.updateQuote("S", 120);
+      await expect(stopOf()).resolves.toBe(110);
+
+      // Price dips to 115 (still above the trailed stop) → candidate 105 is
+      // below the ratcheted 110, so the stop holds at 110 and stays open.
+      engine.updateQuote("S", 115);
+      await expect(stopOf()).resolves.toBe(110);
+    });
+
+    it("triggers a close when price falls back through the trailed stop", async () => {
+      engine.updateQuote("S", 100);
+      await engine.placeOrder({ symbol: "S", side: "buy", type: "market", qty: 1 });
+      await engine.setTrailingStop("S", 10);
+
+      engine.updateQuote("S", 130); // stop → 120
+      engine.updateQuote("S", 119); // falls through 120 → stop-out
+      await expect(engine.getPositions()).resolves.toEqual([]);
+    });
+
+    it("clears the trailing stop with null", async () => {
+      engine.updateQuote("S", 100);
+      await engine.placeOrder({ symbol: "S", side: "buy", type: "market", qty: 1 });
+      await engine.setTrailingStop("S", 10);
+      const cleared = await engine.setTrailingStop("S", null);
+      expect(cleared.trailingDistance).toBeUndefined();
+    });
+
+    it("refuses a non-positive distance and a flat book", async () => {
+      await expect(engine.setTrailingStop("S", 0)).rejects.toThrow(PaperTradingError);
+      engine.updateQuote("S", 100);
+      await engine.placeOrder({ symbol: "S", side: "buy", type: "market", qty: 1 });
+      await expect(engine.setTrailingStop("S", -5)).rejects.toThrow(/positive/);
+    });
+  });
+
+  describe("OCO orders", () => {
+    it("filling one leg cancels the sibling", async () => {
+      engine.updateQuote("S", 100);
+      const taker = await engine.placeOrder({ symbol: "S", side: "buy", type: "market", qty: 1 });
+      expect(taker.status).toBe("filled");
+
+      const tp = await engine.placeOrder({ symbol: "S", side: "sell", type: "limit", qty: 1, price: 120 });
+      const sl = await engine.placeOrder({ symbol: "S", side: "sell", type: "stop", qty: 1, stopPrice: 80 });
+      const groupId = engine.linkOco(tp.id, sl.id);
+      expect(groupId).toBeTruthy();
+
+      // Price hits the take-profit limit → fills and cancels the stop.
+      engine.updateQuote("S", 120);
+      const orders = await engine.getOrders();
+      expect(orders.filter((o) => o.status === "pending")).toEqual([]);
+    });
+
+    it("cancelling one leg cancels the sibling", async () => {
+      engine.updateQuote("S", 100);
+      await engine.placeOrder({ symbol: "S", side: "buy", type: "market", qty: 1 });
+      const tp = await engine.placeOrder({ symbol: "S", side: "sell", type: "limit", qty: 1, price: 120 });
+      const sl = await engine.placeOrder({ symbol: "S", side: "sell", type: "stop", qty: 1, stopPrice: 80 });
+      engine.linkOco(tp.id, sl.id);
+
+      await engine.cancelOrder(tp.id);
+      const pending = (await engine.getOrders()).filter((o) => o.status === "pending");
+      expect(pending).toEqual([]);
+    });
+
+    it("refuses to link orders on different symbols", async () => {
+      engine.updateQuote("S", 100);
+      engine.updateQuote("T", 100);
+      const a = await engine.placeOrder({ symbol: "S", side: "buy", type: "limit", qty: 1, price: 90 });
+      const b = await engine.placeOrder({ symbol: "T", side: "buy", type: "limit", qty: 1, price: 90 });
+      expect(() => engine.linkOco(a.id, b.id)).toThrow(/symbol/);
+    });
+  });
 });
