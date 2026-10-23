@@ -77,7 +77,7 @@ jobs:
           chmod +x release-assets/*.AppImage
           (cd release-assets && sha256sum ./*.deb ./*.AppImage > SHA256SUMS)
           ls -lh release-assets
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ezyview-linux
           path: release-assets/
