@@ -68,7 +68,8 @@ describe("computeStats", () => {
     expect(stats.bestTrade).toBe(20);
     expect(stats.worstTrade).toBe(-5);
     expect(stats.profitFactor).toBeCloseTo(4, 6);
-    expect(stats.expectancy).toBeCloseTo((1 / 3) * 20 - (2 / 3) * 5, 6);
+    // One win and one loss over three trades; the break-even trade adds zero.
+    expect(stats.expectancy).toBeCloseTo((20 - 5) / 3, 6);
   });
 
   it("never divides by zero on an all-winner streak", () => {

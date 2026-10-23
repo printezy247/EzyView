@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { precisionFor } from "./data";
+import { precisionForSymbol } from "./pricePrecision";
 import { OrderTicket } from "./OrderTicket";
 import { useMt5 } from "./mt5";
 import { useTrading } from "./trading";
@@ -59,7 +59,7 @@ export function TradingPanel({ symbol }: Props) {
     positions[0]?.markPrice ??
     deals[0]?.price ??
     null;
-  const precision = precisionFor(sample);
+  const precision = precisionForSymbol(symbol, sample);
 
   const heightClass = minimized ? "h-8" : expanded ? "h-80" : "h-56";
 

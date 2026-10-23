@@ -1,7 +1,8 @@
 import { memo, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { activeChartOf } from "./layout";
-import { precisionFor, quoteOf } from "./data";
+import { quoteOf } from "./data";
+import { precisionForSymbol } from "./pricePrecision";
 import { useTape, EMPTY_TAPE } from "./tapeStore";
 import { useWorkspace } from "./store";
 import { Button, IconButton } from "./ui";
@@ -29,7 +30,7 @@ const TapeRow = memo(function TapeRow({
   digits: number;
 }) {
   const safePrice = Number.isFinite(price) ? price : 0;
-  const safeSize = Number.isFinite(size) ? size : 1;
+  const safeSize = Number.isFinite(size) ? size : 0;
   return (
     <tr className="ev-row border-b border-ev-panel">
       <td className="px-2 text-micro text-ev-faint">{when(ts)}</td>
@@ -37,42 +38,18 @@ const TapeRow = memo(function TapeRow({
         {safePrice.toFixed(digits)}
       </td>
       <td className="num px-2 text-right text-ev-muted">
-        {safeSize >= 1 ? safeSize.toLocaleString() : safeSize.toFixed(3)}
+        {safeSize > 0 ? (safeSize >= 1 ? safeSize.toLocaleString() : safeSize.toFixed(3)) : "—"}
       </td>
     </tr>
   );
 });
 
-/** Generate a realistic individual trade size for a quote print. */
-function realisticSize(symbol: string, price: number): number {
-  const s = symbol.toUpperCase();
-  if (s.includes("BTC")) {
-    const val = 0.01 + Math.random() * 0.45;
-    return Math.round(val * 1000) / 1000;
-  }
-  if (s.includes("ETH")) {
-    const val = 0.1 + Math.random() * 2.5;
-    return Math.round(val * 100) / 100;
-  }
-  if (s.includes("XAU") || s.includes("GOLD") || s.includes("PAXG")) {
-    const val = 0.05 + Math.random() * 1.5;
-    return Math.round(val * 100) / 100;
-  }
-  if (s.includes("EUR") || s.includes("GBP") || s.includes("USD")) {
-    const val = 0.1 + Math.random() * 3.0;
-    return Math.round(val * 10) / 10;
-  }
-  if (price >= 500) {
-    return Math.floor(1 + Math.random() * 25);
-  }
-  return Math.floor(10 + Math.random() * 200);
-}
-
 /**
- * Time & Sales: the live tape for the active symbol, newest print at the top.
+ * Time & Sales: the live tape for the active symbol, newest tick at the top.
  *
- * Reads live quote ticks from the active quote feed (Binance public feed, MT5 broker
- * or fallback adapter) and logs real-time executed prints with buy/sell side detection.
+ * The app's feeds expose quotes, not an exchange trade tape, so these rows are
+ * quote ticks: direction is inferred from the price change and the size is
+ * unknown. No trade size is invented here.
  */
 export function TimeAndSales() {
   const navigate = useNavigate();
@@ -84,7 +61,6 @@ export function TimeAndSales() {
   const push = useTape((s) => s.push);
   const clear = useTape((s) => s.clear);
   const [paused, setPaused] = useState(false);
-  const [minSize, setMinSize] = useState<number>(0);
   const [pace, setPace] = useState<number>(1200);
 
   useEffect(() => {
@@ -94,8 +70,8 @@ export function TimeAndSales() {
     const tick = () => {
       void quoteOf(symbol).then((q) => {
         if (!cancelled && q && Number.isFinite(q.last) && q.last > 0) {
-          const size = realisticSize(symbol, q.last);
-          push(symbol, q.last, size);
+          // 0 means "the feed did not report a size", never a made-up number.
+          push(symbol, q.last, 0);
         }
       });
     };
@@ -107,20 +83,18 @@ export function TimeAndSales() {
     };
   }, [symbol, push, paused, pace, isReplay]);
 
-  const filteredEntries = minSize > 0 ? entries.filter((e) => e.size >= minSize) : entries;
-
-  // Buy/sell imbalance over the visible window
-  const buys = filteredEntries.filter((e) => e.side === "buy").length;
-  const sells = filteredEntries.length - buys;
-  const buyPct = filteredEntries.length === 0 ? 50 : Math.round((buys / filteredEntries.length) * 100);
-  const samplePrice = filteredEntries[0]?.price ?? 100;
-  const digits = precisionFor(Number.isFinite(samplePrice) ? samplePrice : 100);
+  // Upticks vs downticks over the visible window.
+  const buys = entries.filter((e) => e.side === "buy").length;
+  const sells = entries.length - buys;
+  const buyPct = entries.length === 0 ? 50 : Math.round((buys / entries.length) * 100);
+  const samplePrice = entries[0]?.price ?? 100;
+  const digits = precisionForSymbol(symbol, Number.isFinite(samplePrice) ? samplePrice : 100);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex items-center gap-1.5 border-b border-ev-raised px-2 py-1.5">
         <span className="text-dense font-medium text-ev-strong">{symbol}</span>
-        <span className="text-micro text-ev-faint">{filteredEntries.length} prints</span>
+        <span className="text-micro text-ev-faint">{entries.length} ticks</span>
 
         <select
           value={pace}
@@ -132,19 +106,6 @@ export function TimeAndSales() {
           <option value={400}>Fast (400ms)</option>
           <option value={1200}>Normal (1.2s)</option>
           <option value={3000}>Slow (3s)</option>
-        </select>
-
-        <select
-          value={minSize}
-          onChange={(e) => setMinSize(Number(e.target.value))}
-          aria-label="Filter prints by minimum size"
-          className="rounded bg-ev-raised px-1 py-0.5 text-micro text-ev-muted hover:text-ev-strong"
-          title="Filter tape prints by minimum size"
-        >
-          <option value={0}>All sizes</option>
-          <option value={0.5}>&ge; 0.5</option>
-          <option value={1}>&ge; 1.0</option>
-          <option value={5}>&ge; 5.0</option>
         </select>
 
         <IconButton
@@ -166,9 +127,13 @@ export function TimeAndSales() {
         </IconButton>
       </div>
 
-      {filteredEntries.length > 0 && (
-        <div className="flex items-center gap-2 px-2 py-1" title="Share of buy-side prints in the window">
-          <span className="text-micro text-ev-faint">Buy</span>
+      <p className="px-2 pb-1 text-micro text-ev-faint">
+        Quote ticks, not exchange prints — this feed does not report trade sizes.
+      </p>
+
+      {entries.length > 0 && (
+        <div className="flex items-center gap-2 px-2 py-1" title="Share of upticks in the window">
+          <span className="text-micro text-ev-faint">Up</span>
           <div className="flex h-1.5 flex-1 overflow-hidden rounded bg-ev-raised">
             <div className="bg-ev-up" style={{ width: `${buyPct}%` }} />
             <div className="bg-ev-down" style={{ width: `${100 - buyPct}%` }} />
@@ -180,9 +145,9 @@ export function TimeAndSales() {
       )}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {filteredEntries.length === 0 ? (
+        {entries.length === 0 ? (
           <p className="px-3 py-6 text-base leading-relaxed text-ev-faint">
-            {paused ? "Tape is paused." : `Waiting for prints on ${symbol}. Each trade tick appears here in real-time.`}
+            {paused ? "Tape is paused." : `Waiting for quote ticks on ${symbol}.`}
           </p>
         ) : (
           <table className="w-full border-collapse text-left">
@@ -194,7 +159,7 @@ export function TimeAndSales() {
               </tr>
             </thead>
             <tbody>
-              {filteredEntries.map((e) => (
+              {entries.map((e) => (
                 <TapeRow
                   key={e.id}
                   ts={e.ts}

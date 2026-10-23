@@ -164,9 +164,9 @@ export class PaperTradingEngine implements TradingAdapter {
     };
   }
 
-  /** Snapshots, since the engine replaces its records rather than mutating them. */
+  /** Copies, so a caller cannot mutate the engine's records through a snapshot. */
   async getPositions(): Promise<PaperPosition[]> {
-    return Array.from(this.positions.values());
+    return Array.from(this.positions.values(), (position) => ({ ...position }));
   }
 
   async getOrders(): Promise<PaperOrder[]> {

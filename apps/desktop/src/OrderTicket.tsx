@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { OrderRequest, OrderSide, OrderType } from "@ezyview/data-adapters";
-import { precisionFor, quoteOf, tickerOf } from "./data";
+import { quoteOf, tickerOf } from "./data";
+import { precisionForSymbol } from "./pricePrecision";
 import { activeChartOf } from "./layout";
 import { useMt5 } from "./mt5";
 import { SourceWarning } from "./SourceWarning";
@@ -87,7 +88,7 @@ export function OrderTicket({ symbol }: Props) {
       void quoteOf(symbol).then((quote) => {
         if (cancelled || !quote) return;
         setLast(quote.last);
-        setLimitPrice((current) => (current === "" ? quote.last.toFixed(precisionFor(quote.last)) : current));
+        setLimitPrice((current) => (current === "" ? quote.last.toFixed(precisionForSymbol(symbol, quote.last)) : current));
       });
     };
     tick();
@@ -98,7 +99,7 @@ export function OrderTicket({ symbol }: Props) {
     };
   }, [symbol]);
 
-  const precision = precisionFor(last);
+  const precision = precisionForSymbol(symbol, last);
   const ticker = tickerOf(symbol);
 
   // An empty field is not a price: `Number("")` is 0, which would send a live

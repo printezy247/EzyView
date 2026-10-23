@@ -23,7 +23,7 @@ describe("TimeAndSales", () => {
     vi.useRealTimers();
   });
 
-  it("renders empty state initially", async () => {
+  it("renders the empty state and says the rows are quote ticks", async () => {
     await act(async () => {
       render(
         <MemoryRouter>
@@ -31,11 +31,12 @@ describe("TimeAndSales", () => {
         </MemoryRouter>,
       );
     });
-    expect(screen.getByText("0 prints")).toBeTruthy();
-    expect(screen.getByText(/Waiting for prints/i)).toBeTruthy();
+    expect(screen.getByText("0 ticks")).toBeTruthy();
+    expect(screen.getByText(/Waiting for quote ticks/i)).toBeTruthy();
+    expect(screen.getByText(/this feed does not report trade sizes/i)).toBeTruthy();
   });
 
-  it("displays prints pushed to the tape store", async () => {
+  it("shows a reported size when the tape has one", async () => {
     await act(async () => {
       render(
         <MemoryRouter>
@@ -48,11 +49,12 @@ describe("TimeAndSales", () => {
       useTape.getState().push("OANDA:XAUUSD", 4128.5, 1.25);
     });
 
-    expect(screen.getByText("1 prints")).toBeTruthy();
+    expect(screen.getByText("1 ticks")).toBeTruthy();
     expect(screen.getByText("4128.50")).toBeTruthy();
+    expect(screen.getByText("1.25")).toBeTruthy();
   });
 
-  it("filters prints by minimum size", async () => {
+  it("never presents a missing size as a number", async () => {
     await act(async () => {
       render(
         <MemoryRouter>
@@ -62,20 +64,11 @@ describe("TimeAndSales", () => {
     });
 
     act(() => {
-      useTape.getState().push("OANDA:XAUUSD", 4120.0, 0.2);
-      useTape.getState().push("OANDA:XAUUSD", 4125.0, 1.5);
+      useTape.getState().push("OANDA:XAUUSD", 4128.5, 0);
     });
 
-    expect(screen.getByText("2 prints")).toBeTruthy();
-    expect(screen.getByText("4125.00")).toBeTruthy();
-    expect(screen.getByText("4120.00")).toBeTruthy();
-
-    // Select min size >= 1.0
-    fireEvent.change(screen.getByLabelText("Filter prints by minimum size"), { target: { value: "1" } });
-
-    expect(screen.getByText("1 prints")).toBeTruthy();
-    expect(screen.getByText("4125.00")).toBeTruthy();
-    expect(screen.queryByText("4120.00")).toBeNull();
+    expect(screen.getByText("4128.50")).toBeTruthy();
+    expect(screen.getByText("—")).toBeTruthy();
   });
 
   it("clears tape when clear button is clicked", async () => {
@@ -90,11 +83,11 @@ describe("TimeAndSales", () => {
     act(() => {
       useTape.getState().push("OANDA:XAUUSD", 4120.0, 1.0);
     });
-    expect(screen.getByText("1 prints")).toBeTruthy();
+    expect(screen.getByText("1 ticks")).toBeTruthy();
     expect(screen.getByText("4120.00")).toBeTruthy();
 
     fireEvent.click(screen.getByLabelText("Clear the tape"));
-    expect(screen.getByText("0 prints")).toBeTruthy();
+    expect(screen.getByText("0 ticks")).toBeTruthy();
     expect(screen.queryByText("4120.00")).toBeNull();
   });
 

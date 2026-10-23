@@ -44,6 +44,16 @@ describe("PaperTradingEngine", () => {
     expect(position?.margin).toBeCloseTo(10);
   });
 
+  it("returns position copies, so callers cannot mutate engine state", async () => {
+    engine.updateQuote("DEMO:BTCUSDT", 100);
+    await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "market", qty: 10 });
+
+    const [position] = await engine.getPositions();
+    (position as { qty: number }).qty = 999;
+    const [fresh] = await engine.getPositions();
+    expect(fresh?.qty).toBe(10);
+  });
+
   it("averages the entry when adding to an existing position", async () => {
     engine.updateQuote("DEMO:BTCUSDT", 100);
     await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "market", qty: 10 });

@@ -76,6 +76,9 @@ export function DepthOfMarket({ symbol, precision }: Props) {
   return (
     <aside aria-label="Depth of market" className="flex w-full min-w-0 flex-1 flex-col bg-ev-bg">
       <div className="border-b border-ev-raised px-3 py-2">
+          <p className="pb-1 text-micro text-ev-faint" title="Sizes are generated from the quote, not broker depth">
+            Indicative ladder — sizes simulated from the quote
+          </p>
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold uppercase tracking-wider text-ev-muted">Depth of Market</h2>
             <div className="flex items-center gap-2">

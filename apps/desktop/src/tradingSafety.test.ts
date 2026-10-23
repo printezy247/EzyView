@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   ApprovalTokens,
   DailyRiskTracker,
@@ -134,6 +134,25 @@ describe("ApprovalTokens", () => {
   it("mints distinct tokens", () => {
     const tokens = new ApprovalTokens();
     expect(tokens.mint()).not.toBe(tokens.mint());
+  });
+});
+
+describe("DailyRiskTracker day boundary", () => {
+  it("resets the session on the local calendar day", () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(2026, 0, 15, 23, 30));
+      const tracker = new DailyRiskTracker();
+      tracker.initSession(10_000);
+      tracker.recordClosedTrade("EURUSD", -100, Date.now());
+      expect(tracker.isSymbolInCooldown("EURUSD", 3600).inCooldown).toBe(true);
+
+      // Twenty minutes later, on the next local day: the loss is yesterday's.
+      vi.setSystemTime(new Date(2026, 0, 16, 0, 10));
+      expect(tracker.isSymbolInCooldown("EURUSD", 3600).inCooldown).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

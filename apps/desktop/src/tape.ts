@@ -1,11 +1,10 @@
 /**
- * Time & Sales: a bounded log of prints, one per quote tick.
+ * Time & Sales: a bounded log of quote ticks.
  *
  * The feed the app has is quotes, not a trade tape, so each quote becomes one
- * print whose side is inferred from the previous price. That is honest about
- * what the data supports and still gives a trader the thing a tape is for —
- * direction and pace at the current level. The buffer keeps memory flat no
- * matter how long a session runs.
+ * tick whose side is inferred from the previous price. A tick carries no
+ * trade size, and `size: 0` means exactly that — callers must not invent one.
+ * The buffer keeps memory flat no matter how long a session runs.
  */
 
 export type TapeSide = "buy" | "sell";
@@ -15,6 +14,7 @@ export interface TapeEntry {
   id: number;
   symbol: string;
   price: number;
+  /** Trade size when the feed reported one; 0 when it is unknown. */
   size: number;
   ts: number;
   side: TapeSide;
@@ -24,6 +24,7 @@ export interface TapeEntry {
 export interface RawPrint {
   symbol: string;
   price: number;
+  /** Trade size when the feed reported one; 0 when it is unknown. */
   size: number;
   ts: number;
 }
