@@ -9,6 +9,7 @@ import type {
   SymbolInfo,
   UnsubscribeFn,
 } from "./types.js";
+import { rankSymbols } from "./search.js";
 
 /** Deterministic 32-bit PRNG so the demo feed is reproducible across reloads. */
 function mulberry32(seed: number): () => number {
@@ -96,12 +97,9 @@ export class DemoMarketAdapter implements MarketDataAdapter {
   }
 
   async searchSymbols(query: string, assetClass?: AssetClass): Promise<SymbolInfo[]> {
-    const q = query.trim().toLowerCase();
-    return DEMO_SYMBOLS.filter(
-      (s) =>
-        (!assetClass || s.assetClass === assetClass) &&
-        (q === "" || s.ticker.toLowerCase().includes(q) || s.description.toLowerCase().includes(q)),
-    ).map((s) => this.toInfo(s));
+    const scoped = DEMO_SYMBOLS.filter((s) => !assetClass || s.assetClass === assetClass);
+    // Rank so the obvious match leads; an empty query keeps registry order.
+    return rankSymbols(query, scoped).map((s) => this.toInfo(s));
   }
 
   async getSymbol(symbol: string): Promise<SymbolInfo | null> {
