@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import type { Quote } from "@ezyview/data-adapters";
-import { quoteOf } from "./data";
+import { useRef, useState } from "react";
+import { useQuote } from "./quotePoller";
 import { useWorkspace } from "./store";
 import { useTrading } from "./trading";
 import { createLockout, roundPrice } from "./tradeMath";
@@ -21,12 +20,11 @@ interface Level {
  * Depth of market panel with visual volume bars and spread telemetry.
  */
 export function DepthOfMarket({ symbol, precision }: Props) {
-  const [quote, setQuote] = useState<Quote | null>(null);
   const [qty, setQty] = useState(1);
   const isReplay = useWorkspace((s) => s.replayBar !== null);
+  const { quote, status, refresh } = useQuote(symbol, { intervalMs: 1500, enabled: !isReplay });
   const submit = useTrading((s) => s.submit);
-  const [failed, setFailed] = useState(false);
-  const [retry, setRetry] = useState(0);
+  const failed = status === "failed";
   // A second click on the same rung inside 500 ms is a double submit.
   const lockout = useRef(createLockout(500)).current;
 
@@ -35,28 +33,6 @@ export function DepthOfMarket({ symbol, precision }: Props) {
     if (!lockout(`${side}:${rounded}`)) return;
     void submit({ symbol, side, type: "limit", price: rounded, qty });
   };
-
-  useEffect(() => {
-    if (isReplay) return;
-    let cancelled = false;
-    const tick = () => {
-      void quoteOf(symbol)
-        .then((q) => {
-          if (cancelled) return;
-          setQuote(q);
-          setFailed(q === null);
-        })
-        .catch(() => {
-          if (!cancelled) setFailed(true);
-        });
-    };
-    tick();
-    const t = setInterval(tick, 1500);
-    return () => {
-      cancelled = true;
-      clearInterval(t);
-    };
-  }, [symbol, isReplay, retry]);
 
   const mid = quote?.last ?? null;
   const asks = mid === null ? [] : buildLadder(mid, precision, "ask");
@@ -123,10 +99,7 @@ export function DepthOfMarket({ symbol, precision }: Props) {
               Quote unavailable.{" "}
               <button
                 type="button"
-                onClick={() => {
-                  setFailed(false);
-                  setRetry((n) => n + 1);
-                }}
+                onClick={refresh}
                 className="min-h-6 rounded px-1 text-ev-link underline"
               >
                 Retry

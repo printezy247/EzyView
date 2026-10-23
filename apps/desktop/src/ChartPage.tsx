@@ -19,8 +19,9 @@ import { ObjectTree } from "./ObjectTree";
 import { TimeAndSales } from "./TimeAndSales";
 import { LinkGroupDialog } from "./LinkGroupDialog";
 import { sessionForSymbol } from "./sessionFor";
-import { loadHistory, quoteOf } from "./data";
+import { loadHistory } from "./data";
 import { precisionForSymbol } from "./pricePrecision";
+import { useQuote } from "./quotePoller";
 import { useWorkspace } from "./store";
 import type { ChartState } from "./store";
 import { themeColors } from "@ezyview/brand";
@@ -658,34 +659,16 @@ function Readout({
   const activeIndex = useWorkspace((s) => s.activeLayout().activeChart);
   const targetIndex = chartIndex ?? activeIndex;
   const watchedPrice = useWorkspace((s) => s.watchlist.find((w) => w.symbol === rawSymbol)?.price ?? null);
+  const { quote } = useQuote(rawSymbol, { source: dataSource, intervalMs: 2000 });
 
-  const [livePrice, setLivePrice] = useState<number | null>(null);
-  const [liveChangePct, setLiveChangePct] = useState<number | null>(null);
   const [qty, setQty] = useState<number>(1);
   const [collapsed, setCollapsed] = useState(false);
   const [tradeBoxVisible, setTradeBoxVisible] = useState(true);
   const [studyQuickOpen, setStudyQuickOpen] = useState(false);
   const [floatHudVisible, setFloatHudVisible] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
-    const poll = () => {
-      void quoteOf(rawSymbol, dataSource).then((q) => {
-        if (!cancelled && q) {
-          setLivePrice((prev) => (prev === q.last ? prev : q.last));
-          setLiveChangePct((prev) => (prev === q.changePercent ? prev : q.changePercent ?? null));
-        }
-      });
-    };
-    poll();
-    const timer = setInterval(poll, 2000);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, [rawSymbol, dataSource]);
-
-  const displayPrice = livePrice ?? watchedPrice;
+  const displayPrice = quote?.last ?? watchedPrice;
+  const liveChangePct = quote?.changePercent ?? null;
   const digits = precisionForSymbol(rawSymbol, displayPrice);
   const spread = displayPrice !== null ? Math.max(Math.pow(10, -digits) * 2, displayPrice * 0.00015) : 0;
   const bid = displayPrice !== null ? (displayPrice - spread / 2).toFixed(digits) : null;
