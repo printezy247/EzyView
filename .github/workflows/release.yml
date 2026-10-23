@@ -1,0 +1,102 @@
+name: Release
+
+# A tag is the only way to publish: the workflow builds, gates and uploads a
+# draft release. Publishing the draft stays a human step so `releases/latest`
+# never resolves to a package that failed its smoke test.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: verify source
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check:versions
+      - name: Tag matches the declared version
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          test "v$version" = "${GITHUB_REF_NAME}" || {
+            echo "Tag ${GITHUB_REF_NAME} does not match version $version" >&2
+            exit 1
+          }
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test
+      - run: npm run build:web
+      - run: npm run build:mcp
+
+  package:
+    name: build · gate · draft release
+    runs-on: ubuntu-24.04
+    needs: verify
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Linux WebKit / GTK deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev build-essential curl wget file \
+            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev \
+            lintian desktop-file-utils appstream xvfb xauth
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+      - run: npm ci
+      - run: npm run build:desktop
+      - name: Debian package policy checks
+        run: ./scripts/check-deb.sh
+      - name: Install and launch the package
+        run: ./scripts/smoke-deb.sh "$(find apps/desktop/src-tauri/target/release/bundle/deb -name 'EzyView_*.deb' | sort | tail -1)"
+      - name: Collect bundles and checksums
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          cp apps/desktop/src-tauri/target/release/bundle/deb/*.deb release-assets/
+          cp apps/desktop/src-tauri/target/release/bundle/appimage/*.AppImage release-assets/
+          chmod +x release-assets/*.AppImage
+          (cd release-assets && sha256sum ./*.deb ./*.AppImage > SHA256SUMS)
+          ls -lh release-assets
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ezyview-linux
+          path: release-assets/
+          if-no-files-found: error
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          gh release create "$GITHUB_REF_NAME" release-assets/* \
+            --draft \
+            --title "EzyView $version" \
+            --generate-notes \
+            --notes "Linux builds. Prefer the .deb on Mint/Ubuntu. The AppImage needs FUSE 2 (\`libfuse2t64\` on Mint 22 / Ubuntu 24.04); without it run \`./EzyView_${version}_amd64.AppImage --appimage-extract-and-run\`. Verify downloads against \`SHA256SUMS\`."
+      - name: Summary
+        run: |
+          {
+            echo "### Draft release $GITHUB_REF_NAME"
+            echo "Bundles passed lintian, package-content checks, desktop-file-validate, appstreamcli and the install/launch smoke test."
+            echo "Publish the draft on GitHub once it is reviewed; that is what makes \`releases/latest\` resolve."
+          } >> "$GITHUB_STEP_SUMMARY"

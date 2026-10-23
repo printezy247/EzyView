@@ -1,3 +1,16 @@
+ezy-view (0.3.1) unstable; urgency=medium
+
+  * Trading safety: closing or reducing a position no longer requires free
+    margin, a rejected close is reported in the UI, and MetaTrader 5 stop/target
+    amends target the position ticket without clearing the other level.
+  * Debian policy compliance: maintainer contact, libc6 dependency, changelog,
+    copyright, man page and AppStream metadata are now shipped.
+  * Tag-triggered release workflow with lintian, package-content,
+    desktop-file-validate, AppStream and install/launch smoke gates.
+  * Version consistency is checked across all four version declarations.
+
+ -- printezy247 <printezy247@users.noreply.github.com>  Fri, 23 Oct 2026 00:00:00 +0000
+
 ezy-view (0.3.0) unstable; urgency=medium
 
   * Package EzyView 0.3.0 with Debian metadata, documentation and the

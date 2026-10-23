@@ -20,7 +20,14 @@ gzip -9 -n -c packaging/changelog > packaging/changelog.gz
 gzip -9 -n -c packaging/ezyview.1 > packaging/ezyview.1.gz
 ```
 
-`lintian --fail-on error` and `appstreamcli validate` run on the built package
-in the desktop CI job. The declared glibc floor (`libc6 (>= 2.39)`) matches the
-Ubuntu 24.04 / Mint 22 build host; change both together if the build baseline
-moves.
+`scripts/check-deb.sh` runs `lintian --fail-on error`, checks the required
+copyright and man-page files, validates the desktop entry and AppStream data,
+and is called by both the desktop CI job and the release workflow.
+`scripts/smoke-deb.sh` installs the package and proves the binary starts.
+
+Bump the version in all four declarations together (`npm run check:versions`
+enforces it) and add both a `changelog` entry and an AppStream `<release>`.
+The declared glibc floor (`libc6 (>= 2.39)`) matches the Ubuntu 24.04 / Mint 22
+build host; change both together if the build baseline moves.
+
+Release process: [`docs/RELEASING.md`](../docs/RELEASING.md).
