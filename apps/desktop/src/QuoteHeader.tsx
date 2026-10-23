@@ -3,12 +3,12 @@ import { useEffect, useRef, useState } from "react";
 import { Chip } from "./ui";
 import { isLiveSourceChoice } from "./chartSource";
 import type { DataSourceChoice } from "./chartSource";
-import { isLivePublicSymbol, quoteOf } from "./data";
+import { isLivePublicSymbol } from "./data";
 import { precisionForSymbol } from "./pricePrecision";
+import { useQuote } from "./quotePoller";
 import { useMt5 } from "./mt5";
 import { useWorkspace } from "./store";
 import { provenanceLabel, provenanceOf, provenanceTitle, provenanceTone } from "./provenance";
-import type { Quote } from "@ezyview/data-adapters";
 
 /**
  * The quote header: the symbol's last price, the change, and a chip saying
@@ -18,39 +18,27 @@ import type { Quote } from "@ezyview/data-adapters";
  * price that looks like a live one is the kind of thing that costs money. So
  * the header states the source: live, delayed, demo or cached.
  *
- * The quote is polled rather than pushed, because the app's feeds expose a
- * pull quote; a one-second poll is what the rest of the app already does.
+ * The quote comes from the shared per-symbol poller, so the header, legend and
+ * ticket on the same chart cost one request between them.
  */
 export function QuoteHeader({ symbol, dataSource }: { symbol: string; dataSource?: DataSourceChoice }) {
   const source = useMt5((s) => s.source);
   const status = useMt5((s) => s.status);
   const isReplay = useWorkspace((s) => s.replayBar !== null);
-  const [quote, setQuote] = useState<Quote | null>(null);
+  const { quote } = useQuote(symbol, { source: dataSource, intervalMs: 1000, enabled: !isReplay });
   const [flash, setFlash] = useState<"up" | "down" | null>(null);
   const prevLastRef = useRef<number | null>(null);
 
   useEffect(() => {
     prevLastRef.current = null;
-    if (isReplay) return;
-    let cancelled = false;
-    const tick = () => {
-      void quoteOf(symbol, dataSource).then((q) => {
-        if (!cancelled && q) {
-          if (prevLastRef.current !== null && q.last !== prevLastRef.current) {
-            setFlash(q.last > prevLastRef.current ? "up" : "down");
-          }
-          prevLastRef.current = q.last;
-          setQuote(q);
-        }
-      });
-    };
-    tick();
-    const timer = setInterval(tick, 1000);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, [symbol, isReplay, dataSource, source]);
+  }, [symbol]);
+
+  useEffect(() => {
+    if (!quote) return;
+    const prev = prevLastRef.current;
+    if (prev !== null && quote.last !== prev) setFlash(quote.last > prev ? "up" : "down");
+    prevLastRef.current = quote.last;
+  }, [quote]);
 
   useEffect(() => {
     if (!flash) return;

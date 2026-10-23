@@ -10,7 +10,8 @@ import type { PinePlot } from "@ezyview/pine-transpiler";
 import { THEME_OF, uid as newId, useWorkspace } from "./store";
 import type { ActiveIndicator, PineScriptRecord } from "./store";
 import type { ChartThemeName, CrosshairModeName, PriceScaleModeName } from "./layout";
-import { loadHistory, quoteOf, resolveSource, RESOLUTION_SECONDS, subscribeLive, tickerOf } from "./data";
+import { loadHistory, resolveSource, RESOLUTION_SECONDS, subscribeLive, tickerOf } from "./data";
+import { subscribeQuote } from "./quotePoller";
 import { isLiveSourceChoice } from "./chartSource";
 import type { DataSourceChoice } from "./chartSource";
 import { useMt5 } from "./mt5";
@@ -485,7 +486,6 @@ export function ChartHost(props: Props) {
     const step = RESOLUTION_SECONDS[props.resolution];
     const key = `${props.symbol}|${props.resolution}|${feed}`;
     let rafId: number | null = null;
-    let timer: ReturnType<typeof setInterval> | null = null;
     let unsubscribe: (() => void) | null = null;
 
     const apply = (q: Quote) => {
@@ -515,22 +515,21 @@ export function ChartHost(props: Props) {
     };
 
     const startPolling = () => {
-      if (timer !== null || cancelled) return;
+      if (unsubscribe !== null || cancelled) return;
       // A broker quote is one cheap tick; Twelve Data's free key allows ~8 requests/minute.
       const every = feed === "mt5" ? 500 : feed === "twelvedata" ? 8000 : 1000;
-      timer = setInterval(() => {
-        if (busy || historyRef.current.length === 0) return;
-        if (historyKeyRef.current !== key) return;
-        busy = true;
-        void quoteOf(props.symbol, props.dataSource)
-          .then((q) => {
+      // The shared poller means the legend, ticket and tape on this chart do
+      // not add a second request for the symbol the chart already polls.
+      unsubscribe = subscribeQuote(props.symbol, (q) => {
+        if (!busy && historyRef.current.length > 0 && historyKeyRef.current === key) {
+          busy = true;
+          try {
             if (q) apply(q);
-          })
-          .catch(() => {})
-          .finally(() => {
+          } finally {
             busy = false;
-          });
-      }, every);
+          }
+        }
+      }, { source: props.dataSource, intervalMs: every });
     };
 
     if (isLiveSourceChoice(feed)) {
@@ -546,7 +545,6 @@ export function ChartHost(props: Props) {
     }
     return () => {
       cancelled = true;
-      if (timer !== null) clearInterval(timer);
       try {
         unsubscribe?.();
       } catch {

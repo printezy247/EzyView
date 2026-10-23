@@ -1,6 +1,7 @@
 import { Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { quoteOf, searchSymbols } from "./data";
+import { searchSymbols } from "./data";
+import { subscribeQuote } from "./quotePoller";
 import { useWorkspace } from "./store";
 import type { WatchEntry } from "./store";
 import { sortWatch } from "./watchSort";
@@ -152,23 +153,19 @@ export function Watchlist({ onOpenAlerts }: Props) {
 
   useEffect(() => {
     if (!symbolKey || isReplay) return;
-    const symbols = symbolKey.split(",");
-    let cancelled = false;
-
-    const tick = () => {
-      void Promise.all(symbols.map((s) => quoteOf(s).catch(() => null))).then((quotes) => {
-        if (cancelled) return;
-        quotes.forEach((q) => {
-          if (q) updateWatchPrice(q.symbol, q.last, q.changePercent ?? null);
-        });
-      });
-    };
-
-    tick();
-    const t = setInterval(tick, 3000);
+    // Each symbol joins the shared poller, so a chart and the watchlist showing
+    // the same instrument cost one request per tick, not two.
+    const stops = symbolKey.split(",").map((symbol) =>
+      subscribeQuote(
+        symbol,
+        (quote) => {
+          if (quote) updateWatchPrice(quote.symbol, quote.last, quote.changePercent ?? null);
+        },
+        { intervalMs: 3000 },
+      ),
+    );
     return () => {
-      cancelled = true;
-      clearInterval(t);
+      for (const stop of stops) stop();
     };
   }, [symbolKey, isReplay, updateWatchPrice]);
 

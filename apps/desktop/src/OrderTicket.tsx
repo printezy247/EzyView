@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { OrderRequest, OrderSide, OrderType } from "@ezyview/data-adapters";
-import { quoteOf, tickerOf } from "./data";
+import { tickerOf } from "./data";
 import { precisionForSymbol } from "./pricePrecision";
+import { useQuote } from "./quotePoller";
 import { activeChartOf } from "./layout";
 import { useMt5 } from "./mt5";
 import { SourceWarning } from "./SourceWarning";
@@ -80,24 +81,14 @@ export function OrderTicket({ symbol }: Props) {
   /** Synchronous in-flight guard: state alone lets a fast double click send twice. */
   const inFlight = useRef(false);
 
-  // Poll for the reference price. Market orders fill at the engine's own last
-  // tick, so this is display and sizing only — never the fill price itself.
+  // The shared per-symbol poller supplies the reference price. Market orders
+  // fill at the engine's own last tick, so this is display and sizing only.
+  const { quote } = useQuote(symbol, { intervalMs: 2000 });
   useEffect(() => {
-    let cancelled = false;
-    const tick = () => {
-      void quoteOf(symbol).then((quote) => {
-        if (cancelled || !quote) return;
-        setLast(quote.last);
-        setLimitPrice((current) => (current === "" ? quote.last.toFixed(precisionForSymbol(symbol, quote.last)) : current));
-      });
-    };
-    tick();
-    const timer = setInterval(tick, 2000);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, [symbol]);
+    if (!quote) return;
+    setLast(quote.last);
+    setLimitPrice((current) => (current === "" ? quote.last.toFixed(precisionForSymbol(symbol, quote.last)) : current));
+  }, [quote, symbol]);
 
   const precision = precisionForSymbol(symbol, last);
   const ticker = tickerOf(symbol);

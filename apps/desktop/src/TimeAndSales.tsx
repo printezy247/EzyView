@@ -1,8 +1,8 @@
 import { memo, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { activeChartOf } from "./layout";
-import { quoteOf } from "./data";
 import { precisionForSymbol } from "./pricePrecision";
+import { useQuote } from "./quotePoller";
 import { useTape, EMPTY_TAPE } from "./tapeStore";
 import { useWorkspace } from "./store";
 import { Button, IconButton } from "./ui";
@@ -63,25 +63,11 @@ export function TimeAndSales() {
   const [paused, setPaused] = useState(false);
   const [pace, setPace] = useState<number>(1200);
 
+  const { quote } = useQuote(symbol, { intervalMs: pace, enabled: !paused && !isReplay });
   useEffect(() => {
-    if (paused || isReplay) return;
-    let cancelled = false;
-
-    const tick = () => {
-      void quoteOf(symbol).then((q) => {
-        if (!cancelled && q && Number.isFinite(q.last) && q.last > 0) {
-          // 0 means "the feed did not report a size", never a made-up number.
-          push(symbol, q.last, 0);
-        }
-      });
-    };
-    tick();
-    const t = setInterval(tick, pace);
-    return () => {
-      cancelled = true;
-      clearInterval(t);
-    };
-  }, [symbol, push, paused, pace, isReplay]);
+    // 0 means "the feed did not report a size", never a made-up number.
+    if (quote && Number.isFinite(quote.last) && quote.last > 0) push(symbol, quote.last, 0);
+  }, [quote, push, symbol]);
 
   // Upticks vs downticks over the visible window.
   const buys = entries.filter((e) => e.side === "buy").length;

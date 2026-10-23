@@ -5,12 +5,11 @@ import { useWorkspace } from "./store";
 import { OrderTicket } from "./OrderTicket";
 import { TradingPanel } from "./TradingPanel";
 import { DepthOfMarket } from "./DepthOfMarket";
-import { quoteOf } from "./data";
 import { precisionForSymbol } from "./pricePrecision";
+import { useQuote } from "./quotePoller";
 import { useTrading } from "./trading";
 import { Button, rowClass } from "./ui";
 import { CurrencyConverter } from "./CurrencyConverter";
-import { useEffect } from "react";
 
 type Tab = "ticket" | "blotter" | "depth" | "fx";
 
@@ -32,26 +31,10 @@ export function TradePage() {
   const layout = useWorkspace((s) => s.activeLayout());
   const state = activeChartOf(layout);
   const [tab, setTab] = useState<Tab>("ticket");
-  const [last, setLast] = useState<number | null>(null);
-
-  // The depth view needs a current price; poll the same quote source the
-  // watchlist uses so the page works without a chart attached.
-  useEffect(() => {
-    let cancelled = false;
-    const tick = () => {
-      void quoteOf(state.symbol)
-        .then((q) => {
-          if (!cancelled && q) setLast(q.last);
-        })
-        .catch(() => {});
-    };
-    tick();
-    const t = setInterval(tick, 3000);
-    return () => {
-      cancelled = true;
-      clearInterval(t);
-    };
-  }, [state.symbol]);
+  // The depth view needs a current price; the shared poller serves it even
+  // when no chart is attached.
+  const { quote } = useQuote(state.symbol, { intervalMs: 3000 });
+  const last = quote?.last ?? null;
   void useTrading;
 
   return (
