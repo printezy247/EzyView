@@ -41,6 +41,12 @@ export interface PaperEngineOptions {
 export interface PaperPosition extends Position {
   /** Notional held as margin at the entry price. */
   margin: number;
+  /**
+   * Trailing-stop distance in price units. When set, the position's stop
+   * follows price by this distance and only ever moves in the profit
+   * direction (ratchets), locking in gains. Absent = a fixed stop.
+   */
+  trailingDistance?: number;
 }
 
 /**
@@ -52,6 +58,11 @@ export interface PaperOrder extends Order {
   stopLoss?: number;
   /** stop_limit only: the stop has tripped and the order now rests as a limit. */
   triggered?: boolean;
+  /**
+   * OCO group id. Two pending orders sharing an id are linked: when one fills
+   * or is cancelled the other is cancelled too. Absent = standalone order.
+   */
+  ocoId?: string;
 }
 
 /** Largest single order, so a typo (or a hostile caller) cannot size a nonsense position. */
@@ -239,6 +250,8 @@ export class PaperTradingEngine implements TradingAdapter {
     const order = this.orders.get(id);
     if (!order || order.status !== "pending") return false;
     this.orders.set(id, { ...order, status: "canceled", updateTime: this.now() });
+    // Cancelling one leg of an OCO cancels its sibling.
+    this.settleOco(order.ocoId, id);
     this.onUpdate?.();
     return true;
   }
@@ -310,6 +323,51 @@ export class PaperTradingEngine implements TradingAdapter {
     return next;
   }
 
+  /**
+   * Set (or clear) a trailing stop on an open position.
+   *
+   * `null` clears the trailing stop, leaving any fixed stop in place. A
+   * positive distance arms it and seeds the stop at the current mark price.
+   * From then on the stop ratchets with price (see `trailStops`).
+   */
+  async setTrailingStop(symbol: string, distance: number | null): Promise<PaperPosition> {
+    const position = this.positions.get(symbol);
+    if (!position) throw new PaperTradingError("no_position", `No open position on ${symbol}`);
+    if (distance !== null && (!finite(distance) || distance <= 0)) {
+      throw new PaperTradingError("bad_trail", "trailing distance must be a positive number");
+    }
+    if (distance === null) {
+      const { trailingDistance: _drop, ...rest } = position;
+      this.positions.set(symbol, rest);
+      this.onUpdate?.();
+      return rest;
+    }
+    const seed = position.side === "long" ? position.markPrice - distance : position.markPrice + distance;
+    const next: PaperPosition = { ...position, trailingDistance: distance, stopLoss: seed };
+    this.positions.set(symbol, next);
+    this.onUpdate?.();
+    return next;
+  }
+
+  /**
+   * Link two pending orders as an OCO pair: when one fills or is cancelled the
+   * other is cancelled too. Both must be pending and on the same symbol.
+   * Returns the shared group id.
+   */
+  linkOco(aId: string, bId: string): string {
+    const a = this.orders.get(aId);
+    const b = this.orders.get(bId);
+    if (!a || !b || a.status !== "pending" || b.status !== "pending") {
+      throw new PaperTradingError("not_open", "Both OCO orders must be pending");
+    }
+    if (a.symbol !== b.symbol) throw new PaperTradingError("oco_symbol", "OCO orders must share a symbol");
+    const ocoId = this.idGenerator();
+    this.orders.set(aId, { ...a, ocoId });
+    this.orders.set(bId, { ...b, ocoId });
+    this.onUpdate?.();
+    return ocoId;
+  }
+
   /** Flatten everything at market — the panic button above the positions list. */
   async closeAll(): Promise<Order[]> {
     const closed: Order[] = [];
@@ -355,6 +413,9 @@ export class PaperTradingEngine implements TradingAdapter {
     const position = this.positions.get(symbol);
     const hadPosition = Boolean(position);
     if (position) this.positions.set(symbol, { ...position, markPrice: price, unrealizedPnl: unrealized(position, price) });
+    // Ratchet any trailing stop before exits are checked, so a trailed stop
+    // can trigger on the same tick that moved it.
+    this.trailStops(symbol, price);
 
     let triggeredAny = false;
     for (const order of Array.from(this.orders.values())) {
@@ -372,6 +433,8 @@ export class PaperTradingEngine implements TradingAdapter {
       // The resting order is spent; the fill below books the position.
       this.orders.delete(order.id);
       this.executeOrder({ ...order, type: "market", qty: order.qty }, trigger, order);
+      // Filling one leg of an OCO cancels its sibling.
+      this.settleOco(order.ocoId, order.id);
     }
 
     const hadExits = this.checkExits(symbol, price, time);
@@ -384,6 +447,39 @@ export class PaperTradingEngine implements TradingAdapter {
   // -------------------------------------------------------------------------
   // Internals
   // -------------------------------------------------------------------------
+
+  /**
+   * Ratchet a trailing stop toward price. The stop only ever moves in the
+   * profit direction: for a long it climbs as price rises and never falls; for
+   * a short it falls as price falls and never rises. A fresh trail is seeded
+   * from the current price when no stop exists yet.
+   */
+  private trailStops(symbol: string, price: number): void {
+    const position = this.positions.get(symbol);
+    const distance = position?.trailingDistance;
+    if (!position || !finite(distance) || distance <= 0) return;
+    let stop: number;
+    if (position.side === "long") {
+      const candidate = price - distance;
+      if (position.stopLoss !== undefined && candidate <= position.stopLoss) return; // ratchet only up
+      stop = candidate;
+    } else {
+      const candidate = price + distance;
+      if (position.stopLoss !== undefined && candidate >= position.stopLoss) return; // ratchet only down
+      stop = candidate;
+    }
+    this.positions.set(symbol, { ...position, stopLoss: stop });
+  }
+
+  /** Cancel every pending order sharing an OCO group, except the one that just resolved. */
+  private settleOco(ocoId: string | undefined, exceptId: string): void {
+    if (!ocoId) return;
+    for (const other of Array.from(this.orders.values())) {
+      if (other.ocoId === ocoId && other.id !== exceptId && other.status === "pending") {
+        this.orders.set(other.id, { ...other, status: "canceled", updateTime: this.now() });
+      }
+    }
+  }
 
   private triggered(order: PaperOrder, price: number): number | null {
     if (order.type === "stop_limit" && !order.triggered) return null;
@@ -474,6 +570,7 @@ export class PaperTradingEngine implements TradingAdapter {
       stopLoss: request.stopLoss,
       status: "pending",
       timeInForce: request.timeInForce,
+      ocoId: source?.ocoId,
       time: this.now(),
     };
 
@@ -512,8 +609,11 @@ export class PaperTradingEngine implements TradingAdapter {
     }
     if (request.type === "stop" && !finite(request.stopPrice ?? request.price)) return "stop orders need a price";
     // A price of zero (an empty ticket field) is finite but not tradable: it
-    // would fill a sell limit against any quote and open a position at 0.
-    if (request.type !== "market" && (request.price ?? 0) <= 0) return "price must be greater than zero";
+    // would fill a sell limit against any quote and open a position at 0. For
+    // a stop order the tradable level is the stop price, so judge that instead
+    // of rejecting a valid stop that carries only `stopPrice`.
+    const effectivePrice = request.type === "stop" ? (request.stopPrice ?? request.price) : request.price;
+    if (request.type !== "market" && (effectivePrice ?? 0) <= 0) return "price must be greater than zero";
     if (request.stopLoss !== undefined && (!Number.isFinite(request.stopLoss) || request.stopLoss <= 0)) {
       return "stop loss must be a positive number";
     }
