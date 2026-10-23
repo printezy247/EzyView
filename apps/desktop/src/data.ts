@@ -1,5 +1,6 @@
 import { createLiveSources, DemoMarketAdapter } from "@ezyview/data-adapters";
 import type { Candle, LiveSource, LiveSourceId, Quote, Resolution, SymbolInfo, UnsubscribeFn } from "@ezyview/data-adapters";
+import { CircuitBreaker, CircuitOpenError } from "./netRetry";
 import { readApiKey, useApiKeys } from "./apiKeys";
 import { effectiveSource, isLiveSourceChoice } from "./chartSource";
 import type { DataSourceChoice, EffectiveSource } from "./chartSource";
@@ -143,6 +144,13 @@ const isTestEnv = (): boolean =>
 const liveQuoteCache = new Map<string, { quote: Quote; fetchedAt: number }>();
 const livePublicTickers = new Set<string>();
 
+/**
+ * One circuit breaker for the public Binance feed. When it is down we stop
+ * paying its multi-second timeout on every quote poll and fall straight back
+ * to the demo adapter until the cooldown elapses and one probe succeeds.
+ */
+const publicBreaker = new CircuitBreaker({ threshold: 3, cooldownMs: 15_000 });
+
 /** True when `symbol` has received a real live market quote from the public feed. */
 export function isLivePublicSymbol(symbol: string): boolean {
   return livePublicTickers.has(tickerOf(symbol).toUpperCase());
@@ -150,6 +158,13 @@ export function isLivePublicSymbol(symbol: string): boolean {
 
 async function fetchPublicQuote(symbol: string): Promise<Quote | null> {
   if (isTestEnv() || typeof fetch !== "function") return null;
+  // Fast-fail while the public feed is known down.
+  try {
+    publicBreaker.before();
+  } catch (err) {
+    if (err instanceof CircuitOpenError) return null;
+    throw err;
+  }
   const ticker = tickerOf(symbol).toUpperCase();
   const pair = PUBLIC_PAIR_MAP[ticker];
   if (!pair) return null;
@@ -166,7 +181,11 @@ async function fetchPublicQuote(symbol: string): Promise<Quote | null> {
     const res = await fetch(`https://data-api.binance.vision/api/v3/ticker/24hr?symbol=${pair}`, {
       signal: ctrl.signal,
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      publicBreaker.recordFailure();
+      return null;
+    }
+    publicBreaker.recordSuccess();
     const data = (await res.json()) as {
       lastPrice?: string;
       priceChange?: string;
@@ -188,6 +207,7 @@ async function fetchPublicQuote(symbol: string): Promise<Quote | null> {
     livePublicTickers.add(ticker);
     return quote;
   } catch {
+    publicBreaker.recordFailure();
     return null;
   } finally {
     clearTimeout(timer);
@@ -196,6 +216,12 @@ async function fetchPublicQuote(symbol: string): Promise<Quote | null> {
 
 async function fetchPublicHistory(symbol: string, resolution: Resolution, limit: number): Promise<Candle[] | null> {
   if (isTestEnv() || typeof fetch !== "function") return null;
+  try {
+    publicBreaker.before();
+  } catch (err) {
+    if (err instanceof CircuitOpenError) return null;
+    throw err;
+  }
   const ticker = tickerOf(symbol).toUpperCase();
   const pair = PUBLIC_PAIR_MAP[ticker];
   const interval = BINANCE_INTERVAL_MAP[resolution] ?? "15m";
@@ -209,7 +235,11 @@ async function fetchPublicHistory(symbol: string, resolution: Resolution, limit:
       `https://data-api.binance.vision/api/v3/klines?symbol=${pair}&interval=${interval}&limit=${clamped}`,
       { signal: ctrl.signal },
     );
-    if (!res.ok) return null;
+    if (!res.ok) {
+      publicBreaker.recordFailure();
+      return null;
+    }
+    publicBreaker.recordSuccess();
     const raw = (await res.json()) as unknown[];
     if (!Array.isArray(raw) || raw.length === 0) return null;
     const candles: Candle[] = [];
@@ -249,6 +279,7 @@ async function fetchPublicHistory(symbol: string, resolution: Resolution, limit:
     }
     return candles;
   } catch {
+    publicBreaker.recordFailure();
     return null;
   } finally {
     clearTimeout(timer);
