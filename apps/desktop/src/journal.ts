@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { entriesFromDeals, existingKeys } from "@ezyview/journal";
-import type { JournalEntry, JournalNote } from "@ezyview/journal";
+import type { JournalEntry, JournalNote, TradePlan, TradePlanStatus } from "@ezyview/journal";
 import type { Deal } from "@ezyview/data-adapters";
 import { compositeCanvasesToPng } from "./chartImage";
 
@@ -10,6 +10,7 @@ const STORAGE_KEY = "ezyview.journal.v1";
 const MAX_ENTRIES = 500;
 const MAX_NOTES = 500;
 const MAX_REVIEWS = 200;
+const MAX_PLANS = 500;
 
 /** A saved daily/weekly review; `key` is a `dateKey` string. */
 export interface SavedReview {
@@ -31,10 +32,11 @@ interface Persisted {
   notes: JournalNote[];
   savedReviews: SavedReview[];
   propFirm: PropFirmLimits;
+  plans: TradePlan[];
 }
 
 function emptyPersisted(): Persisted {
-  return { entries: [], notes: [], savedReviews: [], propFirm: {} };
+  return { entries: [], notes: [], savedReviews: [], propFirm: {}, plans: [] };
 }
 
 function readState(): Persisted {
@@ -48,6 +50,7 @@ function readState(): Persisted {
       notes: Array.isArray(parsed.notes) ? parsed.notes.slice(0, MAX_NOTES) : [],
       savedReviews: readReviews(parsed.savedReviews),
       propFirm: readPropFirm(parsed.propFirm),
+      plans: readPlans(parsed.plans),
     };
   } catch {
     // An unreadable journal costs the user nothing but its old contents.
@@ -72,6 +75,38 @@ function readReviews(value: unknown): SavedReview[] {
       savedAt: typeof r.savedAt === "number" ? r.savedAt : 0,
     });
     if (out.length >= MAX_REVIEWS) break;
+  }
+  return out;
+}
+
+const PLAN_STATUSES = new Set<TradePlanStatus>(["planned", "executed", "missed", "cancelled"]);
+
+/** Drop malformed plan rows, keep the newest MAX_PLANS valid ones. */
+function readPlans(value: unknown): TradePlan[] {
+  if (!Array.isArray(value)) return [];
+  const out: TradePlan[] = [];
+  for (const row of value) {
+    if (!row || typeof row !== "object") continue;
+    const p = row as Partial<TradePlan>;
+    if (typeof p.id !== "string" || typeof p.symbol !== "string" || p.symbol.trim() === "") continue;
+    if (p.side !== "long" && p.side !== "short") continue;
+    if (p.status === undefined || !PLAN_STATUSES.has(p.status)) continue;
+    if (typeof p.createdAt !== "number" || !Number.isFinite(p.createdAt)) continue;
+    const plan: TradePlan = {
+      id: p.id,
+      symbol: p.symbol.trim(),
+      side: p.side,
+      createdAt: p.createdAt,
+      status: p.status,
+    };
+    for (const field of ["entry", "stop", "target"] as const) {
+      const level = p[field];
+      if (typeof level === "number" && Number.isFinite(level)) plan[field] = level;
+    }
+    if (typeof p.setup === "string" && p.setup.trim() !== "") plan.setup = p.setup.trim();
+    if (typeof p.thesis === "string" && p.thesis.trim() !== "") plan.thesis = p.thesis.trim();
+    out.push(plan);
+    if (out.length >= MAX_PLANS) break;
   }
   return out;
 }
@@ -159,6 +194,7 @@ export interface JournalState {
   notes: JournalNote[];
   savedReviews: SavedReview[];
   propFirm: PropFirmLimits;
+  plans: TradePlan[];
   /** Free-text filter over symbol, tags, setup and note text. */
   query: string;
   setQuery(query: string): void;
@@ -176,6 +212,9 @@ export interface JournalState {
   removeReview(id: string): void;
   /** Shallow-merges limits; pass `undefined` to clear a field. */
   setPropFirm(patch: Partial<PropFirmLimits>): void;
+  addPlan(input: Omit<TradePlan, "id" | "createdAt" | "status"> & { createdAt?: number; status?: TradePlanStatus }): void;
+  updatePlan(id: string, patch: Partial<Omit<TradePlan, "id" | "createdAt">>): void;
+  removePlan(id: string): void;
   /** Pulls closed trades out of a deal history; returns how many were new. */
   importDeals(deals: readonly Deal[], source: JournalEntry["source"]): number;
   clear(): void;
@@ -187,7 +226,13 @@ export const useJournal = create<JournalState>((set, get) => {
   /** Persist the durable slice; the in-memory `query` never lands on disk. */
   const persist = (): void => {
     const s = get();
-    writeState({ entries: s.entries, notes: s.notes, savedReviews: s.savedReviews, propFirm: s.propFirm });
+    writeState({
+      entries: s.entries,
+      notes: s.notes,
+      savedReviews: s.savedReviews,
+      propFirm: s.propFirm,
+      plans: s.plans,
+    });
   };
 
   return {
@@ -195,6 +240,7 @@ export const useJournal = create<JournalState>((set, get) => {
     notes: boot.notes,
     savedReviews: boot.savedReviews,
     propFirm: boot.propFirm,
+    plans: boot.plans,
     query: "",
 
     setQuery(query) {
@@ -280,6 +326,28 @@ export const useJournal = create<JournalState>((set, get) => {
       persist();
     },
 
+    addPlan(input) {
+      const plan: TradePlan = {
+        ...input,
+        id: uid(),
+        createdAt: input.createdAt ?? Math.floor(Date.now() / 1000),
+        status: input.status ?? "planned",
+      };
+      set({ plans: [plan, ...get().plans].slice(0, MAX_PLANS) });
+      persist();
+    },
+
+    updatePlan(id, patch) {
+      const next = get().plans.map((plan) => (plan.id === id ? Object.assign({}, plan, patch) : plan));
+      set({ plans: next });
+      persist();
+    },
+
+    removePlan(id) {
+      set({ plans: get().plans.filter((plan) => plan.id !== id) });
+      persist();
+    },
+
     importDeals(deals, source) {
       const known = existingKeys(get().entries);
       const imported = entriesFromDeals(deals, source).filter((entry) => !known.has(entry.id));
@@ -291,7 +359,7 @@ export const useJournal = create<JournalState>((set, get) => {
     },
 
     clear() {
-      set({ entries: [], notes: [], savedReviews: [], propFirm: {} });
+      set({ entries: [], notes: [], savedReviews: [], propFirm: {}, plans: [] });
       persist();
     },
   };

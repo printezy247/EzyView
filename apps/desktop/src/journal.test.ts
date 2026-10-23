@@ -281,6 +281,7 @@ describe("clear", () => {
     s.addNote({ time: 1, text: "note" });
     s.saveReview({ key: "2026-10-20", period: "daily", text: "r" });
     s.setPropFirm({ dailyLossLimit: 100 });
+    s.addPlan({ symbol: "EURUSD", side: "long" });
 
     useJournal.getState().clear();
     const after = useJournal.getState();
@@ -288,7 +289,54 @@ describe("clear", () => {
     expect(after.notes).toEqual([]);
     expect(after.savedReviews).toEqual([]);
     expect(after.propFirm).toEqual({});
-    expect(persisted()).toMatchObject({ entries: [], notes: [], savedReviews: [], propFirm: {} });
+    expect(after.plans).toEqual([]);
+    expect(persisted()).toMatchObject({ entries: [], notes: [], savedReviews: [], propFirm: {}, plans: [] });
+  });
+});
+
+describe("pre-trade plans", () => {
+  it("adds, updates and removes a plan and survives a reload", async () => {
+    const first = await loadStore();
+    first.useJournal.getState().addPlan({
+      symbol: "eurusd",
+      side: "long",
+      entry: 1.1,
+      stop: 1.09,
+      target: 1.13,
+      thesis: "breakout",
+    });
+    const plan = first.useJournal.getState().plans[0]!;
+    expect(plan).toMatchObject({ symbol: "eurusd", side: "long", status: "planned" });
+
+    first.useJournal.getState().updatePlan(plan.id, { status: "executed" });
+    expect(first.useJournal.getState().plans[0]?.status).toBe("executed");
+    first.flushJournal();
+
+    const second = await loadStore();
+    expect(second.useJournal.getState().plans[0]).toMatchObject({ symbol: "eurusd", status: "executed" });
+
+    second.useJournal.getState().removePlan(plan.id);
+    expect(second.useJournal.getState().plans).toEqual([]);
+  });
+
+  it("drops malformed plan rows and keeps valid ones", async () => {
+    h.storage.set(
+      KEY,
+      JSON.stringify({
+        entries: [],
+        notes: [],
+        plans: [
+          { id: "p1", symbol: "XAUUSD", side: "short", createdAt: 5, status: "missed" },
+          { id: 42, symbol: "BAD", side: "long", createdAt: 5, status: "planned" },
+          { id: "p2", symbol: "BAD", side: "sideways", createdAt: 5, status: "planned" },
+          { id: "p3", symbol: "BAD", side: "long", createdAt: 5, status: "unknown" },
+        ],
+      }),
+    );
+    const { useJournal } = await loadStore();
+    expect(useJournal.getState().plans).toEqual([
+      { id: "p1", symbol: "XAUUSD", side: "short", createdAt: 5, status: "missed" },
+    ]);
   });
 });
 
