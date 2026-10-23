@@ -68,8 +68,13 @@ export class DailyRiskTracker {
   private losses: LossEvent[] = [];
   private tripped: boolean = false;
 
+  /** Local calendar day, matching the journal's `dateKey` (not UTC). */
   private todayDate(): string {
-    return new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const year = String(now.getFullYear()).padStart(4, "0");
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   }
 
   private ensureSession(): void {

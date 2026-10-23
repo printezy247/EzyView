@@ -31,7 +31,8 @@ export const useTape = create<TapeStore>((set, get) => ({
   tapes: {},
   push: (symbol, price, size) => {
     if (!Number.isFinite(price) || price <= 0) return;
-    const safeSize = Number.isFinite(size) && size > 0 ? size : 1;
+    // 0 is a real value here: the feed did not report a trade size.
+    const safeSize = Number.isFinite(size) && size > 0 ? size : 0;
     let buffer = buffers.get(symbol);
     if (buffer) {
       // Refresh LRU position

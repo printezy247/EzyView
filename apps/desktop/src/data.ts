@@ -265,6 +265,8 @@ export async function searchSymbols(query: string): Promise<SymbolInfo[]> {
 const ticking = new Set<string>();
 /** Unsubscribers for those ticks, so a symbol can be stopped again. */
 const unsubscribes = new Map<string, () => void>();
+/** Hard cap on demo subscriptions; a quote still resolves, it just stops ticking. */
+export const MAX_DEMO_TICKERS = 24;
 const inFlightQuotes = new Map<string, Promise<Quote | null>>();
 const inFlightHistory = new Map<string, Promise<Candle[]>>();
 
@@ -280,7 +282,7 @@ export async function quoteOf(symbol: string, source?: DataSourceChoice): Promis
       if (feed === "mt5") return await getMt5().data.getQuote(symbol);
       const live = await fetchPublicQuote(symbol);
       if (live) return live;
-      if (!ticking.has(symbol)) {
+      if (!ticking.has(symbol) && ticking.size < MAX_DEMO_TICKERS) {
         ticking.add(symbol);
         // Keep the unsubscribe handle: the demo adapter runs a 1 Hz timer per
         // subscription, and dropping it leaked a timer for every symbol ever
@@ -295,6 +297,10 @@ export async function quoteOf(symbol: string, source?: DataSourceChoice): Promis
           });
       }
       return await market.getQuote(symbol);
+    } catch {
+      // A provider outage is a stale price, not an unhandled rejection in
+      // every panel that polls it.
+      return null;
     } finally {
       inFlightQuotes.delete(flightKey);
     }

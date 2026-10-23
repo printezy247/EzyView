@@ -19,7 +19,8 @@ import { ObjectTree } from "./ObjectTree";
 import { TimeAndSales } from "./TimeAndSales";
 import { LinkGroupDialog } from "./LinkGroupDialog";
 import { sessionForSymbol } from "./sessionFor";
-import { loadHistory, precisionFor, quoteOf } from "./data";
+import { loadHistory, quoteOf } from "./data";
+import { precisionForSymbol } from "./pricePrecision";
 import { useWorkspace } from "./store";
 import type { ChartState } from "./store";
 import { themeColors } from "@ezyview/brand";
@@ -338,7 +339,7 @@ export function ChartPage({
         id: "depth",
         label: "Depth",
         hint: "Depth of market around the current price",
-        render: () => <DepthOfMarket symbol={state.symbol} precision={2} />,
+        render: () => <DepthOfMarket symbol={state.symbol} precision={precisionForSymbol(state.symbol, null)} />,
       },
       {
         id: "objects",
@@ -350,7 +351,7 @@ export function ChartPage({
       {
         id: "tape",
         label: "Tape",
-        hint: "Time & sales — recent prints for the active symbol",
+        hint: "Time & sales — recent quote ticks for the active symbol",
         render: () => <TimeAndSales />,
       },
     ],
@@ -685,7 +686,7 @@ function Readout({
   }, [rawSymbol, dataSource]);
 
   const displayPrice = livePrice ?? watchedPrice;
-  const digits = precisionFor(displayPrice);
+  const digits = precisionForSymbol(rawSymbol, displayPrice);
   const spread = displayPrice !== null ? Math.max(Math.pow(10, -digits) * 2, displayPrice * 0.00015) : 0;
   const bid = displayPrice !== null ? (displayPrice - spread / 2).toFixed(digits) : null;
   const ask = displayPrice !== null ? (displayPrice + spread / 2).toFixed(digits) : null;

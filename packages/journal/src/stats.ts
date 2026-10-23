@@ -180,7 +180,9 @@ export function computeStats(entries: readonly JournalEntry[]): JournalStats {
     grossLoss,
     avgWin,
     avgLoss,
-    expectancy: winRate * avgWin - (1 - winRate) * Math.abs(avgLoss),
+    // Average P&L per trade: wins and losses each weighted by their own count.
+    // Using (1 - winRate) would count break-even trades as losses.
+    expectancy: trades === 0 ? 0 : (wins * avgWin - losses * Math.abs(avgLoss)) / trades,
     profitFactor: grossLoss === 0 ? (grossProfit > 0 ? Number.POSITIVE_INFINITY : 0) : grossProfit / Math.abs(grossLoss),
     bestTrade: best,
     worstTrade: worst,

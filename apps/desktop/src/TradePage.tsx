@@ -5,7 +5,8 @@ import { useWorkspace } from "./store";
 import { OrderTicket } from "./OrderTicket";
 import { TradingPanel } from "./TradingPanel";
 import { DepthOfMarket } from "./DepthOfMarket";
-import { precisionFor, quoteOf } from "./data";
+import { quoteOf } from "./data";
+import { precisionForSymbol } from "./pricePrecision";
 import { useTrading } from "./trading";
 import { Button, rowClass } from "./ui";
 import { CurrencyConverter } from "./CurrencyConverter";
@@ -75,7 +76,7 @@ export function TradePage() {
         ))}
         <span className="ml-auto flex items-center gap-2">
           <span className="num text-dense text-ev-faint">
-            {state.symbol} {last === null ? "" : last.toFixed(precisionFor(last))}
+            {state.symbol} {last === null ? "" : last.toFixed(precisionForSymbol(state.symbol, last))}
           </span>
           <Button variant="outline" size="sm" onClick={() => navigate("/chart")}>
             Back to chart
@@ -96,7 +97,7 @@ export function TradePage() {
         )}
         {tab === "depth" && (
           <div className="mx-auto w-full max-w-md overflow-y-auto p-4">
-            <DepthOfMarket symbol={state.symbol} precision={precisionFor(last)} />
+            <DepthOfMarket symbol={state.symbol} precision={precisionForSymbol(state.symbol, last)} />
           </div>
         )}
         {tab === "fx" && (

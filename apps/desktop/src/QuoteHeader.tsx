@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { Chip } from "./ui";
 import { isLiveSourceChoice } from "./chartSource";
 import type { DataSourceChoice } from "./chartSource";
-import { isLivePublicSymbol, precisionFor, quoteOf } from "./data";
+import { isLivePublicSymbol, quoteOf } from "./data";
+import { precisionForSymbol } from "./pricePrecision";
 import { useMt5 } from "./mt5";
 import { useWorkspace } from "./store";
 import { provenanceLabel, provenanceOf, provenanceTitle, provenanceTone } from "./provenance";
@@ -65,7 +66,7 @@ export function QuoteHeader({ symbol, dataSource }: { symbol: string; dataSource
       : baseProvenance === "demo" && isLivePublicSymbol(symbol)
         ? "live"
         : baseProvenance;
-  const digits = precisionFor(quote?.last ?? null);
+  const digits = precisionForSymbol(symbol, quote?.last ?? null);
   const up = (quote?.changePercent ?? 0) >= 0;
 
   return (
