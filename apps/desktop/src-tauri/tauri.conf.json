@@ -60,22 +60,39 @@
     "shortDescription": "Open-source trading terminal",
     "icon": [
       "icons/32x32.png",
+      "icons/64x64.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "publisher": "printezy247",
+    "publisher": "printezy247 <printezy247@users.noreply.github.com>",
     "homepage": "https://github.com/printezy247/EzyView",
     "license": "MIT",
     "copyright": "Copyright (c) 2026 printezy247",
-    "longDescription": "EzyView is an open-source, TradingView-class trading terminal: charts, 50+ indicators, drawing tools, a Pine Script editor, paper trading, MetaTrader 5 integration, a trading journal, fundamentals, a screener, options analytics and an MCP server for AI assistants.",
+    "longDescription": "EzyView is an open-source, TradingView-class trading terminal.\nIt provides charts, 50+ indicators, drawing tools, a Pine Script editor,\npaper trading, MetaTrader 5 integration, a trading journal, fundamentals,\na screener, options analytics and an MCP server for AI assistants.",
     "resources": {
       "../../../packages/mcp-server/dist/ezyview-mcp.mjs": "mcp/ezyview-mcp.mjs"
     },
     "linux": {
       "deb": {
-        "section": "utils"
+        "section": "utils",
+        "depends": [
+          "libc6 (>= 2.39)"
+        ],
+        "recommends": [
+          "nodejs",
+          "gnome-keyring"
+        ],
+        "desktopTemplate": "../../../packaging/EzyView.desktop.hbs",
+        "files": {
+          "/usr/share/doc/ezy-view/copyright": "../../../packaging/copyright",
+          "/usr/share/doc/ezy-view/changelog.gz": "../../../packaging/changelog.gz",
+          "/usr/share/doc/ezy-view/LICENSE": "../../../LICENSE",
+          "/usr/share/doc/ezy-view/NOTICE": "../../../NOTICE",
+          "/usr/share/man/man1/ezyview.1.gz": "../../../packaging/ezyview.1.gz",
+          "/usr/share/metainfo/com.printezy247.ezyview.metainfo.xml": "../../../packaging/com.printezy247.ezyview.metainfo.xml"
+        }
       }
     }
   }

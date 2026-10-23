@@ -1,0 +1,6 @@
+ezy-view (0.3.0) unstable; urgency=medium
+
+  * Package EzyView 0.3.0 with Debian metadata, documentation and the
+    third-party licence notices required by the bundled chart library.
+
+ -- printezy247 <printezy247@users.noreply.github.com>  Fri, 23 Oct 2026 00:00:00 +0000
