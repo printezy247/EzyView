@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { DEFAULT_MAX_COMBOS, optimizePine } from "./optimize.js";
+import { DEFAULT_MAX_COMBOS, optimizePine, optimizePineAsync } from "./optimize.js";
 import type { ParamSpec } from "./optimize.js";
 import { backtest } from "./backtest.js";
 import type { BacktestResult, Trade } from "./backtest.js";
@@ -38,6 +38,29 @@ const moreTradesWorse = (inputs: Record<string, number>): BacktestResult =>
   fakeResult({ totalPnl: 5, trades: tradesOf(inputs.a!) });
 
 describe("optimizePine", () => {
+  it("yields progress and returns ranked results asynchronously", async () => {
+    const progress: number[] = [];
+    const result = await optimizePineAsync(
+      (inputs) => fakeResult({ totalPnl: inputs.x! }),
+      [{ key: "x", values: [1, 3, 2] }],
+      { batchSize: 1, onProgress: (done) => progress.push(done) },
+    );
+    expect(progress).toEqual([1, 2, 3]);
+    expect(result.best?.inputs.x).toBe(3);
+    expect(result.runs).toHaveLength(3);
+  });
+
+  it("stops between combinations when cancelled", async () => {
+    const controller = new AbortController();
+    let runs = 0;
+    const result = await optimizePineAsync(
+      () => { runs++; return fakeResult({ totalPnl: runs }); },
+      [{ key: "x", values: [1, 2, 3, 4] }],
+      { batchSize: 1, signal: controller.signal, onProgress: () => controller.abort() },
+    );
+    expect(runs).toBe(1);
+    expect(result.runs).toHaveLength(1);
+  });
   it("runs once with empty inputs when there are no specs", () => {
     const run = vi.fn(() => fakeResult({ totalPnl: 7 }));
     const out = optimizePine(run, []);

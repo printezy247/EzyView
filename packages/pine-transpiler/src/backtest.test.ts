@@ -31,6 +31,19 @@ describe("backtest", () => {
     expect(result.trades[0]?.pnl).toBeCloseTo(3, 6);
   });
 
+  it("fills a long stop at its level when the bar low crosses it", () => {
+    const result = backtest(
+      [
+        order({ action: "entry", barIndex: 0, id: "L" }),
+        order({ action: "exit", barIndex: 1, stop: 95, id: "L" }),
+      ],
+      { close: [100, 98], high: [101, 101], low: [99, 90] },
+    );
+
+    expect(result.trades[0]).toMatchObject({ entryPrice: 100, exitPrice: 95, exitBar: 1 });
+    expect(result.trades[0]?.pnl).toBe(-5);
+  });
+
   it("computes PnL with the sign the side implies", () => {
     // Long from the peak, closed in the trough → a loss.
     const orders = [
@@ -152,6 +165,35 @@ describe("backtest", () => {
 
     // Peaks at 1004, troughs back at 1000 → a 4/1004 drop.
     expect(result.maxDrawdown).toBeCloseTo(4 / 1004, 6);
+  });
+
+  it("marks open positions to market in equity and drawdown", () => {
+    const close = [100, 120, 80, 100, 100];
+    const result = backtest(
+      [
+        order({ action: "entry", barIndex: 0, side: "long", id: "L" }),
+        order({ action: "close", barIndex: 3, id: "L" }),
+      ],
+      { close, initialCash: 1_000 },
+    );
+
+    expect(result.equity).toEqual([1_000, 1_020, 980, 1_000, 1_000]);
+    expect(result.maxDrawdown).toBeCloseTo(40 / 1_020, 6);
+  });
+
+  it("calculates unannualized Sharpe and Sortino from bar returns", () => {
+    const close = [100, 150, 100];
+    const result = backtest(
+      [
+        order({ action: "entry", barIndex: 0, side: "long", id: "L" }),
+        order({ action: "close", barIndex: 2, id: "L" }),
+      ],
+      { close, initialCash: 1_000 },
+    );
+
+    expect(result.equity).toEqual([1_000, 1_050, 1_000]);
+    expect(result.sharpeRatio).toBeGreaterThan(0);
+    expect(result.sortinoRatio).toBeGreaterThan(0);
   });
 
   it("returns an empty result for no orders", () => {

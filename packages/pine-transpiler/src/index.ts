@@ -13,6 +13,6 @@ export { pineCompletions } from "./completion.js";
 export type { PineCompletion } from "./completion.js";
 export { lintPine } from "./lint.js";
 export type { PineLintIssue } from "./lint.js";
-export { optimizePine, DEFAULT_MAX_COMBOS } from "./optimize.js";
+export { optimizePine, optimizePineAsync, DEFAULT_MAX_COMBOS } from "./optimize.js";
 export type { ParamSpec, OptimizeRun, OptimizationResult, OptimizeOptions } from "./optimize.js";
 export type { Node, Script } from "./ast.js";

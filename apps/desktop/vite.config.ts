@@ -37,7 +37,7 @@ export default defineConfig({
     // Source maps are ~16 MB and would ship inside the desktop bundle; opt in
     // with SOURCEMAP=1 when debugging a production build.
     sourcemap: process.env.SOURCEMAP === "1",
-    rollupOptions: {
+    rolldownOptions: {
       input: src("./index.html"),
       output: {
         // Libraries change far less often than app code, so they get their own

@@ -141,6 +141,22 @@ export function lex(source: string): Token[] {
       continue;
     }
 
+    if (ch === "#") {
+      const start = i;
+      i++;
+      col++;
+      while (i < source.length && /[0-9a-f]/i.test(source[i]!)) {
+        i++;
+        col++;
+      }
+      const raw = source.slice(start, i);
+      if (raw.length !== 7 && raw.length !== 9) {
+        throw new PineSyntaxError("color literal must use #RRGGBB or #RRGGBBAA", line, col);
+      }
+      push("string", raw, raw);
+      continue;
+    }
+
     if (isDigit(ch) || (ch === "." && isDigit(source[i + 1] ?? ""))) {
       const start = i;
       while (i < source.length && (isDigit(source[i]!) || source[i] === ".")) {

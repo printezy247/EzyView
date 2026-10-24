@@ -20,7 +20,9 @@ export interface BacktestResult {
   profitFactor: number | null;
   maxDrawdown: number;
   bars: number;
+  /** Unannualized mean bar return divided by the sample standard deviation of bar returns. */
   sharpeRatio: number | null;
+  /** Unannualized mean bar return divided by downside deviation, using a zero return target. */
   sortinoRatio: number | null;
   sqn: number | null;
   maxConsecutiveLosses: number;
@@ -76,7 +78,7 @@ export function backtest(orders: PineOrder[], opts: BacktestOptions): BacktestRe
     const fillBar = fillOnClose ? order.barIndex : order.barIndex + 1;
     if (fillBar >= close.length) continue;
 
-    const rawPrice = fillOnClose
+    let rawPrice = fillOnClose
       ? close[fillBar]
       : (opts.open?.[fillBar] ?? close[fillBar]);
 
@@ -120,6 +122,22 @@ export function backtest(orders: PineOrder[], opts: BacktestOptions): BacktestRe
       const key = order.id ?? "";
       const pos = openPositions.get(key);
       if (pos) {
+        const barOpen = opts.open?.[fillBar] ?? rawPrice;
+        const barHigh = opts.high?.[fillBar];
+        const barLow = opts.low?.[fillBar];
+        const stopHit = order.stop !== undefined && (pos.side === "long"
+          ? (barLow !== undefined && barLow <= order.stop)
+          : (barHigh !== undefined && barHigh >= order.stop));
+        const limitHit = order.limit !== undefined && (pos.side === "long"
+          ? (barHigh !== undefined && barHigh >= order.limit)
+          : (barLow !== undefined && barLow <= order.limit));
+
+        if (order.stop !== undefined || order.limit !== undefined) {
+          // Conservative same-bar assumption: if both levels hit, stop fills first.
+          if (stopHit) rawPrice = pos.side === "long" ? Math.min(barOpen, order.stop!) : Math.max(barOpen, order.stop!);
+          else if (limitHit) rawPrice = pos.side === "long" ? Math.max(barOpen, order.limit!) : Math.min(barOpen, order.limit!);
+          else continue;
+        }
         const exitPrice = pos.side === "long" ? rawPrice - slippage : rawPrice + slippage;
         closePosition(pos, exitPrice, fillBar, trades, multiplier, commission);
         openPositions.delete(key);
@@ -137,7 +155,7 @@ export function backtest(orders: PineOrder[], opts: BacktestOptions): BacktestRe
   }
 
   trades.sort((a, b) => a.entryBar - b.entryBar || a.exitBar - b.exitBar);
-  buildEquity(trades, close, initialCash, equity);
+  buildEquity(trades, close, initialCash, multiplier, commission, equity);
 
   const finalEquity = equity[equity.length - 1] ?? initialCash;
   const wins = trades.filter((t) => t.pnl > 0);
@@ -147,8 +165,6 @@ export function backtest(orders: PineOrder[], opts: BacktestOptions): BacktestRe
   const pnlList = trades.map((t) => t.pnl);
   const n = pnlList.length;
 
-  let sharpeRatio: number | null = null;
-  let sortinoRatio: number | null = null;
   let sqn: number | null = null;
   let avgWinLossRatio: number | null = null;
 
@@ -158,17 +174,11 @@ export function backtest(orders: PineOrder[], opts: BacktestOptions): BacktestRe
     const stdev = Math.sqrt(variance);
 
     if (stdev > 0) {
-      sharpeRatio = Number((meanPnl / stdev).toFixed(2));
       sqn = Number((Math.sqrt(n) * (meanPnl / stdev)).toFixed(2));
     }
-
-    const downsideVariance =
-      pnlList.reduce((s, p) => s + (p < 0 ? Math.pow(p, 2) : 0), 0) / (n - 1);
-    const downsideDev = Math.sqrt(downsideVariance);
-    if (downsideDev > 0) {
-      sortinoRatio = Number((meanPnl / downsideDev).toFixed(2));
-    }
   }
+
+  const { sharpeRatio, sortinoRatio } = barReturnRatios(equity);
 
   let maxConsecutiveLosses = 0;
   let currentLossStreak = 0;
@@ -231,20 +241,75 @@ function closePosition(
 }
 
 /** Walk trades bar by bar, carrying open-position PnL into the equity curve. */
-function buildEquity(trades: Trade[], close: number[], initialCash: number, equity: number[]): void {
+function buildEquity(
+  trades: Trade[],
+  close: number[],
+  initialCash: number,
+  multiplier: number,
+  commission: number,
+  equity: number[],
+): void {
   let cash = initialCash;
+  const byEntry = new Map<number, Trade[]>();
   const byExit = new Map<number, Trade[]>();
   for (const t of trades) {
+    const entries = byEntry.get(t.entryBar);
+    if (entries) entries.push(t);
+    else byEntry.set(t.entryBar, [t]);
+
     const list = byExit.get(t.exitBar);
     if (list) list.push(t);
     else byExit.set(t.exitBar, [t]);
   }
 
+  const open = new Set<Trade>();
   for (let bar = 0; bar < close.length; bar++) {
+    for (const trade of byEntry.get(bar) ?? []) {
+      if (trade.exitBar > bar) open.add(trade);
+    }
+
     const closed = byExit.get(bar);
-    if (closed) for (const t of closed) cash += t.pnl;
-    equity.push(cash);
+    if (closed) {
+      for (const trade of closed) {
+        cash += trade.pnl;
+        open.delete(trade);
+      }
+    }
+
+    const mark = close[bar];
+    let unrealized = 0;
+    if (mark !== undefined && Number.isFinite(mark)) {
+      for (const trade of open) {
+        const direction = trade.side === "long" ? 1 : -1;
+        unrealized += (mark - trade.entryPrice) * trade.qty * multiplier * direction - commission;
+      }
+    }
+    equity.push(cash + unrealized);
   }
+}
+
+/** Ratios are per-bar and unannualized because the input has no timeframe. */
+function barReturnRatios(equity: number[]): { sharpeRatio: number | null; sortinoRatio: number | null } {
+  const returns: number[] = [];
+  for (let i = 1; i < equity.length; i++) {
+    const previous = equity[i - 1]!;
+    const current = equity[i]!;
+    if (previous !== 0 && Number.isFinite(previous) && Number.isFinite(current)) {
+      returns.push(current / previous - 1);
+    }
+  }
+
+  if (returns.length < 2) return { sharpeRatio: null, sortinoRatio: null };
+
+  const mean = returns.reduce((sum, value) => sum + value, 0) / returns.length;
+  const variance = returns.reduce((sum, value) => sum + (value - mean) ** 2, 0) / (returns.length - 1);
+  const stdev = Math.sqrt(variance);
+  const downsideDeviation = Math.sqrt(returns.reduce((sum, value) => sum + Math.min(value, 0) ** 2, 0) / returns.length);
+
+  return {
+    sharpeRatio: stdev > 0 ? Number((mean / stdev).toFixed(2)) : null,
+    sortinoRatio: downsideDeviation > 0 ? Number((mean / downsideDeviation).toFixed(2)) : null,
+  };
 }
 
 /** Largest peak-to-trough drop across the equity curve, as a fraction. */

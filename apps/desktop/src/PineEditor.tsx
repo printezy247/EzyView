@@ -3,7 +3,7 @@ import { Download, Play, Save, Trash2, Upload, X, TrendingUp } from "lucide-reac
 // Type-only: Monaco itself is dynamically imported so it stays out of the
 // initial bundle. Types are erased by the compiler, so this costs nothing.
 import type * as Monaco from "monaco-editor";
-import { backtest, runPine, pineCompletions, lintPine, optimizePine, DEFAULT_MAX_COMBOS } from "@ezyview/pine-transpiler";
+import { backtest, runPine, pineCompletions, lintPine, optimizePineAsync, DEFAULT_MAX_COMBOS } from "@ezyview/pine-transpiler";
 import type {
   BacktestResult,
   Context,
@@ -483,6 +483,8 @@ function OptimizePanel({
   const [texts, setTexts] = useState<Record<string, string>>({});
   const [outcome, setOutcome] = useState<OptimizationResult | null>(null);
   const [runHint, setRunHint] = useState<string | null>(null);
+  const [progress, setProgress] = useState<{ completed: number; total: number } | null>(null);
+  const optimizerController = useRef<AbortController | null>(null);
 
   const keys = Object.keys(baseInputs);
 
@@ -497,9 +499,13 @@ function OptimizePanel({
   }
   const canRun = specs.length > 0 && bars.length > 0;
 
-  const handleOptimize = (): void => {
+  const handleOptimize = async (): Promise<void> => {
+    optimizerController.current?.abort();
+    const controller = new AbortController();
+    optimizerController.current = controller;
+    setProgress({ completed: 0, total: 0 });
     const close = bars.map((b) => b.close);
-    const next = optimizePine((vals) => {
+    const next = await optimizePineAsync((vals) => {
       const ctx: Context = {
         open: bars.map((b) => b.open),
         high: bars.map((b) => b.high),
@@ -510,7 +516,13 @@ function OptimizePanel({
         inputs: { ...baseInputs, ...vals },
       };
       return backtest(runPine(source, ctx).orders, { close });
-    }, specs);
+    }, specs, {
+      signal: controller.signal,
+      onProgress: (completed, total) => setProgress({ completed, total }),
+    });
+    if (optimizerController.current !== controller) return;
+    optimizerController.current = null;
+    setProgress(null);
     setOutcome(next);
     const expected = Math.min(
       specs.reduce((n, s) => n * s.values.length, 1),
@@ -533,11 +545,17 @@ function OptimizePanel({
         <button
           type="button"
           onClick={handleOptimize}
-          disabled={!canRun}
+          disabled={!canRun || progress !== null}
           className="rounded bg-ev-line px-2.5 py-1 text-ev-strong hover:bg-ev-line-strong disabled:cursor-not-allowed disabled:opacity-40"
         >
           Run grid
         </button>
+        {progress !== null && (
+          <>
+            <span>{progress.completed}/{progress.total} combinations</span>
+            <button type="button" onClick={() => optimizerController.current?.abort()} className="rounded bg-ev-line px-2.5 py-1 text-ev-strong">Cancel</button>
+          </>
+        )}
         {appliedBest && (
           <span className="text-ev-muted">
             Next run uses: {Object.entries(appliedBest).map(([k, v]) => `${k}=${v}`).join(" ")}
@@ -640,10 +658,10 @@ function StrategyTester({ result, inputs }: { result: BacktestResult; inputs?: R
         />
         <Metric label="Max DD" value={`${(result.maxDrawdown * 100).toFixed(2)}%`} tone="neg" />
         {result.sharpeRatio !== null && (
-          <Metric label="Sharpe" value={result.sharpeRatio.toFixed(2)} />
+          <Metric label="Sharpe / bar" value={result.sharpeRatio.toFixed(2)} />
         )}
         {result.sortinoRatio !== null && (
-          <Metric label="Sortino" value={result.sortinoRatio.toFixed(2)} />
+          <Metric label="Sortino / bar" value={result.sortinoRatio.toFixed(2)} />
         )}
         {result.sqn !== null && (
           <Metric label="SQN" value={result.sqn.toFixed(2)} />
@@ -693,7 +711,7 @@ function StrategyTester({ result, inputs }: { result: BacktestResult; inputs?: R
 }
 
 /**
- * Inline equity polyline of per-bar cash (the JournalStatsView approach,
+ * Inline equity polyline of per-bar marked-to-market account equity (the JournalStatsView approach,
  * smaller). Green when the curve ends flat-or-up vs its start, red otherwise.
  * Single-point and flat arrays stay inside the viewBox — no divide-by-zero.
  */

@@ -480,13 +480,17 @@ function strategyExit(
   fromEntry?: string,
 ): void {
   const stop = kwargs.stop;
+  const limit = kwargs.limit;
   const profit = kwargs.profit;
   orders.push({
     side: "long",
     action: "exit",
     barIndex,
     price: Number.NaN,
-    qty: stop !== undefined ? num(stop) : profit !== undefined ? num(profit) : 0,
+    qty: 0,
+    ...(stop !== undefined ? { stop: num(stop) } : {}),
+    ...(limit !== undefined ? { limit: num(limit) } : {}),
+    ...(profit !== undefined ? { profit: num(profit) } : {}),
     id: fromEntry ?? id ?? optStr(kwargs, "id") ?? "",
   });
 }

@@ -60,6 +60,13 @@ describe("lexer", () => {
     expect(t.literal).toBe("hello\nworld");
   });
 
+  it("lexes six- and eight-digit Pine color literals", () => {
+    expect(lex("#00A0A0 #00A0A080").filter((t) => t.type === "string").map((t) => t.literal)).toEqual([
+      "#00A0A0",
+      "#00A0A080",
+    ]);
+  });
+
   it("tracks line numbers", () => {
     expect(lex("a\nb\nc").filter((t) => t.type === "ident").map((t) => t.line)).toEqual([1, 2, 3]);
   });
@@ -340,6 +347,11 @@ describe("keyword arguments", () => {
     expect(out.plots[0]?.title).toBe("C");
     expect(out.plots[0]?.color).toBe("#ef5350");
     expect(out.plots[0]?.linewidth).toBe(3);
+  });
+
+  it("uses Pine color literals as plot colors", () => {
+    const out = runPine("plot(close, color=#00A0A0)", makeContext(3));
+    expect(out.plots[0]?.color).toBe("#00A0A0");
   });
 
   it("applies style from a keyword and leaves unsupplied options alone", () => {

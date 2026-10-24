@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "EzyView",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "identifier": "com.printezy247.ezyview",
   "build": {
     "beforeDevCommand": "npm run dev",

@@ -19,6 +19,29 @@ describe("lintPine", () => {
     expect(lintPine('//@version=5\nindicator("T")\nplot(close)')).toEqual([]);
   });
 
+  it("does not treat call-like text inside strings as Pine calls", () => {
+    const src = ['//@version=5', 'indicator("strategy( is text, plot(close) is text")', "x = close"].join("\n");
+    expect(lintPine(src)).toEqual([
+      { line: 1, column: 1, message: "Script has no plot or strategy call", severity: "warning" },
+    ]);
+  });
+
+  it("does not treat a version-like string as the Pine version directive", () => {
+    const src = ['indicator("//@version=6")', "plot(close)"].join("\n");
+    expect(lintPine(src)).toEqual([
+      { line: 1, column: 1, message: "Missing //@version= comment", severity: "warning" },
+    ]);
+  });
+
+  it("warns when a user-defined Pine function is beyond the parser subset", () => {
+    expect(lintPine("//@version=6\nf_bias() =>\n    close\nplot(close)")).toContainEqual({
+      line: 2,
+      column: 1,
+      message: "User-defined functions are not supported by this Pine parser",
+      severity: "warning",
+    });
+  });
+
   it("errors when both indicator() and strategy() are declared, at the second occurrence's line", () => {
     const src = ['//@version=5', 'indicator("T")', "x = 1", 'strategy("S")', "plot(close)"].join("\n");
     expect(lintPine(src)).toEqual([

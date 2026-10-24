@@ -348,6 +348,11 @@ export interface PineOrder {
   barIndex: number;
   price: number;
   qty: number;
+  /** Absolute stop/limit price for strategy.exit(). */
+  stop?: number;
+  limit?: number;
+  /** Profit distance in ticks; retained for reporting until tick size is supplied. */
+  profit?: number;
   id?: string;
 }
 

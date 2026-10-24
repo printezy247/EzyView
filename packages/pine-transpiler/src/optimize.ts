@@ -28,6 +28,12 @@ export interface OptimizeOptions {
   maxCombos?: number;
   /** Ranking metric, higher is better; default `totalPnl`. */
   metric?: (r: BacktestResult) => number;
+  /** Yield after this many combinations when using optimizePineAsync. */
+  batchSize?: number;
+  /** Called after each completed batch. */
+  onProgress?: (completed: number, total: number) => void;
+  /** Stops an asynchronous search between combinations. */
+  signal?: AbortSignal;
 }
 
 /** Default combo budget — a few hundred backtests stays interactive; thousands does not. */
@@ -75,6 +81,52 @@ export function optimizePine(
     return aj < bj ? -1 : aj > bj ? 1 : 0;
   });
 
+  return { runs, best: runs[0] ?? null, capped, firstFailure };
+}
+
+/** Responsive variant that yields to the UI between bounded batches. */
+export async function optimizePineAsync(
+  run: (inputs: Record<string, number>) => BacktestResult,
+  specs: ParamSpec[],
+  opts?: OptimizeOptions,
+): Promise<OptimizationResult> {
+  const maxCombos = opts?.maxCombos ?? DEFAULT_MAX_COMBOS;
+  const { combos, capped } = cartesian(specs, maxCombos);
+  const batchSize = Math.max(1, Math.floor(opts?.batchSize ?? 10));
+  const runs: OptimizeRun[] = [];
+  let firstFailure: string | undefined;
+  for (let i = 0; i < combos.length; i++) {
+    if (opts?.signal?.aborted) break;
+    try {
+      runs.push({ inputs: combos[i]!, result: run(combos[i]!) });
+    } catch (e) {
+      firstFailure ??= e instanceof Error ? e.message : String(e);
+    }
+    const completed = i + 1;
+    if (completed % batchSize === 0 || completed === combos.length) {
+      opts?.onProgress?.(completed, combos.length);
+      if (completed < combos.length) await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    }
+  }
+  return rankRuns(runs, capped, firstFailure, opts?.metric);
+}
+
+function rankRuns(
+  runs: OptimizeRun[],
+  capped: boolean,
+  firstFailure?: string,
+  metricFn?: (r: BacktestResult) => number,
+): OptimizationResult {
+  const metric = metricFn ?? ((r: BacktestResult) => r.totalPnl);
+  runs.sort((a, b) => {
+    const byMetric = metric(b.result) - metric(a.result);
+    if (byMetric !== 0) return byMetric;
+    const byTrades = a.result.trades.length - b.result.trades.length;
+    if (byTrades !== 0) return byTrades;
+    const aj = JSON.stringify(a.inputs);
+    const bj = JSON.stringify(b.inputs);
+    return aj < bj ? -1 : aj > bj ? 1 : 0;
+  });
   return { runs, best: runs[0] ?? null, capped, firstFailure };
 }
 
