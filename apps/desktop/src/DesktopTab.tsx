@@ -18,6 +18,8 @@ import {
 import type { ShellSettings } from "./shell";
 import { checkForUpdate, openReleasePage } from "./updateCheck";
 import type { UpdateResult } from "./updateCheck";
+import { fetchMcpRuntimeStatus, mcpStatusLine } from "./mcpRuntime";
+import type { McpRuntimeStatus } from "./mcpRuntime";
 import { notice } from "./notice";
 
 const button =
@@ -33,10 +35,12 @@ export function DesktopTab() {
   const [status, setStatus] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const [update, setUpdate] = useState<UpdateResult | "checking" | null>(null);
+  const [mcp, setMcp] = useState<McpRuntimeStatus | null>(null);
   const proxyId = useId();
 
   useEffect(() => {
     void loadShellSettings().then(setSettings);
+    void fetchMcpRuntimeStatus().then(setMcp);
   }, []);
 
   const edit = (patch: Partial<ShellSettings>) => {
@@ -154,6 +158,16 @@ export function DesktopTab() {
           <kbd className="rounded border border-ev-line px-1.5">Ctrl+Alt+E</kbd> brings EzyView to the front from any app.
           If another program already uses it, the shortcut is skipped.
         </p>
+      </section>
+
+      <section aria-label="MCP server">
+        <h2 className={heading}>MCP server (AI assistants)</h2>
+        <p role="status" className="text-base text-ev-text">
+          {mcpStatusLine(mcp)}
+        </p>
+        <button type="button" className={`${button} mt-2`} onClick={() => void fetchMcpRuntimeStatus().then(setMcp)}>
+          Recheck
+        </button>
       </section>
 
       <section aria-label="Rendering and network">

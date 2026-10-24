@@ -93,10 +93,12 @@
           "/usr/share/doc/ezy-view/LICENSE": "../../../LICENSE",
           "/usr/share/doc/ezy-view/NOTICE": "../../../NOTICE",
           "/usr/share/man/man1/ezyview.1.gz": "../../../packaging/ezyview.1.gz",
+          "/usr/share/man/man1/ezyview-mcp.1.gz": "../../../packaging/ezyview-mcp.1.gz",
           "/usr/share/man/man1/ezyview-mt5-bridge.1.gz": "../../../packaging/ezyview-mt5-bridge.1.gz",
           "/usr/share/metainfo/com.printezy247.ezyview.metainfo.xml": "../../../packaging/com.printezy247.ezyview.metainfo.xml",
           "/usr/share/doc/ezy-view/mt5-bridge.md": "../../../tools/mt5-bridge/README.md",
-          "/usr/bin/ezyview-mt5-bridge": "../../../packaging/ezyview-mt5-bridge"
+          "/usr/bin/ezyview-mt5-bridge": "../../../packaging/ezyview-mt5-bridge",
+          "/usr/bin/ezyview-mcp": "../../../packaging/ezyview-mcp"
         }
       }
     }
