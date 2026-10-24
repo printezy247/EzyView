@@ -1,4 +1,5 @@
 import type { Resolution } from "@ezyview/data-adapters";
+import type { DataSourceChoice } from "./chartSource";
 
 /**
  * Chart-cell linking: cells that share a group name move together.
@@ -19,12 +20,15 @@ export interface LinkableChart {
   symbol: string;
   resolution: Resolution;
   linkGroup?: string;
+  /** Feed the symbol belongs to; a linked MT5 ticker must not stay on demo. */
+  dataSource?: DataSourceChoice;
 }
 
 /** The fields a linked update may carry. */
 export interface LinkPatch {
   symbol?: string;
   resolution?: Resolution;
+  dataSource?: DataSourceChoice;
 }
 
 /** The group a cell belongs to, or null when it is on its own. */
