@@ -41,12 +41,12 @@ describe("palette is the Investing.com brand", () => {
   });
 
   it("keeps the Investing.com chrome, gold and link blue", () => {
-    // Chrome is the darkest surface: rails/nav sit under the panel colour, and
-    // the light theme's dark bar is literally Investing.com's #181c21.
+    // Chrome is the outer shell: rails/nav sit under the chrome colour, and
+    // the dark theme uses #0e1216 while the light theme uses #f0f3fa.
     expect(INVEST_DARK.chrome).toBe("#0e1216");
     expect(INVEST_DARK.panel).toBe("#181c21");
     expect(INVEST_DARK.warn).toBe("#f2a93b");
-    expect(INVEST_LIGHT.chrome).toBe("#181c21");
+    expect(INVEST_LIGHT.chrome).toBe("#f0f3fa");
     expect(INVEST_LIGHT.link).toBe("#1256a0");
   });
 

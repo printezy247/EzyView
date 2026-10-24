@@ -67,7 +67,7 @@
   --ev-bg: #ffffff;
   --ev-panel: #f7f8fa;
   --ev-raised: #eceff2;
-  --ev-chrome: #181c21;
+  --ev-chrome: #f0f3fa;
   --ev-line: #e2e5ea;
   --ev-line-strong: #c9cdd4;
   --ev-dim: #b2b5be;
@@ -297,6 +297,18 @@ button[aria-disabled="true"] {
 
 *:hover::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.45);
+}
+
+:root[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.16);
+}
+
+:root[data-theme="light"] *:hover::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.28);
+}
+
+:root[data-theme="light"] *:hover::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.45);
 }
 
 /* Respect the OS "reduce motion" setting. */
