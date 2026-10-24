@@ -340,6 +340,27 @@ describe("pre-trade plans", () => {
   });
 });
 
+describe("storageIssue", () => {
+  it("flags the session when a save is refused by quota, and clears on dismiss", async () => {
+    const { useJournal } = await loadStore();
+    expect(useJournal.getState().storageIssue).toBe(false);
+
+    // Quota exceeded: every write now throws.
+    const g = globalThis as Record<string, unknown>;
+    const setItem = g.localStorage as { setItem: (k: string, v: string) => void };
+    setItem.setItem = () => {
+      throw new Error("QuotaExceededError");
+    };
+
+    useJournal.getState().addNote({ time: 5, text: "will not fit" });
+    current?.flushJournal();
+    expect(useJournal.getState().storageIssue).toBe(true);
+
+    useJournal.getState().dismissStorageIssue();
+    expect(useJournal.getState().storageIssue).toBe(false);
+  });
+});
+
 describe("captureChart", () => {
   // Phase 8 extracted the compositor into chartImage.ts; the delegate must
   // keep the node-safe behaviour: no document, no snapshot, never a throw.

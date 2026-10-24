@@ -142,6 +142,8 @@ function normalizeTags(tags: readonly string[] | undefined): string[] | undefine
  */
 let journalTimer: ReturnType<typeof setTimeout> | null = null;
 let queuedState: Persisted | null = null;
+/** Called when a save is refused by quota, so the UI can surface a warning. */
+let onStorageIssue: (() => void) | null = null;
 
 function writeState(state: Persisted): void {
   if (typeof localStorage === "undefined") return;
@@ -155,7 +157,9 @@ function writeState(state: Persisted): void {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     } catch {
-      // Quota: the last screenshots stay for this session only.
+      // Quota: the last screenshots stay for this session only — and the user
+      // is told rather than finding data missing on next launch.
+      onStorageIssue?.();
     }
   }, 400);
 }
@@ -172,7 +176,7 @@ export function flushJournal(): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   } catch {
-    // Quota: the last screenshots stay for this session only.
+    onStorageIssue?.();
   }
 }
 
@@ -182,13 +186,16 @@ if (typeof window !== "undefined") {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(queuedState));
     } catch {
-      // ignore
+      onStorageIssue?.();
     }
   });
 }
 
 const uid = (): string => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
+/**
+ * The journal store, plus the session `storageIssue` flag the panel surfaces.
+ */
 export interface JournalState {
   entries: JournalEntry[];
   notes: JournalNote[];
@@ -218,12 +225,16 @@ export interface JournalState {
   /** Pulls closed trades out of a deal history; returns how many were new. */
   importDeals(deals: readonly Deal[], source: JournalEntry["source"]): number;
   clear(): void;
+  /** A save was refused by quota this session; the panel surfaces it. */
+  storageIssue: boolean;
+  dismissStorageIssue(): void;
 }
 
 const boot = readState();
 
 export const useJournal = create<JournalState>((set, get) => {
   /** Persist the durable slice; the in-memory `query` never lands on disk. */
+  onStorageIssue = () => set({ storageIssue: true });
   const persist = (): void => {
     const s = get();
     writeState({
@@ -361,6 +372,11 @@ export const useJournal = create<JournalState>((set, get) => {
     clear() {
       set({ entries: [], notes: [], savedReviews: [], propFirm: {}, plans: [] });
       persist();
+    },
+
+    storageIssue: false,
+    dismissStorageIssue() {
+      set({ storageIssue: false });
     },
   };
 });

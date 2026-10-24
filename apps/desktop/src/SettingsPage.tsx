@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { activeChartOf } from "./layout";
 import { useWorkspace } from "./store";
@@ -8,6 +8,16 @@ import { EventsControls } from "./EventsControls";
 import { DesktopTab } from "./DesktopTab";
 import { DiagnosticsTab } from "./DiagnosticsTab";
 import { AuditTab, BrokerTab, ConnectionTab, SafetyTab } from "./Mt5Setup";
+import { downloadBlob } from "./exportUi";
+import {
+  applyWorkspaceBackup,
+  dismissParkedCorrupt,
+  downloadCorruptBackup,
+  parkedCorruptKeys,
+  parseWorkspaceBackup,
+  readWorkspaceBackup,
+  serializeWorkspaceBackup,
+} from "./workspaceBackup";
 
 type Tab = "connection" | "broker" | "safety" | "audit" | "data" | "appearance" | "desktop" | "diagnostics";
 
@@ -21,6 +31,146 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "desktop", label: "Desktop" },
   { id: "diagnostics", label: "Diagnostics" },
 ];
+
+/**
+ * Backup / restore card for the Data tab.
+ *
+ * One JSON file carries every persisted namespace (workspace, journal, MT5,
+ * paper account, drawings, shell settings). Import is additive: namespaces the
+ * file does not carry keep their current data. A park-place of corrupt
+ * payloads (`.corrupt`) is surfaced here so a bad save can be recovered.
+ */
+export function BackupsSection() {
+  const [notice, setNotice] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [corruptVersion, setCorruptVersion] = useState(0);
+  const parked = useMemo(() => parkedCorruptKeys(), [corruptVersion]);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  const exportNow = (): void => {
+    const backup = readWorkspaceBackup();
+    const filename = `ezyview-backup-${new Date(backup.createdAt * 1000).toISOString().slice(0, 10)}.json`;
+    downloadBlob(new Blob([serializeWorkspaceBackup(backup)], { type: "application/json" }), filename);
+    setNotice("Backup downloaded.");
+  };
+
+  const importNow = async (file: File): Promise<void> => {
+    setNotice(null);
+    setError(null);
+    let raw = "";
+    try {
+      raw = await file.text();
+    } catch {
+      setError("Could not read the file.");
+      return;
+    }
+    const parsed = parseWorkspaceBackup(raw);
+    if ("error" in parsed) {
+      setError(parsed.error);
+      return;
+    }
+    const result = applyWorkspaceBackup(parsed.backup);
+    setNotice(
+      `Restored ${result.applied.length} namespace${result.absent.length === 1 ? "" : "s"}` +
+        (result.absent.length > 0 ? ` (${result.absent.length} not present in this backup kept their data)` : "") +
+        " — restart EzyView to see everything.",
+    );
+  };
+
+  return (
+    <div className="mt-6 border-t border-ev-raised pt-4">
+      <h2 className="mb-1 text-dense font-medium uppercase tracking-wider text-ev-faint">Backups</h2>
+      <p className="mb-3 text-dense text-ev-muted">
+        Exports and restores workspace layouts, drawings, journal, MT5 settings, paper account and shell settings as a
+        single JSON file. Secrets (API keys, bridge tokens) are never included.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={exportNow}
+          className="rounded bg-ev-line px-3 py-1.5 text-dense text-ev-strong hover:bg-ev-line-strong"
+        >
+          Export workspace backup
+        </button>
+        <button
+          type="button"
+          onClick={() => fileInput.current?.click()}
+          className="rounded border border-ev-line px-3 py-1.5 text-dense text-ev-muted hover:text-ev-strong"
+        >
+          Import workspace backup
+        </button>
+        <input
+          ref={fileInput}
+          type="file"
+          accept="application/json,.json"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void importNow(file);
+            e.target.value = "";
+          }}
+        />
+      </div>
+      {notice && (
+        <p role="status" className="mt-2 rounded border border-ev-up/40 bg-ev-up/10 px-2 py-1.5 text-dense text-ev-up-text">
+          {notice}
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="mt-2 rounded border border-ev-down/40 bg-ev-down/10 px-2 py-1.5 text-dense text-ev-down-text">
+          {error}
+        </p>
+      )}
+
+      {parked.length > 0 && (
+        <>
+          <h3 className="mb-1 mt-5 text-dense font-medium uppercase tracking-wider text-ev-faint">
+            Parked corrupt data
+          </h3>
+          <p className="mb-2 text-dense text-ev-muted">
+            These storage payloads could not be read and were parked instead of deleted. Download them if you want to
+            try to recover anything by hand.
+          </p>
+          <ul className="space-y-1.5">
+            {parked.map((key) => (
+              <li key={key} className="flex items-center gap-2">
+                <code className="flex-1 text-dense text-ev-text">{key}</code>
+                {["export", "dismiss"].map((action) =>
+                  action === "export" ? (
+                    <button
+                      key="export"
+                      type="button"
+                      onClick={() => {
+                        const raw = downloadCorruptBackup(key);
+                        if (raw === null) return;
+                        downloadBlob(new Blob([raw], { type: "application/json" }), `${key}.json`);
+                      }}
+                      className="rounded border border-ev-line px-2 py-0.5 text-dense text-ev-muted hover:text-ev-strong"
+                    >
+                      Download
+                    </button>
+                  ) : (
+                    <button
+                      key="dismiss"
+                      type="button"
+                      onClick={() => {
+                        dismissParkedCorrupt(key);
+                        setCorruptVersion((v) => v + 1);
+                      }}
+                      className="rounded px-2 py-0.5 text-dense text-ev-muted hover:text-ev-strong"
+                    >
+                      Discard
+                    </button>
+                  ),
+                )}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
+  );
+}
 
 /**
  * Settings destination. The four MT5 setup tabs moved here from the footer
@@ -89,6 +239,7 @@ export function SettingsPage() {
             >
               Manage API keys
             </button>
+            <BackupsSection />
           </>
         )}
         {tab === "desktop" && <DesktopTab />}
