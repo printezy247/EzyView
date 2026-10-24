@@ -42,6 +42,8 @@ import { publishCrosshair, subscribeCrosshair } from "./crosshairBus";
 import type { CrosshairMessage } from "./crosshairBus";
 import { getActiveExportSource, setActiveExportSource } from "./exportBridge";
 import { useShortcut } from "./shortcuts";
+import { effectiveSource } from "./chartSource";
+import { useMt5 } from "./mt5";
 
 interface ChartPageProps {
   /** Which right-dock tab is visible, or null when the dock is closed. */
@@ -86,6 +88,12 @@ export function ChartPage({
 
   const watchlistSymbolKey = useWorkspace((s) => s.watchlistSymbolKey);
   const symbols = useMemo(() => (watchlistSymbolKey ? watchlistSymbolKey.split(",") : []), [watchlistSymbolKey]);
+  // The command input offers only symbols this cell's feed can serve, and its
+  // recents are kept per feed rather than in one cross-broker list.
+  const globalFeed = useMt5((s) => s.source);
+  const source = effectiveSource(state.dataSource, globalFeed);
+  const allLayouts = useWorkspace((s) => s.layouts);
+  const layoutChoices = useMemo(() => allLayouts.map((l) => ({ id: l.id, name: l.name })), [allLayouts]);
   const eventOptions = useWorkspace((s) => s.eventOptions);
   const apiKeys = useApiKeys((s) => s.keys);
   const [commandOpen, setCommandOpen] = useState(false);
@@ -445,11 +453,14 @@ export function ChartPage({
               symbols={symbols}
               currentSymbol={state.symbol}
               currentResolution={state.resolution}
+              source={source}
+              layouts={layoutChoices}
               onClose={() => setCommandOpen(false)}
               onApply={(symbol, resolution) => {
                 if (symbol) setSymbol(symbol);
                 if (resolution) setResolution(resolution as never);
               }}
+              onApplyLayout={(id) => useWorkspace.getState().setActiveLayout(id)}
             />
           )}
         </main>
