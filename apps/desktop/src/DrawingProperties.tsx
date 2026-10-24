@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { ArrowRightLeft, Bell, Eye, EyeOff, Lock, LockOpen, Trash2 } from "lucide-react";
+import { ArrowRightLeft, Bell, Eye, EyeOff, Lock, LockOpen, Settings, Trash2 } from "lucide-react";
 import { useWorkspace } from "./store";
 import { drawingLabel } from "./ObjectTree";
 import { applyDrawingTemplate, listDrawingTemplates, saveDrawingTemplate } from "./drawingTemplates";
 import type { DrawingTemplate } from "./drawingTemplates";
 import { syncPositionDrawingToOrderTicket } from "./orderDraft";
+import { useDrawingUi } from "./drawingUi";
 
 const COLORS = ["#d91400", "#0ea600", "#f2a93b", "#4a90e2", "#9c27b0", "#00bcd4", "#ffd700", "#ffffff"];
 const WIDTHS = [1, 2, 3, 4];
@@ -35,7 +36,8 @@ export function DrawingProperties() {
   const d = drawing;
   const style = d.style;
   const level = d.points[0]?.price;
-  const canAlert = d.tool === "horizontal_line" && level !== undefined && Number.isFinite(level);
+  const canAlert =
+    (d.tool === "horizontal_line" || d.tool === "horizontal_ray") && level !== undefined && Number.isFinite(level);
   const alertBound = alerts.some((a) => a.drawingId === d.id);
   const isPositionTool = (d.tool === "long_position" || d.tool === "short_position") && d.points.length >= 3;
   const activeSymbol = useWorkspace.getState().activeChart().symbol;
@@ -59,7 +61,18 @@ export function DrawingProperties() {
     <div className="border-t border-ev-raised px-3 py-2 text-base" aria-label="Drawing properties">
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-dense font-semibold uppercase tracking-wider text-ev-faint">Properties</h3>
-        <span className="truncate text-dense text-ev-muted">{drawingLabel(d)}</span>
+        <div className="flex min-w-0 items-center gap-1">
+          <span className="truncate text-dense text-ev-muted">{drawingLabel(d)}</span>
+          <button
+            type="button"
+            aria-label="Drawing settings"
+            title="Open drawing settings"
+            onClick={() => useDrawingUi.getState().openSettings(d.id, "style")}
+            className="flex size-6 shrink-0 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+          >
+            <Settings size={12} aria-hidden />
+          </button>
+        </div>
       </div>
 
       {isPositionTool && (

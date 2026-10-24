@@ -10,6 +10,9 @@ import { draftSideForPrice, useOrderDraft } from "./orderDraft";
 import { DEFAULT_DRAWING_STYLE } from "@ezyview/drawing-tools";
 import { uid, useWorkspace } from "./store";
 import { linkGroupOf } from "./linkGroups";
+import { applyDrawingTemplate, listDrawingTemplates, saveDrawingTemplate } from "./drawingTemplates";
+import { useDrawingUi } from "./drawingUi";
+import { drawingLabel } from "./ObjectTree";
 
 /** Name of the vertical line "Lock vertical cursor line by time" drops on the chart. */
 const LOCK_NAME = "Cursor lock";
@@ -21,6 +24,8 @@ export interface ChartMenuRequest {
   /** Time and price under the cursor. */
   time: number;
   price: number;
+  /** Drawing under the cursor, when it opened on one. */
+  drawingId?: string;
 }
 
 interface Props {
@@ -98,6 +103,45 @@ export function ChartMenuHost({
     openLinkGroup: onOpenLinkGroup,
   };
 
+  // A right-click on a drawing gets its own section; the rest of the chart
+  // menu still follows, so nothing is lost when the target is a shape.
+  const target = request.drawingId ? chart.drawings.find((d) => d.id === request.drawingId) : undefined;
+  const level = target?.points[0]?.price;
+  const hasLevel =
+    target !== undefined && level !== undefined && (target.tool === "horizontal_line" || target.tool === "horizontal_ray");
+  const drawing = target
+    ? {
+        id: target.id,
+        label: drawingLabel(target),
+        locked: target.locked === true,
+        hidden: target.hidden === true,
+        hasAlert: ws.alerts.some((a) => a.drawingId === target.id),
+        hasLevel,
+        templates: listDrawingTemplates().map((t) => ({ id: t.id, name: t.name })),
+        actions: {
+          settings: () => useDrawingUi.getState().openSettings(target.id, "style"),
+          addAlert: () => {
+            if (level === undefined) return;
+            ws.addAlert(
+              chart.symbol,
+              { kind: "crossing", value: level },
+              "once_per_bar_close",
+              `${drawingLabel(target)} @ ${level}`,
+              target.id,
+            );
+          },
+          saveTemplate: () => saveDrawingTemplate(uniqueDrawingTemplateName(drawingLabel(target)), target.style),
+          applyTemplate: (id: string) => void applyDrawingTemplate(id, target.id),
+          clone: () => ws.duplicateDrawing(target.id),
+          copy: () => ws.copyDrawing(target.id),
+          toggleLock: () => ws.updateDrawing(target.id, { locked: !target.locked }),
+          toggleHide: () => ws.updateDrawing(target.id, { hidden: !target.hidden }),
+          move: (to: "front" | "forward" | "backward" | "back") => ws.moveDrawing(target.id, to),
+          remove: () => ws.deleteDrawing(target.id),
+        },
+      }
+    : undefined;
+
   const entries = buildChartMenu({
     symbol: chart.symbol,
     price,
@@ -110,8 +154,21 @@ export function ChartMenuHost({
     templates: ws.chartTemplates.map((t) => ({ id: t.id, name: t.name })),
     eventOptions: ws.eventOptions,
     linkGroup: linkGroupOf(chart),
+    ...(drawing ? { drawing } : {}),
     actions,
   });
 
   return <ChartContextMenu x={request.x} y={request.y} entries={entries} onClose={onClose} />;
+}
+
+/** "Trend line" → "Trend line template", bumped until it is unique. */
+function uniqueDrawingTemplateName(base: string): string {
+  const names = new Set(listDrawingTemplates().map((t) => t.name));
+  const root = `${base} template`;
+  if (!names.has(root)) return root;
+  for (let i = 2; i < 100; i++) {
+    const candidate = `${root} ${i}`;
+    if (!names.has(candidate)) return candidate;
+  }
+  return `${root} ${Date.now().toString(36)}`;
 }

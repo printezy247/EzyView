@@ -2,9 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FundamentalEventOverlay, TradingLine } from "@ezyview/chart-engine";
 import { buildSources } from "@ezyview/fundamentals";
 import { ChartHost } from "./ChartHost";
+import type { DrawingBox } from "./ChartHost";
 import { SourceWarning } from "./SourceWarning";
 import { ChartCommandInput } from "./ChartCommandInput";
 import { DrawingToolbar } from "./DrawingToolbar";
+import { DrawingSettingsModal } from "./DrawingSettingsModal";
+import { FavoriteDrawingsBar } from "./FavoriteDrawingsBar";
+import { FloatingDrawingBar } from "./FloatingDrawingBar";
 import { ReplayBar } from "./ReplayBar";
 import { RightDock } from "./RightDock";
 import type { DockTab, DockTabId } from "./RightDock";
@@ -118,12 +122,41 @@ export function ChartPage({
   const [linkGroupOpen, setLinkGroupOpen] = useState(false);
   const saveChartTemplate = useWorkspace((s) => s.saveChartTemplate);
   const onCellContextMenu = useCallback(
-    (index: number, info: { clientX: number; clientY: number; time: number; price: number }) => {
+    (index: number, info: { clientX: number; clientY: number; time: number; price: number; drawingId?: string }) => {
       useWorkspace.getState().setActiveChart(index);
-      setMenu({ x: info.clientX, y: info.clientY, time: info.time, price: info.price });
+      setMenu({
+        x: info.clientX,
+        y: info.clientY,
+        time: info.time,
+        price: info.price,
+        ...(info.drawingId ? { drawingId: info.drawingId } : {}),
+      });
     },
     [],
   );
+
+  // Screen box of the selected drawing on the focused cell, for the floating
+  // mini-settings bar. Cleared when the cell switches or the drawing goes.
+  const [drawingBox, setDrawingBox] = useState<{ index: number; box: DrawingBox } | null>(null);
+  const onDrawingBox = useCallback((index: number, box: DrawingBox | null) => {
+    setDrawingBox((prev) => {
+      if (box) return { index, box };
+      return prev && prev.index === index ? null : prev;
+    });
+  }, []);
+
+  // A selection belongs to the cell it was made in; focusing another cell
+  // must not leave the floating bar editing a drawing that is off-screen.
+  useEffect(() => {
+    setDrawingBox(null);
+  }, [layout.activeChart]);
+
+  useEffect(() => {
+    const st = useWorkspace.getState();
+    if (st.selectedDrawingId && !state.drawings.some((d) => d.id === st.selectedDrawingId)) {
+      st.selectDrawing(null);
+    }
+  }, [layout.activeChart, state.drawings]);
 
   // Where the pointer last was on the focused chart; Ctrl+V pastes there.
   const lastCursorRef = useRef<{ time: number; price: number } | null>(null);
@@ -258,6 +291,13 @@ export function ChartPage({
           e.preventDefault();
           useWorkspace.getState().copyDrawing();
         }
+      } else if (e.key.toLowerCase() === "d") {
+        // TradingView's clone shortcut, offset so the clone is visible.
+        const id = useWorkspace.getState().selectedDrawingId;
+        if (id) {
+          e.preventDefault();
+          useWorkspace.getState().duplicateDrawing(id);
+        }
       } else if (e.key.toLowerCase() === "v" && lastCursorRef.current && useWorkspace.getState().drawingClipboard) {
         e.preventDefault();
         useWorkspace.getState().pasteDrawing(lastCursorRef.current);
@@ -385,8 +425,11 @@ export function ChartPage({
             onCrosshairMove={onCrosshairMove}
             onFocus={setActiveChart}
             onContextMenu={onCellContextMenu}
+            drawingBox={drawingBox}
+            onDrawingBox={onDrawingBox}
           />
           {activeTool && <ToolHint tool={activeTool} />}
+          <FavoriteDrawingsBar />
           {commandOpen && (
             <ChartCommandInput
               open={commandOpen}
@@ -410,6 +453,8 @@ export function ChartPage({
       </div>
 
       <ChartBottomBar onOpenHotkeys={onOpenHotkeys} />
+
+      <DrawingSettingsModal />
 
       {menu && (
         <ChartMenuHost
@@ -481,7 +526,10 @@ interface ChartGridProps {
   syncOn: boolean;
   onCrosshairMove: (t: number | null, p: number | null) => void;
   onFocus: (index: number) => void;
-  onContextMenu: (index: number, info: { clientX: number; clientY: number; time: number; price: number }) => void;
+  onContextMenu: (index: number, info: { clientX: number; clientY: number; time: number; price: number; drawingId?: string }) => void;
+  /** Box of the selected drawing in the focused cell, for the floating bar. */
+  drawingBox: { index: number; box: DrawingBox } | null;
+  onDrawingBox: (index: number, box: DrawingBox | null) => void;
 }
 
 /**
@@ -508,6 +556,8 @@ function ChartGrid({
   onCrosshairMove,
   onFocus,
   onContextMenu,
+  drawingBox,
+  onDrawingBox,
 }: ChartGridProps) {
   const [maximizedCell, setMaximizedCell] = useState<number | null>(null);
   const cells: ChartState[] = layout.charts.slice(0, cellCount(layout.grid));
@@ -599,7 +649,9 @@ function ChartGrid({
               onContextMenu={(info) => onContextMenu(index, info)}
               onCrosshairTime={focused ? onCrosshairTime : undefined}
               onCrosshairMove={focused ? onCrosshairMove : undefined}
+              onDrawingBox={focused ? (box) => onDrawingBox(index, box) : undefined}
             />
+            {focused && <FloatingDrawingBar anchor={drawingBox?.index === index ? drawingBox.box : null} />}
             <Readout
               symbol={multi ? `${chart.symbol} · ${chart.resolution}` : chart.symbol}
               rawSymbol={chart.symbol}

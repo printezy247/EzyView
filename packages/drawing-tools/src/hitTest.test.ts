@@ -4,6 +4,9 @@ import type { Drawing } from "./types.js";
 import { distToSegment, insideRect } from "./geometry.js";
 import { fibLevels } from "./fib.js";
 import { hitTest, hitTestAll } from "./hitTest.js";
+import { resolvedFibLevels } from "./fib.js";
+import { ALL_TOOLS, TOOL_SHORTCUTS, TOOL_SPECS, isFibTool, isPositionTool, toolForShortcut, toolHasFill, toolShowsText, toolSpec, toolSupportsExtend } from "./tools.js";
+import { timeframeUnit, visibleOnResolution } from "./visibility.js";
 
 const line = (id: string, tool: Drawing["tool"], points: Drawing["points"]): Drawing => ({
   id,
@@ -181,5 +184,196 @@ describe("tool table", () => {
       expect(isComplete(tool, Array.from({ length: TOOL_ANCHORS[tool] }, (_, i) => ({ time: i, price: i })))).toBe(true);
       expect(isComplete(tool, [])).toBe(false);
     }
+  });
+});
+
+const styled = (id: string, tool: Drawing["tool"], points: Drawing["points"], style: Partial<Drawing["style"]> = {}): Drawing => ({
+  ...line(id, tool, points),
+  style: { ...DEFAULT_DRAWING_STYLE, ...style },
+});
+
+describe("TradingView parity tools", () => {
+  it("horizontal_ray hits forward of its anchor only", () => {
+    const ray = styled("hr", "horizontal_ray", [{ time: 0, price: 100 }]);
+    const screen = [{ x: 120, y: 200 }];
+    expect(hitTest(ray, screen, { x: 300, y: 203 }, 6)?.handle).toBe(-1);
+    expect(hitTest(ray, screen, { x: 60, y: 200 }, 6)).toBeNull();
+    expect(hitTest(ray, screen, { x: 300, y: 230 }, 6)).toBeNull();
+  });
+
+  it("info_line hits its body and still grabs anchors", () => {
+    const info = styled("il", "info_line", [
+      { time: 0, price: 100 },
+      { time: 10, price: 110 },
+    ]);
+    const screen = [
+      { x: 0, y: 100 },
+      { x: 100, y: 0 },
+    ];
+    expect(hitTest(info, screen, { x: 50, y: 50 }, 6)?.handle).toBe(-1);
+    expect(hitTest(info, screen, { x: 2, y: 99 }, 6)?.handle).toBe(0);
+  });
+
+  it("callout hits its leader and its text box", () => {
+    const callout = styled("co", "callout", [
+      { time: 0, price: 100 },
+      { time: 10, price: 110 },
+    ]);
+    const screen = [
+      { x: 100, y: 100 },
+      { x: 160, y: 40 },
+    ];
+    // On the leader segment.
+    expect(hitTest(callout, screen, { x: 130, y: 70 }, 6)?.handle).toBe(-1);
+    // Inside the box rendered at the second anchor.
+    expect(hitTest(callout, screen, { x: 200, y: 50 }, 6)?.handle).toBe(-1);
+  });
+
+  it("brush hits any of its strokes, not a coarse bounding box", () => {
+    const brush = styled("br", "brush", [
+      { time: 0, price: 100 },
+      { time: 1, price: 100 },
+      { time: 2, price: 100 },
+    ]);
+    const screen = [
+      { x: 0, y: 0 },
+      { x: 100, y: 100 },
+      { x: 200, y: 0 },
+    ];
+    expect(hitTest(brush, screen, { x: 50, y: 50 }, 6)?.handle).toBe(-1);
+    // The bbox contains this point, but neither stroke passes near it.
+    expect(hitTest(brush, screen, { x: 50, y: 90 }, 6)).toBeNull();
+  });
+
+  it("parallel_channel hits base, parallel, middle line and fill", () => {
+    const channel = styled(
+      "pc",
+      "parallel_channel",
+      [
+        { time: 0, price: 100 },
+        { time: 10, price: 100 },
+        { time: 0, price: 120 },
+      ],
+      { fill: "#2962ff" },
+    );
+    const screen = [
+      { x: 0, y: 100 },
+      { x: 100, y: 100 },
+      { x: 0, y: 0 },
+    ];
+    expect(hitTest(channel, screen, { x: 50, y: 100 }, 6)?.handle).toBe(-1); // base
+    expect(hitTest(channel, screen, { x: 50, y: 0 }, 6)?.handle).toBe(-1); // parallel
+    expect(hitTest(channel, screen, { x: 50, y: 50 }, 6)?.handle).toBe(-1); // interior/middle
+    expect(hitTest(channel, screen, { x: 50, y: 130 }, 6)).toBeNull();
+  });
+
+  it("honours extendLeft/extendRight on straight tools", () => {
+    const points: Drawing["points"] = [
+      { time: 0, price: 0 },
+      { time: 10, price: 10 },
+    ];
+    const screen = [
+      { x: 0, y: 100 },
+      { x: 100, y: 0 },
+    ];
+    const plain = styled("e1", "trend_line", points);
+    const extended = styled("e2", "trend_line", points, { extendRight: true });
+    // Past the b end of the segment.
+    expect(hitTest(plain, screen, { x: 130, y: -30 }, 6)).toBeNull();
+    expect(hitTest(extended, screen, { x: 130, y: -30 }, 6)?.handle).toBe(-1);
+  });
+
+  it("fib retracement uses the drawing's custom enabled levels", () => {
+    const base: Drawing["points"] = [
+      { time: 0, price: 100 },
+      { time: 10, price: 200 },
+    ];
+    const screen = [
+      { x: 0, y: 200 },
+      { x: 100, y: 0 },
+    ];
+    // Only the 50% level is enabled: its y is halfway (100).
+    const custom = styled("f1", "fib_retracement", base, {
+      fibLevels: [{ ratio: 0.5, label: "50.0%", enabled: true }],
+      showLabels: false,
+    });
+    expect(hitTest(custom, screen, { x: 50, y: 100 }, 6)?.handle).toBe(-1);
+    // Default levels include 61.8% (y = 200 - 61.8) — far from the custom 50%.
+    const plain = styled("f2", "fib_retracement", base);
+    expect(hitTest(plain, screen, { x: 50, y: 176.4 }, 6)?.handle).toBe(-1);
+    expect(hitTest(custom, screen, { x: 50, y: 176.4 }, 6)).toBeNull();
+  });
+
+  it("reverse measures fib levels from the second anchor", () => {
+    const levels = resolvedFibLevels(
+      [
+        { time: 0, price: 100 },
+        { time: 1, price: 200 },
+      ],
+      { reverse: true },
+    );
+    expect(levels.find((l) => l.ratio === 0)?.price).toBe(200);
+    expect(levels.find((l) => l.ratio === 1)?.price).toBe(100);
+  });
+
+  it("long position exposes the width handle and entry/stop/target anatomy", () => {
+    const position = styled("lp", "long_position", [
+      { time: 0, price: 100 },
+      { time: 10, price: 90 },
+      { time: 10, price: 120 },
+      { time: 20, price: 100 },
+    ]);
+    const screen = [
+      { x: 0, y: 100 },
+      { x: 100, y: 150 },
+      { x: 100, y: 0 },
+      { x: 200, y: 75 },
+    ];
+    expect(hitTest(position, screen, { x: 2, y: 101 }, 6)?.handle).toBe(0);
+    expect(hitTest(position, screen, { x: 100, y: 148 }, 6)?.handle).toBe(1);
+    expect(hitTest(position, screen, { x: 100, y: 2 }, 6)?.handle).toBe(2);
+    expect(hitTest(position, screen, { x: 200, y: 75 }, 6)?.handle).toBe(3);
+    // Entry line, away from every handle.
+    expect(hitTest(position, screen, { x: 50, y: 100 }, 6)?.handle).toBe(-1);
+  });
+});
+
+describe("visibility and tool metadata", () => {
+  it("maps resolutions to timeframe buckets", () => {
+    expect(timeframeUnit("15m")).toBe("minutes");
+    expect(timeframeUnit("4h")).toBe("hours");
+    expect(timeframeUnit("1D")).toBe("days");
+    expect(timeframeUnit("1W")).toBe("weeks");
+    expect(timeframeUnit("1M")).toBe("months");
+    expect(timeframeUnit("15s")).toBe("seconds");
+  });
+
+  it("hides a drawing only on buckets it explicitly excludes", () => {
+    const d = line("v1", "trend_line", [
+      { time: 0, price: 0 },
+      { time: 1, price: 1 },
+    ]);
+    expect(visibleOnResolution(d, "1h")).toBe(true);
+    expect(visibleOnResolution({ ...d, visibility: { minutes: false } }, "15m")).toBe(false);
+    expect(visibleOnResolution({ ...d, visibility: { minutes: false } }, "1h")).toBe(true);
+  });
+
+  it("lists every tool exactly once and maps unique shortcuts", () => {
+    expect([...ALL_TOOLS].sort()).toEqual(Object.keys(TOOL_SPECS).sort());
+    const shortcuts = Object.values(TOOL_SHORTCUTS);
+    expect(new Set(shortcuts).size).toBe(shortcuts.length);
+    expect(toolForShortcut("t")).toBe("trend_line");
+    expect(toolForShortcut("H")).toBe("horizontal_line");
+    expect(toolForShortcut("Z")).toBeNull();
+  });
+
+  it("declares capabilities the rail and settings share", () => {
+    expect(toolShowsText("callout")).toBe(true);
+    expect(toolHasFill("rectangle")).toBe(true);
+    expect(toolHasFill("trend_line")).toBe(false);
+    expect(isPositionTool("short_position")).toBe(true);
+    expect(isFibTool("fib_extension")).toBe(true);
+    expect(toolSupportsExtend("rectangle")).toBe(true);
+    expect(toolSpec("info_line").anchors).toBe(2);
   });
 });

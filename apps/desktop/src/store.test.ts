@@ -83,6 +83,46 @@ describe("drawing selection and editing", () => {
   });
 });
 
+describe("global drawing modes", () => {
+  it("stay-in-drawing-mode, lock-all and hide-all toggle independently", () => {
+    const s = useWorkspace.getState();
+    s.setStayInDrawingMode(true);
+    s.setLockAllDrawings(true);
+    s.setHideAllDrawings(true);
+    let cur = useWorkspace.getState();
+    expect(cur.stayInDrawingMode).toBe(true);
+    expect(cur.lockAllDrawings).toBe(true);
+    expect(cur.hideAllDrawings).toBe(true);
+    // None of them touches the drawing itself.
+    seed(line("g1"));
+    expect(useWorkspace.getState().activeChart().drawings[0]?.hidden).toBeUndefined();
+    cur.setStayInDrawingMode(false);
+    cur.setLockAllDrawings(false);
+    cur.setHideAllDrawings(false);
+    cur = useWorkspace.getState();
+    expect(cur.stayInDrawingMode).toBe(false);
+    expect(cur.lockAllDrawings).toBe(false);
+    expect(cur.hideAllDrawings).toBe(false);
+  });
+
+  it("favourites toggle on and off without duplicates", () => {
+    const s = useWorkspace.getState();
+    for (const tool of s.favoriteTools) s.toggleFavoriteTool(tool);
+    s.toggleFavoriteTool("trend_line");
+    s.toggleFavoriteTool("trend_line");
+    expect(useWorkspace.getState().favoriteTools).toEqual([]);
+    s.toggleFavoriteTool("rectangle");
+    expect(useWorkspace.getState().favoriteTools).toEqual(["rectangle"]);
+    s.toggleFavoriteTool("rectangle");
+  });
+
+  it("editing a drawing's style teaches the tool its next default", () => {
+    seed(line("st1"));
+    useWorkspace.getState().updateDrawing("st1", { style: { color: "#123456", width: 3, lineStyle: "dashed" } });
+    expect(useWorkspace.getState().drawingToolStyles.horizontal_line).toEqual({ color: "#123456", width: 3, lineStyle: "dashed" });
+  });
+});
+
 /** A Pine record as `setPineResult` expects it (the post-run shape). */
 const pineRecord = (over: Partial<PineScriptRecord> = {}): PineScriptRecord => ({
   id: "p1",

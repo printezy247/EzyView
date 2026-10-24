@@ -5,7 +5,8 @@ import type { Candle } from "@ezyview/data-adapters";
 import { evaluateAlert, pushHistory } from "@ezyview/data-adapters";
 import type { AlertCondition, AlertFrequency, AlertHistory, PriceAlert } from "@ezyview/data-adapters";
 import { DARK_THEME, LIGHT_THEME, TOKYO_THEME } from "@ezyview/chart-engine";
-import type { Drawing, DrawingToolId, MagnetMode } from "@ezyview/drawing-tools";
+import { TOOL_ANCHORS } from "@ezyview/drawing-tools";
+import type { Drawing, DrawingStyle, DrawingToolId, MagnetMode } from "@ezyview/drawing-tools";
 import { catalog, getIndicator } from "@ezyview/indicators";
 import type { IndicatorDef } from "@ezyview/indicators";
 import type { PinePlot, PineOrder, ScriptOptions } from "@ezyview/pine-transpiler";
@@ -157,6 +158,24 @@ interface WorkspaceStore {
   activeLayoutId: string;
   /** Currently armed drawing tool, or null when panning/selecting. */
   activeTool: DrawingToolId | null;
+  /** Keep the tool armed after each completed drawing for rapid placement. */
+  stayInDrawingMode: boolean;
+  setStayInDrawingMode(on: boolean): void;
+  /** Global lock: drawings stay visible but cannot be dragged. */
+  lockAllDrawings: boolean;
+  setLockAllDrawings(on: boolean): void;
+  /** Global visibility: hides every drawing without touching its own flag. */
+  hideAllDrawings: boolean;
+  setHideAllDrawings(on: boolean): void;
+  /** Click-a-drawing-to-delete navigation mode. */
+  eraserMode: boolean;
+  setEraserMode(on: boolean): void;
+  /** Starred tools shown in the chart's quick-access pill. */
+  favoriteTools: DrawingToolId[];
+  toggleFavoriteTool(tool: DrawingToolId): void;
+  /** Last-used style per tool, inherited by the next drawing of that tool. */
+  drawingToolStyles: Partial<Record<DrawingToolId, DrawingStyle>>;
+  rememberDrawingStyle(tool: DrawingToolId, style: DrawingStyle): void;
   /** Layout ids that have unsaved local edits. */
   dirty: Record<string, boolean>;
   /** All price alerts across layouts. */
@@ -249,6 +268,12 @@ interface WorkspaceStore {
   copyDrawing(id?: string): void;
   /** Paste the clipboard drawing with its first anchor at `at`, selected, undoable. */
   pasteDrawing(at: { time: number; price: number }): void;
+  /** Clone the selected drawing (or `id`) with a small price offset; selects the clone. */
+  duplicateDrawing(id?: string): void;
+  /** Move a drawing forward/backward in the paint order. */
+  moveDrawing(id: string, to: "front" | "back" | "forward" | "backward", chartIndex?: number): void;
+  /** Remove every indicator from the focused chart (rail's remove menu). */
+  clearIndicators(chartIndex?: number): void;
   /** Reorder the layout tabs alphabetically, or oldest-first. */
   sortLayouts(by: "name" | "date"): void;
 
@@ -359,6 +384,10 @@ type PersistedState = PersistedWorkspace & {
   density: Density;
   alerts: PriceAlert[];
   watchlist: WatchEntry[];
+  favoriteTools: DrawingToolId[];
+  drawingToolStyles: Partial<Record<DrawingToolId, DrawingStyle>>;
+  stayInDrawingMode: boolean;
+  lockAllDrawings: boolean;
 };
 
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
@@ -442,6 +471,12 @@ export const useWorkspace = create<WorkspaceStore>()(
       shellTheme: () => resolveAppTheme(get().appTheme, activeChartOf(get().activeLayout()).theme),
       activeLayoutId: initial[0]!.id,
       activeTool: null,
+      stayInDrawingMode: false,
+      lockAllDrawings: false,
+      hideAllDrawings: false,
+      eraserMode: false,
+      favoriteTools: [],
+      drawingToolStyles: {},
       dirty: {},
       alerts: [],
       alertHistory: {},
@@ -467,7 +502,7 @@ export const useWorkspace = create<WorkspaceStore>()(
       activeChart: () => activeChartOf(get().activeLayout()),
 
       setActiveLayout: (id) =>
-        set({ activeLayoutId: id, activeTool: null, selectedDrawingId: null, drawingUndo: [], drawingRedo: [] }),
+        set({ activeLayoutId: id, activeTool: null, eraserMode: false, selectedDrawingId: null, drawingUndo: [], drawingRedo: [] }),
 
       // Per-cell settings. The linked fields (symbol, interval) have their own
       // actions below, because they propagate to the cell's link group.
@@ -653,6 +688,11 @@ export const useWorkspace = create<WorkspaceStore>()(
           }));
           return {
             ...syncBoundAlert({ ...edited, alerts: s.alerts }, id, target, patch),
+            // Editing a drawing's look teaches the tool: the next drawing of
+            // this type starts with the style the user just chose.
+            ...(patch.style
+              ? { drawingToolStyles: { ...s.drawingToolStyles, [target.tool]: { ...patch.style } } }
+              : {}),
             drawingUndo: pushUndo(s.drawingUndo, prev),
             drawingRedo: [],
           };
@@ -716,7 +756,19 @@ export const useWorkspace = create<WorkspaceStore>()(
 
       selectDrawing: (id) => set({ selectedDrawingId: id }),
 
-      setActiveTool: (tool) => set({ activeTool: tool }),
+      setActiveTool: (tool) => set({ activeTool: tool, ...(tool ? { eraserMode: false } : {}) }),
+      setStayInDrawingMode: (on) => set({ stayInDrawingMode: on }),
+      setLockAllDrawings: (on) => set({ lockAllDrawings: on }),
+      setHideAllDrawings: (on) => set({ hideAllDrawings: on }),
+      setEraserMode: (on) => set({ eraserMode: on, ...(on ? { activeTool: null, selectedDrawingId: null } : {}) }),
+      toggleFavoriteTool: (tool) =>
+        set((s) => ({
+          favoriteTools: s.favoriteTools.includes(tool)
+            ? s.favoriteTools.filter((t) => t !== tool)
+            : [...s.favoriteTools, tool],
+        })),
+      rememberDrawingStyle: (tool, style) =>
+        set((s) => ({ drawingToolStyles: { ...s.drawingToolStyles, [tool]: { ...style } } })),
 
       setMagnet: (mode) => set({ magnet: mode }),
 
@@ -912,6 +964,60 @@ export const useWorkspace = create<WorkspaceStore>()(
         set({ selectedDrawingId: pasted.id });
       },
 
+      duplicateDrawing: (id) =>
+        set((s) => {
+          const layout = s.activeLayout();
+          const idx = layout.activeChart;
+          const drawings = layout.charts[idx]?.drawings ?? [];
+          const target = drawings.find((d) => d.id === (id ?? s.selectedDrawingId));
+          if (!target) return s;
+          // Offset by a fraction of the anchor price so the clone is visibly
+          // distinct but stays in the same part of the chart.
+          const offset = Math.max(Math.abs(target.points[0]?.price ?? 1) * 0.002, 0.0001);
+          const clone: Drawing = {
+            ...structuredClone(target),
+            id: uid(),
+            locked: false,
+            points: target.points.map((p) => ({ time: p.time, price: p.price + offset })),
+          };
+          const next = editActive(s, (l) =>
+            updateChart(l, idx, (c) => ({ ...c, drawings: [...c.drawings, clone] })),
+          );
+          return {
+            ...next,
+            selectedDrawingId: clone.id,
+            drawingUndo: pushUndo(s.drawingUndo, drawings),
+            drawingRedo: [],
+          };
+        }),
+
+      moveDrawing: (id, to, chartIndex) =>
+        set((s) => {
+          const layout = s.activeLayout();
+          const idx = chartIndex ?? layout.activeChart;
+          const drawings = layout.charts[idx]?.drawings ?? [];
+          const from = drawings.findIndex((d) => d.id === id);
+          if (from === -1) return s;
+          const rest = drawings.filter((d) => d.id !== id);
+          const at =
+            to === "front"
+              ? rest.length
+              : to === "back"
+                ? 0
+                : to === "forward"
+                  ? Math.min(rest.length, from + 1)
+                  : Math.max(0, from - 1);
+          const ordered = [...rest.slice(0, at), drawings[from]!, ...rest.slice(at)];
+          const next = editActive(s, (l) => updateChart(l, idx, (c) => ({ ...c, drawings: ordered })));
+          return { ...next, drawingUndo: pushUndo(s.drawingUndo, drawings), drawingRedo: [] };
+        }),
+
+      clearIndicators: (chartIndex) =>
+        set((s) => {
+          const idx = chartIndex ?? s.activeLayout().activeChart;
+          return editActive(s, (l) => updateChart(l, idx, (c) => ({ ...c, indicators: [] })));
+        }),
+
       setEventOptions: (patch) =>
         set((s) => ({
           eventOptions: {
@@ -948,6 +1054,10 @@ export const useWorkspace = create<WorkspaceStore>()(
         magnet: s.magnet,
         crosshairSync: s.crosshairSync,
         replaySpeed: s.replaySpeed,
+        favoriteTools: s.favoriteTools,
+        drawingToolStyles: s.drawingToolStyles,
+        stayInDrawingMode: s.stayInDrawingMode,
+        lockAllDrawings: s.lockAllDrawings,
         pineScripts: s.pineScripts,
         eventOptions: s.eventOptions,
         chartTemplates: s.chartTemplates,
@@ -978,11 +1088,48 @@ export const useWorkspace = create<WorkspaceStore>()(
             "watchlist" in raw
               ? restoreWatchlist(raw.watchlist, current.watchlist).map((w) => w.symbol).join(",")
               : current.watchlist.map((w) => w.symbol).join(","),
+          favoriteTools: restoreFavoriteTools(raw.favoriteTools, current.favoriteTools),
+          drawingToolStyles: restoreToolStyles(raw.drawingToolStyles, current.drawingToolStyles),
+          stayInDrawingMode:
+            typeof raw.stayInDrawingMode === "boolean" ? raw.stayInDrawingMode : current.stayInDrawingMode,
+          lockAllDrawings:
+            typeof raw.lockAllDrawings === "boolean" ? raw.lockAllDrawings : current.lockAllDrawings,
         };
       },
     },
   ),
 );
+
+/** Only tools the app knows can be favorited; duplicates collapse. */
+function restoreFavoriteTools(raw: unknown, fallback: DrawingToolId[]): DrawingToolId[] {
+  if (!Array.isArray(raw)) return fallback;
+  const seen = new Set<DrawingToolId>();
+  for (const value of raw) {
+    if (typeof value !== "string" || !(value in TOOL_ANCHORS)) continue;
+    seen.add(value as DrawingToolId);
+  }
+  return [...seen].slice(0, 24);
+}
+
+/**
+ * A tool's remembered style must be a usable drawing style; anything else is
+ * dropped rather than poisoning every future drawing of that tool.
+ */
+function restoreToolStyles(
+  raw: unknown,
+  fallback: Partial<Record<DrawingToolId, DrawingStyle>>,
+): Partial<Record<DrawingToolId, DrawingStyle>> {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return fallback;
+  const out: Partial<Record<DrawingToolId, DrawingStyle>> = {};
+  for (const [tool, style] of Object.entries(raw)) {
+    if (!(tool in TOOL_ANCHORS)) continue;
+    if (typeof style !== "object" || style === null) continue;
+    const s = style as Partial<DrawingStyle>;
+    if (typeof s.color !== "string" || typeof s.width !== "number" || typeof s.lineStyle !== "string") continue;
+    out[tool as DrawingToolId] = s as DrawingStyle;
+  }
+  return out;
+}
 
 const ALERT_STATES = new Set(["armed", "triggered"]);
 const ALERT_FREQUENCIES = new Set(["once", "once_per_bar", "once_per_bar_close"]);

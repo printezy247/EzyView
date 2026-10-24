@@ -65,3 +65,59 @@ export function bounds(points: ScreenPoint[]): { x0: number; y0: number; x1: num
 export function near(p: ScreenPoint, q: ScreenPoint, tol: number): boolean {
   return (p.x - q.x) ** 2 + (p.y - q.y) ** 2 <= tol * tol;
 }
+
+/**
+ * Distance to the segment A→B optionally continued past either anchor.
+ *
+ * `extendLeft`/`extendRight` refer to the parameter along A→B, so a line drawn
+ * right-to-left still extends past the anchors the user pointed at, not past
+ * the screen's left/right edge.
+ */
+export function distToSegmentExtended(
+  p: ScreenPoint,
+  a: ScreenPoint,
+  b: ScreenPoint,
+  extendLeft = false,
+  extendRight = false,
+): number {
+  if (extendLeft && extendRight) return distToInfiniteLine(p, a, b);
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+  const t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq;
+  const low = extendLeft ? -Infinity : 0;
+  const high = extendRight ? Infinity : 1;
+  const clamped = Math.max(low, Math.min(high, t));
+  return Math.hypot(p.x - (a.x + clamped * dx), p.y - (a.y + clamped * dy));
+}
+
+/** Shortest distance from `p` to any segment of a polyline. */
+export function distToPolyline(p: ScreenPoint, points: readonly ScreenPoint[]): number {
+  if (points.length === 0) return Infinity;
+  if (points.length === 1) return Math.hypot(p.x - points[0]!.x, p.y - points[0]!.y);
+  let best = Infinity;
+  for (let i = 1; i < points.length; i++) {
+    const d = distToSegment(p, points[i - 1]!, points[i]!);
+    if (d < best) best = d;
+  }
+  return best;
+}
+
+/** Even-odd polygon containment; points may be given in any winding order. */
+export function insidePolygon(p: ScreenPoint, polygon: readonly ScreenPoint[]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[i]!;
+    const b = polygon[j]!;
+    if (a.y > p.y !== b.y > p.y && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y || 1) + a.x) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+/** Midpoint of two screen points. */
+export function midpoint(a: ScreenPoint, b: ScreenPoint): ScreenPoint {
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}

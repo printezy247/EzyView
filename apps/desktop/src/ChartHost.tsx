@@ -2,10 +2,20 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Candle, Quote, Resolution } from "@ezyview/data-adapters";
 import { EzyChart } from "@ezyview/chart-engine";
 import type { ChartType, FundamentalEventOverlay, IndicatorInstance, ScriptPlotSpec, TradingLine } from "@ezyview/chart-engine";
-import type { Drawing, DrawingToolId } from "@ezyview/drawing-tools";
-import { hitTestAll, isComplete, setAnchor, snapToOhlc, translateDrawing } from "@ezyview/drawing-tools";
+import type { Drawing, DrawingToolId, ScreenPoint } from "@ezyview/drawing-tools";
+import {
+  defaultStyleForTool,
+  hitTestAll,
+  isComplete,
+  isPositionTool,
+  setAnchor,
+  snapToOhlc,
+  translateDrawing,
+  visibleOnResolution,
+} from "@ezyview/drawing-tools";
 import { hitTestLevel, moveLevel } from "./priceDrag";
 import { DEFAULT_DRAWING_STYLE } from "@ezyview/drawing-tools";
+import { useDrawingUi } from "./drawingUi";
 import type { PinePlot } from "@ezyview/pine-transpiler";
 import { THEME_OF, uid as newId, useWorkspace } from "./store";
 import type { ActiveIndicator, PineScriptRecord } from "./store";
@@ -77,7 +87,17 @@ interface Props {
    */
   chartIndex?: number;
   /** Right-click on the plot: viewport position plus the time/price under it. */
-  onContextMenu?: (info: { clientX: number; clientY: number; time: number; price: number }) => void;
+  onContextMenu?: (info: { clientX: number; clientY: number; time: number; price: number; drawingId?: string }) => void;
+  /** Screen bounding box of the selected drawing, for the floating settings bar. */
+  onDrawingBox?: (box: DrawingBox | null) => void;
+}
+
+/** Bounding box of a selected drawing in the chart container's pixels. */
+export interface DrawingBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }
 
 /**
@@ -135,7 +155,93 @@ export function ChartHost(props: Props) {
   const [flash, setFlash] = useState<string | null>(null);
 
   const activeTool = useWorkspace((s) => s.activeTool);
-  const setDrawings = useWorkspace((s) => s.setDrawings);
+  const hideAllDrawings = useWorkspace((s) => s.hideAllDrawings);
+  const eraserMode = useWorkspace((s) => s.eraserMode);
+  const crosshairCursor = useDrawingUi((s) => s.crosshairCursor);
+
+  /** Drawings this host may hit-test: visible on this timeframe and not globally hidden. */
+  const hittableDrawings = (chartIndex?: number): Drawing[] => {
+    const st = useWorkspace.getState();
+    if (st.hideAllDrawings) return [];
+    const idx = chartIndex ?? chartIndexRef.current;
+    if (idx === undefined) return [];
+    const list = st.activeLayout().charts[idx]?.drawings ?? [];
+    return list.filter((d) => !d.hidden && visibleOnResolution(d, propsRef.current.resolution));
+  };
+
+  /** Topmost drawing under a container-relative pixel, or null. */
+  const hitAt = (x: number, y: number, chartIndex?: number) => {
+    const chart = chartRef.current;
+    const list = hittableDrawings(chartIndex);
+    if (!chart || list.length === 0) return null;
+    return hitTestAll(
+      list.map((d) => ({ drawing: d, screen: chart.projectDrawing(d) })),
+      { x, y },
+    );
+  };
+
+  /**
+   * Commit a finished drawing: remember the tool's style, push it to the store
+   * and select it (unless the user is staying in drawing mode).
+   */
+  const finishDrawing = (tool: DrawingToolId, points: Drawing["points"], chartIndex: number): string => {
+    const st = useWorkspace.getState();
+    const drawings = st.activeLayout().charts[chartIndex]?.drawings ?? [];
+    const id = newId();
+    const base = st.drawingToolStyles[tool] ?? DEFAULT_DRAWING_STYLE;
+    const style = defaultStyleForTool(tool, base);
+    st.setDrawings(
+      [
+        ...drawings,
+        {
+          id,
+          tool,
+          points,
+          style: { ...style },
+          ...(tool === "text" || tool === "callout" ? { text: "" } : {}),
+        },
+      ],
+      chartIndex,
+    );
+    chartRef.current?.setPreview(null);
+    pendingRef.current = null;
+    setGhost(null);
+    if (tool === "text" || tool === "callout") useDrawingUi.getState().requestTextEdit(id);
+    // The new drawing is selected even while staying in drawing mode: the
+    // floating bar is how its style gets adjusted without leaving the tool.
+    st.selectDrawing(id);
+    chartRef.current?.setSelection(id);
+    if (st.stayInDrawingMode) st.setActiveTool(tool);
+    else st.setActiveTool(null);
+    return id;
+  };
+
+  /** One-click long/short: entry, ATR-derived stop/target and a 15-bar width. */
+  const placePosition = (
+    tool: "long_position" | "short_position",
+    time: number,
+    entry: number,
+    chartIndex: number,
+  ): void => {
+    const atr = atrOf(historyRef.current, 14);
+    const risk = Math.max(atr * 1.5, Math.abs(entry) * 0.0005);
+    const long = tool === "long_position";
+    const stop = long ? entry - risk : entry + risk;
+    const target = long ? entry + risk * 2 : entry - risk * 2;
+    const step = RESOLUTION_SECONDS[propsRef.current.resolution] ?? 60;
+    const end = time + step * 15;
+    finishDrawing(
+      tool,
+      [
+        { time, price: entry },
+        { time: end, price: stop },
+        { time: end, price: target },
+        // Fourth anchor is the draggable right-edge width handle.
+        { time: end, price: entry },
+      ],
+      chartIndex,
+    );
+  };
 
   useEffect(() => {
     const el = containerRef.current;
@@ -151,41 +257,42 @@ export function ChartHost(props: Props) {
         if (now - lastClickAtRef.current < 150) return;
         lastClickAtRef.current = now;
         if (drawingInProgressRef.current) return;
-        const { activeTool: tool, magnet } = useWorkspace.getState();
+        const st = useWorkspace.getState();
+        const tool = st.activeTool;
         const chartIndex = chartIndexRef.current;
         if (chartIndex === undefined) return; // detached windows stay inert
+        const hit = hitAt(info.x, info.y, chartIndex);
         if (!tool) {
+          if (st.eraserMode) {
+            // Eraser navigation deletes the drawing under the pointer at once.
+            if (hit) st.deleteDrawing(hit.id, chartIndex);
+            return;
+          }
           // No tool armed: select what was clicked, or clear on empty space.
-          const drawings = useWorkspace.getState().activeLayout().charts[chartIndex]?.drawings ?? [];
-          const hit = hitTestAll(
-            drawings.map((d) => ({ drawing: d, screen: chart.projectDrawing(d) })),
-            { x: info.x, y: info.y },
-          );
-          useWorkspace.getState().selectDrawing(hit?.id ?? null);
+          st.selectDrawing(hit?.id ?? null);
           chart.setSelection(hit?.id ?? null);
           return;
         }
+        if (tool === "brush") return; // the pointer gesture owns freehand strokes
         if (info.time === null || info.price === null) {
           setFlash("Click inside the chart area to place a point");
           return;
         }
+        if (isPositionTool(tool)) {
+          // One click is enough: stop/target come from recent volatility and
+          // the width handle can be dragged afterwards.
+          placePosition(tool as "long_position" | "short_position", info.time, info.price, chartIndex);
+          return;
+        }
         drawingInProgressRef.current = true;
         try {
-          const point = snapToOhlc({ time: info.time, price: info.price }, historyRef.current, magnet);
+          const point = snapToOhlc({ time: info.time, price: info.price }, historyRef.current, st.magnet);
           const pending = pendingRef.current;
-          const points =
-            !pending || pending.tool !== tool ? [point] : [...pending.points, point];
+          const points = !pending || pending.tool !== tool ? [point] : [...pending.points, point];
           pendingRef.current = { tool, points };
           setGhost({ x: info.x, y: info.y });
           if (isComplete(tool, points)) {
-            const drawings = useWorkspace.getState().activeLayout().charts[chartIndex]?.drawings ?? [];
-            setDrawings(
-              [...drawings, { id: newId(), tool, points, style: { ...DEFAULT_DRAWING_STYLE } }],
-              chartIndex,
-            );
-            pendingRef.current = null;
-            setGhost(null);
-            useWorkspace.getState().setActiveTool(null);
+            finishDrawing(tool, points, chartIndex);
           }
         } finally {
           drawingInProgressRef.current = false;
@@ -200,13 +307,11 @@ export function ChartHost(props: Props) {
     // Mount-only: prop changes are applied by the effects below.
   }, []);
 
-  // Select-and-drag when no tool is armed. The pointerdown listener runs in
-  // the capture phase, before lightweight-charts' own canvas listeners, so a
-  // grab on a drawing stops the event there and the chart never starts panning.
-  //
-  // Two gestures share the effect because only one can be active at a time and
-  // both need the same capture/release-pan bookkeeping: dragging a drawing, and
-  // dragging a position's stop/target level.
+  // Selection, dragging, rubber-band previews, freehand strokes and hover
+  // cursors share one pointer effect: only one can be active at a time and all
+  // need the same capture/release-pan bookkeeping. The pointerdown listener
+  // runs in the capture phase, before lightweight-charts' own canvas listeners,
+  // so a grab on a drawing stops the event there and the chart never pans.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -228,11 +333,44 @@ export function ChartHost(props: Props) {
       /** Where the line should be drawn while dragging; null until the first move. */
       preview: number | null;
     };
-    let gesture: Drag | LevelDrag | null = null;
+    type BrushDrag = {
+      kind: "brush";
+      chartIndex: number;
+      /** Last appended pointer position, for the 2px throttle. */
+      last: ScreenPoint;
+    };
+    let gesture: Drag | LevelDrag | BrushDrag | null = null;
 
     const localPoint = (e: PointerEvent) => {
       const r = el.getBoundingClientRect();
       return { x: e.clientX - r.left, y: e.clientY - r.top };
+    };
+
+    const defaultCursor = () => {
+      const st = useWorkspace.getState();
+      return st.activeTool || st.eraserMode || useDrawingUi.getState().crosshairCursor ? "crosshair" : "";
+    };
+
+    /** Style a live preview inherits: the tool's remembered look. */
+    const previewStyle = (tool: DrawingToolId) =>
+      defaultStyleForTool(tool, useWorkspace.getState().drawingToolStyles[tool] ?? DEFAULT_DRAWING_STYLE);
+
+    /** Snap a preview point to 45° increments around the first anchor. */
+    const snapAngle = (
+      chart: EzyChart,
+      anchor: { time: number; price: number },
+      at: ScreenPoint,
+      fallback: { time: number; price: number },
+    ): { time: number; price: number } => {
+      const x0 = chart.timeToCoordinate(anchor.time);
+      const y0 = chart.priceToCoordinate(anchor.price);
+      if (x0 === null || y0 === null) return fallback;
+      const len = Math.hypot(at.x - x0, at.y - y0);
+      if (len < 1) return fallback;
+      const step = Math.PI / 4;
+      const angle = Math.round(Math.atan2(at.y - y0, at.x - x0) / step) * step;
+      const conv = chart.screenToTimePrice(x0 + Math.cos(angle) * len, y0 + Math.sin(angle) * len);
+      return conv.ok && conv.time !== null && conv.price !== null ? { time: conv.time, price: conv.price } : fallback;
     };
 
     const onDown = (e: PointerEvent) => {
@@ -241,8 +379,22 @@ export function ChartHost(props: Props) {
       const chartIndex = chartIndexRef.current;
       if (!chart || chartIndex === undefined) return;
       const st = useWorkspace.getState();
-      if (st.activeTool) return;
       const pt = localPoint(e);
+
+      // Freehand: record points from pointerdown to pointerup.
+      if (st.activeTool === "brush") {
+        const conv = chart.screenToTimePrice(pt.x, pt.y);
+        if (!conv.ok || conv.time === null || conv.price === null) return;
+        const point = snapToOhlc({ time: conv.time, price: conv.price }, historyRef.current, st.magnet);
+        pendingRef.current = { tool: "brush", points: [point] };
+        gesture = { kind: "brush", chartIndex, last: pt };
+        e.stopPropagation();
+        e.preventDefault();
+        el.setPointerCapture(e.pointerId);
+        chart.setPanEnabled(false);
+        return;
+      }
+      if (st.activeTool) return;
 
       // A stop/target line sits on top of the drawings, so it gets first refusal
       // on a grab: the same pixel could otherwise start a drawing drag.
@@ -259,25 +411,22 @@ export function ChartHost(props: Props) {
         }
       }
 
-      const drawings = st.activeLayout().charts[chartIndex]?.drawings ?? [];
-      if (drawings.length === 0) return;
-      const hit = hitTestAll(
-        drawings.map((d) => ({ drawing: d, screen: chart.projectDrawing(d) })),
-        pt,
-      );
+      const all = st.activeLayout().charts[chartIndex]?.drawings ?? [];
+      if (all.length === 0) return;
+      const hit = hitAt(pt.x, pt.y, chartIndex);
       if (!hit) return;
       e.stopPropagation();
       st.selectDrawing(hit.id);
       chart.setSelection(hit.id);
-      const target = drawings.find((d) => d.id === hit.id);
-      if (!target || target.locked) return;
+      const target = all.find((d) => d.id === hit.id);
+      if (!target || target.locked || st.lockAllDrawings || st.eraserMode) return;
       const start = chart.screenToTimePrice(pt.x, pt.y);
       if (!start.ok || start.time === null || start.price === null) return;
       gesture = {
         kind: "drawing",
         id: hit.id,
         handle: hit.handle,
-        snapshot: [...drawings], // entries are immutable; the array copy is the boundary
+        snapshot: [...all], // entries are immutable; the array copy is the boundary
         startPoint: { time: start.time, price: start.price },
         moved: false,
       };
@@ -286,11 +435,68 @@ export function ChartHost(props: Props) {
     };
 
     const onMove = (e: PointerEvent) => {
-      const cur = gesture;
-      if (!cur) return;
       const chart = chartRef.current;
       if (!chart) return;
       const pt = localPoint(e);
+      const st = useWorkspace.getState();
+      const cur = gesture;
+
+      // No gesture: either rubber-band a half-placed drawing or show hover state.
+      if (!cur) {
+        if (st.activeTool && !st.hideAllDrawings) {
+          const pending = pendingRef.current;
+          if (!pending || pending.points.length === 0) {
+            chart.setPreview(null);
+          } else {
+            const conv = chart.screenToTimePrice(pt.x, pt.y);
+            if (conv.ok && conv.time !== null && conv.price !== null) {
+              const want = { time: conv.time, price: conv.price };
+              const magnet = e.ctrlKey || e.metaKey ? (st.magnet === "off" ? "weak" : "off") : st.magnet;
+              const snapped = magnet === "off" ? want : snapToOhlc(want, historyRef.current, magnet);
+              const cursorPoint =
+                e.shiftKey && pending.points.length === 1
+                  ? snapAngle(chart, pending.points[0]!, pt, snapped)
+                  : snapped;
+              chart.setPreview({
+                id: "__preview__",
+                tool: pending.tool,
+                points: [...pending.points, cursorPoint],
+                style: { ...previewStyle(pending.tool) },
+              });
+            }
+          }
+          chart.setHovered(null);
+          el.style.cursor = "crosshair";
+          return;
+        }
+        const hit = hitAt(pt.x, pt.y);
+        chart.setHovered(hit?.id ?? null, hit?.handle ?? null);
+        el.style.cursor = hit
+          ? st.lockAllDrawings
+            ? "not-allowed"
+            : hit.handle >= 0
+              ? "grab"
+              : "move"
+          : defaultCursor();
+        return;
+      }
+
+      if (cur.kind === "brush") {
+        if (Math.hypot(pt.x - cur.last.x, pt.y - cur.last.y) < 2) return;
+        const conv = chart.screenToTimePrice(pt.x, pt.y);
+        const pending = pendingRef.current;
+        if (!conv.ok || conv.time === null || conv.price === null || !pending) return;
+        cur.last = pt;
+        pending.points.push({ time: conv.time, price: conv.price });
+        chart.setPreview({
+          id: "__preview__",
+          tool: "brush",
+          points: [...pending.points],
+          style: { ...previewStyle("brush") },
+        });
+        e.preventDefault();
+        return;
+      }
 
       if (cur.kind === "level") {
         // The line follows the pointer visually; the position is only amended on
@@ -308,14 +514,20 @@ export function ChartHost(props: Props) {
       if (chartIndex === undefined) return;
       const conv = chart.screenToTimePrice(pt.x, pt.y);
       if (!conv.ok || conv.time === null || conv.price === null) return;
-      const st = useWorkspace.getState();
       const target = cur.snapshot.find((d) => d.id === cur.id);
       if (!target) return;
       let points: { time: number; price: number }[];
       if (cur.handle >= 0) {
         const want = { time: conv.time, price: conv.price };
         const effectiveMagnet = e.ctrlKey || e.metaKey ? (st.magnet === "off" ? "weak" : "off") : st.magnet;
-        const snapped = effectiveMagnet === "off" ? want : snapToOhlc(want, historyRef.current, effectiveMagnet);
+        let snapped = effectiveMagnet === "off" ? want : snapToOhlc(want, historyRef.current, effectiveMagnet);
+        // Position anatomy: entry/stop/target keep their bar, the width handle
+        // keeps its price. Only the axis each one means is draggable.
+        if (isPositionTool(target.tool) && cur.handle <= 2) {
+          snapped = { time: target.points[cur.handle]!.time, price: snapped.price };
+        } else if (isPositionTool(target.tool) && cur.handle === 3) {
+          snapped = { time: snapped.time, price: target.points[3]!.price };
+        }
         points = setAnchor(target, cur.handle, snapped).points;
         if (e.shiftKey && points.length === 2 && (target.tool === "trend_line" || target.tool === "ray" || target.tool === "extended_line")) {
           const otherIdx = cur.handle === 0 ? 1 : 0;
@@ -337,6 +549,12 @@ export function ChartHost(props: Props) {
           // One amend carrying only the dragged level, so the other one stays put.
           onLevelCommit?.(cur.symbol, cur.id === "SL" ? { stopLoss: cur.preview } : { takeProfit: cur.preview });
         }
+      } else if (cur.kind === "brush") {
+        const pending = pendingRef.current;
+        if (pending && pending.points.length >= 2) finishDrawing("brush", pending.points, cur.chartIndex);
+        pendingRef.current = null;
+        chartRef.current?.setPreview(null);
+        setGhost(null);
       } else {
         const chartIndex = chartIndexRef.current;
         if (cur.moved && chartIndex !== undefined) {
@@ -349,18 +567,43 @@ export function ChartHost(props: Props) {
         // Capture can already be gone (e.g. the window lost the pointer).
       }
       chartRef.current?.setPanEnabled(true);
+      chartRef.current?.setHovered(null);
+      el.style.cursor = defaultCursor();
       gesture = null;
+    };
+
+    // Double-click opens the full settings dialog without disturbing a tool.
+    const onDoubleClick = (e: MouseEvent) => {
+      const st = useWorkspace.getState();
+      if (st.activeTool) return;
+      const r = el.getBoundingClientRect();
+      const hit = hitAt(e.clientX - r.left, e.clientY - r.top);
+      if (!hit) return;
+      e.preventDefault();
+      e.stopPropagation();
+      st.selectDrawing(hit.id);
+      chartRef.current?.setSelection(hit.id);
+      useDrawingUi.getState().openSettings(hit.id, "style");
+    };
+
+    const onLeave = () => {
+      chartRef.current?.setHovered(null);
+      el.style.cursor = defaultCursor();
     };
 
     el.addEventListener("pointerdown", onDown, true);
     el.addEventListener("pointermove", onMove);
     el.addEventListener("pointerup", onFinish);
     el.addEventListener("pointercancel", onFinish);
+    el.addEventListener("pointerleave", onLeave);
+    el.addEventListener("dblclick", onDoubleClick, true);
     return () => {
       el.removeEventListener("pointerdown", onDown, true);
       el.removeEventListener("pointermove", onMove);
       el.removeEventListener("pointerup", onFinish);
       el.removeEventListener("pointercancel", onFinish);
+      el.removeEventListener("pointerleave", onLeave);
+      el.removeEventListener("dblclick", onDoubleClick, true);
       if (gesture) chartRef.current?.setPanEnabled(true);
     };
   }, []);
@@ -600,15 +843,21 @@ export function ChartHost(props: Props) {
     chartRef.current?.setBoxSize(props.boxSize ?? null);
   }, [props.boxSize]);
 
+  // Timeframe visibility and the global hide toggle filter the layer before it
+  // reaches the primitive, so hit-testing and rendering always agree.
+  const visibleDrawings = useMemo(
+    () => (hideAllDrawings ? [] : props.drawings.filter((d) => visibleOnResolution(d, props.resolution))),
+    [props.drawings, props.resolution, hideAllDrawings],
+  );
   useEffect(() => {
-    chartRef.current?.setDrawings(props.drawings);
+    chartRef.current?.setDrawings(visibleDrawings);
     // An undo/redo can drop the selected drawing; never keep a stale id.
     const sel = useWorkspace.getState().selectedDrawingId;
-    if (sel && !props.drawings.some((d) => d.id === sel)) {
+    if (sel && !visibleDrawings.some((d) => d.id === sel)) {
       useWorkspace.getState().selectDrawing(null);
       chartRef.current?.setSelection(null);
     }
-  }, [props.drawings]);
+  }, [visibleDrawings]);
 
   // Mirrors every selection change (click, tree, Escape) onto the primitive.
   // A foreign id simply finds no drawing here, so multi-cell stays correct.
@@ -616,6 +865,39 @@ export function ChartHost(props: Props) {
   useEffect(() => {
     chartRef.current?.setSelection(selectedId);
   }, [selectedId]);
+
+  // The floating mini-bar follows the selected drawing's box on screen. The
+  // callback is read through a ref: cells pass an inline function, and making
+  // it an effect dependency would let one box update re-render the page, hand
+  // the cell a new callback and start the cycle again.
+  const onDrawingBoxRef = useRef(props.onDrawingBox);
+  onDrawingBoxRef.current = props.onDrawingBox;
+  useEffect(() => {
+    const chart = chartRef.current;
+    const drawing = selectedId ? visibleDrawings.find((d) => d.id === selectedId) : null;
+    if (!chart || !drawing) {
+      onDrawingBoxRef.current?.(null);
+      return;
+    }
+    const pts = chart.projectDrawing(drawing).filter((p): p is ScreenPoint => p !== null);
+    if (pts.length === 0) {
+      onDrawingBoxRef.current?.(null);
+      return;
+    }
+    const x0 = Math.min(...pts.map((p) => p.x));
+    const x1 = Math.max(...pts.map((p) => p.x));
+    const y0 = Math.min(...pts.map((p) => p.y));
+    const y1 = Math.max(...pts.map((p) => p.y));
+    onDrawingBoxRef.current?.({ x: x0 - 6, y: y0 - 6, w: x1 - x0 + 12, h: y1 - y0 + 12 });
+  }, [selectedId, visibleDrawings]);
+
+  // Navigate cursor: crosshair for an armed tool, the eraser, or the cursor
+  // mode button; the pointer handlers refine it over handles and bodies.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    el.style.cursor = activeTool || eraserMode || crosshairCursor ? "crosshair" : "";
+  }, [activeTool, eraserMode, crosshairCursor]);
 
   // Position levels are constant, so they only change when a fill does.
   useEffect(() => {
@@ -653,11 +935,21 @@ export function ChartHost(props: Props) {
     if (!activeTool) {
       pendingRef.current = null;
       setGhost(null);
+      chartRef.current?.setPreview(null);
     } else {
       useWorkspace.getState().selectDrawing(null);
       chartRef.current?.setSelection(null);
     }
   }, [activeTool]);
+
+  // Hiding everything also drops the selection and any rubber-band preview, so
+  // the floating bar cannot hover over something the user just hid.
+  useEffect(() => {
+    if (!hideAllDrawings) return;
+    chartRef.current?.setPreview(null);
+    useWorkspace.getState().selectDrawing(null);
+    chartRef.current?.setSelection(null);
+  }, [hideAllDrawings]);
 
   useEffect(() => {
     if (!flash) return;
@@ -692,7 +984,13 @@ export function ChartHost(props: Props) {
           // Past the newest bar there is no time under the cursor; use the newest bar's.
           const time = chart.coordinateToTime(e.clientX - rect.left) ?? historyRef.current.at(-1)?.time;
           if (time === undefined) return;
-          handler({ clientX: e.clientX, clientY: e.clientY, time, price });
+          // Right-clicking a drawing selects it and gives the menu drawing actions.
+          const hit = hitAt(e.clientX - rect.left, e.clientY - rect.top);
+          if (hit) {
+            useWorkspace.getState().selectDrawing(hit.id);
+            chart.setSelection(hit.id);
+          }
+          handler({ clientX: e.clientX, clientY: e.clientY, time, price, drawingId: hit?.id });
         }}
       />
       {ghost && (
@@ -724,6 +1022,26 @@ export function ChartHost(props: Props) {
 }
 
 const PRICE_ONLY_LABEL: Partial<Record<ChartType, string>> = { renko: "Renko", kagi: "Kagi", pnf: "Point & Figure" };
+
+/**
+ * Average true range over the last `period` bars. Used to give a one-click
+ * long/short position sensible stop and target distances; falls back to a
+ * fraction of price when there is not enough history to measure volatility.
+ */
+function atrOf(bars: readonly Candle[], period: number): number {
+  if (bars.length === 0) return 0;
+  if (bars.length === 1) return Math.abs(bars[0]!.close) * 0.005;
+  const from = Math.max(1, bars.length - period);
+  let sum = 0;
+  let count = 0;
+  for (let i = from; i < bars.length; i++) {
+    const prev = bars[i - 1]!.close;
+    const cur = bars[i]!;
+    sum += Math.max(cur.high - cur.low, Math.abs(cur.high - prev), Math.abs(cur.low - prev));
+    count++;
+  }
+  return count > 0 ? sum / count : Math.abs(bars.at(-1)!.close) * 0.005;
+}
 
 /** Bars up to and including the cursor; the full history when not replaying. */
 function sliceForReplay(candles: Candle[], cursor: number | null): Candle[] {

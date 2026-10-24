@@ -45,6 +45,55 @@ describe("drawingsIO", () => {
     expect(parseDrawings(badPrice).ok).toBe(false);
   });
 
+  it("preserves the TradingView style fields and timeframe visibility", () => {
+    const rich: Drawing = {
+      id: "rich",
+      tool: "fib_retracement",
+      points: [
+        { time: 1, price: 100 },
+        { time: 2, price: 200 },
+      ],
+      style: {
+        ...DEFAULT_DRAWING_STYLE,
+        opacity: 80,
+        fillOpacity: 35,
+        extendRight: true,
+        showStats: true,
+        fontWeight: "bold",
+        reverse: true,
+        fibLevels: [{ ratio: 0.5, label: "50%", enabled: true, color: "#ff0000" }],
+      },
+      visibility: { minutes: false, hours: true },
+    };
+    const parsed = parseDrawings(serializeDrawings([rich]));
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.drawings[0]?.style.opacity).toBe(80);
+    expect(parsed.drawings[0]?.style.fibLevels?.[0]?.color).toBe("#ff0000");
+    expect(parsed.drawings[0]?.visibility).toEqual({ minutes: false, hours: true });
+  });
+
+  it("still imports a v1 drawing that has none of the new fields", () => {
+    const legacy = JSON.stringify({
+      version: 1,
+      drawings: [{ id: "old", tool: "trend_line", points: [{ time: 1, price: 2 }], style: { color: "#fff", width: 1, lineStyle: "solid" } }],
+    });
+    const parsed = parseDrawings(legacy);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.drawings[0]?.style.color).toBe("#fff");
+    expect(parsed.drawings[0]?.visibility).toBeUndefined();
+    // Defaults fill in the fields the file predates.
+    expect(parsed.drawings[0]?.style.showLabels).toBe(true);
+  });
+
+  it("rejects malformed visibility values instead of trusting them", () => {
+    const bad =
+      '{"version":1,"drawings":[{"id":"a","tool":"trend_line","points":[{"time":1,"price":1}],"style":{},"visibility":{"minutes":"no"}}]}';
+    expect(parseDrawings(bad).ok).toBe(false);
+    expect(parseDrawings('{"version":1,"drawings":[{"id":"a","tool":"trend_line","points":[{"time":1,"price":1}],"style":{},"visibility":[]}]}').ok).toBe(false);
+  });
+
   it("reports which entry failed", () => {
     const res = parseDrawings('{"version":1,"drawings":[{"id":"ok","tool":"text","points":[{"time":1,"price":1}],"style":{}},{"id":2}]}');
     expect(res.ok).toBe(false);

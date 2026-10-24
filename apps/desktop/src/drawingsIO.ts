@@ -46,6 +46,14 @@ export function parseDrawings(json: string): ParseResult {
     if (e.locked !== undefined && typeof e.locked !== "boolean") return bad("locked is not a boolean");
     if (e.hidden !== undefined && typeof e.hidden !== "boolean") return bad("hidden is not a boolean");
     if (e.name !== undefined && typeof e.name !== "string") return bad("name is not a string");
+    if (e.visibility !== undefined) {
+      if (typeof e.visibility !== "object" || e.visibility === null || Array.isArray(e.visibility)) {
+        return bad("visibility is not an object");
+      }
+      for (const [unit, on] of Object.entries(e.visibility)) {
+        if (typeof on !== "boolean") return bad(`visibility.${unit} is not a boolean`);
+      }
+    }
     out.push({
       ...(entry as object),
       id: e.id,

@@ -219,8 +219,13 @@ export function mergeMarkerLayers(
 export class EzyChart {
   private readonly chart: IChartApi;
   // Price→pixel for the drawing layer; reads mainSeries lazily so the field
-  // can be initialized before the constructor runs createMainSeries().
-  private readonly drawings = new DrawingsPrimitive((price) => this.priceToCoordinate(price));
+  // can be initialized before the constructor runs createMainSeries(). The
+  // bars callback feeds bar counts / duration into the measure and stats
+  // badges, read at paint time so it always sees the currently shown series.
+  private readonly drawings = new DrawingsPrimitive(
+    (price) => this.priceToCoordinate(price),
+    () => this.data,
+  );
   private mainSeries: ISeriesApi<never> | null = null;
   private volumeSeries: ISeriesApi<"Histogram"> | null = null;
   private readonly levelLines: IPriceLine[] = [];
@@ -932,6 +937,16 @@ export class EzyChart {
   /** Highlight one drawing's anchors (null clears the highlight). */
   setSelection(id: string | null): void {
     this.drawings.setSelection(id);
+  }
+
+  /** Rubber-band drawing shown while a tool is placing anchors. */
+  setPreview(drawing: Drawing | null): void {
+    this.drawings.setPreview(drawing);
+  }
+
+  /** Hover highlight for a stroke and optionally one of its anchor handles. */
+  setHovered(id: string | null, handle: number | null = null): void {
+    this.drawings.setHovered(id, handle);
   }
 
   /**

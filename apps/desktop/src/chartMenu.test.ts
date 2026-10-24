@@ -118,4 +118,73 @@ describe("buildChartMenu", () => {
     const ids = menu.map((e) => e.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
+
+  it("adds the drawing section only when a drawing is under the cursor", () => {
+    expect(find(buildChartMenu(ctx()), "drawing-settings")).toBeUndefined();
+    const drawingApi = drawingActions();
+    const menu = buildChartMenu(ctx({ drawing: { ...drawingCtx(), actions: drawingApi } }));
+    expect(labels(menu)).toEqual(
+      expect.arrayContaining([
+        "Trend line",
+        "Settings…",
+        "Add alert on drawing…",
+        "Save drawing as template…",
+        "Clone",
+        "Copy",
+        "Lock",
+        "Hide",
+        "Bring to front",
+        "Send to back",
+        "Remove",
+      ]),
+    );
+    expect(find(menu, "reset")).toBeTruthy(); // chart actions still follow
+    const run = (id: string) => (find(menu, id) as { onSelect: () => void }).onSelect();
+    for (const id of ["drawing-settings", "drawing-alert", "drawing-save-template", "drawing-clone", "drawing-copy", "drawing-lock", "drawing-hide", "drawing-front", "drawing-forward", "drawing-backward", "drawing-back", "drawing-remove"]) run(id);
+    expect(drawingApi.settings).toHaveBeenCalledOnce();
+    expect(drawingApi.addAlert).toHaveBeenCalledOnce();
+    expect(drawingApi.saveTemplate).toHaveBeenCalledOnce();
+    expect(drawingApi.clone).toHaveBeenCalledOnce();
+    expect(drawingApi.copy).toHaveBeenCalledOnce();
+    expect(drawingApi.toggleLock).toHaveBeenCalledOnce();
+    expect(drawingApi.toggleHide).toHaveBeenCalledOnce();
+    expect(drawingApi.remove).toHaveBeenCalledOnce();
+    expect(drawingApi.move.mock.calls).toEqual([["front"], ["forward"], ["backward"], ["back"]]);
+  });
+
+  it("flips the drawing lock/hide labels and disables a bound or level-less alert", () => {
+    const locked = buildChartMenu(ctx({ drawing: drawingCtx({ locked: true, hidden: true }) }));
+    expect(labels(locked)).toEqual(expect.arrayContaining(["Unlock", "Show"]));
+    const bound = find(buildChartMenu(ctx({ drawing: drawingCtx({ hasAlert: true }) })), "drawing-alert") as { disabled?: boolean };
+    expect(bound.disabled).toBe(true);
+    const noLevel = find(buildChartMenu(ctx({ drawing: drawingCtx({ hasLevel: false }) })), "drawing-alert") as { disabled?: boolean };
+    expect(noLevel.disabled).toBe(true);
+  });
 });
+
+const drawingActions = () => ({
+  settings: vi.fn(),
+  addAlert: vi.fn(),
+  saveTemplate: vi.fn(),
+  applyTemplate: vi.fn(),
+  clone: vi.fn(),
+  copy: vi.fn(),
+  toggleLock: vi.fn(),
+  toggleHide: vi.fn(),
+  move: vi.fn(),
+  remove: vi.fn(),
+});
+
+const drawingCtx = (over: Partial<ReturnType<typeof drawingActions>> & { locked?: boolean; hidden?: boolean; hasAlert?: boolean; hasLevel?: boolean } = {}) => {
+  const { locked, hidden, hasAlert, hasLevel, ...rest } = over;
+  return {
+    id: "d1",
+    label: "Trend line",
+    locked: locked ?? false,
+    hidden: hidden ?? false,
+    hasAlert: hasAlert ?? false,
+    hasLevel: hasLevel ?? true,
+    templates: [] as { id: string; name: string }[],
+    actions: { ...drawingActions(), ...rest },
+  };
+};
