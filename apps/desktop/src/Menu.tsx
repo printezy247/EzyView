@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
+import { useShortcut, useShortcutLayer } from "./shortcuts";
 
 /**
  * One row in a dropdown: an action, a checkable option, a divider or a heading.
@@ -47,6 +48,19 @@ export function Menu({ label, caption, entries, icon, badge, triggerActive, alig
   const listRef = useRef<HTMLDivElement>(null);
   const openToEnd = useRef(false);
   const menuId = useId();
+  const layer = useShortcutLayer("menu", open);
+
+  useShortcut({
+    id: `menu.escape${menuId}`,
+    combo: "Escape",
+    layer,
+    stopPropagation: true,
+    when: () => open,
+    run: () => {
+      setOpen(false);
+      triggerRef.current?.focus();
+    },
+  });
 
   const items = (): HTMLButtonElement[] => [
     ...(listRef.current?.querySelectorAll<HTMLButtonElement>("[data-menu-item]") ?? []),
@@ -66,19 +80,9 @@ export function Menu({ label, caption, entries, icon, badge, triggerActive, alig
       const target = e.target as Node;
       if (!rootRef.current?.contains(target) && !listRef.current?.contains(target)) setOpen(false);
     };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        // App shortcuts listen for Escape too; an open menu swallows it first.
-        e.stopPropagation();
-        setOpen(false);
-        triggerRef.current?.focus();
-      }
-    };
     document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
     };
   }, [open]);
 

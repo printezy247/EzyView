@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, FastForward, Pause, Play, Rewind, X } from "lucide-react";
 import { useWorkspace } from "./store";
 import type { ReplaySpeed } from "./layout";
-import { isTypingTarget } from "./hotkeys";
+import { useShortcut } from "./shortcuts";
 
 interface Props {
   /** Total bars loaded for the active symbol. */
@@ -76,32 +76,40 @@ export function ReplayBar({ totalBars }: Props) {
     return () => clearTimeout(timer);
   }, [playing, currentBar, maxBar, replaySpeed, setReplay, replayBar]);
 
-  // Global hotkeys for replay bar: Space (play/pause), Left/Right (step), Escape (exit)
-  useEffect(() => {
-    if (replayBar === null) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      // Ignore if user is typing into an input, textarea or contenteditable
-      const target = e.target as HTMLElement | null;
-      if (isTypingTarget(target)) return;
-
-      if (e.code === "Space") {
-        e.preventDefault();
-        toggle();
-      } else if (e.code === "ArrowLeft" || e.key === "[") {
-        e.preventDefault();
-        step(-1);
-      } else if (e.code === "ArrowRight" || e.key === "]") {
-        e.preventDefault();
-        step(1);
-      } else if (e.code === "Escape") {
-        e.preventDefault();
-        stop();
-        setReplay(null);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [replayBar, toggle, step, stop, setReplay]);
+  // Replay owns Space/arrows while active. The dispatcher blocks these behind
+  // a modal or menu; the `when` keeps them inert when replay is off and the
+  // bar is only mounted for its hooks.
+  useShortcut({
+    id: "replay.play-pause",
+    combo: "Space",
+    priority: 30,
+    when: () => replayBar !== null,
+    run: () => toggle(),
+  });
+  useShortcut({
+    id: "replay.step-back",
+    combo: ["ArrowLeft", "["],
+    priority: 30,
+    when: () => replayBar !== null,
+    run: () => step(-1),
+  });
+  useShortcut({
+    id: "replay.step-forward",
+    combo: ["ArrowRight", "]"],
+    priority: 30,
+    when: () => replayBar !== null,
+    run: () => step(1),
+  });
+  useShortcut({
+    id: "replay.exit",
+    combo: "Escape",
+    priority: 40,
+    when: () => replayBar !== null,
+    run: () => {
+      stop();
+      setReplay(null);
+    },
+  });
 
   if (replayBar === null) return null;
 

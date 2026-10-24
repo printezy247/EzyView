@@ -1,6 +1,6 @@
 import type { Resolution } from "@ezyview/data-adapters";
 import type { ChartType } from "@ezyview/chart-engine";
-import { useEffect, useSyncExternalStore, useState } from "react";
+import { useSyncExternalStore, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import {
   ArrowLeftRight,
@@ -42,6 +42,7 @@ import { GRID_MODES } from "./layout";
 import type { ChartThemeName, CrosshairModeName, GridMode, PriceScaleModeName } from "./layout";
 import { defaultChartState, useWorkspace } from "./store";
 import { useZen } from "./zen";
+import { useShortcut } from "./shortcuts";
 import type { MagnetMode } from "@ezyview/drawing-tools";
 import { notice } from "./notice";
 
@@ -216,16 +217,11 @@ export function Toolbar(props: Props) {
   // Ctrl+K (Cmd+K on macOS) opens the command palette from anywhere; the
   // chart's quick command input moved to Ctrl+Shift+K in the redesign, since
   // the palette is the more common action once the app has eight sections.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setPaletteOpen((v) => !v);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  useShortcut({
+    id: "command-palette",
+    combo: "Mod+K",
+    run: () => setPaletteOpen((v) => !v),
+  });
 
   const magnet = useWorkspace((s) => s.magnet);
   const setMagnet = useWorkspace((s) => s.setMagnet);
