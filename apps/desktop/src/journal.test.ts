@@ -133,6 +133,51 @@ describe("backward-compatible restore", () => {
   });
 });
 
+describe("bulk edit and account filter", () => {
+  it("updateEntries merges into every listed id in one write", async () => {
+    const { useJournal } = await loadStore();
+    useJournal.getState().addEntry(entry({ symbol: "EURUSD", source: "mt5" }));
+    useJournal.getState().addEntry(entry({ symbol: "GBPUSD", source: "paper" }));
+    const ids = useJournal.getState().entries.map((e) => e.id);
+    useJournal.getState().updateEntries(ids, { setup: "breakout" });
+    for (const e of useJournal.getState().entries) expect(e.setup).toBe("breakout");
+    // Persisted exactly once per entry, ids untouched.
+    const saved = persisted() as { entries: { id: string; setup?: string }[] };
+    expect(saved.entries.map((e) => e.setup)).toEqual(["breakout", "breakout"]);
+  });
+
+  it("updateEntries tolerates unknown ids and empty lists", async () => {
+    const { useJournal } = await loadStore();
+    useJournal.getState().addEntry(entry());
+    const before = useJournal.getState().entries;
+    useJournal.getState().updateEntries([], { tags: ["x"] });
+    useJournal.getState().updateEntries(["nope"], { tags: ["x"] });
+    expect(useJournal.getState().entries).toEqual(before);
+  });
+
+  it("removeEntries deletes only the listed ids and reports the count", async () => {
+    const { useJournal } = await loadStore();
+    useJournal.getState().addEntry(entry({ symbol: "A" }));
+    useJournal.getState().addEntry(entry({ symbol: "B" }));
+    useJournal.getState().addEntry(entry({ symbol: "C" }));
+    const ids = useJournal.getState().entries.map((e) => e.id);
+    expect(useJournal.getState().removeEntries([ids[1]!, ids[2]!])).toBe(2);
+    // addEntry prepends, so the newest symbol is first after two deletions.
+    const remaining = useJournal.getState().entries.map((e) => e.symbol);
+    expect(remaining).toEqual(["C"]);
+    expect(useJournal.getState().removeEntries(["gone"])).toBe(0);
+  });
+
+  it("sourceFilter and setSourceFilter round-trip (journal data itself unmoved)", async () => {
+    const { useJournal } = await loadStore();
+    expect(useJournal.getState().sourceFilter).toBe("any");
+    useJournal.getState().setSourceFilter("mt5");
+    expect(useJournal.getState().sourceFilter).toBe("mt5");
+    // The filter is session state: it never lands on disk.
+    expect(persisted().sourceFilter).toBeUndefined();
+  });
+});
+
 describe("addEntry", () => {
   it("prepends with a generated id and persists", async () => {
     const { useJournal } = await loadStore();
