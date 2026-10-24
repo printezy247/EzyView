@@ -191,15 +191,31 @@ export function round(values: SeriesValue[], precision = 6): SeriesValue[] {
   return values.map((v) => (v === null ? null : Math.round(v * f) / f));
 }
 
-/** Weighted moving average: linear weights, most recent sample weighted `period`. */
+/** Weighted moving average: linear weights, most recent sample weighted `period`.
+ *
+ * O(n): the window numerator slides incrementally — each step drops the one-bar-back
+ * window sum and adds `period × latest`. Algebraically identical to the naive
+ * Σ values[i-j]·(period-j) loop, without the O(n·p) inner loop.
+ */
 export function wma(values: number[], period: number): SeriesValue[] {
   const out: SeriesValue[] = Array.from({ length: values.length }, () => null);
-  const denom = (period * (period + 1)) / 2;
-  if (period <= 0) return out;
-  for (let i = period - 1; i < values.length; i++) {
-    let sum = 0;
-    for (let j = 0; j < period; j++) sum += values[i - j]! * (period - j);
-    out[i] = sum / denom;
+  const p = Math.floor(period);
+  if (p <= 0) return out;
+  const denom = (p * (p + 1)) / 2;
+  let T = 0; // Σ values[i-j]·(p-j) over the current window; newest weighted p.
+  let S = 0; // Σ_{m=i-p}^{i-1}, refreshed to the p-bar sum ending one bar back.
+  for (let i = 0; i < values.length; i++) {
+    const v = values[i]!;
+    if (i < p) {
+      // Warm-up: v_i will end up with weight i+1 once the window fills.
+      T += v * (i + 1);
+      S += v;
+      if (i === p - 1) out[i] = T / denom;
+      continue;
+    }
+    T = T - S + p * v;
+    S = S + v - values[i - p]!;
+    out[i] = T / denom;
   }
   return out;
 }
@@ -241,23 +257,35 @@ export function zlema(values: number[], period: number): SeriesValue[] {
   return ema(src, period);
 }
 
-/** Least-squares slope over a trailing `period` window, per bar. */
+/**
+ * Least-squares slope over a trailing `period` window, per bar.
+ *
+ * O(n): Σy is a rolling sum and Σ(j·y) slides incrementally (each overlapped
+ * sample gains one unit of weight per bar, the dropped tail had weight p-1),
+ * so the O(n·p) inner product becomes two O(1) window updates.
+ */
 export function linregSlope(values: number[], period: number): SeriesValue[] {
   const out: SeriesValue[] = Array.from({ length: values.length }, () => null);
-  if (period <= 1) return out;
+  const p = Math.floor(period);
+  if (p <= 1) return out;
   // Σx and Σx² are constants for a fixed window of x = 0..period-1.
-  const sumX = (period * (period - 1)) / 2;
-  const sumXX = (period * (period - 1) * (2 * period - 1)) / 6;
-  const denom = period * sumXX - sumX * sumX;
-  for (let i = period - 1; i < values.length; i++) {
-    let sumY = 0;
-    let sumXY = 0;
-    for (let j = 0; j < period; j++) {
-      const y = values[i - j]!;
-      sumY += y;
-      sumXY += j * y;
+  const sumX = (p * (p - 1)) / 2;
+  const sumXX = (p * (p - 1) * (2 * p - 1)) / 6;
+  const denom = p * sumXX - sumX * sumX;
+  let Q = 0; // Σ j·values[i-j]: newest sample has weight 0.
+  let S = 0; // Σ_{m=i-p}^{i-1}, the p-bar sum ending one bar back.
+  for (let i = 0; i < values.length; i++) {
+    const v = values[i]!;
+    if (i < p) {
+      // Warm-up: v_i will end up with coefficient p-1-i once the window fills.
+      Q += v * (p - 1 - i);
+      S += v;
+      if (i === p - 1) out[i] = (p * Q - sumX * S) / denom;
+      continue;
     }
-    out[i] = (period * sumXY - sumX * sumY) / denom;
+    Q = Q - p * values[i - p]! + S;
+    S = S + v - values[i - p]!;
+    out[i] = (p * Q - sumX * S) / denom;
   }
   return out;
 }
