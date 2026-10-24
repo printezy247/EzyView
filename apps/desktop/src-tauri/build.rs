@@ -12,6 +12,7 @@ const COMMANDS: &[&str] = &[
     "clear_log",
     "get_shell_settings",
     "set_shell_settings",
+    "mcp_runtime_status",
     "relaunch_app",
     "factory_reset",
 ];

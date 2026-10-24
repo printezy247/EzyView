@@ -1,0 +1,22 @@
+#!/bin/sh
+# Run EzyView's bundled MCP stdio server. AI clients register it as one word:
+#   claude mcp add ezyview -- ezyview-mcp
+set -eu
+
+SERVER=${EZYVIEW_MCP_FILE:-/usr/lib/EzyView/mcp/ezyview-mcp.mjs}
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "ezyview-mcp: Node.js was not found on PATH." >&2
+  echo "  The MCP server needs Node.js 22 or newer (the .deb recommends nodejs)." >&2
+  echo "  Install it, e.g. from nodejs.org or a NodeSource repository, and retry." >&2
+  exit 1
+fi
+
+if [ ! -f "$SERVER" ]; then
+  echo "ezyview-mcp: server not found at $SERVER." >&2
+  echo "  EzyView bundles it next to the app; set EZYVIEW_MCP_FILE when EzyView" >&2
+  echo "  runs from an unusual location." >&2
+  exit 1
+fi
+
+exec node "$SERVER" "$@"

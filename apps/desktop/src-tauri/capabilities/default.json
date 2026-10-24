@@ -32,6 +32,7 @@
     "allow-clear-log",
     "allow-get-shell-settings",
     "allow-set-shell-settings",
+    "allow-mcp-runtime-status",
     "allow-relaunch-app",
     "allow-factory-reset"
   ]

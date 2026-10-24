@@ -42,10 +42,25 @@ npm install
 
 ## Install the .deb (Linux Mint / Ubuntu / Debian)
 
+The `.deb` is the recommended install on Mint and Ubuntu: it integrates with the desktop,
+ships the man pages, MCP wrapper and AppStream metadata, and upgrades cleanly.
+
 ```bash
 npm run tauri -- build --bundles deb
 sudo apt install ./apps/desktop/src-tauri/target/release/bundle/deb/EzyView_0.1.0_amd64.deb
 ```
+
+## AppImage (FUSE)
+
+The AppImage needs FUSE (`libfuse2`) on modern Mint/Ubuntu:
+
+```bash
+sudo apt install libfuse2   # or: fuse3 with fuse-overlayfs on newer distros
+./EzyView_*.AppImage
+```
+
+Without FUSE, extract first: `./EzyView_*.AppImage --appimage-extract`, then run
+`squashfs-root/AppRun`. Or simply use the `.deb`, which needs no FUSE.
 
 ## MCP server (for Claude and other AI clients)
 
@@ -53,10 +68,14 @@ EzyView ships a stdio MCP server exposing candles, indicators, option pricing, a
 the economic calendar and earnings. It needs Node 22+. After installing the `.deb`:
 
 ```bash
-claude mcp add ezyview -- node /usr/lib/EzyView/mcp/ezyview-mcp.mjs
+claude mcp add ezyview -- ezyview-mcp
 ```
 
-From a source checkout: `npm run build:mcp`, then point `node` at `packages/mcp-server/dist/ezyview-mcp.mjs`.
+`ezyview-mcp` is a small wrapper the package installs in `/usr/bin`; it runs the bundled
+`/usr/lib/EzyView/mcp/ezyview-mcp.mjs` and prints helpful errors when Node.js 22+ is missing.
+Settings → Desktop shows the detected runtime under **MCP server (AI assistants)**.
+The equivalent for a source checkout: `npm run build:mcp`, then point `node` at
+`packages/mcp-server/dist/ezyview-mcp.mjs` (or set `EZYVIEW_MCP_FILE`).
 
 ## Multi-monitor
 

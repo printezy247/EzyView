@@ -285,6 +285,63 @@ fn relaunch_app(app: AppHandle) {
     app.restart();
 }
 
+/// What Settings → Desktop reports about the bundled MCP stdio server:
+/// where the .mjs lives next to the binary and which `node` would run it.
+#[derive(serde::Serialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+struct McpRuntimeStatus {
+    server_path: String,
+    server_present: bool,
+    /// `v22.3.4` form as `node --version` prints it; `None` when node is absent.
+    node_version: Option<String>,
+    supported_node: bool,
+}
+
+/// The MCP server is bundled with `esbuild --target=node22`, so anything below
+/// Node 22 is untested. Accepts the `v22.3.4` form `node --version` prints.
+fn node_major_is_supported(version: &str) -> bool {
+    let version = version.trim();
+    let version = version.strip_prefix('v').unwrap_or(version);
+    let Some(major) = version.split('.').next() else {
+        return false;
+    };
+    major.parse::<u32>().is_ok_and(|m| m >= 22)
+}
+
+/// The bundled server sits next to the binary: `/usr/lib/EzyView/mcp/…` when
+/// installed from the .deb, the build directory when running from a checkout.
+fn mcp_server_path() -> std::path::PathBuf {
+    std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(|dir| dir.join("mcp").join("ezyview-mcp.mjs")))
+        .unwrap_or_else(|| std::path::PathBuf::from("mcp/ezyview-mcp.mjs"))
+}
+
+#[tauri::command]
+async fn mcp_runtime_status() -> Result<McpRuntimeStatus, String> {
+    let server_path = mcp_server_path();
+    let server_present = std::fs::metadata(&server_path).is_ok();
+    // In doubt run on a blocking thread: a hung `node` must not stall the UI.
+    let node_version = tauri::async_runtime::spawn_blocking(|| {
+        std::process::Command::new("node")
+            .arg("--version")
+            .output()
+            .ok()
+            .filter(|out| out.status.success())
+            .map(|out| String::from_utf8_lossy(&out.stdout).trim().to_string())
+            .filter(|out| !out.is_empty())
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+    let supported_node = node_version.as_deref().is_some_and(node_major_is_supported);
+    Ok(McpRuntimeStatus {
+        server_path: server_path.display().to_string(),
+        server_present,
+        node_version,
+        supported_node,
+    })
+}
+
 /// Factory reset: wipe the webview's local data (workspace, journal, layouts),
 /// EzyView's own files and the keyring secrets, then restart. Every step runs
 /// even if an earlier one failed; failures are reported together (no restart then).
@@ -625,6 +682,7 @@ pub fn run() {
             clear_log,
             get_shell_settings,
             set_shell_settings,
+            mcp_runtime_status,
             relaunch_app,
             factory_reset
         ])
@@ -690,6 +748,22 @@ mod tests {
         assert_eq!(s.hardware_acceleration, None);
         assert_eq!(s.proxy, "http://p:1");
         assert_eq!(serde_json::from_str::<ShellSettings>("{}").unwrap(), ShellSettings::default());
+    }
+
+    #[test]
+    fn mcp_node_versions_are_checked() {
+        for ok in ["v22.0.0", "v24.3.1", "22.3.4", "v99.0.0", "v22"] {
+            assert!(node_major_is_supported(ok), "should accept {ok:?}");
+        }
+        for bad in ["v18.20.0", "21.1.0", "", "garbage", "v3.14.15"] {
+            assert!(!node_major_is_supported(bad), "should reject {bad:?}");
+        }
+    }
+
+    #[test]
+    fn mcp_server_path_preferes_the_bundled_file() {
+        // A path is always produced, even without a binary next to the test.
+        assert!(!mcp_server_path().as_os_str().is_empty());
     }
 
     #[test]

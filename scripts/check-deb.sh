@@ -27,9 +27,15 @@ trap 'rm -rf "$work"' EXIT
 dpkg-deb -c "$deb" > "$work/contents.txt"
 grep -q 'usr/share/doc/ezy-view/copyright' "$work/contents.txt"
 grep -q 'usr/share/man/man1/ezyview.1.gz' "$work/contents.txt"
+grep -q 'usr/share/man/man1/ezyview-mcp.1.gz' "$work/contents.txt"
+grep -q 'usr/bin/ezyview-mcp' "$work/contents.txt"
 grep -q 'usr/bin/ezyview-mt5-bridge' "$work/contents.txt"
 grep -q 'usr/lib/EzyView/mt5-bridge/bridge.py' "$work/contents.txt"
+
+# The MCP wrapper must be executable inside the package and pass shellcheck.
 dpkg-deb -x "$deb" "$work/root"
+test -x "$work/root/usr/bin/ezyview-mcp"
+shellcheck "$work/root/usr/bin/ezyview-mcp"
 
 desktop-file-validate "$work/root/usr/share/applications/EzyView.desktop"
 appstreamcli validate --no-net "$work/root/usr/share/metainfo/com.printezy247.ezyview.metainfo.xml"

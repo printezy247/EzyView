@@ -387,6 +387,12 @@
           "markdownDescription": "Enables the get_shell_settings command without any pre-configured scope."
         },
         {
+          "description": "Enables the mcp_runtime_status command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-mcp-runtime-status",
+          "markdownDescription": "Enables the mcp_runtime_status command without any pre-configured scope."
+        },
+        {
           "description": "Enables the open_chart_window command without any pre-configured scope.",
           "type": "string",
           "const": "allow-open-chart-window",
@@ -463,6 +469,12 @@
           "type": "string",
           "const": "deny-get-shell-settings",
           "markdownDescription": "Denies the get_shell_settings command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the mcp_runtime_status command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-mcp-runtime-status",
+          "markdownDescription": "Denies the mcp_runtime_status command without any pre-configured scope."
         },
         {
           "description": "Denies the open_chart_window command without any pre-configured scope.",
