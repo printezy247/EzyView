@@ -72,6 +72,29 @@ test("the command palette opens and lists the sections", async ({ page }) => {
   await expect(dialog).toBeHidden();
 });
 
+test("the chart command input opens, scopes symbols and closes on Escape", async ({ page }) => {
+  await page.goto("/#/chart");
+  await page.keyboard.press("/");
+
+  const input = page.getByRole("combobox", { name: "Chart command input" });
+  await expect(input).toBeVisible();
+  await input.fill("eur");
+  await expect(page.getByRole("button", { name: "OANDA:EURUSD" })).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await expect(input).toBeHidden();
+});
+
+test("a watchlist row retargets the active chart", async ({ page }) => {
+  await page.goto("/#/chart");
+  await page.getByTitle("Toggle right-hand Watchlist dock").click();
+
+  const watchlist = page.getByRole("complementary", { name: "Watchlist" });
+  await expect(watchlist).toBeVisible();
+  await watchlist.getByTitle("Open Euro / US Dollar").click();
+  await expect(page.getByRole("region", { name: /Chart 1: OANDA:EURUSD/ })).toBeVisible();
+});
+
 test("the chart cell mounts with a canvas", async ({ page }) => {
   await page.goto("/#/chart");
   const cell = page.getByRole("region", { name: /Chart 1:/ });

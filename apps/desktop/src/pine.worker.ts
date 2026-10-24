@@ -65,13 +65,15 @@ export interface PineErrorResponse {
 
 export type PineResponse = PineRunResponse | PineOptimizeResponse | PineErrorResponse;
 
-self.onmessage = (event: MessageEvent<PineRequest>): void => {
-  const req = event.data;
+self.addEventListener("message", (event): void => {
+  const req = (event as MessageEvent<PineRequest>).data;
   try {
     if (req.kind === "run") {
       const ctx: Context = { ...req.ctx, inputs: { ...req.ctx.inputs } };
       const result = runPine(req.source, ctx);
       const reply: PineRunResponse = { id: req.id, ok: true, kind: "run", result, inputs: ctx.inputs };
+      // A dedicated worker has no target origin; the parent is implicit.
+      // oxlint-disable-next-line unicorn/require-post-message-target-origin
       self.postMessage(reply);
       return;
     }
@@ -93,11 +95,14 @@ self.onmessage = (event: MessageEvent<PineRequest>): void => {
         return backtest(runPine(req.source, ctx).orders, { close: req.bars.close });
       }, req.specs);
       const reply: PineOptimizeResponse = { id: req.id, ok: true, kind: "optimize", result };
+      // oxlint-disable-next-line unicorn/require-post-message-target-origin
       self.postMessage(reply);
       return;
     }
+    // oxlint-disable-next-line unicorn/require-post-message-target-origin
     self.postMessage({ id: (req as PineRequest).id, ok: false, message: `unknown job kind` } satisfies PineErrorResponse);
   } catch (e) {
+    // oxlint-disable-next-line unicorn/require-post-message-target-origin
     self.postMessage({ id: req.id, ok: false, message: e instanceof Error ? e.message : String(e) } satisfies PineErrorResponse);
   }
-};
+});

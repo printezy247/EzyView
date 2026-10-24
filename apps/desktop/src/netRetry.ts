@@ -54,11 +54,15 @@ export async function withRetry<T>(fn: (signal: AbortSignal | undefined) => Prom
   let lastErr: unknown;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
+      // Retries are deliberately sequential: each attempt waits for the last
+      // failure and the backoff before it starts.
+      // oxlint-disable-next-line no-await-in-loop
       return await runOnce((signal) => fn(signal), timeoutMs);
     } catch (err) {
       lastErr = err;
       // Last attempt: nothing left to wait for.
       if (attempt === attempts - 1) break;
+      // oxlint-disable-next-line no-await-in-loop
       await sleep(backoffDelay(attempt, base, max));
     }
   }

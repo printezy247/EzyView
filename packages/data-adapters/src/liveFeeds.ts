@@ -65,6 +65,9 @@ const toPrice = (v: unknown): number | null => {
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
+/** Kraken's ticker fields wrap the value in a one-element array. */
+const firstOf = (v: unknown): unknown => (Array.isArray(v) ? v[0] : undefined);
+
 /** Build a candle only when every field is valid. */
 function makeCandle(time: unknown, o: unknown, h: unknown, l: unknown, c: unknown, v: unknown): Candle | null {
   const t = toNum(time);
@@ -136,6 +139,7 @@ function startStream(
   let closed = false;
   let fails = 0;
   let sock: WebSocket | null = null;
+  let sockListeners: AbortController | null = null;
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
   let hbTimer: ReturnType<typeof setInterval> | null = null;
   let pollTimer: ReturnType<typeof setInterval> | null = null;
@@ -203,34 +207,47 @@ function startStream(
       }
       onFail();
     };
-    ws.onopen = () => {
-      try {
-        plan.onOpen?.(ws);
-      } catch {
-        die();
-        return;
-      }
-      if (plan.heartbeat) {
-        const { ms, msg } = plan.heartbeat;
-        hbTimer = setInterval(() => {
-          try {
-            ws.send(msg);
-          } catch {
-            /* close handler will follow */
-          }
-        }, ms);
-      }
-    };
-    ws.onmessage = (ev: MessageEvent) => {
-      if (dead) return;
-      const r = plan.parse(typeof ev.data === "string" ? ev.data : String(ev.data));
-      if (r === "fail") return die();
-      if (r === null) return;
-      fails = 0;
-      emit({ symbol, last: r, time: ctx.nowSec() });
-    };
-    ws.onerror = die;
-    ws.onclose = die;
+    // Listeners carry an AbortSignal so teardown removes every handler without
+    // keeping a parallel list of function references.
+    const listeners = new AbortController();
+    ws.addEventListener(
+      "open",
+      () => {
+        try {
+          plan.onOpen?.(ws);
+        } catch {
+          die();
+          return;
+        }
+        if (plan.heartbeat) {
+          const { ms, msg } = plan.heartbeat;
+          hbTimer = setInterval(() => {
+            try {
+              ws.send(msg);
+            } catch {
+              /* close handler will follow */
+            }
+          }, ms);
+        }
+      },
+      { signal: listeners.signal },
+    );
+    ws.addEventListener(
+      "message",
+      (ev) => {
+        if (dead) return;
+        const data = (ev as MessageEvent).data;
+        const r = plan.parse(typeof data === "string" ? data : String(data));
+        if (r === "fail") return die();
+        if (r === null) return;
+        fails = 0;
+        emit({ symbol, last: r, time: ctx.nowSec() });
+      },
+      { signal: listeners.signal },
+    );
+    ws.addEventListener("error", die, { signal: listeners.signal });
+    ws.addEventListener("close", die, { signal: listeners.signal });
+    sockListeners = listeners;
   }
 
   connect();
@@ -243,7 +260,8 @@ function startStream(
     if (sock) {
       const s = sock;
       sock = null;
-      s.onopen = s.onmessage = s.onerror = s.onclose = null;
+      sockListeners?.abort();
+      sockListeners = null;
       try {
         s.close();
       } catch {
@@ -346,17 +364,23 @@ function buildSource(cfg: SourceConfig, deps: LiveSourceDeps): LiveSource {
     async subscribe(symbols, onQuote) {
       const stops: UnsubscribeFn[] = [];
       let stopped = false;
-      for (const symbol of symbols) {
-        const ticker = tickerOf(symbol);
-        if (!cfg.supports(ticker)) continue;
-        let plan: StreamPlan | null = null;
-        try {
-          plan = await cfg.plan(ctx, ticker);
-        } catch {
-          plan = null;
-        }
-        if (!plan || stopped) continue;
-        stops.push(startStream(ctx, plan, symbol, () => getQuote(symbol), onQuote));
+      // Plans are independent requests; resolving them together avoids a
+      // serial round-trip per symbol when a layout subscribes to a basket.
+      const planned = await Promise.all(
+        symbols.map(async (symbol) => {
+          const ticker = tickerOf(symbol);
+          if (!cfg.supports(ticker)) return null;
+          try {
+            const plan = await cfg.plan(ctx, ticker);
+            return plan ? { symbol, plan } : null;
+          } catch {
+            return null;
+          }
+        }),
+      );
+      if (stopped) return () => {};
+      for (const item of planned) {
+        if (item) stops.push(startStream(ctx, item.plan, item.symbol, () => getQuote(item.symbol), onQuote));
       }
       return () => {
         stopped = true;
@@ -556,8 +580,7 @@ const krakenConfig: SourceConfig = {
   async quote(ctx, ticker) {
     const t = krakenFirst(await ctx.getJson(`${KRAKEN_REST}/Ticker?pair=${krakenRestPair(ticker)}`));
     if (!isRecord(t)) return null;
-    const arr = (v: unknown): unknown => (Array.isArray(v) ? v[0] : undefined);
-    const last = toPrice(arr(t.c));
+    const last = toPrice(firstOf(t.c));
     if (last === null) return null;
     const q: Omit<Quote, "symbol"> = { last, time: ctx.nowSec() };
     const open = toPrice(t.o);
@@ -565,8 +588,8 @@ const krakenConfig: SourceConfig = {
       q.change = last - open;
       q.changePercent = ((last - open) / open) * 100;
     }
-    const bid = toPrice(arr(t.b));
-    const ask = toPrice(arr(t.a));
+    const bid = toPrice(firstOf(t.b));
+    const ask = toPrice(firstOf(t.a));
     const vol = toNum(Array.isArray(t.v) ? t.v[1] : undefined);
     if (bid !== null) q.bid = bid;
     if (ask !== null) q.ask = ask;

@@ -38,6 +38,14 @@ const makeContext = (n = 60): Context => {
 
 const nums = (v: PineValue[]): number[] => v.filter((x): x is number => typeof x === "number");
 
+/** One fresh-context run, matching the Pine runner's per-job isolation. */
+const runIsolated = (): number => {
+  const ctx = makeContext(40);
+  const out = runPine('var c = 0.0\nc := c + 1\nstrategy.entry("E", strategy.long)\nplot(c)', ctx);
+  const c = nums(out.plots[0]!.values);
+  return c[c.length - 1]!;
+};
+
 describe(" Pine script compatibility (full scripts)", () => {
   it("EMA cross strategy: transpiles, runs, and orders backtest into fills", () => {
     const src = [
@@ -105,14 +113,7 @@ describe(" Pine script compatibility (full scripts)", () => {
   });
 
   it("two runs on the same source cannot leak state between runs", () => {
-    // Same fresh-context contract the Pine runner uses per worker job.
-    const run = (): number => {
-      const ctx = makeContext(40);
-      const out = runPine('var c = 0.0\nc := c + 1\nstrategy.entry("E", strategy.long)\nplot(c)', ctx);
-      const c = nums(out.plots[0]!.values);
-      return c[c.length - 1]!;
-    };
-    expect(run()).toBe(run());
+    expect(runIsolated()).toBe(runIsolated());
   });
 
   it("every published-style script transpiles without throwing", () => {
