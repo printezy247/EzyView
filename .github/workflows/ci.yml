@@ -72,7 +72,7 @@ jobs:
       # the same as a developer's, so a CI pixel diff would report a
       # difference that is not one.
       - run: npx playwright test e2e/smoke.spec.ts
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report
