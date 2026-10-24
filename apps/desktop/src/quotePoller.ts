@@ -10,7 +10,7 @@
  */
 import { useEffect, useState } from "react";
 import type { Quote } from "@ezyview/data-adapters";
-import { quoteOf } from "./data";
+import { retainTicker, quoteOf } from "./data";
 import type { DataSourceChoice } from "./chartSource";
 
 export const MIN_INTERVAL_MS = 250;
@@ -35,6 +35,8 @@ interface Poller {
 }
 
 const pollers = new Map<string, Poller>();
+/** Live demo tickers move only while referenced; the poller holds the lease. */
+const tickerReleases = new Map<string, () => void>();
 let hidden = typeof document !== "undefined" && document.hidden;
 
 const keyOf = (symbol: string, source?: DataSourceChoice): string => `${source ?? "auto"}:${symbol}`;
@@ -96,6 +98,18 @@ export function subscribeQuote(
       lastQuote: null,
     };
     pollers.set(key, poller);
+    // Keep the demo feed moving while any panel polls this symbol, and stop it
+    // with the last subscriber instead of leaving a 1 Hz timer behind.
+    tickerReleases.set(
+      key,
+      (() => {
+        const release = retainTicker(symbol);
+        return () => {
+          release();
+          tickerReleases.delete(key);
+        };
+      })(),
+    );
   }
 
   const subscriber: Subscriber = { listener, intervalMs, lastDelivered: 0 };
@@ -113,6 +127,7 @@ export function subscribeQuote(
       return;
     }
     stopTimer(poller!);
+    tickerReleases.get(key)?.();
     pollers.delete(key);
   };
 }
@@ -137,10 +152,11 @@ if (typeof document !== "undefined") {
   });
 }
 
-/** Test hook: drop every subscription and timer. */
+/** Test hook: drop every subscription, timer and ticker lease. */
 export function resetQuotePoller(): void {
   for (const poller of pollers.values()) stopTimer(poller);
   pollers.clear();
+  for (const release of tickerReleases.values()) release();
 }
 
 export interface QuoteState {

@@ -19,7 +19,7 @@ import { ObjectTree } from "./ObjectTree";
 import { TimeAndSales } from "./TimeAndSales";
 import { LinkGroupDialog } from "./LinkGroupDialog";
 import { sessionForSymbol } from "./sessionFor";
-import { loadHistory } from "./data";
+import { safeHistory } from "./data";
 import { precisionForSymbol } from "./pricePrecision";
 import { useQuote } from "./quotePoller";
 import { useWorkspace } from "./store";
@@ -185,7 +185,7 @@ export function ChartPage({
   useEffect(() => {
     let cancelled = false;
     setReplay(null);
-    void loadHistory(state.symbol, state.resolution).then((candles) => {
+    void safeHistory(state.symbol, state.resolution).then((candles) => {
       if (!cancelled) setHistoryBars(candles.length);
     });
     return () => {

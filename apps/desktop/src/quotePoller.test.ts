@@ -12,6 +12,8 @@ const quoteOf = vi.fn(async () => quote(4100));
 
 vi.mock("./data", () => ({
   quoteOf: (...args: unknown[]) => quoteOf(...(args as [])),
+  retainTicker: () => () => {},
+  releaseTicker: () => {},
 }));
 
 describe("subscribeQuote", () => {
