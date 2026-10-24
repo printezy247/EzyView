@@ -1,7 +1,10 @@
-import { Plus, Trash2 } from "lucide-react";
+import { Crosshair, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { searchSymbols } from "./data";
+import { searchSymbolsForSource } from "./data";
 import { subscribeQuote } from "./quotePoller";
+import { activeChartOf } from "./layout";
+import { effectiveSource, sourceLabel } from "./chartSource";
+import { useMt5 } from "./mt5";
 import { useWorkspace } from "./store";
 import type { WatchEntry } from "./store";
 import { sortWatch } from "./watchSort";
@@ -13,10 +16,12 @@ interface Props {
 
 function WatchRow({
   item,
+  active,
   onSelect,
   onRemove,
 }: {
   item: WatchEntry;
+  active: boolean;
   onSelect: () => void;
   onRemove: () => void;
 }) {
@@ -40,11 +45,16 @@ function WatchRow({
   }, [flash]);
 
   return (
-    <li className="group flex items-center gap-2 border-b border-ev-panel px-3 py-1.5">
+    <li
+      className={`group flex items-center gap-2 border-b border-ev-panel px-3 py-1.5 ${
+        active ? "bg-ev-raised/40" : ""
+      }`}
+    >
       <button
         type="button"
         onClick={onSelect}
-        className="min-w-0 flex-1 text-left"
+        aria-current={active ? "true" : undefined}
+        className={`min-w-0 flex-1 text-left ${active ? "border-l-2 border-ev-accent pl-1.5" : ""}`}
         title={`Open ${item.description}`}
       >
         <div className="flex items-baseline justify-between gap-2">
@@ -61,7 +71,10 @@ function WatchRow({
           </span>
         </div>
         <div className="flex items-baseline justify-between gap-2">
-          <span className="truncate text-dense text-ev-faint">{item.assetClass}</span>
+          <span className="truncate text-dense text-ev-faint">
+            {item.assetClass}
+            {item.source ? ` · ${sourceLabel(item.source)}` : ""}
+          </span>
           <span
             className={
               item.changePct === null
@@ -123,12 +136,16 @@ function SortHead({
  */
 export function Watchlist({ onOpenAlerts }: Props) {
   const watchlist = useWorkspace((s) => s.watchlist);
-  const symbolKey = useWorkspace((s) => s.watchlistSymbolKey);
+  const quoteKey = useWorkspace((s) => s.watchlistQuoteKey);
   const isReplay = useWorkspace((s) => s.replayBar !== null);
   const addToWatchlist = useWorkspace((s) => s.addToWatchlist);
   const removeFromWatchlist = useWorkspace((s) => s.removeFromWatchlist);
   const updateWatchPrice = useWorkspace((s) => s.updateWatchPrice);
   const setSymbol = useWorkspace((s) => s.setSymbol);
+  const activeSymbol = useWorkspace((s) => activeChartOf(s.activeLayout()).symbol);
+  const dataSourceChoice = useWorkspace((s) => activeChartOf(s.activeLayout()).dataSource);
+  const globalFeed = useMt5((s) => s.source);
+  const source = effectiveSource(dataSourceChoice, globalFeed);
 
   const [adding, setAdding] = useState(false);
   const [query, setQuery] = useState("");
@@ -152,22 +169,24 @@ export function Watchlist({ onOpenAlerts }: Props) {
   );
 
   useEffect(() => {
-    if (!symbolKey || isReplay) return;
-    // Each symbol joins the shared poller, so a chart and the watchlist showing
-    // the same instrument cost one request per tick, not two.
-    const stops = symbolKey.split(",").map((symbol) =>
+    if (!quoteKey || isReplay) return;
+    // Each row joins the shared poller with the feed it was saved on, so a
+    // chart and the watchlist showing the same instrument cost one request,
+    // and an MT5 row never asks the demo feed for a bare broker ticker.
+    const rows = useWorkspace.getState().watchlist;
+    const stops = rows.map((row) =>
       subscribeQuote(
-        symbol,
+        row.symbol,
         (quote) => {
           if (quote) updateWatchPrice(quote.symbol, quote.last, quote.changePercent ?? null);
         },
-        { intervalMs: 3000 },
+        { intervalMs: 3000, ...(row.source ? { source: row.source } : {}) },
       ),
     );
     return () => {
       for (const stop of stops) stop();
     };
-  }, [symbolKey, isReplay, updateWatchPrice]);
+  }, [quoteKey, isReplay, updateWatchPrice]);
 
   const toggleSort = (field: Exclude<WatchSortField, "none">, firstDesc: boolean) => {
     if (sortField === field) setSortDesc((d) => !d);
@@ -180,7 +199,7 @@ export function Watchlist({ onOpenAlerts }: Props) {
   const addFromQuery = async (targetQuery = query) => {
     const trimmed = targetQuery.trim();
     if (!trimmed) return;
-    const found = await searchSymbols(trimmed);
+    const found = await searchSymbolsForSource(trimmed, source);
     const first = found[0];
     if (!first) return;
     const entry: WatchEntry = {
@@ -191,18 +210,42 @@ export function Watchlist({ onOpenAlerts }: Props) {
       precision: first.precision,
       price: null,
       changePct: null,
+      source,
     };
     addToWatchlist(entry);
     setAdding(false);
     setQuery("");
   };
 
+  /** Pin the focused chart's instrument, including the feed it is reading. */
+  const addFromActiveChart = async () => {
+    const chart = useWorkspace.getState().activeChart();
+    const chartSource = effectiveSource(chart.dataSource, useMt5.getState().source);
+    const found = await searchSymbolsForSource(chart.symbol, chartSource);
+    const info = found.find((s) => s.symbol === chart.symbol) ?? found[0];
+    addToWatchlist({
+      symbol: chart.symbol,
+      ticker: info?.ticker ?? chart.symbol.split(":").pop() ?? chart.symbol,
+      description: info?.description ?? chart.symbol,
+      assetClass: info?.assetClass ?? "",
+      precision: info?.precision ?? 2,
+      price: null,
+      changePct: null,
+      source: chartSource,
+    });
+  };
+
+  const openSymbol = (row: WatchEntry) => {
+    if (row.source) setSymbol(row.symbol, row.source);
+    else setSymbol(row.symbol);
+  };
+
   const handleQueryChange = (val: string) => {
     setQuery(val);
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
-      // Pre-warm search without committing
-      if (val.trim()) void searchSymbols(val.trim());
+      // Pre-warm search against the active feed without committing.
+      if (val.trim()) void searchSymbolsForSource(val.trim(), source);
     }, 250);
   };
 
@@ -218,6 +261,15 @@ export function Watchlist({ onOpenAlerts }: Props) {
             className="min-h-6 rounded px-1.5 py-0.5 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
           >
             Alerts
+          </button>
+          <button
+            type="button"
+            title="Add the active chart's symbol"
+            aria-label="Add the active chart's symbol"
+            onClick={() => void addFromActiveChart()}
+            className="flex size-6 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+          >
+            <Crosshair size={13} aria-hidden />
           </button>
           <button
             type="button"
@@ -275,7 +327,8 @@ export function Watchlist({ onOpenAlerts }: Props) {
               <WatchRow
                 key={w.symbol}
                 item={w}
-                onSelect={() => setSymbol(w.symbol)}
+                active={w.symbol === activeSymbol}
+                onSelect={() => openSymbol(w)}
                 onRemove={() => removeFromWatchlist(w.symbol)}
               />
             ))}

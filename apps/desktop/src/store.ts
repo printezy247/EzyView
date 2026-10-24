@@ -32,6 +32,8 @@ import type {
   ReplaySpeed,
 } from "./layout";
 import { readDetached } from "./windows";
+import { isDataSourceChoice } from "./chartSource";
+import type { EffectiveSource } from "./chartSource";
 
 export type { ActiveIndicator, ChartState, GridMode, Layout } from "./layout";
 
@@ -76,6 +78,11 @@ export interface WatchEntry {
   price: number | null;
   /** Percent change over the current session. */
   changePct: number | null;
+  /**
+   * Feed this row is quoted from. Absent means "follow the global feed", which
+   * is how rows saved before sources existed keep working.
+   */
+  source?: EffectiveSource;
 }
 
 export const DEFAULT_WATCHLIST: WatchEntry[] = [
@@ -88,6 +95,11 @@ export const DEFAULT_WATCHLIST: WatchEntry[] = [
   { symbol: "NASDAQ:NVDA", ticker: "NVDA", description: "NVIDIA Corp.", assetClass: "Stock", precision: 2, price: null, changePct: null },
   { symbol: "AMEX:SPY", ticker: "SPY", description: "SPDR S&P 500 ETF Trust", assetClass: "Index", precision: 2, price: null, changePct: null },
 ];
+
+/** One key that changes when a row's feed or symbol changes, not on a tick. */
+export function watchlistQuoteKeys(list: readonly WatchEntry[]): string {
+  return list.map((w) => (w.source ? `${w.source}|${w.symbol}` : w.symbol)).join(",");
+}
 
 const LAYOUT_COLORS = ["#d91400", "#0ea600", "#f2a93b", "#4a90e2", "#9c27b0", "#00bcd4"];
 
@@ -186,6 +198,8 @@ interface WorkspaceStore {
   watchlist: WatchEntry[];
   /** Memoized comma-joined symbols for O(1) watchlist key comparison. */
   watchlistSymbolKey: string;
+  /** Symbols paired with their feed, so a price tick does not restart polling. */
+  watchlistQuoteKey: string;
   /** Saved Pine scripts, keyed by id. */
   pineScripts: Record<string, PineScriptRecord>;
   /** Replay cursor into the loaded history, or null when off. */
@@ -211,8 +225,12 @@ interface WorkspaceStore {
   updateActive(patch: Partial<ChartState>): void;
   /** Patch a specific chart cell by index in the active layout. */
   updateChart(index: number, patch: Partial<ChartState>): void;
-  /** Set the focused cell's symbol, and every cell in its link group. */
-  setSymbol(symbol: string): void;
+  /**
+   * Set the focused cell's symbol, and every cell in its link group. When the
+   * symbol belongs to a specific feed (an MT5 ticker, say), pass it so linked
+   * cells switch with the symbol instead of asking the old feed for it.
+   */
+  setSymbol(symbol: string, source?: EffectiveSource): void;
   /** Set the focused cell's interval, and every cell in its link group. */
   setResolution(resolution: ChartState["resolution"]): void;
   /** Put the focused cell into a link group, or clear it with an empty name. */
@@ -482,6 +500,7 @@ export const useWorkspace = create<WorkspaceStore>()(
       alertHistory: {},
       watchlist: DEFAULT_WATCHLIST,
       watchlistSymbolKey: DEFAULT_WATCHLIST.map((w) => w.symbol).join(","),
+      watchlistQuoteKey: watchlistQuoteKeys(DEFAULT_WATCHLIST),
       pineScripts: {},
       replayBar: null,
       magnet: "off",
@@ -532,8 +551,10 @@ export const useWorkspace = create<WorkspaceStore>()(
           return editActive(s, (l) => updateChart(l, index, (c) => ({ ...c, ...patch })));
         }),
 
-      // The focused cell's symbol, and every cell in its link group.
-      setSymbol: (symbol) => set((s) => editActive(s, (l) => applyToGroup(l, { symbol }))),
+      // The focused cell's symbol, and every cell in its link group. A feed
+      // travels with the symbol when the caller knows it (watchlist rows do).
+      setSymbol: (symbol, source) =>
+        set((s) => editActive(s, (l) => applyToGroup(l, source ? { symbol, dataSource: source } : { symbol }))),
 
       // The focused cell's interval, and every cell in its link group.
       setResolution: (resolution) => set((s) => editActive(s, (l) => applyToGroup(l, { resolution }))),
@@ -829,7 +850,11 @@ export const useWorkspace = create<WorkspaceStore>()(
         set((s) => {
           if (s.watchlist.some((w) => w.symbol === entry.symbol)) return s;
           const next = [...s.watchlist, entry];
-          return { watchlist: next, watchlistSymbolKey: next.map((w) => w.symbol).join(",") };
+          return {
+            watchlist: next,
+            watchlistSymbolKey: next.map((w) => w.symbol).join(","),
+            watchlistQuoteKey: watchlistQuoteKeys(next),
+          };
         }),
 
       removeFromWatchlist: (symbol) =>
@@ -839,7 +864,11 @@ export const useWorkspace = create<WorkspaceStore>()(
           if (!next.some((w) => w.symbol === symbol) && !s.layouts.some((l) => l.charts.some((c) => c.symbol === symbol))) {
             stopTicking(symbol);
           }
-          return { watchlist: next, watchlistSymbolKey: next.map((w) => w.symbol).join(",") };
+          return {
+            watchlist: next,
+            watchlistSymbolKey: next.map((w) => w.symbol).join(","),
+            watchlistQuoteKey: watchlistQuoteKeys(next),
+          };
         }),
 
       updateWatchPrice: (symbol, price, changePct) =>
@@ -1088,6 +1117,9 @@ export const useWorkspace = create<WorkspaceStore>()(
             "watchlist" in raw
               ? restoreWatchlist(raw.watchlist, current.watchlist).map((w) => w.symbol).join(",")
               : current.watchlist.map((w) => w.symbol).join(","),
+          watchlistQuoteKey: watchlistQuoteKeys(
+            "watchlist" in raw ? restoreWatchlist(raw.watchlist, current.watchlist) : current.watchlist,
+          ),
           favoriteTools: restoreFavoriteTools(raw.favoriteTools, current.favoriteTools),
           drawingToolStyles: restoreToolStyles(raw.drawingToolStyles, current.drawingToolStyles),
           stayInDrawingMode:
@@ -1186,6 +1218,9 @@ export function restoreWatchlist(raw: unknown, fallback: WatchEntry[]): WatchEnt
     if (typeof w !== "object" || w === null) continue;
     const x = w as Partial<Record<keyof WatchEntry, unknown>>;
     if (typeof x.symbol !== "string" || typeof x.ticker !== "string") continue;
+    // `auto` describes a chart, not a stored row: rows saved with it (or with
+    // junk) keep following the global feed rather than pinning a stale venue.
+    const source = isDataSourceChoice(x.source) && x.source !== "auto" ? x.source : undefined;
     out.push({
       symbol: x.symbol,
       ticker: x.ticker,
@@ -1194,6 +1229,7 @@ export function restoreWatchlist(raw: unknown, fallback: WatchEntry[]): WatchEnt
       precision: typeof x.precision === "number" && Number.isFinite(x.precision) ? Math.max(0, Math.min(10, Math.trunc(x.precision))) : 2,
       price: num(x.price),
       changePct: num(x.changePct),
+      ...(source ? { source } : {}),
     });
   }
   return out.length > 0 ? out : safeFallback;

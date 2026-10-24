@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { restoreAlerts, restoreWatchlist } from "./store";
+import { restoreAlerts, restoreWatchlist, watchlistQuoteKeys } from "./store";
 
 describe("restoreWatchlist", () => {
   const base = { symbol: "X", ticker: "X", description: "d", assetClass: "fx" };
@@ -11,6 +11,25 @@ describe("restoreWatchlist", () => {
   });
   it("drops entries without symbol/ticker", () => {
     expect(restoreWatchlist([{ symbol: "A" }, null, base], [])).toHaveLength(1);
+  });
+
+  it("restores a known feed and drops auto/junk instead of pinning a venue", () => {
+    const [mt5] = restoreWatchlist([{ ...base, source: "mt5" }], []);
+    expect(mt5?.source).toBe("mt5");
+    const [auto] = restoreWatchlist([{ ...base, source: "auto" }], []);
+    expect(auto?.source).toBeUndefined();
+    const [junk] = restoreWatchlist([{ ...base, source: 42 }], []);
+    expect(junk?.source).toBeUndefined();
+  });
+});
+
+describe("watchlistQuoteKeys", () => {
+  const row = { ticker: "EURUSD", description: "", assetClass: "forex", precision: 4, price: null, changePct: null };
+  it("changes when a row's feed changes, not when its price does", () => {
+    const before = watchlistQuoteKeys([{ ...row, symbol: "OANDA:EURUSD" }]);
+    const priced = watchlistQuoteKeys([{ ...row, symbol: "OANDA:EURUSD", price: 1.1 }]);
+    expect(priced).toBe(before);
+    expect(watchlistQuoteKeys([{ ...row, symbol: "OANDA:EURUSD", source: "mt5" }])).not.toBe(before);
   });
 });
 

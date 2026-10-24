@@ -37,9 +37,9 @@ export function ScreenerTab() {
   useEffect(() => {
     if (!symbolKey) return;
     let cancelled = false;
-    const symbols = symbolKey.split(",");
     const tick = () => {
-      void Promise.all(symbols.map((s) => quoteOf(s).catch(() => null))).then((quotes) => {
+      const rows = useWorkspace.getState().watchlist;
+      void Promise.all(rows.map((row) => quoteOf(row.symbol, row.source).catch(() => null))).then((quotes) => {
         if (cancelled) return;
         quotes.forEach((q) => {
           if (q) updateWatchPrice(q.symbol, q.last, q.changePercent ?? null);

@@ -291,6 +291,13 @@ export async function searchSymbols(query: string): Promise<SymbolInfo[]> {
   return market.searchSymbols(query);
 }
 
+/** Symbol search against one specific feed, regardless of the global switch. */
+export async function searchSymbolsForSource(query: string, source: EffectiveSource): Promise<SymbolInfo[]> {
+  if (source === "mt5") return getMt5().data.searchSymbols(query);
+  if (isLiveSourceChoice(source)) return getLiveSources()[source].searchSymbols(query);
+  return market.searchSymbols(query);
+}
+
 /** One quote, from whichever feed the chart is on. */
 /**
  * Demo ticker leases.
