@@ -1,19 +1,26 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createLiveSources, LIVE_SOURCE_IDS } from "./liveFeeds.js";
 import type { LiveSourceDeps } from "./liveFeeds.js";
-import type { Quote } from "./types.js";
-
-class FakeWS {
+import type { Quote } from "./types.js";class FakeWS {
   static all: FakeWS[] = [];
   sent: string[] = [];
   closed = false;
-  onopen: (() => void) | null = null;
-  onmessage: ((e: { data: string }) => void) | null = null;
-  onerror: (() => void) | null = null;
-  onclose: (() => void) | null = null;
+  private listeners = new Map<string, Set<(event: unknown) => void>>();
   constructor(public url: string) {
     FakeWS.all.push(this);
   }
+
+  addEventListener(type: string, fn: (event: unknown) => void, options?: { signal?: AbortSignal }) {
+    const set = this.listeners.get(type) ?? new Set();
+    set.add(fn);
+    this.listeners.set(type, set);
+    options?.signal?.addEventListener("abort", () => set.delete(fn));
+  }
+
+  private fire(type: string, event: unknown) {
+    for (const fn of this.listeners.get(type) ?? []) fn(event);
+  }
+
   send(s: string) {
     this.sent.push(s);
   }
@@ -21,13 +28,13 @@ class FakeWS {
     this.closed = true;
   }
   open() {
-    this.onopen?.();
+    this.fire("open", {});
   }
   msg(o: unknown) {
-    this.onmessage?.({ data: JSON.stringify(o) });
+    this.fire("message", { data: JSON.stringify(o) });
   }
   drop() {
-    this.onclose?.();
+    this.fire("close", {});
   }
 }
 

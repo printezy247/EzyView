@@ -132,6 +132,8 @@ const respond = (
       resolve: (response) => resolve(response as Extract<PineResponse, { ok: true }>),
       reject,
     });
+    // A dedicated worker has no target origin; the parent is implicit.
+    // oxlint-disable-next-line unicorn/require-post-message-target-origin
     worker.postMessage(msg);
   });
 };

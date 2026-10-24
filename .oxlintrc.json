@@ -16,5 +16,13 @@
     "no-console": ["warn", { "allow": ["warn", "error"] }],
     "unicorn/no-array-sort": "off",
     "unicorn/no-array-reverse": "off"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["scripts/**/*.ts"],
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ]
 }

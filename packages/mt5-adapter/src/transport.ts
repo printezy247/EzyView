@@ -246,7 +246,7 @@ class BridgeTransport implements Mt5Transport {
       try {
         response = await this.fetchFn(this.url(path), init);
       } catch (err) {
-        throw new Error(redact(err instanceof Error ? err.message : String(err)));
+        throw new Error(redact(err instanceof Error ? err.message : String(err)), { cause: err });
       }
       if (!response.ok) {
         if (response.status === 401) this.session = null;
