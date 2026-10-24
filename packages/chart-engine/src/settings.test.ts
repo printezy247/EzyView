@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { CrosshairMode, PriceScaleMode, TickMarkType, type UTCTimestamp } from "lightweight-charts";
-import { crosshairModeOf, priceScaleModeOf, timezoneFormatters } from "./settings.js";
+import { CrosshairMode, LineStyle, PriceScaleMode, TickMarkType, type UTCTimestamp } from "lightweight-charts";
+import {
+  crosshairLineStyleOf,
+  crosshairModeOf,
+  gridLineColor,
+  priceScaleModeOf,
+  timezoneFormatters,
+} from "./settings.js";
 
 describe("crosshairModeOf", () => {
   it("maps names to LWC enums", () => {
@@ -12,6 +18,31 @@ describe("crosshairModeOf", () => {
   it("falls back to normal for unknown input", () => {
     expect(crosshairModeOf(undefined)).toBe(CrosshairMode.Normal);
     expect(crosshairModeOf("nope" as never)).toBe(CrosshairMode.Normal);
+  });
+});
+
+describe("crosshairLineStyleOf", () => {
+  it("maps the Canvas settings names to LWC line styles", () => {
+    expect(crosshairLineStyleOf("solid")).toBe(LineStyle.Solid);
+    expect(crosshairLineStyleOf("dotted")).toBe(LineStyle.Dotted);
+    expect(crosshairLineStyleOf("dashed")).toBe(LineStyle.Dashed);
+  });
+
+  it("defaults to dashed for absent/unknown values", () => {
+    expect(crosshairLineStyleOf(undefined)).toBe(LineStyle.Dashed);
+    expect(crosshairLineStyleOf("wavy" as never)).toBe(LineStyle.Dashed);
+  });
+});
+
+describe("gridLineColor", () => {
+  it("hides a disabled axis regardless of its saved colour", () => {
+    expect(gridLineColor(false, "#123456", "#abcdef")).toBe("transparent");
+  });
+
+  it("uses the user colour, then the theme colour", () => {
+    expect(gridLineColor(true, "#123456", "#abcdef")).toBe("#123456");
+    expect(gridLineColor(true, undefined, "#abcdef")).toBe("#abcdef");
+    expect(gridLineColor(true, "   ", "#abcdef")).toBe("#abcdef");
   });
 });
 

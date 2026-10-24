@@ -426,7 +426,6 @@ export function ChartPage({
             layout={layout}
             replayBar={replayBar}
             linesFor={linesFor}
-            showSessionBreaks={state.showSessionBreaks !== false}
             draggableLevelsFor={draggableLevelsFor}
             onLevelPreview={onLevelPreview}
             onLevelCommit={onLevelCommit}
@@ -527,8 +526,6 @@ interface ChartGridProps {
   linesFor: (symbol: string) => TradingLine[];
   /** Which levels on a symbol a pointer may drag, or undefined = none. */
   draggableLevelsFor: (symbol: string) => { id: string; price: number }[] | undefined;
-  /** Shade bars that fall outside the symbol's trading session. */
-  showSessionBreaks: boolean;
   onLevelPreview: (symbol: string, id: string, price: number) => void;
   onLevelCommit: (symbol: string, levels: { stopLoss?: number; takeProfit?: number }) => void;
   /** Focused cell's symbol — its overlays apply to matching cells only. */
@@ -561,7 +558,6 @@ function ChartGrid({
   replayBar,
   linesFor,
   draggableLevelsFor,
-  showSessionBreaks,
   onLevelPreview,
   onLevelCommit,
   activeSymbol,
@@ -636,12 +632,19 @@ function ChartGrid({
               showVolumeProfile={chart.showVolumeProfile ?? false}
               boxSize={chart.boxSize ?? null}
               showGrid={chart.showGrid}
+              showVertGrid={chart.showVertGrid}
+              showHorzGrid={chart.showHorzGrid}
+              gridVertColor={chart.chartSettings?.canvas.vertGridColor}
+              gridHorzColor={chart.chartSettings?.canvas.horzGridColor}
+              crosshairColor={chart.chartSettings?.canvas.crosshairColor}
+              crosshairStyle={chart.chartSettings?.canvas.crosshairStyle}
+              showLastPrice={chart.chartSettings?.scales.symbolLastPriceLabel ?? true}
               theme={chart.theme}
               indicators={chart.indicators}
               drawings={chart.drawings}
               replayBar={focused ? replayBar : null}
               tradingLines={linesFor(chart.symbol)}
-              session={showSessionBreaks ? sessionForSymbol(chart.symbol) : null}
+              session={chart.showSessionBreaks !== false ? sessionForSymbol(chart.symbol) : null}
               draggableLevels={focused ? draggableLevelsFor(chart.symbol) : undefined}
               onLevelPreview={onLevelPreview}
               onLevelCommit={onLevelCommit}

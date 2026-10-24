@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Candle, Quote, Resolution } from "@ezyview/data-adapters";
 import { EzyChart } from "@ezyview/chart-engine";
-import type { ChartType, FundamentalEventOverlay, IndicatorInstance, ScriptPlotSpec, TradingLine } from "@ezyview/chart-engine";
+import type {
+  ChartType,
+  CrosshairStyleName,
+  FundamentalEventOverlay,
+  IndicatorInstance,
+  ScriptPlotSpec,
+  TradingLine,
+} from "@ezyview/chart-engine";
 import type { Drawing, DrawingToolId, ScreenPoint } from "@ezyview/drawing-tools";
 import {
   defaultStyleForTool,
@@ -40,6 +47,16 @@ interface Props {
   showVolumeProfile?: boolean;
   boxSize?: number | null;
   showGrid: boolean;
+  /** Per-axis grid visibility; fall back to `showGrid` when absent. */
+  showVertGrid?: boolean;
+  showHorzGrid?: boolean;
+  /** Canvas settings colours; absent = theme colour. */
+  gridVertColor?: string;
+  gridHorzColor?: string;
+  crosshairColor?: string;
+  crosshairStyle?: CrosshairStyleName;
+  /** Scales -> symbol last price label; absent = on. */
+  showLastPrice?: boolean;
   theme: ChartThemeName;
   indicators: ActiveIndicator[];
   drawings: Drawing[];
@@ -803,9 +820,33 @@ export function ChartHost(props: Props) {
     chart.setTheme(THEME_OF[props.theme]);
     chart.setShowVolume(props.showVolume);
     chart.setShowVolumeProfile(props.showVolumeProfile ?? false);
-    chart.setShowGrid(props.showGrid);
     chart.setIndicators(toInstances(props.indicators));
-  }, [props.theme, props.showVolume, props.showVolumeProfile, props.showGrid, props.indicators]);
+  }, [props.theme, props.showVolume, props.showVolumeProfile, props.indicators]);
+
+  // Canvas settings: per-axis grid visibility/colour, crosshair colour/style
+  // and the last-price line. Kept separate from the theme effect so a theme
+  // change cannot wipe a user's explicit colours.
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    chart.setGrid({
+      vert: props.showVertGrid ?? props.showGrid,
+      horz: props.showHorzGrid ?? props.showGrid,
+      vertColor: props.gridVertColor ?? null,
+      horzColor: props.gridHorzColor ?? null,
+    });
+    chart.setCrosshair({ color: props.crosshairColor ?? null, style: props.crosshairStyle ?? "dashed" });
+    chart.setLastPriceVisible(props.showLastPrice ?? true);
+  }, [
+    props.showGrid,
+    props.showVertGrid,
+    props.showHorzGrid,
+    props.gridVertColor,
+    props.gridHorzColor,
+    props.crosshairColor,
+    props.crosshairStyle,
+    props.showLastPrice,
+  ]);
 
   // Crosshair style, price scale, timezone and watermark — the Phase 4 controls.
   useEffect(() => {

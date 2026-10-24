@@ -62,8 +62,8 @@ export function ChartSettingsDialog({ open, onClose }: Props) {
       ...DEFAULT_CHART_SETTINGS.canvas,
       ...chart.chartSettings?.canvas,
       watermark: chart.watermark ?? DEFAULT_CHART_SETTINGS.canvas.watermark,
-      vertGridLines: chart.showGrid,
-      horzGridLines: chart.showGrid,
+      vertGridLines: chart.showVertGrid ?? chart.showGrid,
+      horzGridLines: chart.showHorzGrid ?? chart.showGrid,
     },
     events: {
       ...DEFAULT_CHART_SETTINGS.events,
@@ -84,6 +84,8 @@ export function ChartSettingsDialog({ open, onClose }: Props) {
       invertScale: draft.scales.invertScale,
       watermark: draft.canvas.watermark,
       showGrid: draft.canvas.vertGridLines || draft.canvas.horzGridLines,
+      showVertGrid: draft.canvas.vertGridLines,
+      showHorzGrid: draft.canvas.horzGridLines,
       showSessionBreaks: draft.events.showSessionBreaks,
     });
     onClose();

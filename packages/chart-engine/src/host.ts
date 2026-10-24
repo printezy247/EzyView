@@ -30,7 +30,16 @@ import { BgBandsPrimitive } from "./bands.js";
 import { FundamentalLinesPrimitive, type FundamentalLine } from "./fundamentalLines.js";
 import { DrawingsPrimitive } from "./drawings.js";
 import { DARK_THEME, colorAt, type ChartTheme } from "./theme.js";
-import { crosshairModeOf, priceScaleModeOf, timezoneFormatters, type CrosshairModeName, type PriceScaleModeName } from "./settings.js";
+import {
+  crosshairLineStyleOf,
+  crosshairModeOf,
+  gridLineColor,
+  priceScaleModeOf,
+  timezoneFormatters,
+  type CrosshairModeName,
+  type CrosshairStyleName,
+  type PriceScaleModeName,
+} from "./settings.js";
 import { autoBoxSize, heikinAshi, kagi, pointAndFigure, renko, sequentialTimes, type PriceBox } from "./transforms.js";
 import { VolumeProfilePrimitive } from "./volumeProfile.js";
 import { sessionBreaks } from "./sessionBreaks.js";
@@ -259,6 +268,15 @@ export class EzyChart {
   private type: ChartType;
   private theme: ChartTheme;
   private showVolume: boolean;
+  /** Grid visibility and colour overrides; null = follow the theme. */
+  private showVertGrid: boolean;
+  private showHorzGrid: boolean;
+  private gridVertColor: string | null = null;
+  private gridHorzColor: string | null = null;
+  private crosshairColor: string | null = null;
+  private crosshairStyle: CrosshairStyleName = "dashed";
+  /** Last-price line/label visibility, from Scales settings. */
+  private showLastPrice = true;
   private opts: EzyChartOptions;
   private data: Candle[] = [];
   private drawingsLayer: Drawing[] = [];
@@ -312,6 +330,8 @@ export class EzyChart {
     this.type = options.chartType ?? "candles";
     this.theme = options.theme ?? DARK_THEME;
     this.showVolume = options.showVolume ?? true;
+    this.showVertGrid = options.showGrid ?? true;
+    this.showHorzGrid = options.showGrid ?? true;
     this.boxSize = options.boxSize ?? null;
 
     this.chart = createChart(container, {
@@ -330,13 +350,21 @@ export class EzyChart {
         attributionLogo: false,
       },
       grid: {
-        vertLines: { color: options.showGrid === false ? "transparent" : this.theme.grid },
-        horzLines: { color: options.showGrid === false ? "transparent" : this.theme.grid },
+        vertLines: { color: this.gridColor("vert") },
+        horzLines: { color: this.gridColor("horz") },
       },
       crosshair: {
         mode: CrosshairMode.Normal,
-        vertLine: { color: this.theme.crosshair, labelBackgroundColor: this.theme.accent },
-        horzLine: { color: this.theme.crosshair, labelBackgroundColor: this.theme.accent },
+        vertLine: {
+          color: this.crosshairColor ?? this.theme.crosshair,
+          style: this.crosshairLineStyle(),
+          labelBackgroundColor: this.theme.accent,
+        },
+        horzLine: {
+          color: this.crosshairColor ?? this.theme.crosshair,
+          style: this.crosshairLineStyle(),
+          labelBackgroundColor: this.theme.accent,
+        },
       },
       rightPriceScale: { borderColor: this.theme.grid, scaleMargins: { top: 0.1, bottom: 0.16 } },
       timeScale: { borderColor: this.theme.grid, timeVisible: true, secondsVisible: false },
@@ -481,8 +509,11 @@ export class EzyChart {
         textColor: theme.textColor,
         panes: { separatorColor: theme.paneSeparator, enableResize: true },
       },
-      grid: { vertLines: { color: theme.grid }, horzLines: { color: theme.grid } },
-      crosshair: { vertLine: { color: theme.crosshair }, horzLine: { color: theme.crosshair } },
+      grid: { vertLines: { color: this.gridColor("vert") }, horzLines: { color: this.gridColor("horz") } },
+      crosshair: {
+        vertLine: { color: this.crosshairColor ?? theme.crosshair, style: this.crosshairLineStyle() },
+        horzLine: { color: this.crosshairColor ?? theme.crosshair, style: this.crosshairLineStyle() },
+      },
       rightPriceScale: { borderColor: theme.grid },
       timeScale: { borderColor: theme.grid },
     });
@@ -510,8 +541,53 @@ export class EzyChart {
   }
 
   setShowGrid(show: boolean): void {
-    const color = show ? this.theme.grid : "transparent";
-    this.chart.applyOptions({ grid: { vertLines: { color }, horzLines: { color } } });
+    this.setGrid({ vert: show, horz: show });
+  }
+
+  /**
+   * Grid visibility per axis plus optional colours from Canvas settings. Null
+   * colours follow the theme; hidden lines are transparent, not removed, so
+   * toggling is instant and does not rebuild the chart.
+   */
+  setGrid(options: { vert?: boolean; horz?: boolean; vertColor?: string | null; horzColor?: string | null }): void {
+    if (options.vert !== undefined) this.showVertGrid = options.vert;
+    if (options.horz !== undefined) this.showHorzGrid = options.horz;
+    if (options.vertColor !== undefined) this.gridVertColor = options.vertColor || null;
+    if (options.horzColor !== undefined) this.gridHorzColor = options.horzColor || null;
+    this.chart.applyOptions({
+      grid: { vertLines: { color: this.gridColor("vert") }, horzLines: { color: this.gridColor("horz") } },
+    });
+  }
+
+  /** Crosshair colour and line style; null colour follows the theme. */
+  setCrosshair(options: { color?: string | null; style?: CrosshairStyleName }): void {
+    if (options.color !== undefined) this.crosshairColor = options.color || null;
+    if (options.style !== undefined) this.crosshairStyle = options.style;
+    const color = this.crosshairColor ?? this.theme.crosshair;
+    const lineStyle = this.crosshairLineStyle();
+    this.chart.applyOptions({
+      crosshair: {
+        vertLine: { color, style: lineStyle, labelBackgroundColor: this.theme.accent },
+        horzLine: { color, style: lineStyle, labelBackgroundColor: this.theme.accent },
+      },
+    });
+  }
+
+  /** Show or hide the last-price label and its line (Scales settings). */
+  setLastPriceVisible(visible: boolean): void {
+    if (visible === this.showLastPrice) return;
+    this.showLastPrice = visible;
+    (this.mainSeries as ISeriesApi<SeriesType> | null)?.applyOptions({ priceLineVisible: visible, lastValueVisible: visible });
+  }
+
+  private gridColor(axis: "vert" | "horz"): string {
+    const shown = axis === "vert" ? this.showVertGrid : this.showHorzGrid;
+    const custom = axis === "vert" ? this.gridVertColor : this.gridHorzColor;
+    return gridLineColor(shown, custom, this.theme.grid);
+  }
+
+  private crosshairLineStyle(): LineStyle {
+    return crosshairLineStyleOf(this.crosshairStyle);
   }
 
   /** Crosshair interaction style: free, snapped to bar OHLC, or hidden. */
@@ -1056,7 +1132,9 @@ export class EzyChart {
   // --- internals ------------------------------------------------------------
 
   private createMainSeries(): void {
-    const base = { priceLineVisible: false, lastValueVisible: true };
+    // TradingView draws a dotted last-price line across the chart by default;
+    // Scales -> "Symbol last price label" turns both the line and label off.
+    const base = { priceLineVisible: this.showLastPrice, lastValueVisible: this.showLastPrice };
     switch (this.type) {
       case "line":
         this.mainSeries = this.chart.addSeries(LineSeries, { ...base, lineWidth: 2, color: "#2962ff" }) as ISeriesApi<never>;
