@@ -39,7 +39,7 @@
     "@testing-library/user-event": "^14.6.8",
     "@types/node": "^22.15.0",
     "happy-dom": "^21.0.4",
-    "oxfmt": "^0.3.0",
+    "oxfmt": "^0.74.0",
     "oxlint": "^1.68.0",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
