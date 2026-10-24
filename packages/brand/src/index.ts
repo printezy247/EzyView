@@ -91,12 +91,12 @@ export const INVEST_DARK: ThemeColors = {
   orange: "#ff9800",
 };
 
-/** Investing.com light: white content canvas under dark chrome. */
+/** Investing.com light: clean light terminal palette. */
 export const INVEST_LIGHT: ThemeColors = {
   bg: "#ffffff",
   panel: "#f7f8fa",
   raised: "#eceff2",
-  chrome: "#181c21",
+  chrome: "#f0f3fa",
   line: "#e2e5ea",
   lineStrong: "#c9cdd4",
   dim: "#b2b5be",
