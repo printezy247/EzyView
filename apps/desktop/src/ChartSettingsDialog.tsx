@@ -62,8 +62,8 @@ export function ChartSettingsDialog({ open, onClose }: Props) {
       ...DEFAULT_CHART_SETTINGS.canvas,
       ...chart.chartSettings?.canvas,
       watermark: chart.watermark ?? DEFAULT_CHART_SETTINGS.canvas.watermark,
-      vertGridLines: chart.showVertGrid ?? chart.showGrid,
-      horzGridLines: chart.showHorzGrid ?? chart.showGrid,
+      vertGridLines: chart.showVertGrid ?? chart.chartSettings?.canvas.vertGridLines ?? chart.showGrid,
+      horzGridLines: chart.showHorzGrid ?? chart.chartSettings?.canvas.horzGridLines ?? chart.showGrid,
     },
     events: {
       ...DEFAULT_CHART_SETTINGS.events,

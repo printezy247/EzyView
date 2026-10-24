@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ChartSettingsDialog } from "./ChartSettingsDialog";
+import { DEFAULT_CHART_SETTINGS } from "./layout";
 import { useWorkspace } from "./store";
 
 describe("ChartSettingsDialog", () => {
@@ -72,6 +73,24 @@ describe("ChartSettingsDialog", () => {
     expect(chart.showVertGrid).toBe(true);
     expect(chart.showHorzGrid).toBe(false);
     expect(chart.showGrid).toBe(true);
+  });
+
+  it("restores per-axis grid values from older chartSettings saves", async () => {
+    const user = userEvent.setup();
+    useWorkspace.getState().updateActive({
+      showGrid: true,
+      showVertGrid: undefined,
+      showHorzGrid: undefined,
+      chartSettings: {
+        ...DEFAULT_CHART_SETTINGS,
+        canvas: { ...DEFAULT_CHART_SETTINGS.canvas, vertGridLines: true, horzGridLines: false },
+      },
+    });
+    render(<ChartSettingsDialog open onClose={() => {}} />);
+
+    await user.click(screen.getByRole("tab", { name: "Canvas" }));
+    expect((screen.getByLabelText("Vert grid lines") as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByLabelText("Horz grid lines") as HTMLInputElement).checked).toBe(false);
   });
 
   it("closes without applying when Cancel is clicked", async () => {

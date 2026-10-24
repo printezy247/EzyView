@@ -632,8 +632,8 @@ function ChartGrid({
               showVolumeProfile={chart.showVolumeProfile ?? false}
               boxSize={chart.boxSize ?? null}
               showGrid={chart.showGrid}
-              showVertGrid={chart.showVertGrid}
-              showHorzGrid={chart.showHorzGrid}
+              showVertGrid={chart.showVertGrid ?? chart.chartSettings?.canvas.vertGridLines}
+              showHorzGrid={chart.showHorzGrid ?? chart.chartSettings?.canvas.horzGridLines}
               gridVertColor={chart.chartSettings?.canvas.vertGridColor}
               gridHorzColor={chart.chartSettings?.canvas.horzGridColor}
               crosshairColor={chart.chartSettings?.canvas.crosshairColor}
