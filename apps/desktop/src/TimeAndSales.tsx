@@ -1,5 +1,6 @@
 import { memo, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
+import { tapeDelta } from "./depthLadder";
 import { activeChartOf } from "./layout";
 import { precisionForSymbol } from "./pricePrecision";
 import { useQuote } from "./quotePoller";
@@ -69,10 +70,12 @@ export function TimeAndSales() {
     if (quote && Number.isFinite(quote.last) && quote.last > 0) push(symbol, quote.last, 0);
   }, [quote, push, symbol]);
 
-  // Upticks vs downticks over the visible window.
+  // Upticks vs downticks over the visible window, plus a flow readout: real
+  // CVD when sizes exist, tick-count imbalance honestly labelled otherwise.
   const buys = entries.filter((e) => e.side === "buy").length;
   const sells = entries.length - buys;
   const buyPct = entries.length === 0 ? 50 : Math.round((buys / entries.length) * 100);
+  const flow = tapeDelta(entries);
   const samplePrice = entries[0]?.price ?? 100;
   const digits = precisionForSymbol(symbol, Number.isFinite(samplePrice) ? samplePrice : 100);
 
@@ -126,6 +129,12 @@ export function TimeAndSales() {
           </div>
           <span className="num text-micro text-ev-muted">
             {buys}/{sells}
+          </span>
+          <span
+            className="num text-micro text-ev-faint"
+            title={flow.sized ? "Cumulative delta over the visible window (real trade sizes)" : "Tick-count imbalance: this feed reports no trade sizes, so no volume delta exists"}
+          >
+            {flow.sized ? `Δ ${flow.delta} ` : "ticks "}
           </span>
         </div>
       )}
