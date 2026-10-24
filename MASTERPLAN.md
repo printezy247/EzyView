@@ -1,8 +1,8 @@
 # EzyView — Master Plan
 
-> Status: **All phases 0–10 delivered and merged to `main` (v0.2.0), plus the Investing.com brand redesign (§23).** Known gaps are listed per phase in §8 and §12. This document is the single canonical plan. `docs/MEGA-PLAN.md` retains the original detailed research notes and is superseded by §7–§11 of this file.
-> Owner: printezy247 · Date: 2026-10-21
-> Companion detail: `docs/MEGA-PLAN.md` (research notes), `docs/ARCHITECTURE.md` (layering/storage rules), `docs/superpowers/specs/2026-10-21-investing-com-brand-redesign.md` (brand redesign spec).
+> Status: **All phases 0–10 delivered and merged to `main` (v0.2.0), plus the Investing.com brand redesign (§23); the §26 interaction workstream is planned.** Known gaps are listed per phase in §8 and §12. This document is the single canonical plan. `docs/MEGA-PLAN.md` retains the original detailed research notes and is superseded by §7–§11 of this file.
+> Owner: printezy247 · Date: 2026-10-25
+> Companion detail: `docs/MEGA-PLAN.md` (research notes), `docs/ARCHITECTURE.md` (layering/storage rules), `docs/superpowers/specs/2026-10-21-investing-com-brand-redesign.md` (brand redesign spec), `docs/ezyview-chart-parity-review-2026-10-25.md` (drawing/Pine backlog).
 
 ---
 
@@ -795,3 +795,259 @@ re-implemented: every item already landed in phases 1-8.
 Remaining parity debt moved forward instead of faked: the O(n²) Pine
 emission and the shared per-symbol quote poller above, plus virtualized
 journal/tape lists for very long sessions.
+
+The keyboard/command/watchlist follow-on is specified in §26. The drawing and
+Pine breadth backlog is in `docs/ezyview-chart-parity-review-2026-10-25.md`.
+
+---
+
+## 26. Interaction reliability & chart/watchlist parity plan (2026-10-25)
+
+This workstream follows §25 and closes the gaps that remain *around* the chart
+rather than inside it: shortcuts, the quick command input, the watchlist, and
+the per-cell chart options that the settings dialog already persists. It is
+ordered so the keyboard dispatcher lands first; every later phase depends on a
+single, predictable key path.
+
+Status: **planned** (not started). This section is the tracking home for the
+work; the drawing/Pine breadth backlog stays in the separate parity review.
+
+### 26.1 Status against current code
+
+| Area | Today | Gap this plan closes |
+|---|---|---|
+| Shortcuts | `hotkeys.ts` is a documentation table only. Key handling is spread across `App.tsx` (two global listeners), `Toolbar.tsx`, `ChartPage.tsx` (two), `ReplayBar.tsx`, `Menu.tsx`, `ChartContextMenu.tsx` and `Modal.tsx`. | No central priority/scope rules, no dialog stack, duplicated `Escape`/`?` handling, and each listener decides its own typing guard. |
+| Command input | Symbol autocomplete, `@` timeframe mode, `/tf`, `/sym`, global recent symbols; `/layout` closes without applying (`ChartCommandInput.tsx`). | Source scoping, active cell/link group, pair shortcuts, timeframe stepping, per-source recents, a working `/layout`. |
+| Watchlist | Global `WatchEntry[]` with no source field; selecting a row calls `setSymbol` on the active chart; quotes join the shared poller. | Per-entry source, active-cell/link-group targeting, source-aware polling, add-from-chart, MT5 symbol search, selected-row highlight. |
+| Chart settings | `ChartState.chartSettings` is persisted, but `ChartHost` receives only `showGrid` (plus a `session` value derived from the session-breaks toggle); grid colours, status-line and similar fields are never rendered. The main series sets `priceLineVisible: false` (`packages/chart-engine/src/host.ts:1059`). | Wire the detailed settings into every cell, add the current-price line, make crosshair labels/watermark/session breaks configurable per cell. |
+| Drawings | Selection, move, resize, magnet, undo/redo, duplicate, object tree and level alerts are shipped (see §25 and the 2026-10-25 parity review). | Verify the same interaction works in every grid cell and after a layout restore; do not rebuild it. |
+
+Phase status:
+
+| Phase | Scope | Status |
+|---|---|---|
+| 0 | Keyboard dispatcher | **planned** |
+| 1 | Command input: symbol/timeframe/pair | **planned** |
+| 2 | Watchlist: layout/chart/source | **planned** |
+| 3 | Chart rendering parity | **planned** |
+| 4 | Consolidation and cleanup | **planned** |
+| 5 | Unit and e2e coverage | **planned** |
+
+Estimated: Phase 0 = 3–4 days; Phases 1–2 = 2–3 weeks combined; Phase 3 =
+3–4 days; Phases 4–5 = 1–2 weeks. One developer familiar with the tree; review
+time excluded.
+
+### 26.2 Phase 0 — Keyboard reliability (foundation)
+
+**Goal:** one dispatcher, one set of rules, no duplicate global listeners.
+
+Work:
+
+1. Add `apps/desktop/src/shortcuts.ts` with a typed binding registry:
+   `{ combo, scope, run, when?, allowInInput?, capture? }`, where `scope` is
+   `global | chart | dialog | menu`. Normalise `Ctrl`/`Cmd` once.
+2. Install one `keydown` listener at the shell (capture only if a binding asks
+   for it). It resolves the top open layer first, then the focused chart, then
+   global bindings. It calls `preventDefault()` only when a binding matched and
+   ran.
+3. Track open layers (modal, menu, context menu, command palette) and a
+   central `isTypingTarget` guard. A dialog must block chart/global bindings
+   that would otherwise act behind it; `Escape` belongs to the top layer.
+4. Migrate and delete the ad-hoc listeners:
+   - `App.tsx:102` and `App.tsx:128`
+   - `Toolbar.tsx:226`
+   - `ChartPage.tsx:306` and `ChartPage.tsx:574`
+   - `ReplayBar.tsx:102`
+   - `Menu.tsx:78`
+   - `ChartContextMenu.tsx:51`
+   - `Modal.tsx:63` (keep the focus trap; route `Escape` through the dispatcher)
+   Local input handlers (`ChartCommandInput`, `SymbolSearch`, `CommandPalette`
+   list navigation) stay local — they are not global shortcuts.
+5. Make `hotkeys.ts` the single human-readable registry, or generate the sheet
+   from the dispatcher bindings so the documentation cannot drift.
+
+Acceptance:
+
+- `grep` finds no `window.addEventListener("keydown"` or
+  `document.addEventListener("keydown"` outside the dispatcher (local component
+  handlers excepted and documented).
+- `Ctrl+K`, `Ctrl+Shift+K`, `/`, `Space`, `Delete` and `Escape` behave the same
+  with no dialog, with a modal open, and while typing in an input.
+- `?`, `Ctrl+Shift+N` and drawing shortcuts are not stolen from the Pine editor
+  or symbol search.
+
+Tests: dispatcher unit tests for priority, scope, capture, repeat (`e.repeat`),
+modifier matching and typing guards; Playwright smoke for the six shortcuts
+above.
+
+### 26.3 Phase 1 — Chart command input (symbol/timeframe/pair)
+
+**Goal:** the quick switcher understands the active cell's source and can change
+symbol, timeframe and pair without opening a dialog.
+
+Work:
+
+1. Extend `ChartCommandInput` props with `source`, `layoutId`, `chartIndex` and
+   `linkGroup`; resolve the target cell from the workspace rather than assuming
+   the active chart.
+2. Scope the symbol pool to the active source: EzyView catalog + watchlist +
+   per-source recents; MT5 uses the MT5 adapter/bridge symbol catalog. Do not
+   offer an MT5 ticker to a demo chart and vice versa.
+3. Add timeframe/pair keys and commands:
+   - `ArrowUp/Down` keep list navigation.
+   - `ArrowLeft/Right` step the timeframe when the query is empty.
+   - `+` / `-` step the timeframe anywhere; `Shift` for a larger step if the
+     list stays readable.
+   - `/tf <value>`, `/sym <ticker>`, `/layout <name>` (actually apply the
+     layout), `/pair <base/quote>` (resolve through the active source).
+4. Apply the result to the active cell and to its link group (reuse
+   `withLinkedUpdate`/`linkGroups`), then persist the recent list per source
+   (`ezyview.recentSymbols.<source>`), migrating the existing global list.
+5. Keep the input's own arrow/Enter handling; do not route printable keys
+   through the global dispatcher while it is open.
+
+Acceptance:
+
+- In a 2×2 grid, the command applies to the focused cell and its link group,
+  not to every cell.
+- A demo chart cannot select an MT5-only symbol without switching source first
+  (or the switch is explicit and visible).
+- `/layout` changes the layout instead of closing the overlay.
+- Recents differ between demo and MT5 and survive restart.
+
+Tests: command parser/scoping unit tests (source filter, pair expansion,
+timeframe step order, layout resolution, recent migration); e2e for `/tf`,
+`/sym`, `/layout` and arrow stepping.
+
+### 26.4 Phase 2 — Watchlist tied to layout/chart/source
+
+**Goal:** the watchlist row a user clicks lands on the right chart, from the
+right feed, without silently changing every cell.
+
+Work:
+
+1. Add `source` to `WatchEntry` (optional for old saves; infer from the symbol
+   prefix or default to `auto`). Restore/migrate both the persisted watchlist
+   and `watchlistSymbolKey`.
+2. Make selection target the active cell (or its link group) and switch the
+   cell's source when the entry's source differs, with the same explicit path
+   used by the toolbar source switch.
+3. Poll quotes through the source adapter for each entry; MT5 entries use the
+   bridge. Do not show a demo quote on an MT5 row.
+4. Add “add from active chart”, remove, sort (existing `watchSort`) and a
+   visible selected-row highlight (symbol + source, not just ticker).
+5. MT5 symbol search: use the existing MT5 symbol catalog/bridge. If the
+   catalog is only exposed through MCP today, add a thin adapter call rather
+   than a second transport.
+6. Keep the global list as the source of truth; a layout may optionally store
+   a watchlist id/filter later, but do not fork the data model in this phase.
+
+Acceptance:
+
+- A watchlist with demo and MT5 rows selects the correct cell/source and never
+  writes an MT5 symbol into a demo cell.
+- Removing the selected symbol leaves the chart on its current symbol.
+- Old persisted watchlists load with no rows lost and no source downgrade.
+- The selected row stays highlighted after a grid focus change and a restart.
+
+Tests: watchlist store migration, source-aware selection, add/remove/sort;
+e2e for selecting a row in each cell of a 2×2 grid.
+
+### 26.5 Phase 3 — Chart rendering parity (TradingView)
+
+**Goal:** what the settings dialog says is what every cell renders.
+
+Work:
+
+1. Pass `chart.chartSettings` into `ChartHost` (or a normalised `ChartOptions`
+   object) and extend `EzyChartOptions` so grid visibility/colours, status line,
+   scales, canvas and event options are consumed per cell. Today only
+   `showGrid` and `showSessionBreaks` reach the host; the grid colour fields are
+   edited and discarded.
+2. Add the current-price line on the main series (`priceLineVisible: true` or an
+   explicit `createPriceLine`) with the last-value label and a style toggle.
+   Do not duplicate it on price-only types (Renko/P&F/Kagi) or on indicator
+   panes.
+3. Crosshair: keep the built-in axis labels, make their colours/format follow
+   the theme and expose the crosshair mode; ensure the label is visible for
+   line/area series too.
+4. Watermark: already implemented (`ChartHost`/text watermark); make it a
+   per-cell setting and use the cell's symbol/interval text.
+5. Session breaks: already implemented; verify the per-cell toggle and the
+   timezone interaction, and keep it off for price-only chart types.
+6. Drawings: verify select/move/resize, magnet, undo/redo and duplicate in a
+   2×2 grid and after layout restore. Fix per-cell targeting if a gesture can
+   land on the wrong cell; this is the same class of bug as the undo scope in
+   the parity review.
+7. Unify the host construction path so detached windows and grid cells use the
+   same options object; no second `EzyChartOptions` builder.
+
+Acceptance:
+
+- Changing grid colour, grid visibility, watermark, session breaks or the
+  current-price line in the dialog changes the focused cell immediately and
+  survives restart.
+- All cells in a 2×2 grid render the same options for the same settings, with
+  no prop drift between the main window and a detached chart.
+- Drawings on cell A are not moved or undone on cell B.
+
+Tests: host option mapping unit tests; e2e toggling each setting and comparing
+computed styles/canvas snapshot for two cells; drawing gesture test per cell.
+
+### 26.6 Phase 4 — Consolidation & cleanup
+
+Work:
+
+1. Remove the duplicate command paths left after Phases 0–1: one dispatcher,
+   one `hotkeys` registry, one `setSymbol`/link-group path, one source switch.
+2. Delete dead chart-settings fields or wire them; no persisted option may be a
+   no-op.
+3. Clear the lint warnings touched by this work and remove now-unused imports,
+   listeners and helper hooks.
+4. Extract shared hooks where the same logic appears twice: `useShortcutScope`,
+   `useActiveCell`, `useChartOptions`.
+
+Acceptance: `npm run lint`, `npm run typecheck` and `npm run test` are clean;
+a grep for each removed listener/handler returns nothing outside tests.
+
+### 26.7 Phase 5 — Test coverage
+
+Work:
+
+1. Unit: dispatcher priority/scope/guards; command parsing, source scoping,
+   pair expansion, timeframe stepping, recent migration; watchlist source and
+   migration; chart host option mapping.
+2. E2e regression: shortcuts (Ctrl+K, `/`, Space, Delete, Escape, `?`), command
+   input (`/tf`, `/sym`, `/layout`, arrow stepping), watchlist selection in a
+   multi-cell grid, and a 2×2 grid render check.
+3. Add the new specs to CI (`e2e/smoke.spec.ts` or a dedicated
+   `e2e/keyboard.spec.ts`); keep pixel comparisons local/containerised, as the
+   existing visual suite does.
+
+Exit criteria: the new tests fail on the pre-phase code and pass after it; the
+shortcut sheet is generated from (or checked against) the dispatcher registry.
+
+### 26.8 Ordering and risks
+
+Order: **0 → 1/2 (parallel) → 3 → 4 → 5**. Phase 3 can start once 0 lands and
+1/2 agree on the active-cell/source contract.
+
+Risks:
+
+- **Shortcut conflicts** — `ArrowLeft/Right` in the command input vs chart pan;
+  resolve by scope (input owns keys while open) and document the choice in the
+  sheet.
+- **Legacy data** — watchlist entries and layouts have no source; migrate with
+  an explicit inference rule and a test fixture, never by silently dropping
+  rows.
+- **Per-cell option drift** — the fix is one options builder; do not add a
+  second path for detached windows.
+- **Settings schema** — `chartSettings` is already persisted; add fields
+  optionally and keep old layouts loading.
+
+Out of scope: new drawing tools and Pine language work (see the 2026-10-25
+parity review); broker/backend changes; a second watchlist data model.
+
+Definition of done: one keyboard path, source-aware commands and watchlist,
+settings that actually render on every cell, and tests that cover each of
+those paths.
