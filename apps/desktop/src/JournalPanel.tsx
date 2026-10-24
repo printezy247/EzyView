@@ -71,6 +71,8 @@ export function JournalPanel({ onClose }: Props) {
   const removeNote = useJournal((s) => s.removeNote);
   const removeEntry = useJournal((s) => s.removeEntry);
   const importDeals = useJournal((s) => s.importDeals);
+  const storageIssue = useJournal((s) => s.storageIssue);
+  const dismissStorageIssue = useJournal((s) => s.dismissStorageIssue);
   const deals = useTrading((s) => s.deals);
   const source = useMt5((s) => s.source);
 
@@ -194,6 +196,18 @@ export function JournalPanel({ onClose }: Props) {
       </header>
 
       {tab === "feed" && <JournalPropFirmBar drawdown={stats.maxDrawdown} />}
+
+      {storageIssue && (
+        <div
+          role="status"
+          className="flex items-center gap-2 rounded border border-ev-down/40 bg-ev-down/10 mx-3 mt-2 px-3 py-1.5 text-dense text-ev-down-text"
+        >
+          <span className="flex-1">Journal storage is full — recent screenshots and edits may not survive a restart.</span>
+          <button type="button" onClick={dismissStorageIssue} className="rounded px-2 py-0.5 text-dense text-ev-muted hover:text-ev-strong">
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {tab === "feed" && (
         <div className="flex min-h-0 flex-1">
