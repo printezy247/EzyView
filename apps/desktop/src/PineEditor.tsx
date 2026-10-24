@@ -3,7 +3,7 @@ import { Download, Play, Save, Trash2, Upload, X, TrendingUp } from "lucide-reac
 // Type-only: Monaco itself is dynamically imported so it stays out of the
 // initial bundle. Types are erased by the compiler, so this costs nothing.
 import type * as Monaco from "monaco-editor";
-import { backtest, runPine, pineCompletions, lintPine, optimizePine, DEFAULT_MAX_COMBOS } from "@ezyview/pine-transpiler";
+import { pineCompletions, lintPine, DEFAULT_MAX_COMBOS } from "@ezyview/pine-transpiler";
 import type {
   BacktestResult,
   Context,
@@ -12,6 +12,7 @@ import type {
   PineCompletion,
   PineLintIssue,
 } from "@ezyview/pine-transpiler";
+import { optimizePineWithBudget, runPineWithBudget } from "./pineRunner";
 import { useWorkspace, uid } from "./store";
 import type { PineScriptRecord } from "./store";
 import { parseParamValues } from "./pineOptimize";
@@ -97,6 +98,9 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
   // Transient value of the versions select; cleared on pick so the same
   // entry can be restored again after further edits.
   const [versionChoice, setVersionChoice] = useState("");
+  // While the runner worker executes the script (budget-bounded): the Run
+  // button disables so double-clicks cannot stack identical jobs.
+  const [runBusy, setRunBusy] = useState(false);
   const importInput = useRef<HTMLInputElement | null>(null);
 
   const scripts = useWorkspace((s) => s.pineScripts);
@@ -197,54 +201,56 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
       refreshMarkers();
       return;
     }
-    try {
-      const ctx: Context = {
-        open: bars.map((b) => b.open),
-        high: bars.map((b) => b.high),
-        low: bars.map((b) => b.low),
-        close: bars.map((b) => b.close),
-        volume: bars.map((b) => b.volume),
-        barIndex: bars.length - 1,
-        // A grid point applied via "Apply best" seeds the next run; normal
-        // runs without an applied combo start from an empty map (spreading
-        // null/undefined is a no-op).
-        inputs: { ...appliedBest },
-      };
-      const scriptRun = runPine(source, ctx);
-      // A clean run retires the previous syntax marker; lint findings remain.
-      syntaxError.current = null;
-      setError(null);
-      refreshMarkers();
-      // A strategy's orders become fills; an indicator simply has none.
-      const tested = backtest(scriptRun.orders, { close: ctx.close });
-      setResult(tested);
-      // runPine mutates ctx.inputs in place; keep the scalar entries so the
-      // tester panel (and the optimizer) can show/apply what this run used.
-      const inputs: Record<string, number | string | boolean> = {};
-      for (const [key, value] of Object.entries(ctx.inputs)) {
-        if (typeof value === "number" || typeof value === "string" || typeof value === "boolean") {
-          inputs[key] = value;
-        }
-      }
-      setPineResult(scriptId, {
-        id: scriptId,
-        name,
-        source,
-        options: scriptRun.options,
-        plots: scriptRun.plots,
-        orders: scriptRun.orders,
-        error: null,
-        inputs,
-      });
-    } catch (e) {
+    if (runBusy) return;
+    setRunBusy(true);
+    const fail = (e: unknown): void => {
+      // Errors thrown off the worker are message-only; a transpile failure that
+      // ran inline still carries line/col for the marker.
       const msg = e instanceof Error ? e.message : String(e);
       syntaxError.current = errorLocation(e);
       setError(msg);
       refreshMarkers();
       setResult(null);
       setPineResult(scriptId, { id: scriptId, name, source, options: null, plots: [], orders: [], error: msg });
-    }
-  }, [bars, name, scriptId, source, appliedBest, setPineResult, refreshMarkers]);
+      setRunBusy(false);
+    };
+    const ctx: Context = {
+      open: bars.map((b) => b.open),
+      high: bars.map((b) => b.high),
+      low: bars.map((b) => b.low),
+      close: bars.map((b) => b.close),
+      volume: bars.map((b) => b.volume),
+      barIndex: bars.length - 1,
+      // A grid point applied via "Apply best" seeds the next run; normal
+      // runs without an applied combo start from an empty map (spreading
+      // null/undefined is a no-op).
+      inputs: { ...appliedBest },
+    };
+    // The runner executes in a Worker with a time budget; it answers with the
+    // run plus the scalar inputs (the worker's copy of ctx.inputs), so the
+    // tester panel (and the optimizer) can show/apply what this run used.
+    void runPineWithBudget(source, ctx)
+      .then(({ result: scriptRun, inputs, tested }) => {
+        // A clean run retires the previous syntax marker; lint findings remain.
+        syntaxError.current = null;
+        setError(null);
+        refreshMarkers();
+        // A strategy's orders become fills; an indicator simply has none.
+        setResult(tested);
+        setPineResult(scriptId, {
+          id: scriptId,
+          name,
+          source,
+          options: scriptRun.options,
+          plots: scriptRun.plots,
+          orders: scriptRun.orders,
+          error: null,
+          inputs,
+        });
+      })
+      .catch(fail)
+      .finally(() => setRunBusy(false));
+  }, [bars, name, scriptId, source, appliedBest, setPineResult, refreshMarkers, runBusy]);
 
   /** Download the live buffer as a share file; the name seeds the filename. */
   const exportScript = (): void => {
@@ -310,7 +316,8 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
         <button
           type="button"
           onClick={run}
-          className="flex items-center gap-1 rounded bg-ev-accent px-2.5 py-1.5 text-base font-medium text-white hover:bg-ev-accent-hover"
+          disabled={runBusy}
+          className="flex items-center gap-1 rounded bg-ev-accent px-2.5 py-1.5 text-base font-medium text-white hover:bg-ev-accent-hover disabled:opacity-40"
         >
           <Play size={13} aria-hidden /> Add to chart
         </button>
@@ -457,8 +464,7 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
   );
 }
 
-/**
- * Parameter grid over the last run's numeric inputs.
+/** Parameter grid over the last run's numeric inputs.
  *
  * Rows are driven by `baseInputs` (numeric entries of the record's input
  * snapshot); each row's values text parses to a `ParamSpec`. Combos rebuild a
@@ -467,6 +473,22 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
  * whose script throws is skipped by `optimizePine` itself; the hint counts
  * those as `expected - runs.length`.
  */
+/** One-line hint under the Run grid button: cap, failure count, first error. */
+function gridHint(next: OptimizationResult, specs: ParamSpec[]): string | null {
+  const expected = Math.min(
+    specs.reduce((n, s) => n * s.values.length, 1),
+    DEFAULT_MAX_COMBOS,
+  );
+  const notes: string[] = [];
+  if (next.capped) notes.push(`capped at ${DEFAULT_MAX_COMBOS}`);
+  const failed = expected - next.runs.length;
+  if (failed > 0) notes.push(`${failed} combo${failed === 1 ? "" : "s"} failed`);
+  // A wholly-failing grid would otherwise report only the count; surface
+  // the first thrown message so the script's breakage is visible.
+  if (next.firstFailure) notes.push(next.firstFailure);
+  return notes.length > 0 ? notes.join(" · ") : null;
+}
+
 function OptimizePanel({
   source,
   bars,
@@ -485,6 +507,10 @@ function OptimizePanel({
   const [runHint, setRunHint] = useState<string | null>(null);
 
   const keys = Object.keys(baseInputs);
+  // The optimizer runs in the worker too; the grid can be hundreds of combos
+  // so this can take real seconds (budget-bounded, cancellable by the app).
+  const [gridBusy, setGridBusy] = useState(false);
+
 
   // Parsed on render so the Run button's disabled state matches what a click
   // would actually execute; invalid rows are flagged live, empty ones skipped.
@@ -498,32 +524,30 @@ function OptimizePanel({
   const canRun = specs.length > 0 && bars.length > 0;
 
   const handleOptimize = (): void => {
-    const close = bars.map((b) => b.close);
-    const next = optimizePine((vals) => {
-      const ctx: Context = {
+    if (gridBusy) return;
+    setGridBusy(true);
+    const finish = (): void => setGridBusy(false);
+    void optimizePineWithBudget(
+      source,
+      {
         open: bars.map((b) => b.open),
         high: bars.map((b) => b.high),
         low: bars.map((b) => b.low),
-        close,
+        close: bars.map((b) => b.close),
         volume: bars.map((b) => b.volume),
-        barIndex: bars.length - 1,
-        inputs: { ...baseInputs, ...vals },
-      };
-      return backtest(runPine(source, ctx).orders, { close });
-    }, specs);
-    setOutcome(next);
-    const expected = Math.min(
-      specs.reduce((n, s) => n * s.values.length, 1),
-      DEFAULT_MAX_COMBOS,
-    );
-    const notes: string[] = [];
-    if (next.capped) notes.push(`capped at ${DEFAULT_MAX_COMBOS}`);
-    const failed = expected - next.runs.length;
-    if (failed > 0) notes.push(`${failed} combo${failed === 1 ? "" : "s"} failed`);
-    // A wholly-failing grid would otherwise report only the count; surface
-    // the first thrown message so the script's breakage is visible.
-    if (next.firstFailure) notes.push(next.firstFailure);
-    setRunHint(notes.length > 0 ? notes.join(" · ") : null);
+      },
+      baseInputs,
+      specs,
+    )
+      .then((next) => {
+        setOutcome(next);
+        setRunHint(gridHint(next, specs));
+        finish();
+      })
+      .catch((e) => {
+        setRunHint(e instanceof Error ? e.message : String(e));
+        finish();
+      });
   };
 
   return (
@@ -533,7 +557,7 @@ function OptimizePanel({
         <button
           type="button"
           onClick={handleOptimize}
-          disabled={!canRun}
+          disabled={!canRun || gridBusy}
           className="rounded bg-ev-line px-2.5 py-1 text-ev-strong hover:bg-ev-line-strong disabled:cursor-not-allowed disabled:opacity-40"
         >
           Run grid

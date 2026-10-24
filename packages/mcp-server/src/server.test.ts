@@ -59,6 +59,18 @@ describe("mcp server tools", () => {
     expect(rsi.data.values).toHaveLength(5);
   });
 
+  it("exposes no mutating tools: market data and workspace reads only", async () => {
+    const list = await handleMessage({ jsonrpc: "2.0", id: 2, method: "tools/list" });
+    const names = (list!.result as { tools: { name: string }[] }).tools.map((t) => t.name);
+    // Regression guard for the read-only surface: no order placement, no
+    // account, no cancel, no edit/write tools — trading stays in the app.
+    for (const name of names) {
+      expect(name).not.toMatch(/order|trade|place|cancel|buy|sell|write|edit|delete|set_/i);
+    }
+    expect(names).toContain("get_candles");
+    expect(names).toContain("get_journal");
+  });
+
   it("prices options and solves implied vol", async () => {
     const out = await call("price_option", { right: "call", spot: 100, strike: 100, days: 365, vol: 0.2, rate: 0.05, marketPrice: 10.4506 });
     expect(out.data.price).toBeCloseTo(10.4506, 3);
