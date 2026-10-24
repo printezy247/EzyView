@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { buildLadder } from "./depthLadder";
 import { useQuote } from "./quotePoller";
 import { useWorkspace } from "./store";
 import { useTrading } from "./trading";
@@ -9,12 +10,7 @@ interface Props {
   precision: number;
 }
 
-interface Level {
-  price: number;
-  size: number;
-  /** Cumulative size from the best price inward, used for the depth bar. */
-  cum: number;
-}
+type Level = ReturnType<typeof buildLadder>[number];
 
 /**
  * Depth of market panel with visual volume bars and spread telemetry.
@@ -221,22 +217,4 @@ function Row({
     </button>
     </li>
   );
-}
-
-/**
- * Deterministic synthetic ladder: sizes come from a hash of the price so the
- * book does not reshuffle on every poll tick.
- */
-function buildLadder(mid: number, precision: number, side: "ask" | "bid", levels = 12): Level[] {
-  const tick = 10 ** -precision;
-  const out: Level[] = [];
-  let cum = 0;
-  for (let i = 1; i <= levels; i++) {
-    const price = side === "ask" ? mid + tick * i : mid - tick * i;
-    const seed = Math.abs(Math.sin(price * 1000)) * 10;
-    const size = 0.05 + seed * 0.4;
-    cum += size;
-    out.push({ price, size, cum });
-  }
-  return out;
 }
