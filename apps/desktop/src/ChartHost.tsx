@@ -10,7 +10,7 @@ import type { PinePlot } from "@ezyview/pine-transpiler";
 import { THEME_OF, uid as newId, useWorkspace } from "./store";
 import type { ActiveIndicator, PineScriptRecord } from "./store";
 import type { ChartThemeName, CrosshairModeName, PriceScaleModeName } from "./layout";
-import { loadHistory, resolveSource, RESOLUTION_SECONDS, subscribeLive, tickerOf } from "./data";
+import { loadHistory, safeHistory, resolveSource, RESOLUTION_SECONDS, subscribeLive, tickerOf } from "./data";
 import { subscribeQuote } from "./quotePoller";
 import { isLiveSourceChoice } from "./chartSource";
 import type { DataSourceChoice } from "./chartSource";
@@ -420,7 +420,7 @@ export function ChartHost(props: Props) {
       if (history.length === 0 || history[0]!.time <= from) return;
       const need = barsNeeded(from, history[history.length - 1]!.time, RESOLUTION_SECONDS[resolution]);
       if (need <= history.length) return;
-      const more = await loadHistory(symbol, resolution, need, dataSource);
+      const more = await safeHistory(symbol, resolution, need, dataSource);
       if (
         propsRef.current.symbol !== symbol ||
         propsRef.current.resolution !== resolution ||

@@ -292,12 +292,86 @@ export async function searchSymbols(query: string): Promise<SymbolInfo[]> {
 }
 
 /** One quote, from whichever feed the chart is on. */
-/** Demo symbols already ticking; the demo feed only moves while subscribed to. */
-const ticking = new Set<string>();
-/** Unsubscribers for those ticks, so a symbol can be stopped again. */
+/**
+ * Demo ticker leases.
+ *
+ * The demo feed only moves while it is subscribed to, and each subscription is
+ * a 1 Hz timer — so a ticker lives exactly as long as something references the
+ * symbol: the symbol's quote poller holds one lease, a chart/panel subscribes
+ * to the poller, and the last unsubscribe releases the lease. Symbols nobody
+ * references never open a timer, and leavers stop theirs instead of leaking
+ * one per symbol ever quoted.
+ */
+const tickerRefs = new Map<string, number>();
+/** Unsubscribers for those ticks, so a ticker can be stopped again. */
 const unsubscribes = new Map<string, () => void>();
+/** Symbols with a subscription that is live or still connecting: the cap counts these, synchronously. */
+const tickerSlots = new Set<string>();
 /** Hard cap on demo subscriptions; a quote still resolves, it just stops ticking. */
 export const MAX_DEMO_TICKERS = 24;
+
+/** How many demo symbols hold a live subscription right now (test hook). */
+export function demoTickerCount(): number {
+  return unsubscribes.size;
+}
+
+function stopTicker(symbol: string): void {
+  const unsubscribe = unsubscribes.get(symbol);
+  unsubscribes.delete(symbol);
+  tickerSlots.delete(symbol);
+  try {
+    unsubscribe?.();
+  } catch {
+    // ignore — already stopped
+  }
+}
+
+function startTicker(symbol: string): void {
+  if (tickerSlots.has(symbol) || tickerSlots.size >= MAX_DEMO_TICKERS) return;
+  // Reserve the slot synchronously so a burst of retentions cannot race past
+  // the cap before any subscribe settles.
+  tickerSlots.add(symbol);
+  void market
+    .subscribe([symbol], () => {})
+    .then((unsubscribe) => {
+      // The lease may have been released while subscribing.
+      if (!tickerRefs.has(symbol)) {
+        tickerSlots.delete(symbol);
+        unsubscribe();
+        return;
+      }
+      unsubscribes.set(symbol, unsubscribe);
+    })
+    .catch(() => {
+      tickerSlots.delete(symbol);
+      tickerRefs.delete(symbol);
+    });
+}
+
+/** Hold a demo ticker for `symbol`; returns its release function. */
+export function retainTicker(symbol: string): () => void {
+  tickerRefs.set(symbol, (tickerRefs.get(symbol) ?? 0) + 1);
+  startTicker(symbol);
+  return () => releaseTicker(symbol);
+}
+
+/** Drop one reference; the ticker stops with the last one. */
+export function releaseTicker(symbol: string): void {
+  const count = (tickerRefs.get(symbol) ?? 0) - 1;
+  if (count <= 0) {
+    tickerRefs.delete(symbol);
+    stopTicker(symbol);
+  } else {
+    tickerRefs.set(symbol, count);
+  }
+}
+
+/** Force-stop a demo ticker, ignoring references (watchlist row removal). */
+export function stopTicking(symbol: string): void {
+  tickerRefs.delete(symbol);
+  stopTicker(symbol);
+}
+
 const inFlightQuotes = new Map<string, Promise<Quote | null>>();
 const inFlightHistory = new Map<string, Promise<Candle[]>>();
 
@@ -313,20 +387,6 @@ export async function quoteOf(symbol: string, source?: DataSourceChoice): Promis
       if (feed === "mt5") return await getMt5().data.getQuote(symbol);
       const live = await fetchPublicQuote(symbol);
       if (live) return live;
-      if (!ticking.has(symbol) && ticking.size < MAX_DEMO_TICKERS) {
-        ticking.add(symbol);
-        // Keep the unsubscribe handle: the demo adapter runs a 1 Hz timer per
-        // subscription, and dropping it leaked a timer for every symbol ever
-        // quoted.
-        void market
-          .subscribe([symbol], () => {})
-          .then((unsubscribe) => {
-            unsubscribes.set(symbol, unsubscribe);
-          })
-          .catch(() => {
-            ticking.delete(symbol);
-          });
-      }
       return await market.getQuote(symbol);
     } catch {
       // A provider outage is a stale price, not an unhandled rejection in
@@ -341,16 +401,16 @@ export async function quoteOf(symbol: string, source?: DataSourceChoice): Promis
   return promise;
 }
 
-/** Stop the demo ticker for a symbol nothing references any more. */
-export function stopTicking(symbol: string): void {
-  const unsubscribe = unsubscribes.get(symbol);
-  if (!unsubscribe) return;
-  unsubscribes.delete(symbol);
-  ticking.delete(symbol);
+/**
+ * `quoteOf` with `() => null` on failure. Panels that only want a price use
+ * this: a provider outage must not escalate to an unhandled rejection in the
+ * caller's event chain.
+ */
+export async function safeQuote(symbol: string, source?: DataSourceChoice): Promise<Quote | null> {
   try {
-    unsubscribe();
+    return await quoteOf(symbol, source);
   } catch {
-    // ignore
+    return null;
   }
 }
 
@@ -401,4 +461,18 @@ export async function loadHistory(
 
   inFlightHistory.set(key, promise);
   return promise;
+}
+
+/** `loadHistory` with `[]` on failure, for the same reason as `safeQuote`. */
+export async function safeHistory(
+  symbol: string,
+  resolution: Resolution,
+  limit = 500,
+  source?: DataSourceChoice,
+): Promise<Candle[]> {
+  try {
+    return await loadHistory(symbol, resolution, limit, source);
+  } catch {
+    return [];
+  }
 }

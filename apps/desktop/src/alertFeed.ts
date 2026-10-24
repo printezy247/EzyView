@@ -6,7 +6,7 @@
  * notification (and optional sound chime) for every alert that just fired.
  */
 import type { PriceAlert, Quote } from "@ezyview/data-adapters";
-import { quoteOf } from "./data";
+import { safeQuote } from "./data";
 import { notifyNative } from "./shell";
 import { useWorkspace } from "./store";
 
@@ -61,7 +61,7 @@ export async function tickAlertFeed(): Promise<void> {
   busy = true;
   try {
     const symbols = alertSymbols(useWorkspace.getState().alerts);
-    const quotes = await Promise.all(symbols.map((s) => withTimeout(quoteOf(s), QUOTE_TIMEOUT_MS)));
+    const quotes = await Promise.all(symbols.map((s) => withTimeout(safeQuote(s), QUOTE_TIMEOUT_MS)));
     for (const [i, symbol] of symbols.entries()) {
       const quote = quotes[i];
       if (!quote) continue;
