@@ -205,6 +205,13 @@ export interface JournalState {
   /** Free-text filter over symbol, tags, setup and note text. */
   query: string;
   setQuery(query: string): void;
+  /** Account-aware filter: only trades from this source ("any" = all). */
+  sourceFilter: JournalEntry["source"] | "any";
+  setSourceFilter(source: JournalEntry["source"] | "any"): void;
+  /** Bulk edit: shallow-merges `patch` into every listed entry in one write. */
+  updateEntries(ids: readonly string[], patch: Partial<JournalEntry>): void;
+  /** Bulk delete in one write; returns how many rows went away. */
+  removeEntries(ids: readonly string[]): number;
   /** Adds a timestamped observation, optionally with the current chart image. */
   addNote(note: Omit<JournalNote, "id">): void;
   removeNote(id: string): void;
@@ -253,9 +260,32 @@ export const useJournal = create<JournalState>((set, get) => {
     propFirm: boot.propFirm,
     plans: boot.plans,
     query: "",
+    sourceFilter: "any" as JournalEntry["source"] | "any",
 
     setQuery(query) {
       set({ query });
+    },
+
+    setSourceFilter(sourceFilter) {
+      set({ sourceFilter });
+    },
+
+    updateEntries(ids, patch) {
+      if (ids.length === 0) return;
+      const wanted = new Set(ids);
+      const next = get().entries.map((entry) => (wanted.has(entry.id) ? Object.assign({}, entry, patch) : entry));
+      set({ entries: next });
+      persist();
+    },
+
+    removeEntries(ids) {
+      const wanted = new Set(ids);
+      const before = get().entries.length;
+      const next = get().entries.filter((entry) => !wanted.has(entry.id));
+      if (next.length === before) return 0;
+      set({ entries: next });
+      persist();
+      return before - next.length;
     },
 
     addNote(note) {

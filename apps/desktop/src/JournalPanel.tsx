@@ -27,6 +27,9 @@ interface Row {
 
 type Tab = "feed" | "plans" | "calendar" | "stats" | "reviews";
 
+/** Account-aware filter options: every capture source plus "any". */
+const SOURCES: readonly (JournalEntry["source"] | "any")[] = ["any", "manual", "mt5", "ccxt", "alpaca", "paper"];
+
 const TABS: readonly { id: Tab; label: string }[] = [
   { id: "feed", label: "Feed" },
   { id: "plans", label: "Plans" },
@@ -70,6 +73,10 @@ export function JournalPanel({ onClose }: Props) {
   const addNote = useJournal((s) => s.addNote);
   const removeNote = useJournal((s) => s.removeNote);
   const removeEntry = useJournal((s) => s.removeEntry);
+  const sourceFilter = useJournal((s) => s.sourceFilter);
+  const setSourceFilter = useJournal((s) => s.setSourceFilter);
+  const updateEntries = useJournal((s) => s.updateEntries);
+  const removeEntries = useJournal((s) => s.removeEntries);
   const importDeals = useJournal((s) => s.importDeals);
   const storageIssue = useJournal((s) => s.storageIssue);
   const dismissStorageIssue = useJournal((s) => s.dismissStorageIssue);
@@ -84,14 +91,22 @@ export function JournalPanel({ onClose }: Props) {
   const [shot, setShot] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [lastImport, setLastImport] = useState<number | null>(null);
+  // Bulk edit: the checked trade ids and the tag the bulk bar will apply.
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkIds, setBulkIds] = useState<readonly string[]>([]);
+  const [bulkTag, setBulkTag] = useState("");
+  const checked = useMemo(() => new Set(bulkIds), [bulkIds]);
 
   const filteredEntries = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return entries;
-    const matches = (haystacks: (string | undefined)[]): boolean =>
+    const textMatch = (haystacks: (string | undefined)[]): boolean =>
       haystacks.some((value) => (value ?? "").toLowerCase().includes(needle));
-    return entries.filter((entry) => matches([entry.symbol, entry.setup, entry.notes, ...(entry.tags ?? [])]));
-  }, [entries, query]);
+    return entries.filter(
+      (entry) =>
+        (sourceFilter === "any" || entry.source === sourceFilter) &&
+        (!needle || textMatch([entry.symbol, entry.setup, entry.notes, ...(entry.tags ?? [])])),
+    );
+  }, [entries, query, sourceFilter]);
 
   const stats = useMemo(() => computeStats(filteredEntries), [filteredEntries]);
 
@@ -103,7 +118,17 @@ export function JournalPanel({ onClose }: Props) {
     const tradeRows: Row[] = filteredEntries.map((entry) => ({
       key: `t:${entry.id}`,
       time: entry.exitTime ?? entry.entryTime,
-      node: <TradeRow entry={entry} onDelete={() => removeEntry(entry.id)} />,
+      node: (
+        <TradeRow
+          entry={entry}
+          onDelete={() => removeEntry(entry.id)}
+          bulk={bulkMode}
+          checked={checked.has(entry.id)}
+          onCheck={() =>
+            setBulkIds((ids) => (ids.includes(entry.id) ? ids.filter((id) => id !== entry.id) : [...ids, entry.id]))
+          }
+        />
+      ),
     }));
 
     const noteRows: Row[] = notes
@@ -115,7 +140,7 @@ export function JournalPanel({ onClose }: Props) {
       }));
 
     return [...tradeRows, ...noteRows].sort((a, b) => b.time - a.time);
-  }, [filteredEntries, notes, query, removeEntry, removeNote]);
+  }, [filteredEntries, notes, query, removeEntry, removeNote, bulkMode, checked]);
 
   const submit = () => {
     const trimmed = text.trim();
@@ -131,6 +156,29 @@ export function JournalPanel({ onClose }: Props) {
 
   const importNow = () => {
     setLastImport(importDeals(deals, source === "mt5" ? "mt5" : "paper"));
+  };
+
+  /** Merge a tag into every checked trade; dedupes via the store's normalize. */
+  const applyBulkTag = () => {
+    const tag = bulkTag.trim();
+    if (tag === "" || bulkIds.length === 0) return;
+    for (const entry of entries) {
+      if (!checked.has(entry.id)) continue;
+      updateEntries([entry.id], { tags: [...(entry.tags ?? []), tag] });
+    }
+    setBulkTag("");
+  };
+
+  const deleteSelected = () => {
+    if (bulkIds.length === 0) return;
+    removeEntries(bulkIds);
+    setBulkIds([]);
+    if (filteredEntries.length - bulkIds.length === 0) setBulkMode(false);
+  };
+
+  const allTradesChecked = filteredEntries.length > 0 && filteredEntries.every((entry) => checked.has(entry.id));
+  const toggleAllTrades = () => {
+    setBulkIds(allTradesChecked ? [] : filteredEntries.map((entry) => entry.id));
   };
 
   const chip = chipClass({ tone: "neutral" });
@@ -253,8 +301,76 @@ export function JournalPanel({ onClose }: Props) {
                 aria-label="Filter journal"
                 className="w-64 rounded border border-ev-line bg-ev-panel px-2 py-0.5 text-dense text-ev-text focus:border-ev-accent"
               />
+              {/* Account-aware filter: chip per capture source, any = all. */}
+              <div role="group" aria-label="Filter by account source" className="flex items-center gap-1">
+                {SOURCES.map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    aria-pressed={sourceFilter === opt}
+                    onClick={() => setSourceFilter(opt)}
+                    className={`rounded px-1.5 py-0.5 text-dense ${
+                      sourceFilter === opt ? "bg-ev-accent text-white" : "text-ev-muted hover:text-ev-strong"
+                    }`}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
               <span className={`${chip} text-ev-muted`}>{rows.length} items</span>
+              <button
+                type="button"
+                aria-pressed={bulkMode}
+                onClick={() => {
+                  setBulkMode((b) => !b);
+                  setBulkIds([]);
+                }}
+                className={`ml-auto rounded px-2 py-0.5 text-dense ${
+                  bulkMode ? "bg-ev-raised font-medium text-ev-strong" : "text-ev-muted hover:text-ev-strong"
+                }`}
+              >
+                Bulk edit
+              </button>
             </nav>
+
+            {bulkMode && (
+              <div className="flex h-8 shrink-0 items-center gap-2 border-b border-ev-raised bg-ev-panel/40 px-3 text-dense">
+                <label className="flex items-center gap-1">
+                  <input
+                    type="checkbox"
+                    checked={allTradesChecked}
+                    onChange={toggleAllTrades}
+                    aria-label="Select all filtered trades"
+                  />
+                  All
+                </label>
+                <span className="num text-ev-muted">{bulkIds.length} selected</span>
+                <input
+                  value={bulkTag}
+                  onChange={(e) => setBulkTag(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && applyBulkTag()}
+                  placeholder="Tag to add…"
+                  aria-label="Bulk tag"
+                  className="w-40 rounded border border-ev-line bg-ev-bg px-2 py-0.5 text-dense text-ev-text focus:border-ev-accent"
+                />
+                <button
+                  type="button"
+                  onClick={applyBulkTag}
+                  disabled={bulkTag.trim() === "" || bulkIds.length === 0}
+                  className={`rounded border border-ev-line px-2 py-0.5 text-dense hover:text-ev-strong disabled:opacity-40`}
+                >
+                  Add tag
+                </button>
+                <button
+                  type="button"
+                  onClick={deleteSelected}
+                  disabled={bulkIds.length === 0}
+                  className="rounded border border-ev-down/40 px-2 py-0.5 text-dense text-ev-down-text hover:bg-ev-down/10 disabled:opacity-40"
+                >
+                  Delete selected
+                </button>
+              </div>
+            )}
 
             <div className="min-h-0 flex-1 overflow-auto">
               {rows.length === 0 ? (
@@ -309,10 +425,25 @@ function Fact({ label, value, tone }: { label: string; value: string; tone?: str
   );
 }
 
-function TradeRow({ entry, onDelete }: { entry: JournalEntry; onDelete: () => void }) {
+function TradeRow({
+  entry,
+  onDelete,
+  bulk,
+  checked,
+  onCheck,
+}: {
+  entry: JournalEntry;
+  onDelete: () => void;
+  bulk: boolean;
+  checked: boolean;
+  onCheck: () => void;
+}) {
   const pnl = entry.pnl;
   return (
     <div className="flex items-center gap-3 text-dense">
+      {bulk && (
+        <input type="checkbox" checked={checked} onChange={onCheck} aria-label={`Select trade ${entry.symbol}`} />
+      )}
       <span className="w-32 shrink-0 text-ev-muted">{clock(entry.exitTime ?? entry.entryTime)}</span>
       <span className="w-20 shrink-0 font-medium text-ev-strong">{entry.symbol}</span>
       <span className={entry.side === "long" ? "w-12 text-ev-up-text" : "w-12 text-ev-down-text"}>
