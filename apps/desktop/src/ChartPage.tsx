@@ -40,8 +40,8 @@ import { eventsActive } from "./eventOptions";
 import { EMPTY_FUNDAMENTAL_EVENTS, fetchFundamentalEvents } from "./fundamentalEvents";
 import { publishCrosshair, subscribeCrosshair } from "./crosshairBus";
 import type { CrosshairMessage } from "./crosshairBus";
-import { isTypingTarget } from "./hotkeys";
 import { getActiveExportSource, setActiveExportSource } from "./exportBridge";
+import { useShortcut } from "./shortcuts";
 
 interface ChartPageProps {
   /** Which right-dock tab is visible, or null when the dock is closed. */
@@ -246,66 +246,75 @@ export function ChartPage({
 
   // Escape clears the armed drawing tool, like TradingView.
   // Undo/redo: Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z. "/" or Ctrl+K opens commands.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (isTypingTarget(target)) return;
-      if (e.key === "Escape") {
-        useWorkspace.getState().setActiveTool(null);
-        useWorkspace.getState().selectDrawing(null);
-        setCommandOpen(false);
-        return;
-      }
-      // Delete/Backspace removes the selected drawing (the input guard above
-      // keeps this from firing while typing or editing in Monaco).
-      if (e.key === "Delete" || e.key === "Backspace") {
-        const id = useWorkspace.getState().selectedDrawingId;
-        if (id) {
-          e.preventDefault();
-          useWorkspace.getState().deleteDrawing(id);
-        }
-        return;
-      }
-      if (e.key === "/" && !e.ctrlKey && !e.metaKey) {
-        e.preventDefault();
-        setCommandOpen(true);
-        return;
-      }
-      // The command palette owns plain Ctrl+K app-wide; the chart's quick
-      // command input took the Shift variant so both stay reachable.
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setCommandOpen((v) => !v);
-        return;
-      }
-      if (!(e.ctrlKey || e.metaKey)) return;
-      if (e.key.toLowerCase() === "z" && !e.shiftKey) {
-        e.preventDefault();
-        useWorkspace.getState().undoDrawing();
-      } else if (e.key.toLowerCase() === "y" || (e.key.toLowerCase() === "z" && e.shiftKey)) {
-        e.preventDefault();
-        useWorkspace.getState().redoDrawing();
-      } else if (e.key.toLowerCase() === "c") {
-        // Copy the selected drawing; without one, leave the browser's copy alone.
-        if (useWorkspace.getState().selectedDrawingId) {
-          e.preventDefault();
-          useWorkspace.getState().copyDrawing();
-        }
-      } else if (e.key.toLowerCase() === "d") {
-        // TradingView's clone shortcut, offset so the clone is visible.
-        const id = useWorkspace.getState().selectedDrawingId;
-        if (id) {
-          e.preventDefault();
-          useWorkspace.getState().duplicateDrawing(id);
-        }
-      } else if (e.key.toLowerCase() === "v" && lastCursorRef.current && useWorkspace.getState().drawingClipboard) {
-        e.preventDefault();
-        useWorkspace.getState().pasteDrawing(lastCursorRef.current);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  useShortcut({
+    id: "chart.escape",
+    combo: "Escape",
+    priority: 20,
+    allowInInput: true,
+    when: () => {
+      const ws = useWorkspace.getState();
+      return ws.activeTool !== null || ws.selectedDrawingId !== null || commandOpen;
+    },
+    run: () => {
+      useWorkspace.getState().setActiveTool(null);
+      useWorkspace.getState().selectDrawing(null);
+      setCommandOpen(false);
+    },
+  });
+  useShortcut({
+    id: "chart.delete-drawing",
+    combo: ["Delete", "Backspace"],
+    when: () => useWorkspace.getState().selectedDrawingId !== null,
+    run: () => {
+      const id = useWorkspace.getState().selectedDrawingId;
+      if (id) useWorkspace.getState().deleteDrawing(id);
+    },
+  });
+  useShortcut({
+    id: "chart.command-input",
+    combo: "/",
+    when: () => !commandOpen,
+    run: () => setCommandOpen(true),
+  });
+  useShortcut({
+    id: "chart.command-input-shift",
+    combo: "Mod+Shift+K",
+    run: () => setCommandOpen((v) => !v),
+  });
+  useShortcut({
+    id: "chart.undo",
+    combo: "Mod+Z",
+    run: () => useWorkspace.getState().undoDrawing(),
+  });
+  useShortcut({
+    id: "chart.redo",
+    combo: ["Mod+Y", "Mod+Shift+Z"],
+    run: () => useWorkspace.getState().redoDrawing(),
+  });
+  useShortcut({
+    id: "chart.copy",
+    combo: "Mod+C",
+    when: () => useWorkspace.getState().selectedDrawingId !== null,
+    run: () => useWorkspace.getState().copyDrawing(),
+  });
+  useShortcut({
+    id: "chart.duplicate",
+    combo: "Mod+D",
+    when: () => useWorkspace.getState().selectedDrawingId !== null,
+    run: () => {
+      const id = useWorkspace.getState().selectedDrawingId;
+      if (id) useWorkspace.getState().duplicateDrawing(id);
+    },
+  });
+  useShortcut({
+    id: "chart.paste",
+    combo: "Mod+V",
+    when: () => lastCursorRef.current !== null && useWorkspace.getState().drawingClipboard !== null,
+    run: () => {
+      const at = lastCursorRef.current;
+      if (at) useWorkspace.getState().pasteDrawing(at);
+    },
+  });
 
   // The engine only needs ticks where it has something at stake: an open
   // position or a resting order, plus the chart's symbol while the ticket can
@@ -564,16 +573,12 @@ function ChartGrid({
   const multi = cells.length > 1;
 
   // Alt+Enter toggles single-cell maximize
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.altKey && e.key === "Enter") {
-        e.preventDefault();
-        setMaximizedCell((cur) => (cur === null ? layout.activeChart : null));
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [layout.activeChart]);
+  useShortcut({
+    id: "chart.maximize-cell",
+    combo: "Alt+Enter",
+    when: () => layout.grid !== "1",
+    run: () => setMaximizedCell((cur) => (cur === null ? layout.activeChart : null)),
+  });
 
   // The focused cell's link group. When it has one, the crosshair mirror stays
   // inside that group; when it has none, the mirror keeps reaching every cell.

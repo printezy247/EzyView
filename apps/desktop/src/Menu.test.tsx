@@ -1,10 +1,17 @@
 // @vitest-environment happy-dom
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { Menu } from "./Menu";
 import type { MenuEntry } from "./Menu";
+import { installShortcutDispatcher } from "./shortcuts";
+
+let uninstall: () => void;
+beforeAll(() => {
+  uninstall = installShortcutDispatcher();
+});
+afterAll(() => uninstall());
 
 /**
  * Render test for the shared dropdown.

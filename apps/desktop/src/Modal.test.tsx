@@ -1,9 +1,18 @@
 // @vitest-environment happy-dom
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { Modal } from "./Modal";
+import { installShortcutDispatcher } from "./shortcuts";
+
+// Escape now belongs to the shell dispatcher, which App installs. These tests
+// render the dialog alone, so they install the same listener the app does.
+let uninstall: () => void;
+beforeAll(() => {
+  uninstall = installShortcutDispatcher();
+});
+afterAll(() => uninstall());
 
 /**
  * Render test for the dialog primitive.

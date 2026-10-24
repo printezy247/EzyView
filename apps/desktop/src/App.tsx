@@ -27,7 +27,7 @@ import { useMt5Accounts } from "./mt5Accounts";
 import { maskLogin } from "./tradingSafety";
 import { Modal } from "./Modal";
 import { NoticeHost } from "./NoticeHost";
-import { isTypingTarget } from "./hotkeys";
+import { useShortcut, useShortcutDispatcher } from "./shortcuts";
 import { isLivePublicSymbol, quoteOf } from "./data";
 import { useTrading } from "./trading";
 
@@ -74,34 +74,10 @@ export default function App() {
   const state = activeChartOf(layout);
 
   // F11 toggles fullscreen "zen" mode (nav rail and tabs hidden); Esc leaves it.
-  // An open menu swallows Escape first, so Esc closes the menu before it exits.
+  // Every binding registers with the one dispatcher; layers (modal, menu) own
+  // the keyboard until they close, so Esc closes them before it exits zen.
   const zen = useZen((s) => s.on);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "F11") {
-        e.preventDefault();
-        useZen.getState().toggle();
-      } else if (e.key === "Escape") {
-        const ws = useWorkspace.getState();
-        if (!ws.activeTool && !ws.selectedDrawingId) {
-          useZen.getState().exit();
-        }
-      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "n") {
-        e.preventDefault();
-        useWorkspace.getState().addLayout();
-      } else if (
-        e.key === "?" &&
-        !e.ctrlKey &&
-        !e.metaKey &&
-        !(e.target instanceof HTMLElement && isTypingTarget(e.target))
-      ) {
-        e.preventDefault();
-        setHotkeysOpen((v) => !v);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  useShortcutDispatcher();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const apiKeysOpen = useApiKeys((s) => s.dialogOpen);
@@ -118,16 +94,36 @@ export default function App() {
   const [chartSettingsOpen, setChartSettingsOpen] = useState(false);
   const [shortcutFeedback, setShortcutFeedback] = useState<string | null>(null);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.altKey && (e.code === "KeyE" || e.key.toLowerCase() === "e")) {
-        e.preventDefault();
-        setShortcutFeedback("⚡ EzyView Focus Active (Ctrl+Alt+E)");
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  useShortcut({
+    id: "app.fullscreen",
+    combo: "F11",
+    allowInInput: true,
+    run: () => useZen.getState().toggle(),
+  });
+  useShortcut({
+    id: "app.exit-zen",
+    combo: "Escape",
+    when: () => {
+      const ws = useWorkspace.getState();
+      return !ws.activeTool && !ws.selectedDrawingId;
+    },
+    run: () => useZen.getState().exit(),
+  });
+  useShortcut({
+    id: "app.new-layout",
+    combo: "Mod+Shift+N",
+    run: () => useWorkspace.getState().addLayout(),
+  });
+  useShortcut({
+    id: "app.hotkey-sheet",
+    combo: "Shift+?",
+    run: () => setHotkeysOpen((v) => !v),
+  });
+  useShortcut({
+    id: "app.focus-mode",
+    combo: "Mod+Alt+E",
+    run: () => setShortcutFeedback("⚡ EzyView Focus Active (Ctrl+Alt+E)"),
+  });
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;

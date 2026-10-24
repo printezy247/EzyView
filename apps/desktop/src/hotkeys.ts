@@ -24,13 +24,17 @@ export const HOTKEYS: readonly Hotkey[] = [
   { combo: "/", description: "Chart quick command input (chart focused)" },
   { combo: "?", description: "Show this shortcut sheet" },
   { combo: "Ctrl+Shift+N", description: "New layout tab" },
+  { combo: "F11", description: "Toggle fullscreen (zen) mode" },
+  { combo: "Alt+Enter", description: "Maximize the focused chart cell" },
   { combo: "Ctrl+Z", description: "Undo the last drawing edit" },
   { combo: "Ctrl+Y", description: "Redo the last drawing edit" },
   { combo: "Ctrl+C", description: "Copy the selected drawing" },
+  { combo: "Ctrl+D", description: "Duplicate the selected drawing" },
   { combo: "Ctrl+V", description: "Paste the copied drawing" },
   { combo: "Delete", description: "Delete the selected drawing" },
   { combo: "Escape", description: "Cancel the active tool or dialog" },
   { combo: "Space", description: "Play or pause bar replay" },
+  { combo: "← / →", description: "Step replay one bar at a time" },
 ] as const;
 
 const GROUP_OF: Record<string, string> = {
@@ -39,13 +43,17 @@ const GROUP_OF: Record<string, string> = {
   "/": "Navigation",
   "?": "Navigation",
   "Ctrl+Shift+N": "Navigation",
+  F11: "Navigation",
+  "Alt+Enter": "Navigation",
   "Ctrl+Z": "Drawings",
   "Ctrl+Y": "Drawings",
   "Ctrl+C": "Drawings",
+  "Ctrl+D": "Drawings",
   "Ctrl+V": "Drawings",
   Delete: "Drawings",
   Escape: "General",
   Space: "Replay",
+  "← / →": "Replay",
 };
 
 /** The table grouped for display, in a stable, curated order. */

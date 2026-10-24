@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { MenuItems } from "./Menu";
 import type { MenuEntry } from "./Menu";
+import { useShortcut, useShortcutLayer } from "./shortcuts";
 
 interface Props {
   /** Pointer position in viewport pixels where the menu was requested. */
@@ -21,6 +22,15 @@ const MARGIN = 8;
 export function ChartContextMenu({ x, y, entries, onClose }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ left: x, top: y });
+  const layer = useShortcutLayer("context-menu");
+
+  useShortcut({
+    id: "context-menu.escape",
+    combo: "Escape",
+    layer,
+    stopPropagation: true,
+    run: onClose,
+  });
 
   // Measure after the first paint, then clamp into the viewport.
   useLayoutEffect(() => {
@@ -40,20 +50,11 @@ export function ChartContextMenu({ x, y, entries, onClose }: Props) {
     const onDown = (e: MouseEvent) => {
       if (!ref.current?.contains(e.target as Node)) onClose();
     };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        // Swallow it: the chart page's Escape also clears tools and selection.
-        e.stopPropagation();
-        onClose();
-      }
-    };
     document.addEventListener("mousedown", onDown, true);
-    document.addEventListener("keydown", onKey, true);
     window.addEventListener("blur", onClose);
     window.addEventListener("resize", onClose);
     return () => {
       document.removeEventListener("mousedown", onDown, true);
-      document.removeEventListener("keydown", onKey, true);
       window.removeEventListener("blur", onClose);
       window.removeEventListener("resize", onClose);
     };

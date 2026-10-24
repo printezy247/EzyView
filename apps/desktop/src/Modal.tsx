@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { KeyboardEvent, ReactNode } from "react";
+import { useShortcut, useShortcutLayer } from "./shortcuts";
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -47,6 +48,17 @@ export function Modal({
   children,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
+  const layer = useShortcutLayer("modal", open);
+
+  useShortcut({
+    id: "modal.escape",
+    combo: "Escape",
+    layer,
+    allowInInput: true,
+    stopPropagation: true,
+    when: () => open,
+    run: onClose,
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -63,11 +75,6 @@ export function Modal({
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     // Editors (Monaco) consume their own Escape/Tab and mark them handled.
     if (e.defaultPrevented) return;
-    if (e.key === "Escape") {
-      e.stopPropagation();
-      onClose();
-      return;
-    }
     if (e.key !== "Tab" || !ref.current) return;
     const items = visibleFocusables(ref.current);
     const current = items.indexOf(document.activeElement as HTMLElement);
