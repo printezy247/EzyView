@@ -756,12 +756,42 @@ branch and merged with `--no-ff`.
 ### Still open (deliberately)
 
 - Pine still runs through `new Function`, so the CSP keeps `unsafe-eval`.
-  Moving the evaluator into a Worker is the real fix and is a rewrite.
+  Moving the evaluator into a Worker is the real fix and is a rewrite. The
+  browser-facing runner (and its Worker, phase 4) constrains the damage, and
+  the emitted loop's per-bar `ta.ema(close, 9)` re-execution stays O(n²) per
+  series until the interpreter rewrite lands.
 - The MCP server is stdio-only, so it is reachable by local processes only.
   Its private-data tools (`get_workspace`, `get_journal`, `list_alerts`,
   `journal_review_pack`) now fail closed: set `EZYVIEW_MCP_TOKEN` and pass it as
   the `token` argument, or set `EZYVIEW_MCP_INSECURE=1` to allow open access.
 - The ten panels that poll a quote still poll on their own schedules; a single
   shared per-symbol poller is the next step.
+- Produced-style Pine scripts now run correctly (phase 8 fixed the series
+  `nz`, the per-bar `var` collapse, and added the compat suite), but the
+  runtime still re-executes series calls per bar — same O(n²) gate.
 - `highest`/`lowest` and the other O(n x period) indicator helpers are still
   linear per bar, and the marker layers are still rebuilt on every tick.
+
+## 25. Parity audit (v0.3.2 — phase 9 of the repo-research pass)
+
+The phase-9 parity checklist (replay, heatmaps, crosshair sync, multi-
+window, accessibility) was re-audited against the shipped code rather than
+re-implemented: every item already landed in phases 1-8.
+
+- Replay mode: `ReplayBar.tsx` with cursor, speed and play/pause, tested.
+- Crosshair sync: `crosshairBus.ts` publish/subscribe, per-chart mirror,
+  toolbar + tab bar toggles, and the detaching window path.
+- Tab linking: `linkGroups.ts` + `LinkGroupDialog`, symbol/interval/xhair.
+- Keyboard: hotkeys registered in `hotkeys.ts` (Space replays, `/` search,
+  Escape closes, Delete removes objects, `?` opens the shortcut help),
+  roving-arrow focus in `RightDock`, menus and the command palette.
+- Accessibility: global focus-visible ring, `sr-only` labels on the rail,
+  `aria-current` on the active section (pinned by `NavRail.test.tsx`),
+  `aria-live` feed in the shell, `role=alert` error surfaces, and a
+  focus-trapped `Modal` with focus return.
+- Depth/T&S honesty and the journal upgrades belong to their own phases
+  (7 and 6) and are done there.
+
+Remaining parity debt moved forward instead of faked: the O(n²) Pine
+emission and the shared per-symbol quote poller above, plus virtualized
+journal/tape lists for very long sessions.
