@@ -194,7 +194,16 @@ class Emitter {
         }
         // Pine's `:=` reassigns; JS uses `=` for both declare and reassign, so
         // the operator normalizes here rather than reaching the output verbatim.
-        this.line(`${this.expr(node.target)} = ${this.expr(node.value)};`);
+        const target = this.safeName(node.target.name, node.line, node.col);
+        // A hoisted `var` holds one value across bars, so `state := state +
+        // close[1]` must collapse the whole right-hand side to this bar's
+        // scalar before it lands in the carried variable. Without the collapse
+        // the broadcast writes a full series into `state` and the next bar
+        // compounds the entire array again — state drifts bar by bar.
+        const rhs = this.varNames.has(target) && hasIndexExpr(node.value)
+          ? `atBar(${this.expr(node.value)}, barIndex)`
+          : this.expr(node.value);
+        this.line(`${target} = ${rhs};`);
         return;
       }
       case "Block": {
@@ -438,6 +447,37 @@ class Emitter {
     const hoisted = this.hoisted.length ? `${this.hoisted.join("\n")}\n` : "";
     return hoisted + this.lines.join("\n");
   }
+}
+
+/**
+ * True when the expression reads a history offset anywhere (`src[n]`). Used to
+ * decide whether a hoisted `var` reassignment must collapse to the current bar.
+ *
+ * Node objects carry `line`/`col` scalars, so the walk only recurses into
+ * fields that are AST nodes or arrays of them.
+ */
+function hasIndexExpr(node: Node): boolean {
+  if (node.kind === "IndexExpr") return true;
+  for (const value of Object.values(node)) {
+    if (Array.isArray(value)) {
+      for (const child of value) {
+        if (isAstNode(child) && hasIndexExpr(child)) return true;
+      }
+    } else if (isAstNode(value)) {
+      if (hasIndexExpr(value)) return true;
+    }
+  }
+  return false;
+}
+
+/** An object is an AST node when it has the child-kind discriminant. */
+function isAstNode(value: unknown): value is Node {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "kind" in value &&
+    typeof (value as { kind: unknown }).kind === "string"
+  );
 }
 
 const BUILTIN_NAMES = new Set([

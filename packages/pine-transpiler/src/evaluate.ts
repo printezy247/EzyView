@@ -31,7 +31,7 @@ export function runPine(source: string, ctx: Context): PineResult {
        NA, isNa, nz, ta, math, color, strategy, shape, location, size,
        crossover, crossunder,
        add, sub, mul, div, mod, eq, ne, lt, le, gt, ge, and, or,
-       truthy, num, at, plotCall, shapeCall, bgcolorCall, inputCall, inputScalar,
+       truthy, num, at, atBar, plotCall, shapeCall, bgcolorCall, inputCall, inputScalar,
        strategyEntry, strategyClose, strategyExit, strategyCloseAll,
      } = helpers;
      // Shadow host globals so a script that slips past the transpiler cannot reach
@@ -500,7 +500,10 @@ function buildHelpers(): Record<string, unknown> {
   return {
     NA,
     isNa,
-    nz,
+    // `nz()` fills `na` with a fallback. On a series argument that must apply
+    // element-wise — a bare scalar `nz(series, f)` returned the array itself.
+    nz: (v: PineValue | PineValue[] | undefined, fallback = 0): PineValue | PineValue[] =>
+      Array.isArray(v) ? v.map((x) => (isNa(x) ? fallback : x)) : nz(v, fallback),
     ta: Object.freeze({ ...ta }),
     math: Object.freeze({ ...math }),
     color: Object.freeze({ ...color }),
@@ -525,6 +528,7 @@ function buildHelpers(): Record<string, unknown> {
     or,
     truthy,
     num,
+    atBar,
     at,
     plotCall,
     shapeCall,
