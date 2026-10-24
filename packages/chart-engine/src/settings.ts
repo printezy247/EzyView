@@ -1,7 +1,36 @@
-import { CrosshairMode, PriceScaleMode, TickMarkType, type TickMarkFormatter, type Time, type TimeFormatterFn, type UTCTimestamp } from "lightweight-charts";
+import {
+  CrosshairMode,
+  LineStyle,
+  PriceScaleMode,
+  TickMarkType,
+  type TickMarkFormatter,
+  type Time,
+  type TimeFormatterFn,
+  type UTCTimestamp,
+} from "lightweight-charts";
 
 /** Named crosshair interaction styles the UI exposes. */
 export type CrosshairModeName = "normal" | "magnet" | "hidden";
+
+/** Crosshair line style from Canvas settings; dashed is TradingView's default. */
+export type CrosshairStyleName = "dashed" | "dotted" | "solid";
+
+/** Map a named crosshair line style onto the Lightweight Charts enum. */
+export function crosshairLineStyleOf(style: CrosshairStyleName | undefined): LineStyle {
+  if (style === "dotted") return LineStyle.Dotted;
+  if (style === "solid") return LineStyle.Solid;
+  return LineStyle.Dashed;
+}
+
+/**
+ * Grid line colour: transparent when the axis is hidden, otherwise the user's
+ * colour, otherwise the theme's. Kept pure so Canvas settings can be pinned by
+ * a test without a canvas.
+ */
+export function gridLineColor(visible: boolean, custom: string | null | undefined, fallback: string): string {
+  if (!visible) return "transparent";
+  return custom && custom.trim().length > 0 ? custom : fallback;
+}
 
 /** Named right price-scale renderings the UI exposes. */
 export type PriceScaleModeName = "normal" | "log" | "percentage";

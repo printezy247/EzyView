@@ -212,6 +212,9 @@ export interface ChartState {
   /** Renko/P&F box and Kagi reversal size; absent or null sizes it from the ATR. */
   boxSize?: number | null;
   showGrid: boolean;
+  /** Per-axis grid visibility from Canvas settings; absent = follow `showGrid`. */
+  showVertGrid?: boolean;
+  showHorzGrid?: boolean;
   theme: ChartThemeName;
   indicators: ActiveIndicator[];
   drawings: Drawing[];

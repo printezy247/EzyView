@@ -60,6 +60,20 @@ describe("ChartSettingsDialog", () => {
     expect(useWorkspace.getState().activeChart().watermark).toBe(true);
   });
 
+  it("keeps grid axes independent when only one is disabled", async () => {
+    const user = userEvent.setup();
+    render(<ChartSettingsDialog open onClose={() => {}} />);
+
+    await user.click(screen.getByRole("tab", { name: "Canvas" }));
+    await user.click(screen.getByLabelText("Horz grid lines"));
+    await user.click(screen.getByRole("button", { name: "Ok" }));
+
+    const chart = useWorkspace.getState().activeChart();
+    expect(chart.showVertGrid).toBe(true);
+    expect(chart.showHorzGrid).toBe(false);
+    expect(chart.showGrid).toBe(true);
+  });
+
   it("closes without applying when Cancel is clicked", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
