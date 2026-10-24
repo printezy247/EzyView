@@ -1,3 +1,27 @@
+ezy-view (0.3.2) unstable; urgency=medium
+
+  * Market data accuracy: symbol-metadata precision everywhere (no more
+    hard-coded 2-decimal DOM), one shared trading day for loss/cooldown/journal,
+    honest time-and-sales labeling, safe quote access and copied positions.
+  * Persistence: journal and screenshots moved to IndexedDB with compression,
+    a shared per-symbol quote poller (paused while hidden), and workspace
+    export/import for layouts, drawings, alerts, watchlist and Pine scripts.
+  * Packaging and runtime: MCP runtime status card + shipped ezyview-mcp
+    wrapper, AppStream metainfo, extra icons, man pages, GitLab/Ubuntu package
+    checks in CI, and MT5 bridge shipped with a token-generating launcher.
+  * Security: Pine execution moved to a Web Worker with a hard time budget and
+    factory-reset/shell-settings capabilities gated per command.
+  * Performance: O(n·p) indicator loops replaced with single-pass streaming
+    helpers (100k-bar benchmark script), Pine series-aware nz, per-bar var
+    collapse, and a full-script compat suite.
+  * Journal: pre-trade plans with plan-vs-execution R:R, review stats, bulk
+    edit, import pipeline and account-aware filters.
+  * Trading: trailing-stop and OCO order types in the paper engine with
+    safety gates, plus order-flow/heatmap panels that degrade honestly on
+    quote-only feeds.
+
+ -- printezy247 <printezy247@users.noreply.github.com>  Fri, 24 Oct 2026 00:00:00 +0000
+
 ezy-view (0.3.1) unstable; urgency=medium
 
   * Trading safety: closing or reducing a position no longer requires free

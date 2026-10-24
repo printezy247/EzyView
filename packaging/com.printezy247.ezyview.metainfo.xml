@@ -42,6 +42,12 @@
   </keywords>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.3.2" date="2026-10-24">
+      <description>
+        <p>Market-data accuracy fixes, IndexedDB-backed journal, shared quote poller and workspace backup.</p>
+        <p>Sandboxed Pine execution, 100k-bar streaming indicators, trading engine upgrades and Linux packaging polish.</p>
+      </description>
+    </release>
     <release version="0.3.1" date="2026-10-23">
       <description>
         <p>Trading safety fixes for paper and MetaTrader 5 closes and stops.</p>
