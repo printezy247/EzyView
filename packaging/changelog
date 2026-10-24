@@ -20,7 +20,7 @@ ezy-view (0.3.2) unstable; urgency=medium
     safety gates, plus order-flow/heatmap panels that degrade honestly on
     quote-only feeds.
 
- -- printezy247 <printezy247@users.noreply.github.com>  Fri, 24 Oct 2026 00:00:00 +0000
+ -- printezy247 <printezy247@users.noreply.github.com>  Sat, 24 Oct 2026 00:00:00 +0000
 
 ezy-view (0.3.1) unstable; urgency=medium
 
