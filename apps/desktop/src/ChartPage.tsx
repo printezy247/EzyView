@@ -31,7 +31,7 @@ import type { ChartState } from "./store";
 import { themeColors } from "@ezyview/brand";
 import { useTrading, useTradingTicks } from "./trading";
 import { useApiKeys } from "./apiKeys";
-import { BarsTable } from "./BarsTable";
+import { BarsTable } from "./BarsTableView";
 import { ChartBottomBar } from "./ChartBottomBar";
 import { ChartMenuHost } from "./ChartMenuHost";
 import type { ChartMenuRequest } from "./ChartMenuHost";
