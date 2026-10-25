@@ -20,7 +20,48 @@ export type DrawingToolId =
   | "brush"
   | "measure"
   | "long_position"
-  | "short_position";
+  | "short_position"
+  | "pitchfork_standard"
+  | "pitchfork_schiff"
+  | "pitchfork_modified_schiff"
+  | "pitchfork_inside"
+  | "fib_fan"
+  | "fib_arcs"
+  | "fib_channel"
+  | "fib_timezones"
+  | "fib_wedge"
+  | "gann_fan"
+  | "gann_box"
+  | "gann_square"
+  | "gann_square_from_two"
+  | "gann_time"
+  | "xabcd"
+  | "cypher"
+  | "head_shoulders"
+  | "abcd"
+  | "three_drives"
+  | "elliott_impulse"
+  | "elliott_correction"
+  | "elliott_triangle"
+  | "cup_handle"
+  | "image"
+  | "sticker"
+  | "pin"
+  | "comment"
+  | "price_note"
+  | "arrow_marker"
+  | "highlighter"
+  | "date_price_range"
+  | "price_range"
+  | "projected_range"
+  | "bars_pattern"
+  | "forecast"
+  | "rotated_rectangle"
+  | "circle"
+  | "polyline"
+  | "arc"
+  | "curve"
+  | "double_curve";
 
 /** P1 ships these; the rest are additive once the renderer handles them. */
 export const P1_TOOLS: readonly DrawingToolId[] = [
@@ -113,6 +154,24 @@ export interface DrawingStyle {
   targetColor?: string;
 }
 
+/** A named harmonic or Elliott ratio rendered between two anchors. */
+export interface DrawingPattern {
+  kind: string;
+  /** Ratio at each leg, keyed by the leg start anchor index ("0"–"5"). */
+  ratios?: Record<string, number>;
+  /** Label shown at each anchor, in anchor order. */
+  labels?: string[];
+}
+
+/** A raster image placed on the chart. The bytes live in the asset store. */
+export interface DrawingImage {
+  assetId: string;
+  width: number;
+  height: number;
+  /** Keep the source aspect ratio while one corner is dragged. Default true. */
+  lockAspect?: boolean;
+}
+
 export interface Drawing {
   id: string;
   tool: DrawingToolId;
@@ -126,6 +185,16 @@ export interface Drawing {
   name?: string;
   /** Restrict the drawing to some chart intervals; absent = all of them. */
   visibility?: DrawingVisibility;
+  /** Members of one group select, move and hide together. */
+  groupId?: string;
+  /** Paint order; higher draws later. Absent = insertion order. */
+  zIndex?: number;
+  /** Pattern family metadata: ratios and anchor labels. */
+  pattern?: DrawingPattern;
+  /** Image metadata; bytes are resolved through the host's asset reader. */
+  image?: DrawingImage;
+  /** `chart` anchors scale with the chart; `screen` pins a fixed pixel size. */
+  scale?: "chart" | "screen";
 }
 
 export const DEFAULT_DRAWING_STYLE: DrawingStyle = {
@@ -161,6 +230,47 @@ export const TOOL_ANCHORS: Record<DrawingToolId, number> = {
   measure: 2,
   long_position: 3,
   short_position: 3,
+  pitchfork_standard: 3,
+  pitchfork_schiff: 3,
+  pitchfork_modified_schiff: 3,
+  pitchfork_inside: 3,
+  fib_fan: 2,
+  fib_arcs: 2,
+  fib_channel: 3,
+  fib_timezones: 2,
+  fib_wedge: 3,
+  gann_fan: 2,
+  gann_box: 2,
+  gann_square: 2,
+  gann_square_from_two: 2,
+  gann_time: 2,
+  xabcd: 5,
+  cypher: 5,
+  head_shoulders: 5,
+  abcd: 4,
+  three_drives: 6,
+  elliott_impulse: 6,
+  elliott_correction: 4,
+  elliott_triangle: 6,
+  cup_handle: 5,
+  image: 2,
+  sticker: 1,
+  pin: 1,
+  comment: 2,
+  price_note: 1,
+  arrow_marker: 2,
+  highlighter: 2,
+  date_price_range: 2,
+  price_range: 2,
+  projected_range: 2,
+  bars_pattern: 2,
+  forecast: 3,
+  rotated_rectangle: 2,
+  circle: 2,
+  polyline: 2,
+  arc: 3,
+  curve: 3,
+  double_curve: 4,
 };
 
 export function isComplete(tool: DrawingToolId, points: Point[]): boolean {

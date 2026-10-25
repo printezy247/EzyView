@@ -3,6 +3,8 @@ export * from "./tools.js";
 export * from "./visibility.js";
 export * from "./geometry.js";
 export * from "./fib.js";
+export * from "./advanced.js";
 export * from "./hitTest.js";
 export * from "./magnet.js";
+export * from "./spatial.js";
 export * from "./edit.js";

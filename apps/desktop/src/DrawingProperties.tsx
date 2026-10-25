@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowRightLeft, Bell, Eye, EyeOff, Lock, LockOpen, Settings, Trash2 } from "lucide-react";
 import { useWorkspace } from "./store";
 import { drawingLabel } from "./ObjectTree";
@@ -6,6 +6,7 @@ import { applyDrawingTemplate, listDrawingTemplates, saveDrawingTemplate } from 
 import type { DrawingTemplate } from "./drawingTemplates";
 import { syncPositionDrawingToOrderTicket } from "./orderDraft";
 import { useDrawingUi } from "./drawingUi";
+import { newAssetId, putImageAsset, readImageSize } from "./imageAssets";
 
 const COLORS = ["#d91400", "#0ea600", "#f2a93b", "#4a90e2", "#9c27b0", "#00bcd4", "#ffd700", "#ffffff"];
 const WIDTHS = [1, 2, 3, 4];
@@ -31,6 +32,8 @@ export function DrawingProperties() {
   // save — the store has nothing to notify about.
   const [templates, setTemplates] = useState<DrawingTemplate[]>(() => listDrawingTemplates());
   const [templateName, setTemplateName] = useState("");
+  const [imageError, setImageError] = useState<string | null>(null);
+  const imageRef = useRef<HTMLInputElement>(null);
 
   if (!drawing) return null;
   const d = drawing;
@@ -191,6 +194,46 @@ export function DrawingProperties() {
           </button>
         </div>
       </div>
+
+      {d.tool === "image" && (
+        <div className="mb-2">
+          <span className="mb-1 block text-dense text-ev-muted">Image</span>
+          <div className="flex gap-1">
+            <button type="button" onClick={() => imageRef.current?.click()} className={btn}>
+              {d.image ? "Replace image" : "Choose image"}
+            </button>
+            <input
+              ref={imageRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              aria-label="Choose drawing image"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (!file) return;
+                const assetId = newAssetId();
+                void putImageAsset(assetId, file)
+                  .then(async (stored) => {
+                    if (!stored) {
+                      setImageError("Image storage is unavailable in this environment.");
+                      return;
+                    }
+                    const size = await readImageSize(file);
+                    setImageError(null);
+                    update(d.id, { image: { assetId, width: size.width, height: size.height, lockAspect: true } });
+                  })
+                  .catch(() => setImageError("Could not read that image."));
+              }}
+            />
+          </div>
+          {imageError && (
+            <p role="alert" className="mt-1 text-dense text-ev-down-text">
+              {imageError}
+            </p>
+          )}
+        </div>
+      )}
 
       {(d.tool === "text" || d.text !== undefined) && (
         <label className="mb-2 block">

@@ -19,7 +19,7 @@ describe("drawingsIO", () => {
 
   it("pretty-prints a versioned envelope", () => {
     const json = serializeDrawings([d]);
-    expect(json).toContain('"version": 1');
+    expect(json).toContain('"version": 2');
     expect(json).toContain("\n"); // pretty-printed, not a single line
   });
 
@@ -73,7 +73,7 @@ describe("drawingsIO", () => {
     expect(parsed.drawings[0]?.visibility).toEqual({ minutes: false, hours: true });
   });
 
-  it("still imports a v1 drawing that has none of the new fields", () => {
+  it("migrates a v1 drawing and keeps its v2 fields optional", () => {
     const legacy = JSON.stringify({
       version: 1,
       drawings: [{ id: "old", tool: "trend_line", points: [{ time: 1, price: 2 }], style: { color: "#fff", width: 1, lineStyle: "solid" } }],
@@ -85,6 +85,44 @@ describe("drawingsIO", () => {
     expect(parsed.drawings[0]?.visibility).toBeUndefined();
     // Defaults fill in the fields the file predates.
     expect(parsed.drawings[0]?.style.showLabels).toBe(true);
+    expect(parsed.drawings[0]?.groupId).toBeUndefined();
+    expect(parsed.drawings[0]?.zIndex).toBeUndefined();
+  });
+
+  it("round-trips group, paint order, pattern and image metadata", () => {
+    const rich: Drawing = {
+      ...d,
+      id: "v2",
+      tool: "xabcd",
+      points: [
+        { time: 1, price: 100 },
+        { time: 2, price: 120 },
+        { time: 3, price: 110 },
+        { time: 4, price: 130 },
+        { time: 5, price: 105 },
+      ],
+      groupId: "g1",
+      zIndex: 7,
+      scale: "screen",
+      pattern: { kind: "harmonic", ratios: { "0": 0.618, "1": 1.27 }, labels: ["X", "A", "B", "C", "D"] },
+      image: { assetId: "img_1", width: 640, height: 360, lockAspect: true },
+    };
+    const parsed = parseDrawings(serializeDrawings([rich]));
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.drawings[0]?.groupId).toBe("g1");
+    expect(parsed.drawings[0]?.zIndex).toBe(7);
+    expect(parsed.drawings[0]?.scale).toBe("screen");
+    expect(parsed.drawings[0]?.pattern?.ratios?.["0"]).toBe(0.618);
+    expect(parsed.drawings[0]?.image?.assetId).toBe("img_1");
+  });
+
+  it("rejects malformed v2 metadata instead of trusting it", () => {
+    const base = { id: "a", tool: "trend_line", points: [{ time: 1, price: 1 }], style: {} };
+    expect(parseDrawings(JSON.stringify({ version: 2, drawings: [{ ...base, groupId: "" }] })).ok).toBe(false);
+    expect(parseDrawings(JSON.stringify({ version: 2, drawings: [{ ...base, zIndex: "front" }] })).ok).toBe(false);
+    expect(parseDrawings(JSON.stringify({ version: 2, drawings: [{ ...base, scale: "page" }] })).ok).toBe(false);
+    expect(parseDrawings(JSON.stringify({ version: 2, drawings: [{ ...base, image: { assetId: "" } }] })).ok).toBe(false);
   });
 
   it("rejects malformed visibility values instead of trusting them", () => {
@@ -100,17 +138,16 @@ describe("drawingsIO", () => {
     if (!res.ok) expect(res.error).toMatch(/1/); // names the bad index
   });
 
-  it("version gate: v2 file on v1 build says 'newer format'; v1 file loads", () => {
-    const v2 = JSON.stringify({ version: 2, drawings: [] });
-    const resV2 = parseDrawings(v2);
-    expect(resV2.ok).toBe(false);
-    if (!resV2.ok) {
-      expect(resV2.error).toContain("newer format");
+  it("version gate: a v3 file says 'newer format'; v1 and v2 files load", () => {
+    const v3 = JSON.stringify({ version: 3, drawings: [] });
+    const resV3 = parseDrawings(v3);
+    expect(resV3.ok).toBe(false);
+    if (!resV3.ok) {
+      expect(resV3.error).toContain("newer format");
     }
 
-    const v1 = JSON.stringify({ version: 1, drawings: [d] });
-    const resV1 = parseDrawings(v1);
-    expect(resV1.ok).toBe(true);
+    expect(parseDrawings(JSON.stringify({ version: 1, drawings: [d] })).ok).toBe(true);
+    expect(parseDrawings(JSON.stringify({ version: 2, drawings: [d] })).ok).toBe(true);
   });
 
   it("storage budgets: import over drawing cap rejected with message", () => {

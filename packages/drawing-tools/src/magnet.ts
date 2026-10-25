@@ -1,4 +1,5 @@
-import type { MagnetMode, Point } from "./types.js";
+import type { Drawing, MagnetMode, Point } from "./types.js";
+import { resolvedFibLevels } from "./fib.js";
 
 /** The slice of a candle the magnet needs. */
 export interface MagnetBar {
@@ -53,4 +54,81 @@ export function snapToOhlc(point: Point, bars: readonly MagnetBar[], mode: Magne
     if (Math.abs(best - point.price) > range * WEAK_MAGNET_REACH) return point;
   }
   return { time: bar.time, price: best };
+}
+
+/** A point on another drawing the magnet may grab. */
+export interface ObjectSnap {
+  time: number;
+  price: number;
+  /** Lower sorts first: anchor, edge/midpoint, fib, then free space. */
+  priority: number;
+}
+
+/**
+ * Candidates contributed by visible, unlocked drawings on the same chart: an
+ * anchor outranks an edge or midpoint, which outranks a Fibonacci level. The
+ * renderer draws these objects, so the magnet must not invent geometry the
+ * user cannot see.
+ */
+export function objectSnapCandidates(drawings: readonly Drawing[]): ObjectSnap[] {
+  const out: ObjectSnap[] = [];
+  for (const drawing of drawings) {
+    if (drawing.hidden || drawing.locked) continue;
+    for (const point of drawing.points) out.push({ ...point, priority: 0 });
+    for (let i = 1; i < drawing.points.length; i++) {
+      const a = drawing.points[i - 1]!;
+      const b = drawing.points[i]!;
+      out.push({ time: (a.time + b.time) / 2, price: (a.price + b.price) / 2, priority: 1 });
+    }
+    if (drawing.tool === "fib_retracement" || drawing.tool === "fib_extension") {
+      for (const level of resolvedFibLevels(drawing.points, drawing.style)) {
+        out.push({ time: drawing.points[1]?.time ?? drawing.points[0]!.time, price: level.price, priority: 2 });
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Snap to another drawing when the pointer is close in price space, otherwise
+ * leave the point for the candle magnet. `strong` always takes the nearest
+ * candidate; `weak` only takes one inside a small fraction of the local price.
+ */
+export function snapToObjects(
+  point: Point,
+  drawings: readonly Drawing[],
+  mode: MagnetMode,
+): Point {
+  if (mode === "off" || drawings.length === 0) return point;
+  const candidates = objectSnapCandidates(drawings);
+  if (candidates.length === 0) return point;
+  let best: ObjectSnap | null = null;
+  let bestDistance = Infinity;
+  for (const candidate of candidates) {
+    const distance = Math.abs(candidate.price - point.price);
+    if (
+      distance < bestDistance ||
+      (distance === bestDistance && best !== null && candidate.priority < best.priority)
+    ) {
+      best = candidate;
+      bestDistance = distance;
+    }
+  }
+  if (!best) return point;
+  const reach = Math.max(Math.abs(point.price) * 0.0025, 1e-8);
+  if (mode === "weak" && bestDistance > reach) return point;
+  return { time: best.time, price: best.price };
+}
+
+/** Full magnet: object anchors/edges/fibs first, then the nearest candle OHLC. */
+export function snapPoint(
+  point: Point,
+  bars: readonly MagnetBar[],
+  drawings: readonly Drawing[],
+  mode: MagnetMode,
+): Point {
+  if (mode === "off") return point;
+  const onObject = snapToObjects(point, drawings, mode);
+  if (onObject !== point) return onObject;
+  return snapToOhlc(point, bars, mode);
 }

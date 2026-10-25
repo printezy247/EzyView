@@ -465,6 +465,80 @@ describe("drawing clipboard", () => {
     useWorkspace.getState().pasteDrawing({ time: 1, price: 1 });
     expect(useWorkspace.getState().activeChart().drawings).toHaveLength(1);
   });
+
+  it("copies a multi-selection and pastes every member with relative offsets", () => {
+    seed(line("m1"), line("m2"));
+    useWorkspace.getState().setDrawingSelection(["m1", "m2"]);
+    useWorkspace.getState().copyDrawing();
+    useWorkspace.getState().pasteDrawing({ time: 500, price: 60 });
+    const drawings = useWorkspace.getState().activeChart().drawings;
+    expect(drawings).toHaveLength(4);
+    expect(useWorkspace.getState().selectedDrawingIds).toHaveLength(2);
+    // Both source anchors are at price 50, so the relative delta is preserved.
+    expect(drawings[2]!.points[0]!.price).toBe(60);
+    expect(drawings[3]!.points[0]!.price).toBe(60);
+  });
+});
+
+describe("multi-select, groups and bulk edits", () => {
+  it("shift-style toggle adds and removes ids while keeping focus on the last", () => {
+    seed(line("a"), line("b"), line("c"));
+    const s = useWorkspace.getState();
+    s.setDrawingSelection(["a"]);
+    s.toggleDrawingSelection("b");
+    expect(useWorkspace.getState().selectedDrawingIds).toEqual(["a", "b"]);
+    expect(useWorkspace.getState().selectedDrawingId).toBe("b");
+    s.toggleDrawingSelection("a");
+    expect(useWorkspace.getState().selectedDrawingIds).toEqual(["b"]);
+  });
+
+  it("select all skips locked and hidden objects", () => {
+    seed(line("a"), { ...line("b"), locked: true }, { ...line("c"), hidden: true });
+    useWorkspace.getState().selectAllDrawings();
+    expect(useWorkspace.getState().selectedDrawingIds).toEqual(["a"]);
+  });
+
+  it("moves a multi-selection in one undo step", () => {
+    seed(line("a"), line("b"));
+    const s = useWorkspace.getState();
+    s.setDrawingSelection(["a", "b"]);
+    s.nudgeSelectedDrawings(10, 5);
+    const drawings = useWorkspace.getState().activeChart().drawings;
+    expect(drawings.map((d) => d.points[0])).toEqual([
+      { time: 110, price: 55 },
+      { time: 110, price: 55 },
+    ]);
+    useWorkspace.getState().undoDrawing();
+    expect(useWorkspace.getState().activeChart().drawings.map((d) => d.points[0])).toEqual([
+      { time: 100, price: 50 },
+      { time: 100, price: 50 },
+    ]);
+  });
+
+  it("groups and ungroups the selection", () => {
+    seed(line("a"), line("b"), line("c"));
+    const s = useWorkspace.getState();
+    s.setDrawingSelection(["a", "b"]);
+    s.groupSelectedDrawings();
+    const grouped = useWorkspace.getState().activeChart().drawings;
+    const groupId = grouped[0]!.groupId;
+    expect(groupId).toBeTruthy();
+    expect(grouped[1]!.groupId).toBe(groupId);
+    expect(grouped[2]!.groupId).toBeUndefined();
+    s.ungroupSelectedDrawings();
+    expect(useWorkspace.getState().activeChart().drawings.every((d) => d.groupId === undefined)).toBe(true);
+  });
+
+  it("deletes the whole selection and its alerts in one step", () => {
+    seed(line("a"), line("b"), line("c"));
+    const s = useWorkspace.getState();
+    s.setDrawingSelection(["a", "c"]);
+    s.deleteSelectedDrawings();
+    expect(useWorkspace.getState().activeChart().drawings.map((d) => d.id)).toEqual(["b"]);
+    expect(useWorkspace.getState().selectedDrawingIds).toEqual([]);
+    useWorkspace.getState().undoDrawing();
+    expect(useWorkspace.getState().activeChart().drawings).toHaveLength(3);
+  });
 });
 
 describe("chart templates", () => {

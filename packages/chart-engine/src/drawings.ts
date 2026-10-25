@@ -9,6 +9,7 @@ import type {
 } from "lightweight-charts";
 import { resolvedFibExtensionLevels, resolvedFibLevels } from "@ezyview/drawing-tools";
 import type { Drawing, DrawingStyle, ScreenPoint } from "@ezyview/drawing-tools";
+import { paintAdvanced } from "./advancedPaint.js";
 
 /** The slice of a candle the drawing layer needs for bar counts. */
 export interface DrawingBar {
@@ -31,7 +32,8 @@ export interface DrawingBar {
 export class DrawingsPrimitive implements IPanePrimitive<Time> {
   private drawings: Drawing[] = [];
   private preview: Drawing | null = null;
-  private selectedId: string | null = null;
+  private selectedIds = new Set<string>();
+  private images = new Map<string, CanvasImageSource>();
   private hoveredId: string | null = null;
   private hoveredHandle: number | null = null;
   private chart: IChartApiBase<Time> | null = null;
@@ -43,13 +45,26 @@ export class DrawingsPrimitive implements IPanePrimitive<Time> {
   ) {}
 
   setDrawings(drawings: Drawing[]): void {
-    this.drawings = drawings.filter((d) => !d.hidden && d.points.length > 0);
+    // `zIndex` wins over insertion order, but equal values keep their order:
+    // Array.prototype.sort is stable, so old layouts paint exactly as before.
+    this.drawings = drawings
+      .filter((d) => !d.hidden && d.points.length > 0)
+      .map((drawing, order) => ({ drawing, order }))
+      .sort((a, b) => (a.drawing.zIndex ?? 0) - (b.drawing.zIndex ?? 0) || a.order - b.order)
+      .map((entry) => entry.drawing);
     this.requestUpdate();
   }
 
-  /** Mark one drawing as selected so its anchors render as handles. */
-  setSelection(id: string | null): void {
-    this.selectedId = id;
+  /** Decoded images used by image drawings; keys are asset ids. */
+  setImages(images: ReadonlyMap<string, CanvasImageSource>): void {
+    this.images = new Map(images);
+    this.requestUpdate();
+  }
+
+  /** Mark drawings as selected so their anchors render as handles. */
+  setSelection(id: string | readonly string[] | null): void {
+    const ids = id === null ? [] : typeof id === "string" ? [id] : id;
+    this.selectedIds = new Set(ids);
     this.requestUpdate();
   }
 
@@ -106,20 +121,27 @@ export class DrawingsPrimitive implements IPanePrimitive<Time> {
       for (const drawing of this.drawings) {
         const pts = this.project(drawing);
         if (pts.every((p) => p === null)) continue;
-        const active = drawing.id === this.selectedId || drawing.id === this.hoveredId;
+        const selected = this.selectedIds.has(drawing.id);
+        const active = selected || drawing.id === this.hoveredId;
         ctx.save();
         if (active) {
           ctx.shadowColor = withAlpha(drawing.style.color, 0.55);
-          ctx.shadowBlur = drawing.id === this.selectedId ? 7 : 5;
+          ctx.shadowBlur = selected ? 7 : 5;
         }
-        paint(ctx, drawing, pts, width, height, bars, { isPreview: false });
+        // Advanced packs share one geometry renderer; the original switch
+        // still owns every tool that shipped before them.
+        if (!paintAdvanced(ctx, drawing, pts, width, height, { isPreview: false, images: this.images })) {
+          paint(ctx, drawing, pts, width, height, bars, { isPreview: false });
+        }
         ctx.restore();
       }
       if (this.preview) {
         const pts = this.project(this.preview);
         if (pts.length > 0) {
           ctx.save();
-          paint(ctx, this.preview, pts, width, height, bars, { isPreview: true });
+          if (!paintAdvanced(ctx, this.preview, pts, width, height, { isPreview: true, images: this.images })) {
+            paint(ctx, this.preview, pts, width, height, bars, { isPreview: true });
+          }
           ctx.restore();
         }
       }
@@ -129,7 +151,7 @@ export class DrawingsPrimitive implements IPanePrimitive<Time> {
 
   /** Circular TradingView-style handles plus a midpoint marker. */
   private renderHandles(ctx: CanvasRenderingContext2D): void {
-    if (this.hoveredId && this.hoveredId !== this.selectedId) {
+    if (this.hoveredId && !this.selectedIds.has(this.hoveredId)) {
       const hovered = this.drawings.find((d) => d.id === this.hoveredId);
       if (hovered) {
         ctx.save();
@@ -141,31 +163,33 @@ export class DrawingsPrimitive implements IPanePrimitive<Time> {
         ctx.restore();
       }
     }
-    if (!this.selectedId) return;
-    const drawing = this.drawings.find((d) => d.id === this.selectedId);
-    if (!drawing) return;
-    const pts = this.project(drawing);
-    const visible = pts.filter((p): p is ScreenPoint => p !== null);
+    if (this.selectedIds.size === 0) return;
     ctx.save();
     ctx.setLineDash([]);
-    const color = drawing.style.color;
-    // Midpoint drag marker on two-point lines and shapes.
-    if (visible.length === 2 && MIDPOINT_TOOLS.has(drawing.tool)) {
-      const mid = { x: (visible[0]!.x + visible[1]!.x) / 2, y: (visible[0]!.y + visible[1]!.y) / 2 };
-      circle(ctx, mid, 2.5, color, color, 1);
-    }
-    for (const p of visible) {
-      // Subtle halo, white puck, coloured ring — readable on any candle colour.
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 9, 0, Math.PI * 2);
-      ctx.fillStyle = withAlpha(color, 0.18);
-      ctx.fill();
-      circle(ctx, p, 5, "#ffffff", color, 2);
-    }
-    // A handle under the pointer gets a filled centre so it is unmistakable.
-    const hoverHandle = this.hoveredId === drawing.id ? this.hoveredHandle : null;
-    if (hoverHandle !== null && hoverHandle >= 0 && pts[hoverHandle]) {
-      circle(ctx, pts[hoverHandle]!, 2.2, color, color, 1);
+    for (const id of this.selectedIds) {
+      const drawing = this.drawings.find((d) => d.id === id);
+      if (!drawing) continue;
+      const pts = this.project(drawing);
+      const visible = pts.filter((p): p is ScreenPoint => p !== null);
+      const color = drawing.style.color;
+      // Midpoint drag marker on two-point lines and shapes.
+      if (visible.length === 2 && MIDPOINT_TOOLS.has(drawing.tool)) {
+        const mid = { x: (visible[0]!.x + visible[1]!.x) / 2, y: (visible[0]!.y + visible[1]!.y) / 2 };
+        circle(ctx, mid, 2.5, color, color, 1);
+      }
+      for (const p of visible) {
+        // Subtle halo, white puck, coloured ring — readable on any candle colour.
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 9, 0, Math.PI * 2);
+        ctx.fillStyle = withAlpha(color, 0.18);
+        ctx.fill();
+        circle(ctx, p, 5, "#ffffff", color, 2);
+      }
+      // A handle under the pointer gets a filled centre so it is unmistakable.
+      const hoverHandle = this.hoveredId === drawing.id ? this.hoveredHandle : null;
+      if (hoverHandle !== null && hoverHandle >= 0 && pts[hoverHandle]) {
+        circle(ctx, pts[hoverHandle]!, 2.2, color, color, 1);
+      }
     }
     ctx.restore();
   }

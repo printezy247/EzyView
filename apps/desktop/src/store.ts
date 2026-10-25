@@ -246,8 +246,8 @@ interface WorkspaceStore {
   eventOptions: EventOptions;
   /** Saved chart looks + indicators, applicable to any chart. */
   chartTemplates: ChartTemplate[];
-  /** Last copied drawing (in memory only). */
-  drawingClipboard: Drawing | null;
+  /** Last copied drawings (in memory only); relative offsets are preserved. */
+  drawingClipboard: Drawing[] | null;
   /** Replay play speed (× 500 ms/bar). */
   replaySpeed: ReplaySpeed;
 
@@ -311,7 +311,29 @@ interface WorkspaceStore {
   importDrawings(list: readonly Drawing[], chartIndex?: number): void;
   /** View state: drawing selected for editing (not persisted, not undo-tracked). */
   selectedDrawingId: string | null;
+  /** Full multi-selection. `selectedDrawingId` is the last/focused member. */
+  selectedDrawingIds: string[];
   selectDrawing(id: string | null): void;
+  /** Replace the selection (used by marquee, object tree and group actions). */
+  setDrawingSelection(ids: readonly string[]): void;
+  /** Shift+click: add/remove one drawing without clearing the rest. */
+  toggleDrawingSelection(id: string): void;
+  /** Select every visible, unlocked drawing on the focused chart. */
+  selectAllDrawings(): void;
+  /** Give the selected drawings one group id so they move/hide together. */
+  groupSelectedDrawings(): void;
+  /** Drop the group id from every selected drawing. */
+  ungroupSelectedDrawings(): void;
+  /** Patch every selected drawing in one undo step. */
+  updateSelectedDrawings(patch: Partial<Drawing>): void;
+  /** Patch an explicit id set (group row actions) in one undo step. */
+  updateDrawings(ids: readonly string[], patch: Partial<Drawing>, chartIndex?: number): void;
+  /** Move the selection by chart-space deltas (keyboard nudge). */
+  nudgeSelectedDrawings(dTime: number, dPrice: number): void;
+  /** Delete explicit ids (group row actions) in one undo step. */
+  deleteDrawings(ids: readonly string[]): void;
+  deleteSelectedDrawings(): void;
+  duplicateSelectedDrawings(): void;
   updateIndicator(uid: string, patch: Partial<Pick<ActiveIndicator, "hidden" | "name">>): void;
   setActiveTool(tool: DrawingToolId | null): void;
   setMagnet(mode: MagnetMode): void;
@@ -567,6 +589,7 @@ export const useWorkspace = create<WorkspaceStore>()(
       drawingUndo: [],
       drawingRedo: [],
       selectedDrawingId: null,
+      selectedDrawingIds: [],
 
       activeLayout: () => {
         const { layouts, activeLayoutId } = get();
@@ -585,6 +608,7 @@ export const useWorkspace = create<WorkspaceStore>()(
             activeTool: null,
             eraserMode: false,
             selectedDrawingId: null,
+            selectedDrawingIds: [],
             drawingUndo: s.drawingUndoStacks[key] ?? [],
             drawingRedo: s.drawingRedoStacks[key] ?? [],
           };
@@ -922,9 +946,10 @@ export const useWorkspace = create<WorkspaceStore>()(
           const idx = chartIndex ?? layout.activeChart;
           const prev = layout.charts[idx]?.drawings ?? [];
           const drawings = prev.filter((d) => d.id !== id);
-          const selection = s.selectedDrawingId === id ? null : s.selectedDrawingId;
+          const remaining = s.selectedDrawingIds.filter((x) => x !== id);
+          const selection = remaining.at(-1) ?? null;
           if (drawings.length === prev.length) {
-            return selection === s.selectedDrawingId ? s : { selectedDrawingId: selection };
+            return selection === s.selectedDrawingId ? s : { selectedDrawingId: selection, selectedDrawingIds: remaining };
           }
           const next = editActive(s, (l) => updateChart(l, idx, (c) => ({ ...c, drawings })));
           const alerts = s.alerts.filter((a) => a.drawingId !== id);
@@ -937,6 +962,7 @@ export const useWorkspace = create<WorkspaceStore>()(
             alerts,
             alertHistory,
             selectedDrawingId: selection,
+            selectedDrawingIds: remaining,
             ...history,
           };
         }),
@@ -954,7 +980,170 @@ export const useWorkspace = create<WorkspaceStore>()(
           return { ...next, ...history };
         }),
 
-      selectDrawing: (id) => set({ selectedDrawingId: id }),
+      selectDrawing: (id) => set({ selectedDrawingId: id, selectedDrawingIds: id ? [id] : [] }),
+
+      setDrawingSelection: (ids) =>
+        set(() => {
+          const unique = [...new Set(ids)];
+          return { selectedDrawingIds: unique, selectedDrawingId: unique.at(-1) ?? null };
+        }),
+
+      toggleDrawingSelection: (id) =>
+        set((s) => {
+          const has = s.selectedDrawingIds.includes(id);
+          const next = has ? s.selectedDrawingIds.filter((x) => x !== id) : [...s.selectedDrawingIds, id];
+          return { selectedDrawingIds: next, selectedDrawingId: next.at(-1) ?? null };
+        }),
+
+      selectAllDrawings: () =>
+        set((s) => {
+          const drawings = activeChartOf(s.activeLayout()).drawings;
+          const ids = drawings.filter((d) => !d.hidden && !d.locked).map((d) => d.id);
+          return { selectedDrawingIds: ids, selectedDrawingId: ids.at(-1) ?? null };
+        }),
+
+      groupSelectedDrawings: () =>
+        set((s) => {
+          const selected = new Set(s.selectedDrawingIds);
+          if (selected.size < 2) return s;
+          const layout = s.activeLayout();
+          const idx = layout.activeChart;
+          const prev = layout.charts[idx]?.drawings ?? [];
+          if (!prev.some((d) => selected.has(d.id))) return s;
+          const groupId = uid();
+          const drawings = prev.map((d) => (selected.has(d.id) ? { ...d, groupId } : d));
+          const next = editActive(s, (l) => updateChart(l, idx, (c) => ({ ...c, drawings })));
+          const history = pushChartHistory(s, layout.id, idx, prev);
+          return { ...next, ...history };
+        }),
+
+      ungroupSelectedDrawings: () =>
+        set((s) => {
+          const selected = new Set(s.selectedDrawingIds);
+          if (selected.size === 0) return s;
+          const layout = s.activeLayout();
+          const idx = layout.activeChart;
+          const prev = layout.charts[idx]?.drawings ?? [];
+          if (!prev.some((d) => selected.has(d.id) && d.groupId !== undefined)) return s;
+          const drawings = prev.map((d) => {
+            if (!selected.has(d.id) || d.groupId === undefined) return d;
+            const { groupId: _groupId, ...rest } = d;
+            return rest;
+          });
+          const next = editActive(s, (l) => updateChart(l, idx, (c) => ({ ...c, drawings })));
+          const history = pushChartHistory(s, layout.id, idx, prev);
+          return { ...next, ...history };
+        }),
+
+      updateSelectedDrawings: (patch) =>
+        get().updateDrawings(get().selectedDrawingIds, patch),
+
+      updateDrawings: (ids, patch, chartIndex) =>
+        set((s) => {
+          const target = new Set(ids);
+          if (target.size === 0) return s;
+          const layout = s.activeLayout();
+          const idx = chartIndex ?? layout.activeChart;
+          const prev = layout.charts[idx]?.drawings ?? [];
+          if (!prev.some((d) => target.has(d.id))) return s;
+          const drawings = prev.map((d) => (target.has(d.id) ? { ...d, ...patch } : d));
+          const next = editActive(s, (l) => updateChart(l, idx, (c) => ({ ...c, drawings })));
+          const history = pushChartHistory(s, layout.id, idx, prev);
+          return { ...next, ...history };
+        }),
+
+      nudgeSelectedDrawings: (dTime, dPrice) =>
+        set((s) => {
+          const selected = new Set(s.selectedDrawingIds);
+          if (selected.size === 0 || (dTime === 0 && dPrice === 0)) return s;
+          const layout = s.activeLayout();
+          const idx = layout.activeChart;
+          const prev = layout.charts[idx]?.drawings ?? [];
+          if (!prev.some((d) => selected.has(d.id) && !d.locked)) return s;
+          const drawings = prev.map((d) =>
+            selected.has(d.id) && !d.locked
+              ? { ...d, points: d.points.map((p) => ({ time: p.time + dTime, price: p.price + dPrice })) }
+              : d,
+          );
+          const next = editActive(s, (l) => updateChart(l, idx, (c) => ({ ...c, drawings })));
+          const history = pushChartHistory(s, layout.id, idx, prev);
+          return { ...next, ...history };
+        }),
+
+      deleteDrawings: (ids) =>
+        set((s) => {
+          const target = new Set(ids);
+          if (target.size === 0) return s;
+          const layout = s.activeLayout();
+          const idx = layout.activeChart;
+          const prev = layout.charts[idx]?.drawings ?? [];
+          const drawings = prev.filter((d) => !target.has(d.id));
+          if (drawings.length === prev.length) return s;
+          const next = editActive(s, (l) => updateChart(l, idx, (c) => ({ ...c, drawings })));
+          const alerts = s.alerts.filter((a) => !a.drawingId || !target.has(a.drawingId));
+          const alertHistory = Object.fromEntries(
+            Object.entries(s.alertHistory).filter(([aid]) => alerts.some((a) => a.id === aid)),
+          );
+          const history = pushChartHistory(s, layout.id, idx, prev);
+          const selectedDrawingIds = s.selectedDrawingIds.filter((id) => !target.has(id));
+          return {
+            ...next,
+            alerts,
+            alertHistory,
+            selectedDrawingIds,
+            selectedDrawingId: selectedDrawingIds.at(-1) ?? null,
+            ...history,
+          };
+        }),
+
+      deleteSelectedDrawings: () =>
+        set((s) => {
+          const selected = new Set(s.selectedDrawingIds);
+          if (selected.size === 0) return s;
+          const layout = s.activeLayout();
+          const idx = layout.activeChart;
+          const prev = layout.charts[idx]?.drawings ?? [];
+          const drawings = prev.filter((d) => !selected.has(d.id));
+          if (drawings.length === prev.length) return s;
+          const next = editActive(s, (l) => updateChart(l, idx, (c) => ({ ...c, drawings })));
+          const alerts = s.alerts.filter((a) => !a.drawingId || !selected.has(a.drawingId));
+          const alertHistory = Object.fromEntries(
+            Object.entries(s.alertHistory).filter(([aid]) => alerts.some((a) => a.id === aid)),
+          );
+          const history = pushChartHistory(s, layout.id, idx, prev);
+          return {
+            ...next,
+            alerts,
+            alertHistory,
+            selectedDrawingIds: [],
+            selectedDrawingId: null,
+            ...history,
+          };
+        }),
+
+      duplicateSelectedDrawings: () =>
+        set((s) => {
+          const selected = new Set(s.selectedDrawingIds);
+          if (selected.size === 0) return s;
+          const layout = s.activeLayout();
+          const idx = layout.activeChart;
+          const prev = layout.charts[idx]?.drawings ?? [];
+          const source = prev.filter((d) => selected.has(d.id));
+          if (source.length === 0) return s;
+          const offset = Math.max(Math.abs(source[0]!.points[0]?.price ?? 1) * 0.002, 0.0001);
+          const clones = source.map((d) => {
+            const clone = structuredClone(d);
+            clone.id = uid();
+            clone.locked = false;
+            clone.points = d.points.map((p) => ({ time: p.time, price: p.price + offset }));
+            return clone;
+          });
+          const drawings = [...prev, ...clones];
+          const next = editActive(s, (l) => updateChart(l, idx, (c) => ({ ...c, drawings })));
+          const history = pushChartHistory(s, layout.id, idx, prev);
+          const ids = clones.map((d) => d.id);
+          return { ...next, selectedDrawingIds: ids, selectedDrawingId: ids.at(-1) ?? null, ...history };
+        }),
 
       setActiveTool: (tool) => set({ activeTool: tool, ...(tool ? { eraserMode: false } : {}) }),
       setStayInDrawingMode: (on) => set({ stayInDrawingMode: on }),
@@ -1171,17 +1360,33 @@ export const useWorkspace = create<WorkspaceStore>()(
 
       copyDrawing: (id) => {
         const s = get();
-        const target = id ?? s.selectedDrawingId;
-        const drawing = activeChartOf(s.activeLayout()).drawings.find((d) => d.id === target);
-        if (drawing) set({ drawingClipboard: structuredClone(drawing) });
+        const drawings = activeChartOf(s.activeLayout()).drawings;
+        // Copying one id still copies the whole selection when that id is part
+        // of it; Ctrl+C on a multi-selection must not silently shrink to one.
+        const ids = id
+          ? s.selectedDrawingIds.includes(id)
+            ? s.selectedDrawingIds
+            : [id]
+          : s.selectedDrawingIds;
+        const copied = drawings.filter((d) => ids.includes(d.id)).map((d) => structuredClone(d));
+        if (copied.length > 0) set({ drawingClipboard: copied });
       },
 
       pasteDrawing: (at) => {
         const s = get();
-        if (!s.drawingClipboard) return;
-        const pasted = pasteAt(s.drawingClipboard, at, uid());
-        s.setDrawings([...activeChartOf(s.activeLayout()).drawings, pasted]);
-        set({ selectedDrawingId: pasted.id });
+        const clipboard = s.drawingClipboard;
+        if (!clipboard || clipboard.length === 0) return;
+        const anchor = clipboard[0]!.points[0];
+        const pasted = clipboard.map((drawing) => {
+          const first = drawing.points[0];
+          const point = first && anchor
+            ? { time: at.time + (first.time - anchor.time), price: at.price + (first.price - anchor.price) }
+            : at;
+          return pasteAt(drawing, point, uid());
+        });
+        s.setDrawings([...activeChartOf(s.activeLayout()).drawings, ...pasted]);
+        const ids = pasted.map((d) => d.id);
+        set({ selectedDrawingIds: ids, selectedDrawingId: ids.at(-1) ?? null });
       },
 
       duplicateDrawing: (id) =>
@@ -1207,6 +1412,7 @@ export const useWorkspace = create<WorkspaceStore>()(
           return {
             ...next,
             selectedDrawingId: clone.id,
+            selectedDrawingIds: [clone.id],
             ...history,
           };
         }),

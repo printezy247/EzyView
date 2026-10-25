@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
-import type { ReactNode } from "react";
-import { Eye, EyeOff, Lock, LockOpen, Pencil, Trash2, Upload, Download, X } from "lucide-react";
+import type { MouseEvent, ReactNode } from "react";
+import { ChevronDown, ChevronRight, Eye, EyeOff, Lock, LockOpen, Pencil, Search, Trash2, Upload, Download, X } from "lucide-react";
 import type { Drawing } from "@ezyview/drawing-tools";
 import { useWorkspace } from "./store";
 import type { ActiveIndicator } from "./store";
@@ -32,7 +32,13 @@ export function ObjectTree({ onClose }: Props) {
   const updateDrawing = useWorkspace((s) => s.updateDrawing);
   const removeDrawing = useWorkspace((s) => s.deleteDrawing);
   const selectDrawing = useWorkspace((s) => s.selectDrawing);
-  const selectedId = useWorkspace((s) => s.selectedDrawingId);
+  const toggleDrawingSelection = useWorkspace((s) => s.toggleDrawingSelection);
+  const setDrawingSelection = useWorkspace((s) => s.setDrawingSelection);
+  const updateDrawings = useWorkspace((s) => s.updateDrawings);
+  const deleteDrawings = useWorkspace((s) => s.deleteDrawings);
+  const groupSelectedDrawings = useWorkspace((s) => s.groupSelectedDrawings);
+  const ungroupSelectedDrawings = useWorkspace((s) => s.ungroupSelectedDrawings);
+  const selectedIds = useWorkspace((s) => s.selectedDrawingIds);
   const importDrawings = useWorkspace((s) => s.importDrawings);
   const updateIndicator = useWorkspace((s) => s.updateIndicator);
   const updateIndicatorParams = useWorkspace((s) => s.updateIndicatorParams);
@@ -40,8 +46,25 @@ export function ObjectTree({ onClose }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [ioError, setIoError] = useState<string | null>(null);
   const [expandedInd, setExpandedInd] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
   const empty = chart.indicators.length === 0 && chart.drawings.length === 0;
+  const needle = query.trim().toLowerCase();
+  const filteredDrawings = needle
+    ? chart.drawings.filter((d) => `${drawingLabel(d)} ${d.tool}`.toLowerCase().includes(needle))
+    : chart.drawings;
+  const grouped = new Map<string, Drawing[]>();
+  const loose: Drawing[] = [];
+  for (const drawing of filteredDrawings) {
+    if (!drawing.groupId) {
+      loose.push(drawing);
+      continue;
+    }
+    const list = grouped.get(drawing.groupId) ?? [];
+    list.push(drawing);
+    grouped.set(drawing.groupId, list);
+  }
 
   const exportDrawings = () => {
     const blob = new Blob([serializeDrawings(chart.drawings)], { type: "application/json" });
@@ -149,15 +172,140 @@ export function ObjectTree({ onClose }: Props) {
 
         {chart.drawings.length > 0 && (
           <Section title="Drawings">
-            {chart.drawings.map((d) => (
+            <div className="flex items-center gap-1 px-3 pb-1.5">
+              <Search size={12} aria-hidden className="shrink-0 text-ev-faint" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Filter objects"
+                aria-label="Filter objects"
+                className="min-w-0 flex-1 rounded bg-ev-panel px-1.5 py-1 text-dense text-ev-strong outline-none ring-1 ring-ev-line focus:ring-ev-accent"
+              />
+            </div>
+            {selectedIds.length > 1 && (
+              <div className="mx-2 mb-1.5 flex flex-wrap items-center gap-1 rounded border border-ev-accent/40 bg-ev-accent/10 px-1.5 py-1 text-dense">
+                <span className="mr-auto text-ev-accent-text">{selectedIds.length} selected</span>
+                <button type="button" onClick={() => groupSelectedDrawings()} className="rounded px-1 py-0.5 hover:bg-ev-raised">
+                  Group
+                </button>
+                <button type="button" onClick={() => ungroupSelectedDrawings()} className="rounded px-1 py-0.5 hover:bg-ev-raised">
+                  Ungroup
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateDrawings(selectedIds, { hidden: true })}
+                  className="rounded px-1 py-0.5 hover:bg-ev-raised"
+                >
+                  Hide
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateDrawings(selectedIds, { locked: true })}
+                  className="rounded px-1 py-0.5 hover:bg-ev-raised"
+                >
+                  Lock
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateDrawings(selectedIds, { zIndex: Math.max(0, ...chart.drawings.map((d) => d.zIndex ?? 0)) + 1 })}
+                  className="rounded px-1 py-0.5 hover:bg-ev-raised"
+                >
+                  Front
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateDrawings(selectedIds, { zIndex: Math.min(0, ...chart.drawings.map((d) => d.zIndex ?? 0)) - 1 })}
+                  className="rounded px-1 py-0.5 hover:bg-ev-raised"
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={() => deleteDrawings(selectedIds)}
+                  className="rounded px-1 py-0.5 text-ev-down-text hover:bg-ev-raised"
+                >
+                  Delete
+                </button>
+              </div>
+            )}
+            {[...grouped.entries()].map(([groupId, list]) => {
+              const open = !collapsedGroups[groupId];
+              const anyHidden = list.every((d) => d.hidden);
+              const anyLocked = list.every((d) => d.locked);
+              const ids = list.map((d) => d.id);
+              return (
+                <div key={groupId}>
+                  <div className="flex h-7 items-center gap-1 bg-ev-panel/60 px-2 text-dense">
+                    <button
+                      type="button"
+                      aria-expanded={open}
+                      aria-label={open ? "Collapse group" : "Expand group"}
+                      onClick={() => setCollapsedGroups((prev) => ({ ...prev, [groupId]: open }))}
+                      className="flex size-5 items-center justify-center rounded text-ev-muted hover:bg-ev-raised"
+                    >
+                      {open ? <ChevronDown size={12} aria-hidden /> : <ChevronRight size={12} aria-hidden />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDrawingSelection(ids)}
+                      className="min-w-0 flex-1 truncate text-left font-medium text-ev-text"
+                    >
+                      Group · {list.length}
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Toggle group visibility"
+                      onClick={() => updateDrawings(ids, { hidden: !anyHidden })}
+                      className="flex size-5 items-center justify-center rounded text-ev-muted hover:bg-ev-raised"
+                    >
+                      {anyHidden ? <EyeOff size={11} aria-hidden /> : <Eye size={11} aria-hidden />}
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Toggle group lock"
+                      onClick={() => updateDrawings(ids, { locked: !anyLocked })}
+                      className="flex size-5 items-center justify-center rounded text-ev-muted hover:bg-ev-raised"
+                    >
+                      {anyLocked ? <Lock size={11} aria-hidden /> : <LockOpen size={11} aria-hidden />}
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Delete group"
+                      onClick={() => deleteDrawings(ids)}
+                      className="flex size-5 items-center justify-center rounded text-ev-muted hover:text-ev-down-text"
+                    >
+                      <Trash2 size={11} aria-hidden />
+                    </button>
+                  </div>
+                  {open &&
+                    list.map((d) => (
+                      <Row
+                        key={d.id}
+                        label={drawingLabel(d)}
+                        swatch={d.style.color}
+                        hidden={!!d.hidden}
+                        selected={selectedIds.includes(d.id)}
+                        locked={!!d.locked}
+                        grouped
+                        onSelect={(e) => (e?.shiftKey ? toggleDrawingSelection(d.id) : selectDrawing(d.id))}
+                        onToggle={() => updateDrawing(d.id, { hidden: !d.hidden })}
+                        onLock={() => updateDrawing(d.id, { locked: !d.locked })}
+                        onRename={(name) => updateDrawing(d.id, { name: name || undefined })}
+                        onDelete={() => removeDrawing(d.id)}
+                      />
+                    ))}
+                </div>
+              );
+            })}
+            {loose.map((d) => (
               <Row
                 key={d.id}
                 label={drawingLabel(d)}
                 swatch={d.style.color}
                 hidden={!!d.hidden}
-                selected={selectedId === d.id}
+                selected={selectedIds.includes(d.id)}
                 locked={!!d.locked}
-                onSelect={() => selectDrawing(d.id)}
+                onSelect={(e) => (e?.shiftKey ? toggleDrawingSelection(d.id) : selectDrawing(d.id))}
                 onToggle={() => updateDrawing(d.id, { hidden: !d.hidden })}
                 onLock={() => updateDrawing(d.id, { locked: !d.locked })}
                 onRename={(name) => updateDrawing(d.id, { name: name || undefined })}
@@ -228,14 +376,16 @@ interface RowProps {
   /** Drawings only: this row is the current selection. */
   selected?: boolean;
   locked?: boolean;
-  onSelect?: () => void;
+  /** Child of a group: indent the row under its group header. */
+  grouped?: boolean;
+  onSelect?: (event?: MouseEvent) => void;
   onToggle: () => void;
   onLock?: () => void;
   onRename: (name: string) => void;
   onDelete: () => void;
 }
 
-function Row({ label, swatch, hidden, selected, locked, onSelect, onToggle, onLock, onRename, onDelete }: RowProps) {
+function Row({ label, swatch, hidden, selected, locked, grouped, onSelect, onToggle, onLock, onRename, onDelete }: RowProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(label);
 
@@ -251,7 +401,7 @@ function Row({ label, swatch, hidden, selected, locked, onSelect, onToggle, onLo
   return (
     <li
       aria-current={selected ? "true" : undefined}
-      onClick={onSelect}
+      onClick={(e) => onSelect?.(e)}
       onKeyDown={(e) => {
         // The row selects a drawing, so it must be reachable by keyboard.
         if ((e.key === "Enter" || e.key === " ") && onSelect) {
@@ -261,7 +411,7 @@ function Row({ label, swatch, hidden, selected, locked, onSelect, onToggle, onLo
       }}
       tabIndex={0}
       role="button"
-      className={`flex h-7 items-center gap-1.5 px-3 hover:bg-ev-panel ${
+      className={`flex h-7 items-center gap-1.5 ${grouped ? "pl-7 pr-3" : "px-3"} hover:bg-ev-panel ${
         selected ? "bg-ev-raised ring-1 ring-inset ring-ev-accent" : ""
       }`}
     >

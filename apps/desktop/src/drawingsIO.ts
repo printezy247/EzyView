@@ -1,6 +1,6 @@
 import { DEFAULT_DRAWING_STYLE, TOOL_ANCHORS, type Drawing } from "@ezyview/drawing-tools";
 
-export const CURRENT_DRAWINGS_VERSION = 1;
+export const CURRENT_DRAWINGS_VERSION = 2;
 export const MAX_DRAWINGS_PER_CHART = 500;
 export const MAX_POINTS_PER_STROKE = 2000;
 
@@ -12,7 +12,18 @@ export interface DrawingsEnvelope {
 type Migration = (data: Record<string, unknown>) => Record<string, unknown>;
 
 export const DRAWING_MIGRATIONS: Record<number, Migration> = {
-  // Table of migrations by source version.
+  /**
+   * v1 → v2: groups, paint order, pattern metadata, image references and
+   * screen scaling were added. Every field is optional, so the migration only
+   * stamps the new version; old drawings keep their exact look and behaviour.
+   */
+  1: (data) => ({
+    ...data,
+    version: 2,
+    drawings: Array.isArray(data.drawings)
+      ? data.drawings.map((drawing) => (drawing && typeof drawing === "object" ? { ...drawing } : drawing))
+      : data.drawings,
+  }),
 };
 
 /**
@@ -99,6 +110,39 @@ export function parseDrawings(json: string): ParseResult {
       for (const [unit, on] of Object.entries(e.visibility)) {
         if (typeof on !== "boolean") return bad(`visibility.${unit} is not a boolean`);
       }
+    }
+    if (e.groupId !== undefined && (typeof e.groupId !== "string" || e.groupId === "")) {
+      return bad("groupId is not a non-empty string");
+    }
+    if (e.zIndex !== undefined && (typeof e.zIndex !== "number" || !Number.isFinite(e.zIndex))) {
+      return bad("zIndex is not a finite number");
+    }
+    if (e.scale !== undefined && e.scale !== "chart" && e.scale !== "screen") {
+      return bad("scale is not chart or screen");
+    }
+    if (e.pattern !== undefined) {
+      if (typeof e.pattern !== "object" || e.pattern === null || Array.isArray(e.pattern)) return bad("pattern is not an object");
+      const pattern = e.pattern as Record<string, unknown>;
+      if (typeof pattern.kind !== "string") return bad("pattern.kind is not a string");
+      if (pattern.ratios !== undefined) {
+        if (typeof pattern.ratios !== "object" || pattern.ratios === null || Array.isArray(pattern.ratios)) {
+          return bad("pattern.ratios is not an object");
+        }
+        for (const [leg, ratio] of Object.entries(pattern.ratios)) {
+          if (typeof ratio !== "number" || !Number.isFinite(ratio)) return bad(`pattern.ratios.${leg} is not finite`);
+        }
+      }
+      if (pattern.labels !== undefined && (!Array.isArray(pattern.labels) || pattern.labels.some((l) => typeof l !== "string"))) {
+        return bad("pattern.labels is not a string array");
+      }
+    }
+    if (e.image !== undefined) {
+      if (typeof e.image !== "object" || e.image === null || Array.isArray(e.image)) return bad("image is not an object");
+      const image = e.image as Record<string, unknown>;
+      if (typeof image.assetId !== "string" || image.assetId === "") return bad("image.assetId is not a non-empty string");
+      if (typeof image.width !== "number" || !Number.isFinite(image.width) || image.width <= 0) return bad("image.width is not positive");
+      if (typeof image.height !== "number" || !Number.isFinite(image.height) || image.height <= 0) return bad("image.height is not positive");
+      if (image.lockAspect !== undefined && typeof image.lockAspect !== "boolean") return bad("image.lockAspect is not a boolean");
     }
     out.push({
       ...(entry as object),

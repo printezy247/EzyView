@@ -9,15 +9,16 @@ import type {
   ScriptPlotSpec,
   TradingLine,
 } from "@ezyview/chart-engine";
-import type { Drawing, DrawingToolId, ScreenPoint } from "@ezyview/drawing-tools";
+import type { Drawing, DrawingToolId, MagnetMode, ScreenPoint } from "@ezyview/drawing-tools";
 import {
   defaultStyleForTool,
   hitTestAll,
   isComplete,
   isPositionTool,
   setAnchor,
+  indexProjected,
   simplifyRdp,
-  snapToOhlc,
+  snapPoint,
   translateDrawing,
   visibleOnResolution,
 } from "@ezyview/drawing-tools";
@@ -41,6 +42,7 @@ import { summarizeChart } from "./chartSummary";
 import { EMPTY_FUNDAMENTAL_EVENTS } from "./fundamentalEvents";
 import { registerExportSource } from "./exportBridge";
 import { compositeCanvasesToPng } from "./chartImage";
+import { loadImageAssets } from "./imageAssets";
 
 interface Props {
   symbol: string;
@@ -163,6 +165,8 @@ export function ChartHost(props: Props) {
   // Guards against a single physical click producing two anchors.
   const drawingInProgressRef = useRef(false);
   const lastClickAtRef = useRef(0);
+  /** A Shift-click or marquee already changed selection; ignore the click event. */
+  const suppressClickRef = useRef(false);
   // Full loaded history, so replay can reveal a prefix without a refetch.
   const historyRef = useRef<Candle[]>([]);
   // "symbol|interval" the bars in historyRef belong to; live polling waits for
@@ -173,6 +177,8 @@ export function ChartHost(props: Props) {
   const shownRef = useRef<Candle[]>([]);
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  /** Shift-drag selection rectangle, in container pixels. */
+  const [marquee, setMarquee] = useState<{ from: ScreenPoint; to: ScreenPoint } | null>(null);
 
   const activeTool = useWorkspace((s) => s.activeTool);
   const hideAllDrawings = useWorkspace((s) => s.hideAllDrawings);
@@ -189,11 +195,30 @@ export function ChartHost(props: Props) {
     return list.filter((d) => !d.hidden && visibleOnResolution(d, propsRef.current.resolution));
   };
 
+  /** Magnet with object anchors first, then the nearest candle OHLC. */
+  const snapAt = (point: { time: number; price: number }, mode: MagnetMode) => {
+    const st = useWorkspace.getState();
+    const idx = chartIndexRef.current;
+    const drawings = idx === undefined ? [] : (st.activeLayout().charts[idx]?.drawings ?? []);
+    return snapPoint(point, historyRef.current, drawings, mode);
+  };
+
   /** Topmost drawing under a container-relative pixel, or null. */
   const hitAt = (x: number, y: number, chartIndex?: number) => {
     const chart = chartRef.current;
     const list = hittableDrawings(chartIndex);
     if (!chart || list.length === 0) return null;
+    // Past 50 objects, narrow with the grid before running per-tool geometry.
+    if (list.length > 50) {
+      const { index, projected } = indexProjected(list, (d) => chart.projectDrawing(d));
+      const ids = new Set(index.query(x, y));
+      const candidates = list.filter((d) => ids.has(d.id));
+      if (candidates.length === 0) return null;
+      return hitTestAll(
+        candidates.map((d) => ({ drawing: d, screen: [...(projected.get(d.id) ?? [])] })),
+        { x, y },
+      );
+    }
     return hitTestAll(
       list.map((d) => ({ drawing: d, screen: chart.projectDrawing(d) })),
       { x, y },
@@ -316,9 +341,19 @@ export function ChartHost(props: Props) {
             if (hit) st.deleteDrawing(hit.id, chartIndex);
             return;
           }
-          // No tool armed: select what was clicked, or clear on empty space.
-          st.selectDrawing(hit?.id ?? null);
-          chart.setSelection(hit?.id ?? null);
+          // No tool armed: pointerdown already selected what was clicked
+          // (including Shift multi-select). A plain click on empty space clears.
+          if (suppressClickRef.current) {
+            suppressClickRef.current = false;
+            return;
+          }
+          if (!hit) {
+            st.selectDrawing(null);
+            chart.setSelection(null);
+          } else if (!st.selectedDrawingIds.includes(hit.id)) {
+            st.selectDrawing(hit.id);
+            chart.setSelection(hit.id);
+          }
           return;
         }
         if (tool === "brush") return; // the pointer gesture owns freehand strokes
@@ -334,7 +369,7 @@ export function ChartHost(props: Props) {
         }
         drawingInProgressRef.current = true;
         try {
-          const point = snapToOhlc({ time: info.time, price: info.price }, historyRef.current, st.magnet);
+          const point = snapAt({ time: info.time, price: info.price }, st.magnet);
           const pending = pendingRef.current;
           const points = !pending || pending.tool !== tool ? [point] : [...pending.points, point];
           pendingRef.current = { tool, points };
@@ -365,13 +400,21 @@ export function ChartHost(props: Props) {
     if (!el) return;
     type Drag = {
       kind: "drawing";
-      id: string;
+      /** Every selected drawing moves on a body drag; a handle drag targets one. */
+      ids: string[];
       /** 0-based anchor index, or -1 for the body. */
       handle: number;
       /** Pre-drag drawings, pushed as one undo entry when the drag ends. */
       snapshot: Drawing[];
       startPoint: { time: number; price: number };
       moved: boolean;
+    };
+    type Marquee = {
+      kind: "marquee";
+      /** Container-relative start and current corner. */
+      from: ScreenPoint;
+      to: ScreenPoint;
+      additive: boolean;
     };
     type LevelDrag = {
       kind: "level";
@@ -387,7 +430,7 @@ export function ChartHost(props: Props) {
       /** Last appended pointer position, for the 2px throttle. */
       last: ScreenPoint;
     };
-    let gesture: Drag | LevelDrag | BrushDrag | null = null;
+    let gesture: Drag | LevelDrag | BrushDrag | Marquee | null = null;
 
     const localPoint = (e: PointerEvent) => {
       const r = el.getBoundingClientRect();
@@ -433,7 +476,7 @@ export function ChartHost(props: Props) {
       if (st.activeTool === "brush") {
         const conv = chart.screenToTimePrice(pt.x, pt.y);
         if (!conv.ok || conv.time === null || conv.price === null) return;
-        const point = snapToOhlc({ time: conv.time, price: conv.price }, historyRef.current, st.magnet);
+        const point = snapAt({ time: conv.time, price: conv.price }, st.magnet);
         pendingRef.current = { tool: "brush", points: [point] };
         gesture = { kind: "brush", chartIndex, last: pt };
         e.stopPropagation();
@@ -460,20 +503,39 @@ export function ChartHost(props: Props) {
       }
 
       const all = st.activeLayout().charts[chartIndex]?.drawings ?? [];
-      if (all.length === 0) return;
       const hit = hitAt(pt.x, pt.y, chartIndex);
-      if (!hit) return;
+      if (!hit) {
+        // Shift-drag on empty space paints a selection rectangle. Plain drag
+        // stays the chart's pan gesture.
+        if (e.shiftKey && all.length > 0) {
+          e.stopPropagation();
+          e.preventDefault();
+          suppressClickRef.current = true;
+          gesture = { kind: "marquee", from: pt, to: pt, additive: true };
+          setMarquee({ from: pt, to: pt });
+          el.setPointerCapture(e.pointerId);
+          chart.setPanEnabled(false);
+        }
+        return;
+      }
       e.stopPropagation();
-      st.selectDrawing(hit.id);
-      chart.setSelection(hit.id);
-      const target = all.find((d) => d.id === hit.id);
-      if (!target || target.locked || st.lockAllDrawings || st.eraserMode) return;
+      if (e.shiftKey) {
+        suppressClickRef.current = true;
+        st.toggleDrawingSelection(hit.id);
+        chart.setSelection(useWorkspace.getState().selectedDrawingIds);
+      } else if (!st.selectedDrawingIds.includes(hit.id)) {
+        st.selectDrawing(hit.id);
+        chart.setSelection(hit.id);
+      }
+      const selected = all.filter((d) => useWorkspace.getState().selectedDrawingIds.includes(d.id));
+      const targets = selected.length > 0 ? selected : all.filter((d) => d.id === hit.id);
+      if (targets.length === 0 || targets.some((d) => d.locked) || st.lockAllDrawings || st.eraserMode) return;
       const start = chart.screenToTimePrice(pt.x, pt.y);
       if (!start.ok || start.time === null || start.price === null) return;
       gesture = {
         kind: "drawing",
-        id: hit.id,
-        handle: hit.handle,
+        ids: targets.map((d) => d.id),
+        handle: targets.length === 1 ? hit.handle : -1,
         snapshot: [...all], // entries are immutable; the array copy is the boundary
         startPoint: { time: start.time, price: start.price },
         moved: false,
@@ -500,7 +562,7 @@ export function ChartHost(props: Props) {
             if (conv.ok && conv.time !== null && conv.price !== null) {
               const want = { time: conv.time, price: conv.price };
               const magnet = e.ctrlKey || e.metaKey ? (st.magnet === "off" ? "weak" : "off") : st.magnet;
-              const snapped = magnet === "off" ? want : snapToOhlc(want, historyRef.current, magnet);
+              const snapped = magnet === "off" ? want : snapAt(want, magnet);
               const cursorPoint =
                 e.shiftKey && pending.points.length === 1
                   ? snapAngle(chart, pending.points[0]!, pt, snapped)
@@ -546,6 +608,13 @@ export function ChartHost(props: Props) {
         return;
       }
 
+      if (cur.kind === "marquee") {
+        cur.to = pt;
+        setMarquee({ from: cur.from, to: pt });
+        e.preventDefault();
+        return;
+      }
+
       if (cur.kind === "level") {
         // The line follows the pointer visually; the position is only amended on
         // pointerup, so a stray click never moves a stop.
@@ -562,29 +631,31 @@ export function ChartHost(props: Props) {
       if (chartIndex === undefined) return;
       const conv = chart.screenToTimePrice(pt.x, pt.y);
       if (!conv.ok || conv.time === null || conv.price === null) return;
-      const target = cur.snapshot.find((d) => d.id === cur.id);
-      if (!target) return;
-      let points: { time: number; price: number }[];
-      if (cur.handle >= 0) {
-        const want = { time: conv.time, price: conv.price };
-        const effectiveMagnet = e.ctrlKey || e.metaKey ? (st.magnet === "off" ? "weak" : "off") : st.magnet;
-        let snapped = effectiveMagnet === "off" ? want : snapToOhlc(want, historyRef.current, effectiveMagnet);
-        // Position anatomy: entry/stop/target keep their bar, the width handle
-        // keeps its price. Only the axis each one means is draggable.
-        if (isPositionTool(target.tool) && cur.handle <= 2) {
-          snapped = { time: target.points[cur.handle]!.time, price: snapped.price };
-        } else if (isPositionTool(target.tool) && cur.handle === 3) {
-          snapped = { time: snapped.time, price: target.points[3]!.price };
+      for (const id of cur.ids) {
+        const target = cur.snapshot.find((d) => d.id === id);
+        if (!target) continue;
+        let points: { time: number; price: number }[];
+        if (cur.handle >= 0) {
+          const want = { time: conv.time, price: conv.price };
+          const effectiveMagnet = e.ctrlKey || e.metaKey ? (st.magnet === "off" ? "weak" : "off") : st.magnet;
+          let snapped = effectiveMagnet === "off" ? want : snapAt(want, effectiveMagnet);
+          // Position anatomy: entry/stop/target keep their bar, the width handle
+          // keeps its price. Only the axis each one means is draggable.
+          if (isPositionTool(target.tool) && cur.handle <= 2) {
+            snapped = { time: target.points[cur.handle]!.time, price: snapped.price };
+          } else if (isPositionTool(target.tool) && cur.handle === 3) {
+            snapped = { time: snapped.time, price: target.points[3]!.price };
+          }
+          points = setAnchor(target, cur.handle, snapped).points;
+          if (e.shiftKey && points.length === 2 && (target.tool === "trend_line" || target.tool === "ray" || target.tool === "extended_line")) {
+            const otherIdx = cur.handle === 0 ? 1 : 0;
+            points[cur.handle] = { time: snapped.time, price: points[otherIdx]!.price };
+          }
+        } else {
+          points = translateDrawing(target, conv.time - cur.startPoint.time, conv.price - cur.startPoint.price).points;
         }
-        points = setAnchor(target, cur.handle, snapped).points;
-        if (e.shiftKey && points.length === 2 && (target.tool === "trend_line" || target.tool === "ray" || target.tool === "extended_line")) {
-          const otherIdx = cur.handle === 0 ? 1 : 0;
-          points[cur.handle] = { time: snapped.time, price: points[otherIdx]!.price };
-        }
-      } else {
-        points = translateDrawing(target, conv.time - cur.startPoint.time, conv.price - cur.startPoint.price).points;
+        st.previewDrawing(id, { points }, chartIndex);
       }
-      st.previewDrawing(cur.id, { points }, chartIndex);
       cur.moved = true;
       e.preventDefault();
     };
@@ -592,7 +663,34 @@ export function ChartHost(props: Props) {
     const onFinish = (e: PointerEvent) => {
       const cur = gesture;
       if (!cur) return;
-      if (cur.kind === "level") {
+      if (cur.kind === "marquee") {
+        const chart = chartRef.current;
+        const chartIndex = chartIndexRef.current;
+        if (chart && chartIndex !== undefined) {
+          const x0 = Math.min(cur.from.x, cur.to.x);
+          const x1 = Math.max(cur.from.x, cur.to.x);
+          const y0 = Math.min(cur.from.y, cur.to.y);
+          const y1 = Math.max(cur.from.y, cur.to.y);
+          const all = useWorkspace.getState().activeLayout().charts[chartIndex]?.drawings ?? [];
+          const hits = all
+            .filter((d) => {
+              if (d.hidden) return false;
+              const projected = chart.projectDrawing(d).filter((p): p is ScreenPoint => p !== null);
+              if (projected.length === 0) return false;
+              const bx0 = Math.min(...projected.map((p) => p.x));
+              const bx1 = Math.max(...projected.map((p) => p.x));
+              const by0 = Math.min(...projected.map((p) => p.y));
+              const by1 = Math.max(...projected.map((p) => p.y));
+              return bx1 >= x0 && bx0 <= x1 && by1 >= y0 && by0 <= y1;
+            })
+            .map((d) => d.id);
+          const existing = cur.additive ? useWorkspace.getState().selectedDrawingIds : [];
+          const ids = [...new Set([...existing, ...hits])];
+          useWorkspace.getState().setDrawingSelection(ids);
+          chart.setSelection(ids);
+        }
+        setMarquee(null);
+      } else if (cur.kind === "level") {
         if (cur.preview !== null) {
           // One amend carrying only the dragged level, so the other one stays put.
           onLevelCommit?.(cur.symbol, cur.id === "SL" ? { stopLoss: cur.preview } : { takeProfit: cur.preview });
@@ -617,6 +715,7 @@ export function ChartHost(props: Props) {
       chartRef.current?.setPanEnabled(true);
       chartRef.current?.setHovered(null);
       el.style.cursor = defaultCursor();
+      setMarquee(null);
       gesture = null;
     };
 
@@ -923,20 +1022,39 @@ export function ChartHost(props: Props) {
   );
   useEffect(() => {
     chartRef.current?.setDrawings(visibleDrawings);
-    // An undo/redo can drop the selected drawing; never keep a stale id.
-    const sel = useWorkspace.getState().selectedDrawingId;
-    if (sel && !visibleDrawings.some((d) => d.id === sel)) {
-      useWorkspace.getState().selectDrawing(null);
-      chartRef.current?.setSelection(null);
-    }
+    // An undo/redo can drop a selected drawing; never keep a stale id.
+    const st = useWorkspace.getState();
+    const alive = st.selectedDrawingIds.filter((id) => visibleDrawings.some((d) => d.id === id));
+    if (alive.length !== st.selectedDrawingIds.length) st.setDrawingSelection(alive);
+    chartRef.current?.setSelection(alive);
   }, [visibleDrawings]);
 
-  // Mirrors every selection change (click, tree, Escape) onto the primitive.
-  // A foreign id simply finds no drawing here, so multi-cell stays correct.
-  const selectedId = useWorkspace((s) => s.selectedDrawingId);
+  // Image drawings store only an asset id; decode once per set and hand the
+  // renderer a map it can draw synchronously on the next frame.
+  const imageAssetKey = visibleDrawings
+    .map((d) => d.image?.assetId)
+    .filter((id): id is string => Boolean(id))
+    .sort()
+    .join("|");
   useEffect(() => {
-    chartRef.current?.setSelection(selectedId);
-  }, [selectedId]);
+    let cancelled = false;
+    const ids = imageAssetKey ? imageAssetKey.split("|") : [];
+    void loadImageAssets(ids).then((images) => {
+      if (!cancelled) chartRef.current?.setDrawingImages(images);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [imageAssetKey]);
+
+  // Mirrors every selection change (click, tree, Escape, marquee) onto the
+  // primitive. A foreign id simply finds no drawing here, so multi-cell stays
+  // correct.
+  const selectedId = useWorkspace((s) => s.selectedDrawingId);
+  const selectedIds = useWorkspace((s) => s.selectedDrawingIds);
+  useEffect(() => {
+    chartRef.current?.setSelection(selectedIds);
+  }, [selectedIds]);
 
   // The floating mini-bar follows the selected drawing's box on screen. The
   // callback is read through a ref: cells pass an inline function, and making
@@ -1072,6 +1190,23 @@ export function ChartHost(props: Props) {
           style={{ left: ghost.x, top: ghost.y }}
         />
       )}
+      {marquee && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute z-20 border border-ev-accent bg-ev-accent/10"
+          style={{
+            left: Math.min(marquee.from.x, marquee.to.x),
+            top: Math.min(marquee.from.y, marquee.to.y),
+            width: Math.abs(marquee.to.x - marquee.from.x),
+            height: Math.abs(marquee.to.y - marquee.from.y),
+          }}
+        />
+      )}
+      <p aria-live="polite" className="sr-only">
+        {selectedIds.length === 0
+          ? "No drawings selected"
+          : `${selectedIds.length} of ${visibleDrawings.length} drawings selected`}
+      </p>
       {loadError && (
         <div role="alert" className="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
           <p className="max-w-xs rounded border border-ev-down/40 bg-ev-panel/95 px-3 py-2 text-center text-base text-ev-down-text">
