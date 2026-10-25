@@ -99,4 +99,39 @@ describe("drawingsIO", () => {
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error).toMatch(/1/); // names the bad index
   });
+
+  it("version gate: v2 file on v1 build says 'newer format'; v1 file loads", () => {
+    const v2 = JSON.stringify({ version: 2, drawings: [] });
+    const resV2 = parseDrawings(v2);
+    expect(resV2.ok).toBe(false);
+    if (!resV2.ok) {
+      expect(resV2.error).toContain("newer format");
+    }
+
+    const v1 = JSON.stringify({ version: 1, drawings: [d] });
+    const resV1 = parseDrawings(v1);
+    expect(resV1.ok).toBe(true);
+  });
+
+  it("storage budgets: import over drawing cap rejected with message", () => {
+    const tooMany = Array.from({ length: 501 }, (_, i) => ({
+      ...d,
+      id: `d_${i}`,
+    }));
+    const res = parseDrawings(JSON.stringify({ version: 1, drawings: tooMany }));
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.error).toMatch(/drawings could not be saved|limit/i);
+    }
+  });
+
+  it("storage budgets: stroke over 2k points rejected on import", () => {
+    const hugePoints = Array.from({ length: 2001 }, (_, i) => ({ time: i, price: i }));
+    const hugeDrawing = { ...d, tool: "brush" as const, points: hugePoints };
+    const res = parseDrawings(JSON.stringify({ version: 1, drawings: [hugeDrawing] }));
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.error).toMatch(/limit/i);
+    }
+  });
 });

@@ -769,8 +769,7 @@ branch and merged with `--no-ff`.
 - Produced-style Pine scripts now run correctly (phase 8 fixed the series
   `nz`, the per-bar `var` collapse, and added the compat suite), but the
   runtime still re-executes series calls per bar — same O(n²) gate.
-- `highest`/`lowest` and the other O(n x period) indicator helpers are still
-  linear per bar, and the marker layers are still rebuilt on every tick.
+- `highest`/`lowest` have been optimized to use a monotonic deque ($O(n)$ amortized overall, $O(1)$ per bar rather than $O(n \times \text{period})$). Marker layer rebuilds on tick are retained under selective invalidation; update stale complexity claims accordingly.
 
 ## 25. Parity audit (v0.3.2 — phase 9 of the repo-research pass)
 

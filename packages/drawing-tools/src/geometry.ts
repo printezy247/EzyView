@@ -1,4 +1,5 @@
-import type { ScreenPoint } from "./types.js";
+import type { Drawing, ScreenPoint } from "./types.js";
+import { resolvedFibExtensionLevels, resolvedFibLevels } from "./fib.js";
 
 /** Squared distance from a point to a segment — avoids sqrt in hot hit-tests. */
 export function distSqToSegment(p: ScreenPoint, a: ScreenPoint, b: ScreenPoint): number {
@@ -120,4 +121,170 @@ export function insidePolygon(p: ScreenPoint, polygon: readonly ScreenPoint[]): 
 /** Midpoint of two screen points. */
 export function midpoint(a: ScreenPoint, b: ScreenPoint): ScreenPoint {
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}
+
+export interface DrawingLevel {
+  key: string;
+  label: string;
+  price: number;
+}
+
+export function priceAt(drawing: Drawing, time: number, levelKey?: string): number | null {
+  const pts = drawing.points;
+  if (!pts || pts.length === 0) return null;
+
+  // Single horizontal tools
+  if (drawing.tool === "horizontal_line" || drawing.tool === "horizontal_ray") {
+    return pts[0]?.price ?? null;
+  }
+
+  // Straight line tools: trend_line, ray, info_line, extended_line, arrow
+  if (
+    drawing.tool === "trend_line" ||
+    drawing.tool === "ray" ||
+    drawing.tool === "info_line" ||
+    drawing.tool === "extended_line" ||
+    drawing.tool === "arrow"
+  ) {
+    if (pts.length < 2) return pts[0]?.price ?? null;
+    const [p0, p1] = pts;
+    if (!p0 || !p1) return null;
+    if (p1.time === p0.time) return p0.price;
+    const slope = (p1.price - p0.price) / (p1.time - p0.time);
+    return p0.price + slope * (time - p0.time);
+  }
+
+  // Parallel channel: 3 points (p0, p1 base line; p2 parallel offset)
+  if (drawing.tool === "parallel_channel") {
+    if (pts.length < 2) return pts[0]?.price ?? null;
+    const [p0, p1, p2] = pts;
+    if (!p0 || !p1) return null;
+    const slope = p1.time === p0.time ? 0 : (p1.price - p0.price) / (p1.time - p0.time);
+    const basePrice = p0.price + slope * (time - p0.time);
+    if (!p2) return basePrice;
+    const parallelOffset = p2.price - (p0.price + slope * (p2.time - p0.time));
+    if (levelKey === "parallel" || levelKey === "channel" || levelKey === "upper") {
+      return basePrice + parallelOffset;
+    }
+    if (levelKey === "middle") {
+      return basePrice + parallelOffset / 2;
+    }
+    return basePrice;
+  }
+
+  // Fib retracement / extension
+  if (drawing.tool === "fib_retracement") {
+    const levels = resolvedFibLevels(pts, drawing.style);
+    if (levels.length === 0) return pts[0]?.price ?? null;
+    if (levelKey) {
+      const match = levels.find((l) => l.label === levelKey || String(l.ratio) === levelKey);
+      if (match) return match.price;
+    }
+    return levels[0]?.price ?? pts[0]?.price ?? null;
+  }
+
+  if (drawing.tool === "fib_extension") {
+    const levels = resolvedFibExtensionLevels(pts, drawing.style);
+    if (levels.length === 0) return pts[0]?.price ?? null;
+    if (levelKey) {
+      const match = levels.find((l) => l.label === levelKey || String(l.ratio) === levelKey);
+      if (match) return match.price;
+    }
+    return levels[0]?.price ?? pts[0]?.price ?? null;
+  }
+
+  // Fallback for shapes with bounding prices
+  if (levelKey === "top" && pts.length >= 2) return Math.max(...pts.map((p) => p.price));
+  if (levelKey === "bottom" && pts.length >= 2) return Math.min(...pts.map((p) => p.price));
+  return pts[0]?.price ?? null;
+}
+
+export function getDrawingLevels(drawing: Drawing, time?: number): DrawingLevel[] {
+  const pts = drawing.points;
+  if (!pts || pts.length === 0) return [];
+  const t = time ?? pts[0]?.time ?? 0;
+
+  if (drawing.tool === "horizontal_line" || drawing.tool === "horizontal_ray") {
+    return [{ key: "level", label: "Level", price: pts[0]?.price ?? 0 }];
+  }
+
+  if (
+    drawing.tool === "trend_line" ||
+    drawing.tool === "ray" ||
+    drawing.tool === "info_line" ||
+    drawing.tool === "extended_line" ||
+    drawing.tool === "arrow"
+  ) {
+    const p = priceAt(drawing, t);
+    return p !== null ? [{ key: "line", label: "Trend Line", price: p }] : [];
+  }
+
+  if (drawing.tool === "parallel_channel") {
+    const base = priceAt(drawing, t, "base");
+    const middle = priceAt(drawing, t, "middle");
+    const channel = priceAt(drawing, t, "channel");
+    const res: DrawingLevel[] = [];
+    if (base !== null) res.push({ key: "base", label: "Base Line", price: base });
+    if (middle !== null) res.push({ key: "middle", label: "Middle Line", price: middle });
+    if (channel !== null) res.push({ key: "channel", label: "Channel Line", price: channel });
+    return res;
+  }
+
+  if (drawing.tool === "fib_retracement") {
+    const levels = resolvedFibLevels(pts, drawing.style);
+    return levels.map((l) => ({
+      key: String(l.ratio),
+      label: `Fib ${l.label}`,
+      price: l.price,
+    }));
+  }
+
+  if (drawing.tool === "fib_extension") {
+    const levels = resolvedFibExtensionLevels(pts, drawing.style);
+    return levels.map((l) => ({
+      key: String(l.ratio),
+      label: `Fib Ext ${l.label}`,
+      price: l.price,
+    }));
+  }
+
+  if (pts.length >= 2) {
+    const top = Math.max(...pts.map((p) => p.price));
+    const bottom = Math.min(...pts.map((p) => p.price));
+    return [
+      { key: "top", label: "Upper Level", price: top },
+      { key: "bottom", label: "Lower Level", price: bottom },
+    ];
+  }
+
+  return [{ key: "level", label: "Level", price: pts[0]?.price ?? 0 }];
+}
+
+/**
+ * Ramer-Douglas-Peucker simplification for 2D points (screen or chart coordinates).
+ * Drops redundant points within `epsilon` perpendicular distance.
+ */
+export function simplifyRdp<T extends { x: number; y: number }>(points: readonly T[], epsilon = 1.75): T[] {
+  if (points.length <= 2) return [...points];
+
+  let dmax = 0;
+  let index = 0;
+  const start = points[0]!;
+  const end = points[points.length - 1]!;
+
+  for (let i = 1; i < points.length - 1; i++) {
+    const d = distToSegment(points[i]!, start, end);
+    if (d > dmax) {
+      index = i;
+      dmax = d;
+    }
+  }
+
+  if (dmax > epsilon) {
+    const rec1 = simplifyRdp(points.slice(0, index + 1), epsilon);
+    const rec2 = simplifyRdp(points.slice(index), epsilon);
+    return rec1.slice(0, -1).concat(rec2);
+  } else {
+    return [start, end];
+  }
 }

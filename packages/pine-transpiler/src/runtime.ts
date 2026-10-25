@@ -349,6 +349,11 @@ export interface PineOrder {
   price: number;
   qty: number;
   id?: string;
+  stop?: number;
+  limit?: number;
+  trail?: { points?: number; offset?: number };
+  fromEntry?: string;
+  oca?: string;
 }
 
 /** Mutable sink the compiled script writes into. */

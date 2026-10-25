@@ -16,10 +16,13 @@ import {
   isComplete,
   isPositionTool,
   setAnchor,
+  simplifyRdp,
   snapToOhlc,
   translateDrawing,
   visibleOnResolution,
 } from "@ezyview/drawing-tools";
+import { MAX_DRAWINGS_PER_CHART, MAX_POINTS_PER_STROKE } from "./drawingsIO";
+import { notice } from "./notice";
 import { hitTestLevel, moveLevel } from "./priceDrag";
 import { DEFAULT_DRAWING_STYLE } from "@ezyview/drawing-tools";
 import { useDrawingUi } from "./drawingUi";
@@ -204,6 +207,34 @@ export function ChartHost(props: Props) {
   const finishDrawing = (tool: DrawingToolId, points: Drawing["points"], chartIndex: number): string => {
     const st = useWorkspace.getState();
     const drawings = st.activeLayout().charts[chartIndex]?.drawings ?? [];
+    if (drawings.length >= MAX_DRAWINGS_PER_CHART) {
+      notice.alert("Drawings could not be saved", `Drawing limit of ${MAX_DRAWINGS_PER_CHART} reached for this chart.`);
+      chartRef.current?.setPreview(null);
+      pendingRef.current = null;
+      setGhost(null);
+      return "";
+    }
+
+    let strokePoints = points;
+    if (tool === "brush" && strokePoints.length > 2) {
+      const chart = chartRef.current;
+      if (chart) {
+        const screenPts = strokePoints.map((p) => {
+          const x = chart.timeToCoordinate(p.time);
+          const y = chart.priceToCoordinate(p.price);
+          return { x: x ?? p.time, y: y ?? p.price, orig: p };
+        });
+        const simplified = simplifyRdp(screenPts, 1.75);
+        strokePoints = simplified.map((s) => s.orig);
+      } else {
+        const mapped = strokePoints.map((p) => ({ x: p.time, y: p.price, orig: p }));
+        strokePoints = simplifyRdp(mapped, 1.75).map((s) => s.orig);
+      }
+      if (strokePoints.length > MAX_POINTS_PER_STROKE) {
+        strokePoints = strokePoints.slice(0, MAX_POINTS_PER_STROKE);
+      }
+    }
+
     const id = newId();
     const base = st.drawingToolStyles[tool] ?? DEFAULT_DRAWING_STYLE;
     const style = defaultStyleForTool(tool, base);
@@ -213,7 +244,7 @@ export function ChartHost(props: Props) {
         {
           id,
           tool,
-          points,
+          points: strokePoints,
           style: { ...style },
           ...(tool === "text" || tool === "callout" ? { text: "" } : {}),
         },

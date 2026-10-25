@@ -1,5 +1,20 @@
 import { DEFAULT_DRAWING_STYLE, TOOL_ANCHORS, type Drawing } from "@ezyview/drawing-tools";
 
+export const CURRENT_DRAWINGS_VERSION = 1;
+export const MAX_DRAWINGS_PER_CHART = 500;
+export const MAX_POINTS_PER_STROKE = 2000;
+
+export interface DrawingsEnvelope {
+  version: number;
+  drawings: readonly Drawing[];
+}
+
+type Migration = (data: Record<string, unknown>) => Record<string, unknown>;
+
+export const DRAWING_MIGRATIONS: Record<number, Migration> = {
+  // Table of migrations by source version.
+};
+
 /**
  * JSON import/export for a chart's drawings.
  *
@@ -8,7 +23,7 @@ import { DEFAULT_DRAWING_STYLE, TOOL_ANCHORS, type Drawing } from "@ezyview/draw
  * the store (a bad point would break hit-testing and rendering alike).
  */
 export function serializeDrawings(drawings: readonly Drawing[]): string {
-  return JSON.stringify({ version: 1, drawings }, null, 2);
+  return JSON.stringify({ version: CURRENT_DRAWINGS_VERSION, drawings }, null, 2);
 }
 
 export type ParseResult = { ok: true; drawings: Drawing[] } | { ok: false; error: string };
@@ -21,8 +36,36 @@ export function parseDrawings(json: string): ParseResult {
     return { ok: false, error: "File is not valid JSON" };
   }
   if (typeof data !== "object" || data === null) return { ok: false, error: "Expected a JSON object" };
-  const drawings = (data as { drawings?: unknown }).drawings;
+
+  const envelope = data as Record<string, unknown>;
+  const version = envelope.version;
+
+  if (typeof version === "number" && version > CURRENT_DRAWINGS_VERSION) {
+    return {
+      ok: false,
+      error: `File format version ${version} is newer than supported version ${CURRENT_DRAWINGS_VERSION} (newer format)`,
+    };
+  }
+
+  let currentData = envelope;
+  if (typeof version === "number" && version < CURRENT_DRAWINGS_VERSION) {
+    for (let v = version; v < CURRENT_DRAWINGS_VERSION; v++) {
+      const migrate = DRAWING_MIGRATIONS[v];
+      if (migrate) {
+        currentData = migrate(currentData);
+      }
+    }
+  }
+
+  const drawings = currentData.drawings;
   if (!Array.isArray(drawings)) return { ok: false, error: 'Missing a "drawings" array' };
+
+  if (drawings.length > MAX_DRAWINGS_PER_CHART) {
+    return {
+      ok: false,
+      error: `Drawing count (${drawings.length}) exceeds maximum limit of ${MAX_DRAWINGS_PER_CHART} (drawings could not be saved)`,
+    };
+  }
 
   const out: Drawing[] = [];
   for (let i = 0; i < drawings.length; i++) {
@@ -33,6 +76,9 @@ export function parseDrawings(json: string): ParseResult {
     if (typeof e.id !== "string" || e.id === "") return bad("missing id");
     if (typeof e.tool !== "string" || !(e.tool in TOOL_ANCHORS)) return bad("unknown tool");
     if (!Array.isArray(e.points)) return bad("missing points");
+    if (e.points.length > MAX_POINTS_PER_STROKE) {
+      return bad(`Stroke has ${e.points.length} points which exceeds maximum limit of ${MAX_POINTS_PER_STROKE}`);
+    }
     for (const p of e.points) {
       if (typeof p !== "object" || p === null) return bad("point is not an object");
       const { time, price } = p as { time?: unknown; price?: unknown };

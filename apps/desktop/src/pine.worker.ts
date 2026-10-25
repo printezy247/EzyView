@@ -12,13 +12,14 @@
  * budget; this side just answers.
  */
 import { backtest, optimizePine, runPine } from "@ezyview/pine-transpiler";
-import type { Context, OptimizationResult, ParamSpec, PineResult, PineValue } from "@ezyview/pine-transpiler";
+import type { BacktestOptions, Context, OptimizationResult, ParamSpec, PineResult, PineValue } from "@ezyview/pine-transpiler";
 
 export interface PineRunRequest {
   id: number;
   kind: "run";
   source: string;
   ctx: Context;
+  backtestOpts?: Partial<BacktestOptions>;
 }
 
 /** Numeric input bars for the optimizer grid. */

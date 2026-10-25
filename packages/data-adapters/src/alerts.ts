@@ -29,8 +29,10 @@ export interface PriceAlert {
   lastPrice?: number;
   /** Last candle timestamp seen by the evaluator, so once_per_bar alerts re-arm on a new bar. */
   lastBarTime?: number;
-  /** When set, the alert follows this horizontal drawing: moving the line moves the level, deleting the line deletes the alert. */
+  /** When set, the alert follows this horizontal or geometry drawing: moving the line moves the level, deleting the line deletes the alert. */
   drawingId?: string;
+  /** Specific level key of the drawing (e.g. "0.618", "channel", "upper"). */
+  levelKey?: string;
 }
 
 /**

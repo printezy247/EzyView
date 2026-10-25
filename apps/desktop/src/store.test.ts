@@ -65,6 +65,54 @@ describe("drawing selection and editing", () => {
     expect(alert?.condition).toEqual({ kind: "crossing", value: 61 });
   });
 
+  it("trend line, channel, and fib level alerts fire and moving the drawing updates the alert", () => {
+    // 1. Trend line: (time 100, price 50) -> (time 200, price 100). Midpoint at time 150 is 75.
+    const tl = {
+      id: "tl1",
+      tool: "trend_line" as const,
+      points: [{ time: 100, price: 50 }, { time: 200, price: 100 }],
+      style: { color: "#fff", width: 1, lineStyle: "solid" as const },
+    };
+    seed(tl);
+    useWorkspace.getState().addAlert("AAPL", { kind: "crossing", value: 75 }, "once_per_bar_close", "TL alert", "tl1");
+
+    // Moving the trend line up by 10 points
+    useWorkspace.getState().updateDrawing("tl1", {
+      points: [{ time: 100, price: 60 }, { time: 200, price: 110 }],
+    });
+    const tlAlert = useWorkspace.getState().alerts.find((x) => x.drawingId === "tl1");
+    // At eval time (100), price is now 60
+    expect(tlAlert?.condition).toMatchObject({ value: 60 });
+
+    // Apply candle crossing the trendline at time 150 (trendline price at 150 is 85):
+    // Prior candle at 80, current candle at 90 -> crosses 85!
+    useWorkspace.getState().applyCandle("AAPL", { time: 140, open: 79, high: 81, low: 78, close: 80, volume: 100 }, true);
+    const fired = useWorkspace.getState().applyCandle("AAPL", { time: 150, open: 80, high: 92, low: 79, close: 90, volume: 100 }, true);
+    expect(fired).toContain(tlAlert?.id);
+
+    // 2. Fib level alert: 0 to 100, ratio 0.5 level is at 50
+    const fib = {
+      id: "fib1",
+      tool: "fib_retracement" as const,
+      points: [{ time: 10, price: 0 }, { time: 20, price: 100 }],
+      style: { color: "#fff", width: 1, lineStyle: "solid" as const },
+    };
+    seed(fib);
+    useWorkspace.getState().addAlert("TSLA", { kind: "crossing", value: 50 }, "once_per_bar_close", "Fib alert", "fib1", "0.5");
+
+    // Move fib anchor 2 from 100 to 200 -> 0.5 level becomes 100
+    useWorkspace.getState().updateDrawing("fib1", {
+      points: [{ time: 10, price: 0 }, { time: 20, price: 200 }],
+    });
+    const fibAlert = useWorkspace.getState().alerts.find((x) => x.drawingId === "fib1");
+    expect(fibAlert?.condition).toMatchObject({ value: 100 });
+
+    // Candle crossing 100 fires fib alert
+    useWorkspace.getState().applyCandle("TSLA", { time: 30, open: 90, high: 95, low: 88, close: 95, volume: 100 }, true);
+    const fibFired = useWorkspace.getState().applyCandle("TSLA", { time: 40, open: 96, high: 105, low: 95, close: 105, volume: 100 }, true);
+    expect(fibFired).toContain(fibAlert?.id);
+  });
+
   it("deleteDrawing removes alerts bound to the drawing", () => {
     seed(line("x1"));
     useWorkspace.getState().addAlert("TEST", { kind: "crossing", value: 1 }, "once", "bound", "x1");
@@ -358,6 +406,40 @@ describe("undo/redo drawings", () => {
     expect(useWorkspace.getState().activeChart().drawings).toEqual([]);
     useWorkspace.getState().redoDrawing();
     expect(useWorkspace.getState().activeChart().drawings).toEqual(d);
+  });
+
+  it("2-cell test: edit B, focus A, undo leaves A untouched and reverts B", () => {
+    const s = useWorkspace.getState();
+    s.setGrid("2h"); // cell 0 (A) and cell 1 (B)
+    const initialA = [{ id: "a1", tool: "trend_line" as const, points: [{ time: 10, price: 20 }], style: { color: "#f00", width: 1, lineStyle: "solid" as const } }];
+    const initialB = [{ id: "b1", tool: "trend_line" as const, points: [{ time: 30, price: 40 }], style: { color: "#0f0", width: 1, lineStyle: "solid" as const } }];
+    s.setDrawings(initialA, 0);
+    s.setDrawings(initialB, 1);
+    // Clear undo history so we only test the subsequent edit on B
+    useWorkspace.setState({
+      drawingUndoStacks: {},
+      drawingRedoStacks: {},
+      drawingHistoryOrder: [],
+      drawingUndo: [],
+      drawingRedo: [],
+    });
+
+    // Edit cell B (chartIndex 1)
+    s.setActiveChart(1);
+    s.updateDrawing("b1", { points: [{ time: 35, price: 45 }] }, 1);
+    expect(useWorkspace.getState().activeLayout().charts[1]?.drawings[0]?.points[0]?.price).toBe(45);
+
+    // Focus cell A (chartIndex 0)
+    s.setActiveChart(0);
+    expect(useWorkspace.getState().activeLayout().activeChart).toBe(0);
+
+    // Undo from active chart A
+    useWorkspace.getState().undoDrawing();
+
+    // Acceptance: A untouched, B reverted
+    const layout = useWorkspace.getState().activeLayout();
+    expect(layout.charts[0]?.drawings).toEqual(initialA);
+    expect(layout.charts[1]?.drawings[0]?.points[0]?.price).toBe(40);
   });
 });
 describe("drawing clipboard", () => {
