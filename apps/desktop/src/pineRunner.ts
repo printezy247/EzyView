@@ -9,7 +9,7 @@
  * semantics, so tests and every call site share one contract.
  */
 import { backtest, optimizePine, runPine } from "@ezyview/pine-transpiler";
-import type { BacktestResult, Context, OptimizationResult, ParamSpec, PineResult } from "@ezyview/pine-transpiler";
+import type { BacktestOptions, BacktestResult, Context, OptimizationResult, ParamSpec, PineResult } from "@ezyview/pine-transpiler";
 import type { PineBars, PineErrorResponse, PineResponse } from "./pine.worker";
 
 const DEFAULT_RUN_BUDGET_MS = 5_000;
@@ -140,11 +140,19 @@ const respond = (
 
 export interface PineBudgetOptions {
   timeBudgetMs?: number;
+  backtestOpts?: Partial<BacktestOptions>;
 }
 
 /** Run one Pine script inside the worker; never blocks the caller's thread. */
 export async function runPineWithBudget(source: string, ctx: Context, opts: PineBudgetOptions = {}): Promise<PineRunOutcome> {
   const budgetMs = opts.timeBudgetMs ?? DEFAULT_RUN_BUDGET_MS;
+  const backtestOpts: BacktestOptions = {
+    close: ctx.close,
+    open: ctx.open,
+    high: ctx.high,
+    low: ctx.low,
+    ...opts.backtestOpts,
+  };
   const worker = obtainWorker();
   if (!worker) {
     // Inline fallback (tests and worker-less hosts): shared semantics with
@@ -154,16 +162,16 @@ export async function runPineWithBudget(source: string, ctx: Context, opts: Pine
     return {
       result,
       inputs: toScalarInputs(inlineCtx.inputs),
-      tested: backtest(result.orders, { close: ctx.close }),
+      tested: backtest(result.orders, backtestOpts),
     };
   }
-  const req = { id: newJobId(), kind: "run", source, ctx };
+  const req = { id: newJobId(), kind: "run", source, ctx, backtestOpts: opts.backtestOpts };
   const response = await respond(worker, req, budgetMs);
   if (response.kind !== "run") throw new Error("pine runner sent an unexpected reply");
   return {
     result: response.result,
     inputs: toScalarInputs(response.inputs as Record<string, unknown>),
-    tested: backtest(response.result.orders, { close: ctx.close }),
+    tested: backtest(response.result.orders, backtestOpts),
   };
 }
 

@@ -23,7 +23,7 @@ import { ObjectTree } from "./ObjectTree";
 import { TimeAndSales } from "./TimeAndSales";
 import { LinkGroupDialog } from "./LinkGroupDialog";
 import { sessionForSymbol } from "./sessionFor";
-import { safeHistory } from "./data";
+import { RESOLUTION_SECONDS, safeHistory } from "./data";
 import { precisionForSymbol } from "./pricePrecision";
 import { useQuote } from "./quotePoller";
 import { useWorkspace } from "./store";
@@ -42,6 +42,7 @@ import { publishCrosshair, subscribeCrosshair } from "./crosshairBus";
 import type { CrosshairMessage } from "./crosshairBus";
 import { getActiveExportSource, setActiveExportSource } from "./exportBridge";
 import { useShortcut } from "./shortcuts";
+import { useDrawingUi } from "./drawingUi";
 import { effectiveSource } from "./chartSource";
 import { useMt5 } from "./mt5";
 
@@ -272,10 +273,66 @@ export function ChartPage({
   useShortcut({
     id: "chart.delete-drawing",
     combo: ["Delete", "Backspace"],
+    when: () => useWorkspace.getState().selectedDrawingIds.length > 0,
+    run: () => useWorkspace.getState().deleteSelectedDrawings(),
+  });
+  useShortcut({
+    id: "chart.select-all-drawings",
+    combo: "Mod+A",
+    when: () => useWorkspace.getState().activeChart().drawings.length > 0,
+    run: () => useWorkspace.getState().selectAllDrawings(),
+  });
+  useShortcut({
+    id: "chart.cycle-drawings",
+    combo: ["Tab", "Shift+Tab"],
+    priority: 30,
+    when: () => useWorkspace.getState().selectedDrawingIds.length > 0,
+    run: (event) => {
+      const ws = useWorkspace.getState();
+      const drawings = [...ws.activeChart().drawings].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0));
+      if (drawings.length === 0) return;
+      const current = drawings.findIndex((d) => d.id === ws.selectedDrawingId);
+      const delta = event.shiftKey ? -1 : 1;
+      const next = drawings[(current + delta + drawings.length) % drawings.length]!;
+      ws.selectDrawing(next.id);
+    },
+  });
+  useShortcut({
+    id: "chart.open-drawing-settings",
+    combo: "Enter",
     when: () => useWorkspace.getState().selectedDrawingId !== null,
     run: () => {
       const id = useWorkspace.getState().selectedDrawingId;
-      if (id) useWorkspace.getState().deleteDrawing(id);
+      if (id) useDrawingUi.getState().openSettings(id, "style");
+    },
+  });
+  useShortcut({
+    id: "chart.nudge-drawing",
+    combo: [
+      "ArrowLeft",
+      "ArrowRight",
+      "ArrowUp",
+      "ArrowDown",
+      "Shift+ArrowLeft",
+      "Shift+ArrowRight",
+      "Shift+ArrowUp",
+      "Shift+ArrowDown",
+      "Alt+ArrowLeft",
+      "Alt+ArrowRight",
+    ],
+    priority: 40,
+    allowRepeat: true,
+    when: () => useWorkspace.getState().selectedDrawingIds.length > 0,
+    run: (event) => {
+      const ws = useWorkspace.getState();
+      const drawing = ws.activeChart().drawings.find((d) => d.id === ws.selectedDrawingId);
+      const price = Math.abs(drawing?.points[0]?.price ?? 1);
+      const bar = RESOLUTION_SECONDS[ws.activeChart().resolution] ?? 60;
+      const tStep = event.altKey ? bar : bar / 10;
+      const pStep = Math.max(price * 0.0005, 1e-8) * (event.altKey ? 1 : event.shiftKey ? 10 : 1);
+      const dTime = event.key === "ArrowLeft" ? -tStep : event.key === "ArrowRight" ? tStep : 0;
+      const dPrice = event.key === "ArrowDown" ? -pStep : event.key === "ArrowUp" ? pStep : 0;
+      ws.nudgeSelectedDrawings(dTime, dPrice);
     },
   });
   useShortcut({
@@ -302,17 +359,14 @@ export function ChartPage({
   useShortcut({
     id: "chart.copy",
     combo: "Mod+C",
-    when: () => useWorkspace.getState().selectedDrawingId !== null,
+    when: () => useWorkspace.getState().selectedDrawingIds.length > 0,
     run: () => useWorkspace.getState().copyDrawing(),
   });
   useShortcut({
     id: "chart.duplicate",
     combo: "Mod+D",
-    when: () => useWorkspace.getState().selectedDrawingId !== null,
-    run: () => {
-      const id = useWorkspace.getState().selectedDrawingId;
-      if (id) useWorkspace.getState().duplicateDrawing(id);
-    },
+    when: () => useWorkspace.getState().selectedDrawingIds.length > 0,
+    run: () => useWorkspace.getState().duplicateSelectedDrawings(),
   });
   useShortcut({
     id: "chart.paste",

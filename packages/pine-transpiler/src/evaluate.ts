@@ -471,7 +471,7 @@ function strategyClose(barIndex: number, orders: PineOrder[], kwargs: Kwargs, id
   });
 }
 
-/** `strategy.exit(id, from_entry, profit=, stop=)` — attach an exit to an entry. */
+/** `strategy.exit(id, from_entry, profit=, stop=, limit=, loss=)` — attach an exit to an entry. */
 function strategyExit(
   barIndex: number,
   orders: PineOrder[],
@@ -479,15 +479,37 @@ function strategyExit(
   id?: string,
   fromEntry?: string,
 ): void {
-  const stop = kwargs.stop;
-  const profit = kwargs.profit;
+  const stop =
+    kwargs.stop !== undefined && !isNa(kwargs.stop)
+      ? num(kwargs.stop)
+      : kwargs.loss !== undefined && !isNa(kwargs.loss)
+        ? num(kwargs.loss)
+        : undefined;
+  const limit =
+    kwargs.limit !== undefined && !isNa(kwargs.limit)
+      ? num(kwargs.limit)
+      : kwargs.profit !== undefined && !isNa(kwargs.profit)
+        ? num(kwargs.profit)
+        : undefined;
+  const trailPoints = kwargs.trail_points !== undefined && !isNa(kwargs.trail_points) ? num(kwargs.trail_points) : undefined;
+  const trailOffset = kwargs.trail_offset !== undefined && !isNa(kwargs.trail_offset) ? num(kwargs.trail_offset) : undefined;
+  const trail = trailPoints !== undefined || trailOffset !== undefined ? { points: trailPoints, offset: trailOffset } : undefined;
+  const targetEntry = fromEntry ?? optStr(kwargs, "from_entry");
+  const oca = optStr(kwargs, "oca_name") ?? optStr(kwargs, "oca");
+  const qty = kwargs.qty !== undefined && !isNa(kwargs.qty) ? num(kwargs.qty) : 0;
+
   orders.push({
     side: "long",
     action: "exit",
     barIndex,
     price: Number.NaN,
-    qty: stop !== undefined ? num(stop) : profit !== undefined ? num(profit) : 0,
-    id: fromEntry ?? id ?? optStr(kwargs, "id") ?? "",
+    qty,
+    id: id ?? optStr(kwargs, "id") ?? "",
+    fromEntry: targetEntry,
+    stop,
+    limit,
+    trail,
+    oca,
   });
 }
 

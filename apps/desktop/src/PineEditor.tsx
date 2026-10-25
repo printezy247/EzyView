@@ -46,6 +46,42 @@ plot(ma, "SMA", color.blue)
 /** Debounce before recomputing lint markers while the user is typing. */
 const LINT_DEBOUNCE_MS = 400;
 
+export interface BacktestParams {
+  initialCash: number;
+  commission: number;
+  commissionType: "cash" | "percent";
+  slippage: number;
+  multiplier: number;
+  fillOnNextOpen: boolean;
+}
+
+export const DEFAULT_BACKTEST_PARAMS: BacktestParams = {
+  initialCash: 10_000,
+  commission: 0,
+  commissionType: "cash",
+  slippage: 0,
+  multiplier: 1,
+  fillOnNextOpen: false,
+};
+
+export function loadBacktestParams(id: string): BacktestParams {
+  try {
+    const raw = localStorage.getItem(`pine_costs_${id}`);
+    if (raw) return { ...DEFAULT_BACKTEST_PARAMS, ...JSON.parse(raw) };
+  } catch {
+    // ignore
+  }
+  return DEFAULT_BACKTEST_PARAMS;
+}
+
+export function saveBacktestParams(id: string, params: BacktestParams): void {
+  try {
+    localStorage.setItem(`pine_costs_${id}`, JSON.stringify(params));
+  } catch {
+    // ignore
+  }
+}
+
 /** A transpile failure that carries a usable 1-based source position. */
 interface SyntaxLocation {
   line: number;
@@ -92,6 +128,7 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
   const [source, setSource] = useState(STARTER);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BacktestResult | null>(null);
+  const [backtestParams, setBacktestParams] = useState<BacktestParams>(() => loadBacktestParams(scriptId));
   // Best combo from the Optimize panel, merged into the next run's inputs so
   // the tester reflects the applied grid point without re-running the grid.
   const [appliedBest, setAppliedBest] = useState<Record<string, number> | null>(null);
@@ -113,7 +150,16 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
   // applied combo must not seed the next script's runs.
   useEffect(() => {
     setAppliedBest(null);
+    setBacktestParams(loadBacktestParams(scriptId));
   }, [scriptId]);
+
+  const updateBacktestParams = (patch: Partial<BacktestParams>) => {
+    setBacktestParams((prev) => {
+      const next = { ...prev, ...patch };
+      saveBacktestParams(scriptId, next);
+      return next;
+    });
+  };
   // Numeric slice of the last run's input snapshot — the keys the Optimize
   // panel offers (bool/string inputs are not grid-able).
   const numericInputs: Record<string, number> = {};
@@ -229,7 +275,20 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
     // The runner executes in a Worker with a time budget; it answers with the
     // run plus the scalar inputs (the worker's copy of ctx.inputs), so the
     // tester panel (and the optimizer) can show/apply what this run used.
-    void runPineWithBudget(source, ctx)
+    const effectiveCommission =
+      backtestParams.commissionType === "percent"
+        ? (backtestParams.commission / 100) * (bars[bars.length - 1]?.close ?? 1)
+        : backtestParams.commission;
+
+    void runPineWithBudget(source, ctx, {
+      backtestOpts: {
+        initialCash: backtestParams.initialCash,
+        commission: effectiveCommission,
+        slippage: backtestParams.slippage,
+        contractMultiplier: backtestParams.multiplier,
+        fillOnClose: !backtestParams.fillOnNextOpen,
+      },
+    })
       .then(({ result: scriptRun, inputs, tested }) => {
         // A clean run retires the previous syntax marker; lint findings remain.
         syntaxError.current = null;
@@ -250,7 +309,7 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
       })
       .catch(fail)
       .finally(() => setRunBusy(false));
-  }, [bars, name, scriptId, source, appliedBest, setPineResult, refreshMarkers, runBusy]);
+  }, [bars, name, scriptId, source, appliedBest, setPineResult, refreshMarkers, runBusy, backtestParams]);
 
   /** Download the live buffer as a share file; the name seeds the filename. */
   const exportScript = (): void => {
@@ -447,7 +506,14 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
         </div>
       ) : null}
 
-      {result && result.trades.length > 0 && <StrategyTester result={result} inputs={record?.inputs} />}
+      {result && result.trades.length > 0 && (
+        <StrategyTester
+          result={result}
+          inputs={record?.inputs}
+          costs={backtestParams}
+          onCostsChange={updateBacktestParams}
+        />
+      )}
       {Object.keys(numericInputs).length > 0 && (
         <OptimizePanel
           // Remount on script change so the previous script's grid rows and
@@ -642,13 +708,93 @@ function OptimizePanel({
   );
 }
 
-/** Backtest readout: equity curve, headline metrics, the input snapshot, recent fills. */
-function StrategyTester({ result, inputs }: { result: BacktestResult; inputs?: Record<string, number | string | boolean> }) {
+/** Backtest readout: equity curve, headline metrics, the input snapshot, assumptions and recent fills. */
+function StrategyTester({
+  result,
+  inputs,
+  costs,
+  onCostsChange,
+}: {
+  result: BacktestResult;
+  inputs?: Record<string, number | string | boolean>;
+  costs: BacktestParams;
+  onCostsChange: (patch: Partial<BacktestParams>) => void;
+}) {
   const recent = [...result.trades].reverse().slice(0, 5);
   const inputEntries = Object.entries(inputs ?? {});
   return (
     <div className="border-t border-ev-raised px-4 py-2 text-base">
-      <EquityCurve equity={result.equity} />
+      <div className="mb-2 flex items-center justify-between gap-4">
+        <div className="flex-1">
+          <EquityCurve equity={result.equity} />
+        </div>
+        <div className="flex flex-col gap-1 rounded border border-ev-line/60 bg-ev-panel/50 p-2 text-xs text-ev-muted min-w-[200px]">
+          <span className="font-semibold uppercase tracking-wider text-ev-faint">Assumptions</span>
+          <span className="num">Cash: ${costs.initialCash.toLocaleString()}</span>
+          <span className="num">
+            Comm: {costs.commission} {costs.commissionType === "percent" ? "%" : "$"}
+          </span>
+          <span className="num">Slippage: {costs.slippage}</span>
+          <span className="num">Multiplier: {costs.multiplier}x</span>
+          <span>{costs.fillOnNextOpen ? "Next Open" : "Close"}</span>
+        </div>
+      </div>
+      <div className="mb-2 flex flex-wrap items-center gap-3 text-xs">
+        <label className="flex items-center gap-1 text-ev-muted">
+          <span>Initial Cash:</span>
+          <input
+            type="number"
+            value={costs.initialCash}
+            onChange={(e) => onCostsChange({ initialCash: Number(e.target.value) || 0 })}
+            className="w-20 rounded border border-ev-line bg-ev-bg px-1.5 py-0.5 text-ev-strong num"
+          />
+        </label>
+        <label className="flex items-center gap-1 text-ev-muted">
+          <span>Commission:</span>
+          <input
+            type="number"
+            step="0.1"
+            value={costs.commission}
+            onChange={(e) => onCostsChange({ commission: Number(e.target.value) || 0 })}
+            className="w-16 rounded border border-ev-line bg-ev-bg px-1.5 py-0.5 text-ev-strong num"
+          />
+          <button
+            type="button"
+            onClick={() => onCostsChange({ commissionType: costs.commissionType === "cash" ? "percent" : "cash" })}
+            className="rounded bg-ev-line px-1.5 py-0.5 text-ev-faint hover:text-ev-strong"
+          >
+            {costs.commissionType === "cash" ? "$" : "%"}
+          </button>
+        </label>
+        <label className="flex items-center gap-1 text-ev-muted">
+          <span>Slippage:</span>
+          <input
+            type="number"
+            step="0.1"
+            value={costs.slippage}
+            onChange={(e) => onCostsChange({ slippage: Number(e.target.value) || 0 })}
+            className="w-16 rounded border border-ev-line bg-ev-bg px-1.5 py-0.5 text-ev-strong num"
+          />
+        </label>
+        <label className="flex items-center gap-1 text-ev-muted">
+          <span>Multiplier:</span>
+          <input
+            type="number"
+            value={costs.multiplier}
+            onChange={(e) => onCostsChange({ multiplier: Number(e.target.value) || 1 })}
+            className="w-16 rounded border border-ev-line bg-ev-bg px-1.5 py-0.5 text-ev-strong num"
+          />
+        </label>
+        <label className="flex items-center gap-1.5 text-ev-muted cursor-pointer">
+          <input
+            type="checkbox"
+            checked={costs.fillOnNextOpen}
+            onChange={(e) => onCostsChange({ fillOnNextOpen: e.target.checked })}
+            className="rounded border-ev-line"
+          />
+          <span>Fill on next open</span>
+        </label>
+      </div>
       <div className="mb-1.5 flex items-center gap-4 text-ev-muted">
         <span className="font-semibold uppercase tracking-wider text-ev-faint">Strategy Tester</span>
         <Metric label="Trades" value={String(result.trades.length)} />

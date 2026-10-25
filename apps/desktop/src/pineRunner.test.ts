@@ -38,6 +38,28 @@ describe("runPineWithBudget (inline path)", () => {
     const out = await runPineWithBudget("plot(close)", ctx([1, 2, 3]), { timeBudgetMs: 50 });
     expect(out.result.plots).toHaveLength(1);
   });
+
+  it("passes backtest costs and OHLC fills; a costed fixture loses money", async () => {
+    // Break-even roundtrip without costs
+    const strategy = `strategy("Cost Test")
+if bar_index == 0
+    strategy.entry("Buy", strategy.long)
+if bar_index == 1
+    strategy.close("Buy")
+`;
+    const free = await runPineWithBudget(strategy, ctx([100, 100, 100]));
+    expect(free.tested.totalPnl).toBe(0);
+
+    // Costed fixture: commission and slippage make it lose money
+    const costed = await runPineWithBudget(strategy, ctx([100, 100, 100]), {
+      backtestOpts: {
+        commission: 2.5,
+        slippage: 0.5,
+        contractMultiplier: 1,
+      },
+    });
+    expect(costed.tested.totalPnl).toBeLessThan(0);
+  });
 });
 
 describe("optimizePineWithBudget (inline path)", () => {

@@ -240,4 +240,42 @@ describe("backtest", () => {
     expect(result.sqn).toBeDefined();
     expect(result.avgWinLossRatio).toBeCloseTo(3 / 1.5, 2); // 3 win vs avg 1.5 loss = 2.0
   });
+
+  it("fills stop loss at requested level on intrabar low breach", () => {
+    // Bar 0: Long entered at close 100 with stop=95, limit=110
+    // Bar 1: close 102, low 94 -> breached stop at 95
+    const orders = [
+      order({ action: "entry", barIndex: 0, side: "long", id: "L" }),
+      order({ action: "exit", barIndex: 0, id: "ex", fromEntry: "L", stop: 95, limit: 110 }),
+    ];
+    const result = backtest(orders, {
+      close: [100, 102, 104],
+      low: [99, 94, 103],
+      high: [101, 103, 105],
+    });
+
+    expect(result.trades).toHaveLength(1);
+    expect(result.trades[0]?.exitPrice).toBe(95); // filled at requested stop level, not bar close (102)
+    expect(result.trades[0]?.exitBar).toBe(1);
+    expect(result.trades[0]?.pnl).toBeCloseTo(-5, 6);
+  });
+
+  it("fills profit target at requested level on intrabar high breach", () => {
+    // Bar 0: Long entered at close 100 with stop=90, limit=108
+    // Bar 1: close 103, high 109 -> breached limit at 108
+    const orders = [
+      order({ action: "entry", barIndex: 0, side: "long", id: "L" }),
+      order({ action: "exit", barIndex: 0, id: "ex", fromEntry: "L", stop: 90, limit: 108 }),
+    ];
+    const result = backtest(orders, {
+      close: [100, 103, 104],
+      low: [99, 101, 102],
+      high: [101, 109, 105],
+    });
+
+    expect(result.trades).toHaveLength(1);
+    expect(result.trades[0]?.exitPrice).toBe(108); // filled at requested target level, not bar close (103)
+    expect(result.trades[0]?.exitBar).toBe(1);
+    expect(result.trades[0]?.pnl).toBeCloseTo(8, 6);
+  });
 });

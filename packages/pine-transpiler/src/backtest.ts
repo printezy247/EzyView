@@ -65,64 +65,150 @@ export function backtest(orders: PineOrder[], opts: BacktestOptions): BacktestRe
   const commission = opts.commission ?? 0;
   const multiplier = opts.contractMultiplier ?? 1;
 
-  const openPositions = new Map<string, { side: "long" | "short"; price: number; qty: number; bar: number }>();
+  interface Position {
+    id: string;
+    side: "long" | "short";
+    price: number;
+    qty: number;
+    bar: number;
+    bracket?: {
+      stop?: number;
+      limit?: number;
+      trail?: { points?: number; offset?: number };
+      oca?: string;
+    };
+  }
+
+  const openPositions = new Map<string, Position>();
   const trades: Trade[] = [];
   const equity: number[] = [];
 
-  // Process orders in bar order so fills respect the sequence the script saw.
+  // Group orders by the bar index they execute on.
+  // In bar order so fills respect the sequence the script saw.
   const sorted = [...orders].sort((a, b) => a.barIndex - b.barIndex);
-
+  const ordersByFillBar = new Map<number, PineOrder[]>();
   for (const order of sorted) {
     const fillBar = fillOnClose ? order.barIndex : order.barIndex + 1;
-    if (fillBar >= close.length) continue;
+    if (fillBar < close.length) {
+      const list = ordersByFillBar.get(fillBar) ?? [];
+      list.push(order);
+      ordersByFillBar.set(fillBar, list);
+    }
+  }
 
-    const rawPrice = fillOnClose
-      ? close[fillBar]
-      : (opts.open?.[fillBar] ?? close[fillBar]);
+  for (let b = 0; b < close.length; b++) {
+    const closeBar = close[b];
+    if (closeBar === undefined || Number.isNaN(closeBar)) continue;
 
-    // A bar with no price cannot fill; skip rather than invent a level.
-    if (rawPrice === undefined || Number.isNaN(rawPrice)) continue;
+    const openBar = opts.open?.[b] ?? closeBar;
+    const highBar = opts.high?.[b] ?? (opts.open !== undefined ? Math.max(openBar, closeBar) : closeBar);
+    const lowBar = opts.low?.[b] ?? (opts.open !== undefined ? Math.min(openBar, closeBar) : closeBar);
 
-    if (order.action === "entry") {
-      const execPrice = order.side === "long" ? rawPrice + slippage : rawPrice - slippage;
-      const key = order.id ?? order.side;
-      const existing = openPositions.get(key);
-      if (existing) {
-        const exitPrice = existing.side === "long" ? rawPrice - slippage : rawPrice + slippage;
-        closePosition(existing, exitPrice, fillBar, trades, multiplier, commission);
+    // 1. Check intrabar stop/limit brackets for positions open coming into bar b.
+    for (const [key, pos] of Array.from(openPositions.entries())) {
+      if (pos.bar >= b && fillOnClose) continue; // Entered at this bar's close; bracket applies from next bar
+      if (!pos.bracket) continue;
+
+      const { stop, limit } = pos.bracket;
+      let exitPrice: number | null = null;
+
+      if (pos.side === "long") {
+        if (stop !== undefined && lowBar <= stop) {
+          exitPrice = stop - slippage;
+        } else if (limit !== undefined && highBar >= limit) {
+          exitPrice = limit - slippage;
+        }
+      } else {
+        if (stop !== undefined && highBar >= stop) {
+          exitPrice = stop + slippage;
+        } else if (limit !== undefined && lowBar <= limit) {
+          exitPrice = limit + slippage;
+        }
       }
-      openPositions.set(key, { side: order.side, price: execPrice, qty: order.qty || 1, bar: fillBar });
-      continue;
+
+      if (exitPrice !== null) {
+        closePosition(pos, exitPrice, b, trades, multiplier, commission);
+        openPositions.delete(key);
+      }
     }
 
-    if (order.action === "close") {
-      if (order.id === "*") {
-        for (const pos of openPositions.values()) {
-          const exitPrice = pos.side === "long" ? rawPrice - slippage : rawPrice + slippage;
-          closePosition(pos, exitPrice, fillBar, trades, multiplier, commission);
+    // 2. Process orders scheduled to fill on bar b.
+    const barOrders = ordersByFillBar.get(b) ?? [];
+    const rawPrice = fillOnClose ? closeBar : openBar;
+
+    for (const order of barOrders) {
+      if (order.action === "entry") {
+        const execPrice = order.side === "long" ? rawPrice + slippage : rawPrice - slippage;
+        const key = order.id ?? order.side;
+        const existing = openPositions.get(key);
+        if (existing) {
+          const exitPrice = existing.side === "long" ? rawPrice - slippage : rawPrice + slippage;
+          closePosition(existing, exitPrice, b, trades, multiplier, commission);
         }
-        openPositions.clear();
+        openPositions.set(key, {
+          id: key,
+          side: order.side,
+          price: execPrice,
+          qty: order.qty || 1,
+          bar: b,
+        });
         continue;
       }
-      const key = order.id ?? "";
-      const pos = openPositions.get(key);
-      if (pos) {
-        const exitPrice = pos.side === "long" ? rawPrice - slippage : rawPrice + slippage;
-        closePosition(pos, exitPrice, fillBar, trades, multiplier, commission);
-        openPositions.delete(key);
-      }
-      continue;
-    }
 
-    // `exit` carries a stop or target in `qty`; without one it flattens at the
-    // current execution price.
-    if (order.action === "exit") {
-      const key = order.id ?? "";
-      const pos = openPositions.get(key);
-      if (pos) {
-        const exitPrice = pos.side === "long" ? rawPrice - slippage : rawPrice + slippage;
-        closePosition(pos, exitPrice, fillBar, trades, multiplier, commission);
-        openPositions.delete(key);
+      if (order.action === "close") {
+        if (order.id === "*") {
+          for (const pos of openPositions.values()) {
+            const exitPrice = pos.side === "long" ? rawPrice - slippage : rawPrice + slippage;
+            closePosition(pos, exitPrice, b, trades, multiplier, commission);
+          }
+          openPositions.clear();
+          continue;
+        }
+        const key = order.id ?? "";
+        const pos = openPositions.get(key);
+        if (pos) {
+          const exitPrice = pos.side === "long" ? rawPrice - slippage : rawPrice + slippage;
+          closePosition(pos, exitPrice, b, trades, multiplier, commission);
+          openPositions.delete(key);
+        }
+        continue;
+      }
+
+      if (order.action === "exit") {
+        const key = order.fromEntry ?? order.id ?? "";
+        // Look up position by fromEntry/id, or first position if key matches or is default
+        const pos = openPositions.get(key) ?? (openPositions.size === 1 ? openPositions.values().next().value : undefined);
+        if (!pos) continue;
+
+        if (order.stop !== undefined || order.limit !== undefined || order.trail !== undefined) {
+          pos.bracket = {
+            stop: order.stop,
+            limit: order.limit,
+            trail: order.trail,
+            oca: order.oca,
+          };
+          // Check if this newly attached bracket triggers on bar b if entered at open
+          if (!fillOnClose && pos.bar === b) {
+            const { stop, limit } = pos.bracket;
+            let exitPrice: number | null = null;
+            if (pos.side === "long") {
+              if (stop !== undefined && lowBar <= stop) exitPrice = stop - slippage;
+              else if (limit !== undefined && highBar >= limit) exitPrice = limit - slippage;
+            } else {
+              if (stop !== undefined && highBar >= stop) exitPrice = stop + slippage;
+              else if (limit !== undefined && lowBar <= limit) exitPrice = limit + slippage;
+            }
+            if (exitPrice !== null) {
+              closePosition(pos, exitPrice, b, trades, multiplier, commission);
+              openPositions.delete(pos.id);
+            }
+          }
+        } else {
+          // Market exit
+          const exitPrice = pos.side === "long" ? rawPrice - slippage : rawPrice + slippage;
+          closePosition(pos, exitPrice, b, trades, multiplier, commission);
+          openPositions.delete(pos.id);
+        }
       }
     }
   }

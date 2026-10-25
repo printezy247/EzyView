@@ -9,7 +9,15 @@ import { TOOL_ANCHORS } from "./types.js";
  * show the right settings tabs without touching each of them.
  */
 
-export type DrawingToolCategory = "trend" | "fib" | "shapes" | "annotation" | "prediction";
+export type DrawingToolCategory =
+  | "trend"
+  | "pitchfork"
+  | "fib"
+  | "gann"
+  | "patterns"
+  | "shapes"
+  | "annotation"
+  | "prediction";
 
 export interface DrawingToolSpec {
   id: DrawingToolId;
@@ -105,6 +113,47 @@ export const TOOL_SPECS: Record<DrawingToolId, DrawingToolSpec> = {
     stats: true,
     position: true,
   }),
+  pitchfork_standard: spec("pitchfork_standard", "Pitchfork", "pitchfork", { extend: true, stats: true, shortcut: "P" }),
+  pitchfork_schiff: spec("pitchfork_schiff", "Schiff pitchfork", "pitchfork", { extend: true }),
+  pitchfork_modified_schiff: spec("pitchfork_modified_schiff", "Modified Schiff pitchfork", "pitchfork", { extend: true }),
+  pitchfork_inside: spec("pitchfork_inside", "Inside pitchfork", "pitchfork", { extend: true }),
+  fib_fan: spec("fib_fan", "Fib fan", "fib", { fib: true, extend: true }),
+  fib_arcs: spec("fib_arcs", "Fib arcs", "fib", { fib: true }),
+  fib_channel: spec("fib_channel", "Fib channel", "fib", { fib: true, fill: true, extend: true }),
+  fib_timezones: spec("fib_timezones", "Fib time zones", "fib", { fib: true }),
+  fib_wedge: spec("fib_wedge", "Fib wedge", "fib", { fib: true, fill: true }),
+  gann_fan: spec("gann_fan", "Gann fan", "gann", { extend: true }),
+  gann_box: spec("gann_box", "Gann box", "gann", { fill: true }),
+  gann_square: spec("gann_square", "Gann square", "gann", { fill: true }),
+  gann_square_from_two: spec("gann_square_from_two", "Square from two points", "gann", { fill: true }),
+  gann_time: spec("gann_time", "Gann time by 1/2/3", "gann", {}),
+  xabcd: spec("xabcd", "XABCD pattern", "patterns", { stats: true, text: true }),
+  cypher: spec("cypher", "Cypher pattern", "patterns", { stats: true, text: true }),
+  head_shoulders: spec("head_shoulders", "Head and shoulders", "patterns", { stats: true, text: true }),
+  abcd: spec("abcd", "ABCD pattern", "patterns", { stats: true, text: true }),
+  three_drives: spec("three_drives", "Three drives", "patterns", { stats: true, text: true }),
+  elliott_impulse: spec("elliott_impulse", "Elliott impulse (1-5)", "patterns", { stats: true, text: true }),
+  elliott_correction: spec("elliott_correction", "Elliott correction (A-C)", "patterns", { stats: true, text: true }),
+  elliott_triangle: spec("elliott_triangle", "Elliott triangle", "patterns", { stats: true, text: true }),
+  cup_handle: spec("cup_handle", "Cup and handle", "patterns", { stats: true, text: true }),
+  image: spec("image", "Image", "annotation", { fill: true }),
+  sticker: spec("sticker", "Sticker", "annotation", { text: true }),
+  pin: spec("pin", "Pin", "annotation", { text: true }),
+  comment: spec("comment", "Comment", "annotation", { fill: true, text: true }),
+  price_note: spec("price_note", "Price note", "annotation", { text: true }),
+  arrow_marker: spec("arrow_marker", "Arrow marker", "annotation", {}),
+  highlighter: spec("highlighter", "Highlighter", "annotation", {}),
+  date_price_range: spec("date_price_range", "Date and price range", "prediction", { fill: true, stats: true }),
+  price_range: spec("price_range", "Price range", "prediction", { fill: true, stats: true }),
+  projected_range: spec("projected_range", "Projected range", "prediction", { fill: true, stats: true }),
+  bars_pattern: spec("bars_pattern", "Bars pattern", "prediction", { fill: true }),
+  forecast: spec("forecast", "Forecast", "prediction", { fill: true, stats: true }),
+  rotated_rectangle: spec("rotated_rectangle", "Rotated rectangle", "shapes", { fill: true }),
+  circle: spec("circle", "Circle", "shapes", { fill: true }),
+  polyline: spec("polyline", "Polyline", "shapes", {}),
+  arc: spec("arc", "Arc", "shapes", {}),
+  curve: spec("curve", "Curve", "shapes", {}),
+  double_curve: spec("double_curve", "Double curve", "shapes", {}),
 };
 
 /** Rail order and grouping. Every tool appears exactly once. */
@@ -118,10 +167,82 @@ export const TOOL_CATEGORIES: readonly {
     title: "Trend line tools",
     tools: ["trend_line", "ray", "info_line", "extended_line", "horizontal_line", "horizontal_ray", "vertical_line", "parallel_channel"],
   },
-  { id: "fib", title: "Gann and Fibonacci", tools: ["fib_retracement", "fib_extension"] },
-  { id: "shapes", title: "Geometric shapes", tools: ["brush", "arrow", "rectangle", "ellipse", "triangle"] },
-  { id: "annotation", title: "Annotation tools", tools: ["text", "callout"] },
-  { id: "prediction", title: "Prediction and measurement", tools: ["long_position", "short_position", "measure"] },
+  {
+    id: "pitchfork",
+    title: "Pitchfork tools",
+    tools: ["pitchfork_standard", "pitchfork_schiff", "pitchfork_modified_schiff", "pitchfork_inside"],
+  },
+  {
+    id: "fib",
+    title: "Gann and Fibonacci",
+    tools: [
+      "fib_retracement",
+      "fib_extension",
+      "fib_fan",
+      "fib_arcs",
+      "fib_channel",
+      "fib_timezones",
+      "fib_wedge",
+    ],
+  },
+  {
+    id: "gann",
+    title: "Gann tools",
+    tools: ["gann_fan", "gann_box", "gann_square", "gann_square_from_two", "gann_time"],
+  },
+  {
+    id: "patterns",
+    title: "Patterns and Elliott waves",
+    tools: [
+      "xabcd",
+      "cypher",
+      "head_shoulders",
+      "abcd",
+      "three_drives",
+      "elliott_impulse",
+      "elliott_correction",
+      "elliott_triangle",
+      "cup_handle",
+    ],
+  },
+  {
+    id: "shapes",
+    title: "Geometric shapes",
+    tools: [
+      "brush",
+      "highlighter",
+      "arrow",
+      "arrow_marker",
+      "rectangle",
+      "rotated_rectangle",
+      "ellipse",
+      "circle",
+      "triangle",
+      "polyline",
+      "arc",
+      "curve",
+      "double_curve",
+    ],
+  },
+  {
+    id: "annotation",
+    title: "Annotation tools",
+    tools: ["text", "callout", "comment", "sticker", "pin", "price_note", "image"],
+  },
+  {
+    id: "prediction",
+    title: "Prediction and measurement",
+    tools: [
+      "long_position",
+      "short_position",
+      "measure",
+      "date_price_range",
+      "price_range",
+      "projected_range",
+      "bars_pattern",
+      "forecast",
+    ],
+  },
 ];
 
 export const ALL_TOOLS: readonly DrawingToolId[] = TOOL_CATEGORIES.flatMap((c) => c.tools);
@@ -160,6 +281,15 @@ export function defaultStyleForTool(tool: DrawingToolId, base: DrawingStyle): Dr
     style.showPriceLabels = base.showPriceLabels ?? true;
     style.targetColor = base.targetColor ?? "#26a69a";
     style.stopColor = base.stopColor ?? "#ef5350";
+  }
+  if (tool === "highlighter") {
+    style.width = Math.max(8, base.width * 4);
+    style.opacity = 40;
+  }
+  if (tool === "image" || tool === "comment" || tool.endsWith("_range") || tool === "gann_box" || tool === "forecast") {
+    style.fill = base.fill ?? base.color;
+    style.fillOpacity = base.fillOpacity ?? 12;
+    style.showPriceLabels = base.showPriceLabels ?? true;
   }
   return style;
 }

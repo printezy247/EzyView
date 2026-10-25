@@ -1010,9 +1010,14 @@ export class EzyChart {
     this.drawings.setDrawings(drawings);
   }
 
-  /** Highlight one drawing's anchors (null clears the highlight). */
-  setSelection(id: string | null): void {
+  /** Highlight one or more drawings' anchors (null clears the highlight). */
+  setSelection(id: string | readonly string[] | null): void {
     this.drawings.setSelection(id);
+  }
+
+  /** Decoded image assets for `image` drawings, keyed by asset id. */
+  setDrawingImages(images: ReadonlyMap<string, CanvasImageSource>): void {
+    this.drawings.setImages(images);
   }
 
   /** Rubber-band drawing shown while a tool is placing anchors. */

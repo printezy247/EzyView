@@ -7,7 +7,7 @@ import { brokerFeed, precisionFor } from "./data";
 import { toggleEventSwitch } from "./EventsControls";
 import { getActiveExportSource } from "./exportBridge";
 import { draftSideForPrice, useOrderDraft } from "./orderDraft";
-import { DEFAULT_DRAWING_STYLE } from "@ezyview/drawing-tools";
+import { DEFAULT_DRAWING_STYLE, getDrawingLevels, priceAt } from "@ezyview/drawing-tools";
 import { uid, useWorkspace } from "./store";
 import { linkGroupOf } from "./linkGroups";
 import { applyDrawingTemplate, listDrawingTemplates, saveDrawingTemplate } from "./drawingTemplates";
@@ -106,9 +106,10 @@ export function ChartMenuHost({
   // A right-click on a drawing gets its own section; the rest of the chart
   // menu still follows, so nothing is lost when the target is a shape.
   const target = request.drawingId ? chart.drawings.find((d) => d.id === request.drawingId) : undefined;
-  const level = target?.points[0]?.price;
-  const hasLevel =
-    target !== undefined && level !== undefined && (target.tool === "horizontal_line" || target.tool === "horizontal_ray");
+  const levels = target ? getDrawingLevels(target, request.time) : [];
+  const targetLevel = levels[0];
+  const levelPrice = targetLevel?.price ?? (target ? (priceAt(target, request.time) ?? target.points[0]?.price) : undefined);
+  const hasLevel = target !== undefined && levelPrice !== undefined && Number.isFinite(levelPrice);
   const drawing = target
     ? {
         id: target.id,
@@ -121,13 +122,14 @@ export function ChartMenuHost({
         actions: {
           settings: () => useDrawingUi.getState().openSettings(target.id, "style"),
           addAlert: () => {
-            if (level === undefined) return;
+            if (levelPrice === undefined) return;
             ws.addAlert(
               chart.symbol,
-              { kind: "crossing", value: level },
+              { kind: "crossing", value: levelPrice },
               "once_per_bar_close",
-              `${drawingLabel(target)} @ ${level}`,
+              `${drawingLabel(target)} @ ${levelPrice.toFixed(precision)}`,
               target.id,
+              targetLevel?.key,
             );
           },
           saveTemplate: () => saveDrawingTemplate(uniqueDrawingTemplateName(drawingLabel(target)), target.style),

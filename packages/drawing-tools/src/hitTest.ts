@@ -10,6 +10,7 @@ import {
   near,
 } from "./geometry.js";
 import { resolvedFibExtensionLevels, resolvedFibLevels } from "./fib.js";
+import { advancedHitTest, isAdvancedTool } from "./advanced.js";
 import type { ScreenPoint } from "./types.js";
 
 export interface HitResult {
@@ -55,6 +56,9 @@ export function hitTest(
   // Off-view anchors make the body's geometry degenerate — skip it.
   if (screen.some((p) => p === null)) return null;
   const pts = screen as ScreenPoint[];
+  // The advanced packs share one geometry/hit-test implementation, so adding a
+  // tool cannot make the renderer and the click target disagree.
+  if (isAdvancedTool(drawing.tool)) return advancedHitTest(drawing, screen, click, tol) ? bodyHit(drawing) : null;
   const [a, b, c] = pts;
 
   switch (drawing.tool) {
