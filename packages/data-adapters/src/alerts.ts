@@ -33,6 +33,10 @@ export interface PriceAlert {
   drawingId?: string;
   /** Specific level key of the drawing (e.g. "0.618", "channel", "upper"). */
   levelKey?: string;
+  /** Epoch seconds after which the alert stops evaluating. */
+  expiresAt?: number;
+  /** Epoch seconds before which a snoozed alert stays quiet. */
+  snoozedUntil?: number;
 }
 
 /**
@@ -127,6 +131,10 @@ export function evaluateAlert(
   barClosed: boolean,
 ): PriceAlert | null {
   if (alert.state === "triggered" && alert.frequency === "once") return null;
+  // Expired and snoozed alerts stay on the list but are not evaluated. Using
+  // the candle's time keeps replay deterministic instead of reading the wall clock.
+  if (alert.expiresAt !== undefined && candle.time >= alert.expiresAt) return null;
+  if (alert.snoozedUntil !== undefined && candle.time < alert.snoozedUntil) return null;
 
   // Re-arm per-bar alerts when the candle timestamp advances to a new bar.
   const isNewBar = alert.lastBarTime !== undefined && candle.time > alert.lastBarTime;

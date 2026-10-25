@@ -1,7 +1,7 @@
 import { isDataSourceChoice } from "./chartSource";
 import type { DataSourceChoice } from "./chartSource";
 import type { Resolution } from "@ezyview/data-adapters";
-import type { ChartType } from "@ezyview/chart-engine";
+import type { ChartType, CompareMode } from "@ezyview/chart-engine";
 import type { Drawing, MagnetMode } from "@ezyview/drawing-tools";
 import type { IndicatorDef } from "@ezyview/indicators";
 
@@ -243,6 +243,18 @@ export interface ChartState {
   linkGroup?: string;
   /** Price feed for this cell. Optional so old saves load; absent = "auto" (the global feed switch). */
   dataSource?: DataSourceChoice;
+  /** Secondary symbols overlaid on the main pane, normalised. */
+  compare?: CompareSymbol[];
+}
+
+/** One secondary symbol on the chart. */
+export interface CompareSymbol {
+  id: string;
+  symbol: string;
+  color: string;
+  mode: CompareMode;
+  /** Kept in the list but not drawn. Default true. */
+  visible?: boolean;
 }
 
 /** How a layout splits its chart area. */
@@ -375,10 +387,10 @@ export interface PersistedWorkspace {
 }
 
 /** Replay transport speed multipliers (× a 500 ms/bar base). */
-export type ReplaySpeed = 0.1 | 0.5 | 1 | 2 | 3 | 5;
+export type ReplaySpeed = 0.1 | 0.167 | 0.5 | 1 | 2 | 3 | 5;
 
 const MAGNET_IDS = new Set<string>(["off", "weak", "strong"]);
-const REPLAY_SPEEDS = new Set<number>([0.1, 0.5, 1, 2, 3, 5]);
+const REPLAY_SPEEDS = new Set<number>([0.1, 0.167, 0.5, 1, 2, 3, 5]);
 
 /**
  * Validate what came out of storage. Anything malformed falls back to

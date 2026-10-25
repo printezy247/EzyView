@@ -541,6 +541,30 @@ describe("multi-select, groups and bulk edits", () => {
   });
 });
 
+describe("compare overlays", () => {
+  it("adds, updates and removes a secondary symbol on the focused chart", () => {
+    useWorkspace.getState().updateActive({ compare: [] });
+    useWorkspace.getState().addCompare("NASDAQ:AAPL", "percent");
+    const added = useWorkspace.getState().activeChart().compare ?? [];
+    expect(added).toHaveLength(1);
+    expect(added[0]?.symbol).toBe("NASDAQ:AAPL");
+    expect(added[0]?.mode).toBe("percent");
+    const id = added[0]!.id;
+    useWorkspace.getState().updateCompare(id, { mode: "ratio", visible: false });
+    expect(useWorkspace.getState().activeChart().compare?.[0]?.mode).toBe("ratio");
+    expect(useWorkspace.getState().activeChart().compare?.[0]?.visible).toBe(false);
+    useWorkspace.getState().removeCompare(id);
+    expect(useWorkspace.getState().activeChart().compare).toEqual([]);
+  });
+
+  it("does not add the same symbol twice", () => {
+    useWorkspace.getState().updateActive({ compare: [] });
+    useWorkspace.getState().addCompare("NASDAQ:AAPL");
+    useWorkspace.getState().addCompare("NASDAQ:AAPL");
+    expect(useWorkspace.getState().activeChart().compare).toHaveLength(1);
+  });
+});
+
 describe("chart templates", () => {
   it("saves the focused chart's look and applies it to another look, keeping symbol and drawings", () => {
     seed(line("t1"));

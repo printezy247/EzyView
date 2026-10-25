@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DELAY_AFTER_SECONDS, provenanceOf, provenanceLabel, provenanceTone } from "./provenance";
+import { DELAY_AFTER_SECONDS, STALE_AFTER_SECONDS, provenanceOf, provenanceLabel, provenanceTone } from "./provenance";
 
 /**
  * Where a price came from, stated on the quote itself.
@@ -37,6 +37,10 @@ describe("provenanceOf", () => {
     expect(provenanceOf({ source: "mt5", status: "online", ageSeconds: DELAY_AFTER_SECONDS + 1 })).toBe("delayed");
   });
 
+  it("calls a feed with no tick for a minute stale, not merely delayed", () => {
+    expect(provenanceOf({ source: "mt5", status: "online", ageSeconds: STALE_AFTER_SECONDS + 1 })).toBe("stale");
+  });
+
   it("does not downgrade a cached feed any further", () => {
     expect(provenanceOf({ source: "mt5", status: "error", ageSeconds: 100_000 })).toBe("cached");
   });
@@ -52,6 +56,7 @@ describe("provenanceLabel", () => {
     expect(provenanceLabel("delayed")).toBe("DELAYED");
     expect(provenanceLabel("demo")).toBe("DEMO");
     expect(provenanceLabel("cached")).toBe("CACHED");
+    expect(provenanceLabel("stale")).toBe("STALE");
   });
 });
 
@@ -60,6 +65,7 @@ describe("provenanceTone", () => {
     expect(provenanceTone("live")).toBe("up");
     expect(provenanceTone("delayed")).toBe("warn");
     expect(provenanceTone("cached")).toBe("warn");
+    expect(provenanceTone("stale")).toBe("warn");
     expect(provenanceTone("demo")).toBe("neutral");
   });
 });
