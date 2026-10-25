@@ -2,6 +2,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { getActiveExportSource, getExportSourceVersion, subscribeExportSources } from "./exportBridge";
 import { formatClock, parseGoToDate, RANGE_PRESETS } from "./chartView";
 import { EventsControls } from "./EventsControls";
+import { CompareDialog } from "./CompareDialog";
 import { useWorkspace } from "./store";
 import { buttonClass } from "./ui";
 
@@ -25,6 +26,7 @@ export function ChartBottomBar({ onOpenHotkeys }: { onOpenHotkeys: () => void })
   const updateActive = useWorkspace((s) => s.updateActive);
 
   const [now, setNow] = useState(() => Date.now());
+  const [compareOpen, setCompareOpen] = useState(false);
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
@@ -60,6 +62,15 @@ export function ChartBottomBar({ onOpenHotkeys }: { onOpenHotkeys: () => void })
         }}
         className="ml-1 h-5 rounded border border-ev-line bg-ev-panel px-1 text-dense text-ev-text disabled:opacity-40"
       />
+
+      <button
+        type="button"
+        onClick={() => setCompareOpen(true)}
+        title="Overlay another symbol on this chart"
+        className={`${chip} ${idle} ml-1`}
+      >
+        Compare
+      </button>
 
       <div className="mx-2 h-4 w-px shrink-0 bg-ev-raised" />
       <EventsControls layout="bar" />
@@ -102,6 +113,7 @@ export function ChartBottomBar({ onOpenHotkeys }: { onOpenHotkeys: () => void })
           Shortcuts
         </button>
       </div>
+      <CompareDialog open={compareOpen} onClose={() => setCompareOpen(false)} />
     </div>
   );
 }

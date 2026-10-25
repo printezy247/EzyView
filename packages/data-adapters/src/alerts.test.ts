@@ -128,6 +128,19 @@ describe("evaluateAlert", () => {
     expect(closed?.state).toBe("triggered");
   });
 
+  it("stays quiet while snoozed and resumes after the snooze time", () => {
+    const snoozed = { ...alert({ kind: "greater", value: 100 }), snoozedUntil: 1_700_000_100 };
+    expect(evaluateAlert(snoozed, [], candle(150, 1_700_000_050), false)).toBeNull();
+    const resumed = evaluateAlert(snoozed, [], candle(150, 1_700_000_101), false);
+    expect(resumed?.state).toBe("triggered");
+  });
+
+  it("stops evaluating after its expiry timestamp", () => {
+    const expiring = { ...alert({ kind: "greater", value: 100 }), expiresAt: 1_700_000_100 };
+    expect(evaluateAlert(expiring, [], candle(150, 1_700_000_099), false)?.state).toBe("triggered");
+    expect(evaluateAlert(expiring, [], candle(150, 1_700_000_100), false)).toBeNull();
+  });
+
   it("re-arms a `once_per_bar` alert on a new bar timestamp and can fire again", () => {
     const a0 = alert({ kind: "greater", value: 100 }, "once_per_bar");
     // Fires on bar 1000

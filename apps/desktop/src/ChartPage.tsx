@@ -557,7 +557,7 @@ export function ChartPage({
 
       {tradingOpen && <TradingPanel symbol={state.symbol} />}
 
-      <ReplayBar totalBars={historyBars} />
+      <ReplayBar totalBars={historyBars} symbol={state.symbol} resolution={state.resolution} />
     </>
   );
 }
@@ -708,6 +708,7 @@ function ChartGrid({
               invertScale={chart.invertScale}
               timezone={chart.timezone}
               dataSource={chart.dataSource}
+              compare={chart.compare}
               watermark={chart.watermark}
               syncCrosshair={
                 !syncOn || hoverIndex === index

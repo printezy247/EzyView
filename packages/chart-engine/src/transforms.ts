@@ -195,6 +195,55 @@ function toBox(col: { time: number; x: boolean; lo: number; hi: number }, box: n
 }
 
 /**
+ * Line Break: a new line prints only when the close breaks the extreme of the
+ * last `lines` lines. Sideways price therefore produces no bars at all, which
+ * is the point of the chart.
+ */
+export function lineBreak(candles: readonly Candle[], lines = 3): PriceBox[] {
+  const out: PriceBox[] = [];
+  if (candles.length === 0) return out;
+  const window = Math.max(1, Math.floor(lines));
+  let last = candles[0]!.close;
+  for (const c of candles) {
+    if (out.length === 0) {
+      out.push({ time: c.time, open: last, close: c.close, up: c.close >= last });
+      last = c.close;
+      continue;
+    }
+    const recent = out.slice(-window);
+    const high = Math.max(...recent.map((b) => Math.max(b.open, b.close)));
+    const low = Math.min(...recent.map((b) => Math.min(b.open, b.close)));
+    if (c.close > high || c.close < low) {
+      out.push({ time: c.time, open: last, close: c.close, up: c.close > last });
+      last = c.close;
+      if (out.length >= MAX_PRICE_BARS) return out;
+    }
+  }
+  return out;
+}
+
+/** One range bar is `range` tall; a candle that travels several ranges prints
+ * several bars at the same timestamp (nudged apart by `sequentialTimes`). */
+export function rangeBars(candles: readonly Candle[], range: number): PriceBox[] {
+  const out: PriceBox[] = [];
+  if (candles.length === 0 || !(range > 0)) return out;
+  let price = candles[0]!.open;
+  for (const c of candles) {
+    const target = c.close;
+    while (Math.abs(target - price) >= range) {
+      const next = price + Math.sign(target - price) * range;
+      out.push({ time: c.time, open: price, close: next, up: next > price });
+      price = next;
+      if (out.length >= MAX_PRICE_BARS) return out;
+    }
+  }
+  return out;
+}
+
+/** Shared safety cap for transforms that can emit several bars per candle. */
+const MAX_PRICE_BARS = 5000;
+
+/**
  * Strictly increasing timestamps for bars that may share a source candle.
  *
  * Lightweight Charts rejects duplicate times. Price-only bars keep their source

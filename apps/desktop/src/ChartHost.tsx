@@ -3,6 +3,7 @@ import type { Candle, Quote, Resolution } from "@ezyview/data-adapters";
 import { EzyChart } from "@ezyview/chart-engine";
 import type {
   ChartType,
+  CompareSeries,
   CrosshairStyleName,
   FundamentalEventOverlay,
   IndicatorInstance,
@@ -98,6 +99,8 @@ interface Props {
   timezone?: string;
   /** Draw the symbol/interval watermark; absent = off. */
   watermark?: boolean;
+  /** Secondary symbols to overlay on this cell, normalised. */
+  compare?: { id: string; symbol: string; color: string; mode: CompareSeries["mode"]; visible?: boolean }[];
   /** Crosshair position mirrored from another cell while sync is on. */
   syncCrosshair?: { time: number; price: number } | null;
   onCrosshairTime?: (time: number | null) => void;
@@ -1006,6 +1009,35 @@ export function ChartHost(props: Props) {
     chartRef.current?.setScriptPlots(toPlotSpecs(scripts), toBands(scripts));
   }, [scripts]);
 
+  // Compare overlays load their own history at the chart's interval. They are
+  // aligned in the engine on every data update, so a live tick moves both the
+  // primary and its comparisons together.
+  const compareKey = (props.compare ?? [])
+    .map((c) => `${c.id}:${c.symbol}:${c.color}:${c.mode}:${c.visible === false ? 0 : 1}`)
+    .join("|");
+  useEffect(() => {
+    let cancelled = false;
+    const list = (props.compare ?? []).filter((c) => c.visible !== false);
+    void Promise.all(
+      list.map(async (overlay): Promise<CompareSeries> => ({
+        id: overlay.id,
+        symbol: overlay.symbol,
+        color: overlay.color,
+        mode: overlay.mode,
+        data: await loadHistory(overlay.symbol, props.resolution, undefined, props.dataSource),
+      })),
+    )
+      .then((series) => {
+        if (!cancelled) chartRef.current?.setCompare(series);
+      })
+      .catch(() => {
+        if (!cancelled) chartRef.current?.setCompare([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [compareKey, props.resolution, props.dataSource, globalFeed]);
+
   useEffect(() => {
     chartRef.current?.setChartType(props.chartType);
   }, [props.chartType]);
@@ -1228,7 +1260,13 @@ export function ChartHost(props: Props) {
   );
 }
 
-const PRICE_ONLY_LABEL: Partial<Record<ChartType, string>> = { renko: "Renko", kagi: "Kagi", pnf: "Point & Figure" };
+const PRICE_ONLY_LABEL: Partial<Record<ChartType, string>> = {
+  renko: "Renko",
+  kagi: "Kagi",
+  pnf: "Point & Figure",
+  linebreak: "Line Break",
+  rangebars: "Range Bars",
+};
 
 /**
  * Average true range over the last `period` bars. Used to give a one-click

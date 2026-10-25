@@ -69,6 +69,10 @@ export const CHART_TYPES: { id: ChartType; label: string }[] = [
   { id: "renko", label: "Renko" },
   { id: "kagi", label: "Kagi" },
   { id: "pnf", label: "Point & Figure" },
+  { id: "linebreak", label: "Line Break" },
+  { id: "rangebars", label: "Range Bars" },
+  { id: "column", label: "Column" },
+  { id: "highlow", label: "High-Low" },
 ];
 
 /**
@@ -588,12 +592,16 @@ export function Toolbar(props: Props) {
         icon={<Database size={13} aria-hidden />}
         entries={sourceEntries}
       />
-      {(props.chartType === "renko" || props.chartType === "kagi" || props.chartType === "pnf") && (
+      {(props.chartType === "renko" ||
+        props.chartType === "kagi" ||
+        props.chartType === "pnf" ||
+        props.chartType === "linebreak" ||
+        props.chartType === "rangebars") && (
         <label
           className="ml-1 flex items-center gap-1 text-dense text-ev-muted"
-          title={`${props.chartType === "kagi" ? "Reversal amount" : "Box size"}; leave empty to size it from the average true range`}
+          title={`${props.chartType === "kagi" ? "Reversal amount" : props.chartType === "linebreak" ? "Lines per break" : "Box size"}; leave empty to size it from the average true range`}
         >
-          {props.chartType === "kagi" ? "Reversal" : "Box"}
+          {props.chartType === "kagi" ? "Reversal" : props.chartType === "linebreak" ? "Lines" : "Box"}
           <input
             type="number"
             min={0}

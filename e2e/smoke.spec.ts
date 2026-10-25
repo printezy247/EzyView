@@ -95,6 +95,32 @@ test("a watchlist row retargets the active chart", async ({ page }) => {
   await expect(page.getByRole("region", { name: /Chart 1: OANDA:EURUSD/ })).toBeVisible();
 });
 
+test("a compare overlay can be added from the chart footer", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (err) => errors.push(err.message));
+  await page.goto("/#/chart");
+  await page.getByRole("button", { name: "Compare", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Compare symbols" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel("Compare symbol").fill("NASDAQ:AAPL");
+  await dialog.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(dialog.getByText("NASDAQ:AAPL")).toBeVisible();
+  await dialog.getByRole("button", { name: "Done" }).click();
+  expect(errors).toEqual([]);
+});
+
+test("switching to a column chart does not crash the engine", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (err) => errors.push(err.message));
+  await page.goto("/#/chart");
+  // The chart-type control is a menu: the trigger shows the current type, and
+  // the types themselves are menuitemradio rows in the popup.
+  await page.getByRole("button", { name: "Candles", exact: true }).click();
+  await page.getByRole("menuitemradio", { name: "Column", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Column", exact: true })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test("the chart cell mounts with a canvas", async ({ page }) => {
   await page.goto("/#/chart");
   const cell = page.getByRole("region", { name: /Chart 1:/ });

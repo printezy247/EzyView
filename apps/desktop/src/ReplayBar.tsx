@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, FastForward, Pause, Play, Rewind, X } from "lucide-react";
+import type { Resolution } from "@ezyview/data-adapters";
+import { loadHistory } from "./data";
 import { useWorkspace } from "./store";
 import type { ReplaySpeed } from "./layout";
 import { useShortcut } from "./shortcuts";
@@ -7,12 +9,17 @@ import { useShortcut } from "./shortcuts";
 interface Props {
   /** Total bars loaded for the active symbol. */
   totalBars: number;
+  /** Defaults to the focused chart, so the transport can render in tests. */
+  symbol?: string;
+  resolution?: Resolution;
 }
 
 /** Base milliseconds per bar at 1×; the speed selector divides it. */
 const BASE_MS = 500;
 
-export function ReplayBar({ totalBars }: Props) {
+export function ReplayBar({ totalBars, symbol: symbolProp, resolution: resolutionProp }: Props) {
+  const symbol = symbolProp ?? useWorkspace.getState().activeChart().symbol;
+  const resolution = resolutionProp ?? useWorkspace.getState().activeChart().resolution;
   const replayBar = useWorkspace((s) => s.replayBar);
   const setReplay = useWorkspace((s) => s.setReplay);
   const replaySpeed = useWorkspace((s) => s.replaySpeed);
@@ -210,6 +217,28 @@ export function ReplayBar({ totalBars }: Props) {
 
       <div className="h-4 w-px bg-ev-raised mx-1" />
 
+      {/* Jump to a date: load the same history the chart holds and pick the
+          last bar at or before that day. */}
+      <input
+        type="date"
+        aria-label="Jump replay to date"
+        title="Jump replay to a date"
+        onChange={(e) => {
+          const value = e.target.value;
+          if (!value) return;
+          const at = Math.floor(new Date(`${value}T00:00:00`).getTime() / 1000);
+          if (!Number.isFinite(at)) return;
+          void loadHistory(symbol, resolution, undefined, useWorkspace.getState().activeChart().dataSource).then((bars) => {
+            let index = bars.findIndex((b) => b.time > at);
+            if (index === -1) index = bars.length - 1;
+            else index = Math.max(0, index - 1);
+            stop();
+            setReplay(Math.min(maxBar, Math.max(0, index)));
+          });
+        }}
+        className="h-6 rounded border border-ev-line bg-ev-raised px-1 text-dense text-ev-strong"
+      />
+
       {/* Speed Selector */}
       <label className="flex items-center gap-1.5 text-dense text-ev-muted font-medium">
         <span>Speed</span>
@@ -219,12 +248,13 @@ export function ReplayBar({ totalBars }: Props) {
           className="rounded border border-ev-line bg-ev-raised px-1.5 py-0.5 text-dense font-semibold text-ev-strong cursor-pointer"
           aria-label="Replay speed"
         >
-          <option value={0.1}>0.1×</option>
-          <option value={0.5}>0.5×</option>
-          <option value={1}>1×</option>
-          <option value={2}>2×</option>
-          <option value={3}>3×</option>
-          <option value={5}>5×</option>
+          <option value={0.1}>5s / bar</option>
+          <option value={0.167}>3s / bar</option>
+          <option value={0.5}>1s / bar</option>
+          <option value={1}>0.5s / bar</option>
+          <option value={2}>0.25s / bar</option>
+          <option value={3}>0.17s / bar</option>
+          <option value={5}>0.1s / bar</option>
         </select>
       </label>
 

@@ -40,9 +40,10 @@ import {
   type CrosshairStyleName,
   type PriceScaleModeName,
 } from "./settings.js";
-import { autoBoxSize, heikinAshi, kagi, pointAndFigure, renko, sequentialTimes, type PriceBox } from "./transforms.js";
+import { autoBoxSize, heikinAshi, kagi, lineBreak, pointAndFigure, rangeBars, renko, sequentialTimes, type PriceBox } from "./transforms.js";
 import { VolumeProfilePrimitive } from "./volumeProfile.js";
 import { sessionBreaks } from "./sessionBreaks.js";
+import { alignCompare, type CompareSeries } from "./overlays.js";
 
 export type ChartType =
   | "candles"
@@ -54,7 +55,11 @@ export type ChartType =
   | "baseline"
   | "renko"
   | "kagi"
-  | "pnf";
+  | "pnf"
+  | "column"
+  | "highlow"
+  | "linebreak"
+  | "rangebars";
 
 /**
  * Renko, Kagi and Point & Figure plot price moves, not time: their bars do not
@@ -62,11 +67,11 @@ export type ChartType =
  * are hidden while one is shown.
  */
 export function isTimeBased(type: ChartType): boolean {
-  return type !== "renko" && type !== "kagi" && type !== "pnf";
+  return type !== "renko" && type !== "kagi" && type !== "pnf" && type !== "linebreak" && type !== "rangebars";
 }
 
 /** Types drawn with the candlestick series and the theme's up/down colors. */
-const CANDLE_TYPES = new Set<ChartType>(["candles", "hollow", "bars", "heikin", "renko", "pnf"]);
+const CANDLE_TYPES = new Set<ChartType>(["candles", "hollow", "bars", "heikin", "renko", "pnf", "linebreak", "rangebars"]);
 
 export interface IndicatorInstance {
   uid: string;
@@ -252,6 +257,9 @@ export class EzyChart {
   private readonly volumeProfile = new VolumeProfilePrimitive((price) => this.priceToCoordinate(price));
   /** Markers contributed by `plotshape()`-style plots, rebuilt with the data. */
   private markerLayer: SeriesMarker<Time>[] = [];
+  /** Compare symbols drawn on their own normalised scale. */
+  private compareInputs: CompareSeries[] = [];
+  private readonly compareSeries = new Map<string, ISeriesApi<never>>();
   /** Earnings dots + event squares from `setFundamentalEvents`, kept apart from script markers. */
   private fundamentalMarkerLayer: SeriesMarker<Time>[] = [];
   /** Full-pane dashed lines for macro events; a primitive, never a drawing. */
@@ -415,6 +423,7 @@ export class EzyChart {
     this.data = candles;
     this.mainSeries?.setData(this.seriesData());
     this.volumeSeries?.setData(toVolumeData(this.layerData));
+    this.rebuildCompare();
     this.volumeProfile.setCandles(candles);
     // Refresh indicator series in place — rebuilding panes per tick is too costly.
     for (const inst of this.currentInstances) this.renderIndicator(inst, "refresh");
@@ -435,6 +444,57 @@ export class EzyChart {
 
   candles(): readonly Candle[] {
     return this.data;
+  }
+
+  /**
+   * Replace the compare overlays. Each gets its own line series on a shared
+   * "compare" scale, so a percent, ratio and spread can coexist without
+   * dragging the primary price scale around.
+   */
+  setCompare(series: CompareSeries[]): void {
+    this.compareInputs = series;
+    const keep = new Set(series.map((s) => s.id));
+    for (const [id, api] of this.compareSeries) {
+      if (keep.has(id)) continue;
+      this.chart.removeSeries(api);
+      this.compareSeries.delete(id);
+    }
+    for (const input of series) {
+      let api = this.compareSeries.get(input.id);
+      if (!api) {
+        api = this.chart.addSeries(LineSeries, {
+          color: input.color,
+          lineWidth: 1,
+          priceLineVisible: false,
+          lastValueVisible: false,
+          crosshairMarkerVisible: false,
+          priceScaleId: "compare",
+          title: input.symbol,
+        }) as ISeriesApi<never>;
+        this.compareSeries.set(input.id, api);
+      } else {
+        api.applyOptions({ color: input.color, title: input.symbol } as never);
+      }
+    }
+    // A custom scale only exists once at least one series uses it; asking for
+    // it with an empty overlay list throws inside lightweight-charts.
+    if (this.compareSeries.size > 0) {
+      this.chart.priceScale("compare").applyOptions({ scaleMargins: { top: 0.08, bottom: 0.08 } });
+    }
+    this.rebuildCompare();
+  }
+
+  private rebuildCompare(): void {
+    for (const input of this.compareInputs) {
+      const api = this.compareSeries.get(input.id);
+      if (!api) continue;
+      api.setData(
+        alignCompare(this.data, input.data, input.mode).map((point) => ({
+          time: point.time as UTCTimestamp,
+          value: point.value,
+        })) as never[],
+      );
+    }
   }
 
   /**
@@ -1167,6 +1227,21 @@ export class EzyChart {
       case "bars":
         this.mainSeries = this.chart.addSeries(BarSeries, { ...base }) as ISeriesApi<never>;
         break;
+      case "highlow":
+        // Open and close coincide at the midpoint, so the bar shows only its
+        // high–low range with no body ticks.
+        this.mainSeries = this.chart.addSeries(BarSeries, {
+          ...base,
+          upColor: this.theme.upColor,
+          downColor: this.theme.downColor,
+        }) as ISeriesApi<never>;
+        break;
+      case "column":
+        this.mainSeries = this.chart.addSeries(HistogramSeries, {
+          ...base,
+          color: this.theme.upColor,
+        }) as ISeriesApi<never>;
+        break;
       case "hollow":
         this.mainSeries = this.chart.addSeries(CandlestickSeries, {
           ...base,
@@ -1178,6 +1253,8 @@ export class EzyChart {
         break;
       case "renko":
       case "pnf":
+      case "linebreak":
+      case "rangebars":
         // Bricks and columns have no wicks: high/low equal the body.
         this.mainSeries = this.chart.addSeries(CandlestickSeries, { ...base, borderVisible: true, wickVisible: false }) as ISeriesApi<never>;
         break;
@@ -1249,6 +1326,26 @@ export class EzyChart {
         return toBoxData(renko(candles, this.effectiveBoxSize()));
       case "pnf":
         return toBoxData(pointAndFigure(candles, this.effectiveBoxSize()));
+      case "linebreak":
+        // Line Break counts lines, not price, so the ATR default is wrong here:
+        // three lines is TradingView's default.
+        return toBoxData(lineBreak(candles, Math.max(2, Math.round(this.boxSize ?? 3))));
+      case "rangebars":
+        return toBoxData(rangeBars(candles, this.effectiveBoxSize()));
+      case "column":
+        return candles.map((c) => ({
+          time: c.time as UTCTimestamp,
+          value: c.close,
+          color: c.close >= c.open ? this.theme.upColor : this.theme.downColor,
+        })) as never[];
+      case "highlow":
+        return candles.map((c) => ({
+          time: c.time as UTCTimestamp,
+          open: (c.high + c.low) / 2,
+          high: c.high,
+          low: c.low,
+          close: (c.high + c.low) / 2,
+        })) as never[];
       case "kagi": {
         // Reverse on one box (by default one average true range), as Renko and P&F box on it.
         const lines = kagi(candles, this.effectiveBoxSize());

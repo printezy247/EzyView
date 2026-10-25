@@ -50,6 +50,7 @@ export function AlertsPage() {
   const alerts = useWorkspace((s) => s.alerts);
   const alertHistory = useWorkspace((s) => s.alertHistory);
   const removeAlert = useWorkspace((s) => s.removeAlert);
+  const snoozeAlert = useWorkspace((s) => s.snoozeAlert);
   const layout = useWorkspace((s) => s.activeLayout());
   const state = activeChartOf(layout);
   const setSymbol = useWorkspace((s) => s.setSymbol);
@@ -101,6 +102,7 @@ export function AlertsPage() {
                     navigate("/chart");
                   }}
                   onDelete={() => removeAlert(a.id)}
+                  onSnooze={(seconds) => snoozeAlert(a.id, Math.floor(Date.now() / 1000) + seconds)}
                 />
               ))}
             </tbody>
@@ -118,9 +120,10 @@ interface RowProps {
   onToggle: () => void;
   onOpenSymbol: () => void;
   onDelete: () => void;
+  onSnooze: (seconds: number) => void;
 }
 
-function FragmentRow({ alert: a, closes, expanded, onToggle, onOpenSymbol, onDelete }: RowProps) {
+function FragmentRow({ alert: a, closes, expanded, onToggle, onOpenSymbol, onDelete, onSnooze }: RowProps) {
   return (
     <>
       <tr
@@ -178,6 +181,32 @@ function FragmentRow({ alert: a, closes, expanded, onToggle, onOpenSymbol, onDel
             {a.triggeredAt !== undefined && (
               <span className="ml-3 text-ev-warn">triggered {when(a.triggeredAt)}</span>
             )}
+            {a.expiresAt !== undefined && (
+              <span className="ml-3 text-ev-muted">expires {when(a.expiresAt)}</span>
+            )}
+            {a.snoozedUntil !== undefined && (
+              <span className="ml-3 text-ev-muted">snoozed until {when(a.snoozedUntil)}</span>
+            )}
+            <span className="ml-3 inline-flex items-center gap-1">
+              <span className="text-ev-faint">Snooze:</span>
+              {[
+                ["15m", 15 * 60],
+                ["1h", 60 * 60],
+                ["1d", 24 * 60 * 60],
+              ].map(([label, seconds]) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSnooze(Number(seconds));
+                  }}
+                  className="rounded border border-ev-line px-1 py-0.5 text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+                >
+                  {label}
+                </button>
+              ))}
+            </span>
           </td>
         </tr>
       )}

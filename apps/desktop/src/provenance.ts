@@ -10,6 +10,7 @@
  * - `delayed` — a broker feed that is connected but behind (or reconnecting).
  * - `demo`    — the built-in simulated feed. Never real money.
  * - `cached`  — the feed is down and this is the last price that arrived.
+ * - `stale`   — the feed claims to be live, but no tick has arrived for a minute.
  *
  * Pure functions, so the rule is tested rather than eyeballed.
  */
@@ -17,7 +18,10 @@
 /** How old a quote may be before a live feed counts as delayed. */
 export const DELAY_AFTER_SECONDS = 15;
 
-export type Provenance = "live" | "delayed" | "demo" | "cached";
+/** How old a quote may be before the chip says the feed has stopped ticking. */
+export const STALE_AFTER_SECONDS = 60;
+
+export type Provenance = "live" | "delayed" | "demo" | "cached" | "stale";
 
 /** The bridge's connection states, mirrored from the MT5 store. */
 export type Mt5Status = "idle" | "connecting" | "online" | "error";
@@ -44,6 +48,7 @@ export function provenanceOf({ source, status, ageSeconds }: ProvenanceInput): P
   // screen is the last one that did.
   if (status === "error" || status === "idle") return "cached";
   if (status === "connecting") return "delayed";
+  if (ageSeconds !== undefined && ageSeconds > STALE_AFTER_SECONDS) return "stale";
   if (ageSeconds !== undefined && ageSeconds > DELAY_AFTER_SECONDS) return "delayed";
   return "live";
 }
@@ -56,7 +61,7 @@ export function provenanceLabel(p: Provenance): string {
 /** Chip tone. `warn` is a warm amber, so a stale price never reads as good. */
 export function provenanceTone(p: Provenance): "neutral" | "up" | "warn" {
   if (p === "live") return "up";
-  if (p === "delayed" || p === "cached") return "warn";
+  if (p === "delayed" || p === "cached" || p === "stale") return "warn";
   return "neutral";
 }
 
@@ -71,5 +76,7 @@ export function provenanceTitle(p: Provenance): string {
       return "Simulated price from the built-in demo feed. Not real money.";
     case "cached":
       return "Last price received — the feed is not connected.";
+    case "stale":
+      return "Stale price — the feed is connected but has sent no tick for over a minute.";
   }
 }

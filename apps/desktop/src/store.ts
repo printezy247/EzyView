@@ -25,12 +25,14 @@ import type {
   AppTheme,
   ChartState,
   ChartThemeName,
+  CompareSymbol,
   Density,
   GridMode,
   Layout,
   PersistedWorkspace,
   ReplaySpeed,
 } from "./layout";
+import type { CompareMode } from "@ezyview/chart-engine";
 import { readDetached } from "./windows";
 import { isDataSourceChoice } from "./chartSource";
 import type { EffectiveSource } from "./chartSource";
@@ -102,6 +104,7 @@ export function watchlistQuoteKeys(list: readonly WatchEntry[]): string {
 }
 
 const LAYOUT_COLORS = ["#d91400", "#0ea600", "#f2a93b", "#4a90e2", "#9c27b0", "#00bcd4"];
+const COMPARE_COLORS = ["#f2a93b", "#9c27b0", "#26a69a", "#ef5350", "#42a5f5", "#ffca28"];
 
 /** How many superseded sources a script keeps in its version list. */
 const MAX_PINE_VERSIONS = 20;
@@ -259,6 +262,10 @@ interface WorkspaceStore {
   updateActive(patch: Partial<ChartState>): void;
   /** Patch a specific chart cell by index in the active layout. */
   updateChart(index: number, patch: Partial<ChartState>): void;
+  /** Overlay a secondary symbol on the focused chart. */
+  addCompare(symbol: string, mode?: CompareMode): void;
+  removeCompare(id: string): void;
+  updateCompare(id: string, patch: Partial<CompareSymbol>): void;
   /**
    * Set the focused cell's symbol, and every cell in its link group. When the
    * symbol belongs to a specific feed (an MT5 ticker, say), pass it so linked
@@ -366,6 +373,10 @@ interface WorkspaceStore {
     levelKey?: string,
   ): void;
   removeAlert(id: string): void;
+  /** Silence an alert until an epoch-second time (15m/1h/1d presets). */
+  snoozeAlert(id: string, until: number): void;
+  /** Set or clear an alert's expiry time in epoch seconds. */
+  setAlertExpiry(id: string, at?: number): void;
   /** Fold one candle into every matching alert; returns ids that just fired. */
   applyCandle(symbol: string, candle: Candle, barClosed: boolean): string[];
 
@@ -628,6 +639,40 @@ export const useWorkspace = create<WorkspaceStore>()(
           if (!hasChange) return s;
           return editChart(s, (c) => ({ ...c, ...patch }));
         }),
+
+      addCompare: (symbol, mode = "percent") =>
+        set((s) => {
+          const chart = s.activeChart();
+          const existing = chart.compare ?? [];
+          if (existing.some((c) => c.symbol === symbol)) return s;
+          const next: CompareSymbol = {
+            id: uid(),
+            symbol,
+            color: COMPARE_COLORS[existing.length % COMPARE_COLORS.length]!,
+            mode,
+            visible: true,
+          };
+          return editActive(s, (l) =>
+            updateChart(l, l.activeChart, (c) => ({ ...c, compare: [...(c.compare ?? []), next] })),
+          );
+        }),
+
+      removeCompare: (id) =>
+        set((s) =>
+          editActive(s, (l) =>
+            updateChart(l, l.activeChart, (c) => ({ ...c, compare: (c.compare ?? []).filter((x) => x.id !== id) })),
+          ),
+        ),
+
+      updateCompare: (id, patch) =>
+        set((s) =>
+          editActive(s, (l) =>
+            updateChart(l, l.activeChart, (c) => ({
+              ...c,
+              compare: (c.compare ?? []).map((x) => (x.id === id ? Object.assign({}, x, patch) : x)),
+            })),
+          ),
+        ),
 
       updateChart: (index, patch) =>
         set((s) => {
@@ -1184,6 +1229,23 @@ export const useWorkspace = create<WorkspaceStore>()(
           const { [id]: _dropped, ...rest } = s.alertHistory;
           return { alerts: s.alerts.filter((a) => a.id !== id), alertHistory: rest };
         }),
+
+      snoozeAlert: (id, until) =>
+        set((s) => ({
+          alerts: s.alerts.map((a) => (a.id === id ? { ...a, snoozedUntil: until } : a)),
+        })),
+
+      setAlertExpiry: (id, at) =>
+        set((s) => ({
+          alerts: s.alerts.map((a) => {
+            if (a.id !== id) return a;
+            if (at === undefined) {
+              const { expiresAt: _dropped, ...rest } = a;
+              return rest;
+            }
+            return { ...a, expiresAt: at };
+          }),
+        })),
 
       applyCandle: (symbol, candle, barClosed) => {
         const fired: string[] = [];
