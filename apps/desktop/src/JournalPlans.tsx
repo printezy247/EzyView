@@ -3,7 +3,7 @@ import { planRewardRisk } from "@ezyview/journal";
 import type { TradePlanStatus } from "@ezyview/journal";
 import { useJournal } from "./journal";
 import { precisionForSymbol } from "./pricePrecision";
-import { inputClass } from "./ui";
+import { Select, inputClass } from "./ui";
 
 const field = inputClass("w-full");
 const STATUSES: readonly TradePlanStatus[] = ["planned", "executed", "missed", "cancelled"];
@@ -67,13 +67,19 @@ export function JournalPlans() {
           Symbol
           <input className={field} value={symbol} onChange={(e) => setSymbol(e.target.value)} placeholder="EURUSD" aria-label="Plan symbol" />
         </label>
-        <label className="text-dense text-ev-muted">
-          Side
-          <select className={field} value={side} onChange={(e) => setSide(e.target.value === "short" ? "short" : "long")} aria-label="Plan side">
-            <option value="long">Long</option>
-            <option value="short">Short</option>
-          </select>
-        </label>
+        <div className="flex flex-col gap-0.5 text-dense text-ev-muted">
+          <span>Side</span>
+          <Select
+            label="Plan side"
+            value={side}
+            onChange={(v) => setSide(v === "short" ? "short" : "long")}
+            options={[
+              { value: "long", label: "Long" },
+              { value: "short", label: "Short" },
+            ]}
+            className="w-full"
+          />
+        </div>
         <label className="text-dense text-ev-muted">
           Entry
           <input className={field} value={entry} onChange={(e) => setEntry(e.target.value)} inputMode="decimal" aria-label="Plan entry" />
@@ -139,18 +145,14 @@ export function JournalPlans() {
                     </div>
                     {plan.thesis && <p className="mt-1 text-base text-ev-muted">{plan.thesis}</p>}
                   </div>
-                  <select
-                    className="rounded border border-ev-line bg-ev-panel px-1 py-0.5 text-dense text-ev-muted"
+                  <Select
+                    size="sm"
+                    className="shrink-0"
+                    label={`Plan status for ${plan.symbol}`}
                     value={plan.status}
-                    aria-label={`Plan status for ${plan.symbol}`}
-                    onChange={(e) => updatePlan(plan.id, { status: e.target.value as TradePlanStatus })}
-                  >
-                    {STATUSES.map((status) => (
-                      <option key={status} value={status}>
-                        {STATUS_LABEL[status]}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => updatePlan(plan.id, { status: v as TradePlanStatus })}
+                    options={STATUSES.map((status) => ({ value: status, label: STATUS_LABEL[status] }))}
+                  />
                   <button
                     type="button"
                     onClick={() => removePlan(plan.id)}

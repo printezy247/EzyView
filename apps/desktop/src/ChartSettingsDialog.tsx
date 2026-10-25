@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X, ChevronDown, RotateCcw } from "lucide-react";
 import { Modal } from "./Modal";
+import { Select } from "./ui";
 import { useWorkspace } from "./store";
 import { DEFAULT_CHART_SETTINGS } from "./layout";
 import type { ChartSettings, PriceScaleModeName } from "./layout";
@@ -300,43 +301,42 @@ export function ChartSettingsDialog({ open, onClose }: Props) {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span>Precision</span>
-                  <select
+                  <Select
+                    label="Precision"
+                    size="sm"
                     value={draft.symbol.precision}
-                    onChange={(e) =>
+                    onChange={(v) =>
                       setDraft((d) => ({
                         ...d,
-                        symbol: { ...d.symbol, precision: e.target.value },
+                        symbol: { ...d.symbol, precision: v },
                       }))
                     }
-                    className="rounded border border-ev-line bg-ev-panel px-2 py-1 text-dense text-ev-strong"
-                  >
-                    <option value="default">Default</option>
-                    <option value="1/10">1/10 (0.1)</option>
-                    <option value="1/100">1/100 (0.01)</option>
-                    <option value="1/1000">1/1000 (0.001)</option>
-                    <option value="1/10000">1/10000 (0.0001)</option>
-                    <option value="1/100000">1/100000 (0.00001)</option>
-                  </select>
+                    options={[
+                      { value: "default", label: "Default" },
+                      { value: "1/10", label: "1/10 (0.1)" },
+                      { value: "1/100", label: "1/100 (0.01)" },
+                      { value: "1/1000", label: "1/1000 (0.001)" },
+                      { value: "1/10000", label: "1/10000 (0.0001)" },
+                      { value: "1/100000", label: "1/100000 (0.00001)" },
+                    ]}
+                  />
                 </div>
 
                 <div className="flex items-center justify-between">
                   <span>Timezone</span>
-                  <select
+                  <Select
+                    label="Timezone"
+                    size="sm"
+                    className="max-w-[280px]"
                     value={draft.symbol.timezone}
-                    onChange={(e) =>
+                    onChange={(v) =>
                       setDraft((d) => ({
                         ...d,
-                        symbol: { ...d.symbol, timezone: e.target.value },
+                        symbol: { ...d.symbol, timezone: v },
                       }))
                     }
-                    className="max-w-[280px] rounded border border-ev-line bg-ev-panel px-2 py-1 text-dense text-ev-strong"
-                  >
-                    {TIMEZONES.map((tz) => (
-                      <option key={tz.id} value={tz.id}>
-                        {tz.label}
-                      </option>
-                    ))}
-                  </select>
+                    options={TIMEZONES.map((tz) => ({ value: tz.id, label: tz.label }))}
+                  />
                 </div>
               </div>
             </div>
@@ -371,23 +371,25 @@ export function ChartSettingsDialog({ open, onClose }: Props) {
                     />
                     <span>Title</span>
                   </label>
-                  <select
+                  <Select
+                    label="Title"
+                    size="sm"
                     value={draft.statusLine.titleMode}
-                    onChange={(e) =>
+                    onChange={(v) =>
                       setDraft((d) => ({
                         ...d,
                         statusLine: {
                           ...d.statusLine,
-                          titleMode: e.target.value as "both" | "ticker" | "description",
+                          titleMode: v as "both" | "ticker" | "description",
                         },
                       }))
                     }
-                    className="rounded border border-ev-line bg-ev-panel px-2 py-1 text-dense text-ev-strong"
-                  >
-                    <option value="both">Ticker and description</option>
-                    <option value="ticker">Ticker only</option>
-                    <option value="description">Description only</option>
-                  </select>
+                    options={[
+                      { value: "both", label: "Ticker and description" },
+                      { value: "ticker", label: "Ticker only" },
+                      { value: "description", label: "Description only" },
+                    ]}
+                  />
                 </div>
 
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -636,23 +638,25 @@ export function ChartSettingsDialog({ open, onClose }: Props) {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span>Price scale mode</span>
-                  <select
+                  <Select
+                    label="Price scale mode"
+                    size="sm"
                     value={draft.scales.priceScaleMode}
-                    onChange={(e) =>
+                    onChange={(v) =>
                       setDraft((d) => ({
                         ...d,
                         scales: {
                           ...d.scales,
-                          priceScaleMode: e.target.value as PriceScaleModeName,
+                          priceScaleMode: v as PriceScaleModeName,
                         },
                       }))
                     }
-                    className="rounded border border-ev-line bg-ev-panel px-2 py-1 text-dense text-ev-strong"
-                  >
-                    <option value="normal">Normal (Linear)</option>
-                    <option value="log">Logarithmic</option>
-                    <option value="percentage">Percentage</option>
-                  </select>
+                    options={[
+                      { value: "normal", label: "Normal (Linear)" },
+                      { value: "log", label: "Logarithmic" },
+                      { value: "percentage", label: "Percentage" },
+                    ]}
+                  />
                 </div>
 
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -708,22 +712,24 @@ export function ChartSettingsDialog({ open, onClose }: Props) {
                 <div className="flex items-center justify-between">
                   <span>Background</span>
                   <div className="flex items-center gap-2">
-                    <select
+                    <Select
+                      label="Background"
+                      size="sm"
                       value={draft.canvas.backgroundType}
-                      onChange={(e) =>
+                      onChange={(v) =>
                         setDraft((d) => ({
                           ...d,
                           canvas: {
                             ...d.canvas,
-                            backgroundType: e.target.value as "solid" | "gradient",
+                            backgroundType: v as "solid" | "gradient",
                           },
                         }))
                       }
-                      className="rounded border border-ev-line bg-ev-panel px-2 py-1 text-dense text-ev-strong"
-                    >
-                      <option value="solid">Solid</option>
-                      <option value="gradient">Gradient</option>
-                    </select>
+                      options={[
+                        { value: "solid", label: "Solid" },
+                        { value: "gradient", label: "Gradient" },
+                      ]}
+                    />
                     <input
                       type="color"
                       value={draft.canvas.backgroundColor}
@@ -810,23 +816,25 @@ export function ChartSettingsDialog({ open, onClose }: Props) {
                 <div className="flex items-center justify-between">
                   <span>Crosshair</span>
                   <div className="flex items-center gap-2">
-                    <select
+                    <Select
+                      label="Crosshair"
+                      size="sm"
                       value={draft.canvas.crosshairStyle}
-                      onChange={(e) =>
+                      onChange={(v) =>
                         setDraft((d) => ({
                           ...d,
                           canvas: {
                             ...d.canvas,
-                            crosshairStyle: e.target.value as "dashed" | "dotted" | "solid",
+                            crosshairStyle: v as "dashed" | "dotted" | "solid",
                           },
                         }))
                       }
-                      className="rounded border border-ev-line bg-ev-panel px-2 py-1 text-dense text-ev-strong"
-                    >
-                      <option value="dashed">Dashed</option>
-                      <option value="dotted">Dotted</option>
-                      <option value="solid">Solid</option>
-                    </select>
+                      options={[
+                        { value: "dashed", label: "Dashed" },
+                        { value: "dotted", label: "Dotted" },
+                        { value: "solid", label: "Solid" },
+                      ]}
+                    />
                     <input
                       type="color"
                       value={draft.canvas.crosshairColor}
@@ -858,22 +866,18 @@ export function ChartSettingsDialog({ open, onClose }: Props) {
 
                 <div className="flex items-center justify-between">
                   <span>Scales font size</span>
-                  <select
-                    value={draft.canvas.scalesFontSize}
-                    onChange={(e) =>
+                  <Select
+                    label="Scales font size"
+                    size="sm"
+                    value={String(draft.canvas.scalesFontSize)}
+                    onChange={(v) =>
                       setDraft((d) => ({
                         ...d,
-                        canvas: { ...d.canvas, scalesFontSize: Number(e.target.value) },
+                        canvas: { ...d.canvas, scalesFontSize: Number(v) },
                       }))
                     }
-                    className="rounded border border-ev-line bg-ev-panel px-2 py-1 text-dense text-ev-strong"
-                  >
-                    {[10, 11, 12, 14, 16].map((s) => (
-                      <option key={s} value={s}>
-                        {s} px
-                      </option>
-                    ))}
-                  </select>
+                    options={[10, 11, 12, 14, 16].map((s) => ({ value: String(s), label: `${s} px` }))}
+                  />
                 </div>
               </div>
 
@@ -1032,23 +1036,25 @@ export function ChartSettingsDialog({ open, onClose }: Props) {
 
               <div className="flex items-center justify-between">
                 <span>Profit & Loss display</span>
-                <select
+                <Select
+                  label="Profit & Loss display"
+                  size="sm"
                   value={draft.trading.pnlDisplay}
-                  onChange={(e) =>
+                  onChange={(v) =>
                     setDraft((d) => ({
                       ...d,
                       trading: {
                         ...d.trading,
-                        pnlDisplay: e.target.value as "money" | "percent" | "ticks",
+                        pnlDisplay: v as "money" | "percent" | "ticks",
                       },
                     }))
                   }
-                  className="rounded border border-ev-line bg-ev-panel px-2 py-1 text-dense text-ev-strong"
-                >
-                  <option value="money">Money (USD)</option>
-                  <option value="percent">Percentage (%)</option>
-                  <option value="ticks">Ticks / Pips</option>
-                </select>
+                  options={[
+                    { value: "money", label: "Money (USD)" },
+                    { value: "percent", label: "Percentage (%)" },
+                    { value: "ticks", label: "Ticks / Pips" },
+                  ]}
+                />
               </div>
             </div>
           )}

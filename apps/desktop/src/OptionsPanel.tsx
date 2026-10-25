@@ -3,7 +3,7 @@ import { X } from "lucide-react";
 import { breakevens, buildChain, expiryPnl } from "@ezyview/options";
 import type { ChainRow, Leg } from "@ezyview/options";
 import { loadHistory, tickerOf } from "./data";
-import { inputClass } from "./ui";
+import { Select } from "./ui";
 
 interface Props {
   symbol: string;
@@ -60,7 +60,6 @@ export function OptionsPanel({ symbol, onClose }: Props) {
 
   const expiry = useMemo(() => (spot === null ? null : buildChain({ spot, baseVol, expiries: [days] })[0]!), [spot, baseVol, days]);
 
-  const input = inputClass("h-6 w-auto");
   return (
     <section aria-label="Options" className="flex min-h-0 flex-1 flex-col border-t border-ev-raised bg-ev-bg text-dense">
       <header className="flex h-8 shrink-0 items-center gap-2 border-b border-ev-raised px-3">
@@ -81,16 +80,14 @@ export function OptionsPanel({ symbol, onClose }: Props) {
             </button>
           ))}
         </div>
-        <label htmlFor="expiry" className="ml-2 text-ev-muted">
-          Expiry
-        </label>
-        <select id="expiry" value={days} onChange={(e) => setDays(Number(e.target.value))} className={input}>
-          {EXPIRIES.map((d) => (
-            <option key={d} value={d}>
-              {d}d
-            </option>
-          ))}
-        </select>
+        <Select
+          id="expiry"
+          label="Expiry"
+          className="ml-2"
+          value={String(days)}
+          onChange={(v) => setDays(Number(v))}
+          options={EXPIRIES.map((d) => ({ value: String(d), label: `${d}d` }))}
+        />
         <label htmlFor="basevol" className="text-ev-muted">
           ATM vol
         </label>
@@ -219,11 +216,13 @@ function Payoff({ rows, spot, strategy, onStrategy }: { rows: ChainRow[]; spot: 
         <Plot points={points} markers={be} zero label={`${strategy} profit and loss at expiry`} />
       </div>
       <div className="w-48 shrink-0 space-y-1.5">
-        <select aria-label="Strategy" value={strategy} onChange={(e) => onStrategy(e.target.value)} className="w-full rounded border border-ev-line bg-ev-panel px-1.5 py-0.5">
-          {Object.keys(STRATEGIES).map((s) => (
-            <option key={s}>{s}</option>
-          ))}
-        </select>
+        <Select
+          label="Strategy"
+          className="w-full"
+          value={strategy}
+          onChange={onStrategy}
+          options={Object.keys(STRATEGIES).map((s) => ({ value: s, label: s }))}
+        />
         <p className="text-ev-muted">Max profit in range: <span className="text-ev-up-text">{f(Math.max(...pnls))}</span></p>
         <p className="text-ev-muted">Max loss in range: <span className="text-ev-down-text">{f(Math.min(...pnls))}</span></p>
         <p className="text-ev-muted">Break-even: {be.length ? be.map((b) => f(b)).join(" / ") : "none in range"}</p>

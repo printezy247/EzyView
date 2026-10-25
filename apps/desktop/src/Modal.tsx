@@ -28,6 +28,8 @@ interface Props {
   onClose: () => void;
   /** id of the dialog's visible title. */
   labelledBy: string;
+  /** id of the dialog's explanatory text, when it has one. */
+  describedBy?: string;
   /** Classes for the dialog box itself. */
   className?: string;
   /** Classes for the dimmed backdrop; clicking it closes the dialog. */
@@ -43,6 +45,7 @@ export function Modal({
   open = true,
   onClose,
   labelledBy,
+  describedBy,
   className = "",
   backdropClassName = "fixed inset-0 z-[var(--z-dialog)] flex items-center justify-center bg-black/50",
   children,
@@ -93,6 +96,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={labelledBy}
+        aria-describedby={describedBy}
         tabIndex={-1}
         className={className}
         onClick={(e) => e.stopPropagation()}

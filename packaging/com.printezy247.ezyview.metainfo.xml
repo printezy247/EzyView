@@ -42,6 +42,12 @@
   </keywords>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.4.0" date="2026-10-25">
+      <description>
+        <p>Shared UI component kit with accessible Select, Combobox, Tabs, Dialog, form fields, tooltips and toasts.</p>
+        <p>Toolbar, chart chrome and dialogs rebuilt on the kit; every native select replaced.</p>
+      </description>
+    </release>
     <release version="0.3.2" date="2026-10-24">
       <description>
         <p>Market-data accuracy fixes, IndexedDB-backed journal, shared quote poller and workspace backup.</p>

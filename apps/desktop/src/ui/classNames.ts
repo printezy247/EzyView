@@ -73,7 +73,73 @@ export function chipClass(options: { tone?: "neutral" | "up" | "down" | "warn" |
 }
 
 /**
- * Table row. Compact by default.
+ * A dropdown/combobox trigger looks like an input: same height, border and
+ * radius, with the chevron pushed to the far end. Kept separate from
+ * `inputClass` because a trigger is a button and carries `justify-between`.
+ */
+export function selectTriggerClass(options: { size?: ControlSize; className?: ClassValue; open?: boolean } = {}): string {
+  const { size = "md", open, className } = options;
+  const height = size === "sm" ? "h-6" : size === "lg" ? "h-8" : "h-7";
+  return cn(
+    "inline-flex min-w-0 items-center gap-1.5 rounded border bg-ev-bg px-2 text-left text-base text-ev-text",
+    "transition disabled:cursor-not-allowed disabled:opacity-50",
+    height,
+    open ? "border-ev-accent" : "border-ev-line hover:border-ev-dim",
+    className,
+  );
+}
+
+/** The floating listbox under a Select or Combobox. */
+export const LISTBOX_CLASS =
+  "fixed z-[var(--z-dropdown)] overflow-y-auto rounded border border-ev-line bg-ev-panel py-1 shadow-xl";
+
+/** One row of a listbox or a menu popup. */
+export function optionClass(options: { active?: boolean; selected?: boolean; disabled?: boolean } = {}): string {
+  return cn(
+    "flex w-full items-center gap-2 px-2 py-1 text-left text-base outline-none",
+    options.disabled
+      ? "cursor-not-allowed text-ev-dim"
+      : options.active
+        ? "bg-ev-raised text-ev-strong"
+        : options.selected
+          ? "text-ev-strong"
+          : "text-ev-muted",
+  );
+}
+
+/** Field label, hint and error text. One size, one colour each. */
+export const FIELD_LABEL_CLASS = "mb-1 block text-dense font-medium text-ev-muted";
+export const FIELD_HINT_CLASS = "mt-1 text-dense text-ev-faint";
+export const FIELD_ERROR_CLASS = "mt-1 text-dense text-ev-down-text";
+
+/** Inputs in an error state get the danger border, not a red glow. */
+export function invalidClass(invalid?: boolean): string {
+  return invalid ? "border-ev-down focus:border-ev-down" : "";
+}
+
+/** Segmented control: one container, equal-height options, no gaps. */
+export function segmentedClass(options: { size?: ControlSize; className?: ClassValue } = {}): string {
+  const { size = "md", className } = options;
+  const height = size === "sm" ? "h-6" : size === "lg" ? "h-8" : "h-7";
+  return cn("inline-flex shrink-0 items-stretch rounded border border-ev-line bg-ev-bg p-0.5", height, className);
+}
+
+/** One segment. `active` is the selected one. */
+export function segmentClass(options: { active?: boolean; className?: ClassValue } = {}): string {
+  return cn(
+    "inline-flex items-center justify-center rounded px-2 text-dense font-medium transition",
+    "focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
+    options.active
+      ? "bg-ev-accent/20 text-ev-accent-text"
+      : "text-ev-muted hover:bg-ev-raised hover:text-ev-strong",
+    options.className,
+  );
+}
+
+/** Dialog surface: one radius, one border, one shadow. */
+export const DIALOG_CLASS = "flex max-h-[85vh] flex-col rounded border border-ev-line bg-ev-panel shadow-2xl";
+
+/** Table row. Compact by default.
  *
  * Every row carries the `.ev-row` marker so the root `[data-density]` rule in
  * `styles.css` can stretch it without each table knowing about density. The

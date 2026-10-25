@@ -43,6 +43,7 @@ import type { CrosshairMessage } from "./crosshairBus";
 import { getActiveExportSource, setActiveExportSource } from "./exportBridge";
 import { useShortcut } from "./shortcuts";
 import { useDrawingUi } from "./drawingUi";
+import { Select } from "./ui";
 import { effectiveSource } from "./chartSource";
 import { useMt5 } from "./mt5";
 
@@ -924,20 +925,16 @@ function Readout({
               {bid && <span className="num font-bold">{bid}</span>}
             </button>
 
-            <select
-              aria-label="Quick order quantity"
-              title="1-click order quantity / lot size"
-              value={qty}
-              onClick={(e) => e.stopPropagation()}
-              onChange={(e) => setQty(Number(e.target.value))}
-              className="num h-5 rounded border border-ev-line bg-ev-panel px-1 text-center text-micro text-ev-strong"
-            >
-              {[0.01, 0.1, 0.5, 1, 2, 5, 10].map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
-              ))}
-            </select>
+            <span onClick={(e) => e.stopPropagation()}>
+              <Select
+                label="Quick order quantity"
+                size="sm"
+                className="h-5 w-16 num text-micro"
+                value={String(qty)}
+                onChange={(v) => setQty(Number(v))}
+                options={[0.01, 0.1, 0.5, 1, 2, 5, 10].map((v) => ({ value: String(v), label: String(v) }))}
+              />
+            </span>
 
             <button
               type="button"

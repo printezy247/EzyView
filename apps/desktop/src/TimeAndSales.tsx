@@ -6,7 +6,7 @@ import { precisionForSymbol } from "./pricePrecision";
 import { useQuote } from "./quotePoller";
 import { useTape, EMPTY_TAPE } from "./tapeStore";
 import { useWorkspace } from "./store";
-import { Button, IconButton } from "./ui";
+import { Button, IconButton, Select } from "./ui";
 import { Pause, Play, Trash2 } from "lucide-react";
 
 const when = (ts: number): string => {
@@ -85,17 +85,18 @@ export function TimeAndSales() {
         <span className="text-dense font-medium text-ev-strong">{symbol}</span>
         <span className="text-micro text-ev-faint">{entries.length} ticks</span>
 
-        <select
-          value={pace}
-          onChange={(e) => setPace(Number(e.target.value))}
-          aria-label="Tape stream speed"
-          className="ml-auto rounded bg-ev-raised px-1 py-0.5 text-micro text-ev-muted hover:text-ev-strong"
-          title="Tape tick speed"
-        >
-          <option value={400}>Fast (400ms)</option>
-          <option value={1200}>Normal (1.2s)</option>
-          <option value={3000}>Slow (3s)</option>
-        </select>
+        <Select
+          label="Tape stream speed"
+          size="sm"
+          className="ml-auto"
+          value={String(pace)}
+          onChange={(v) => setPace(Number(v))}
+          options={[
+            { value: "400", label: "Fast (400ms)" },
+            { value: "1200", label: "Normal (1.2s)" },
+            { value: "3000", label: "Slow (3s)" },
+          ]}
+        />
 
         <IconButton
           label={paused ? "Resume live tape stream" : "Pause live tape stream"}

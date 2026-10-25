@@ -18,6 +18,7 @@ import type { PineScriptRecord } from "./store";
 import { parseParamValues } from "./pineOptimize";
 import { exportScriptJson, parseScriptJson } from "./pineShare";
 import { sanitizeExportFilename } from "./exportUi";
+import { Select } from "./ui";
 import { themeColors } from "@ezyview/brand";
 
 interface Props {
@@ -381,11 +382,19 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
           <Play size={13} aria-hidden /> Add to chart
         </button>
         {versions.length > 0 && (
-          <select
-            aria-label="Script versions"
+          <Select
+            label="Script versions"
+            placeholder="Versions…"
             value={versionChoice}
-            onChange={(e) => {
-              const index = Number(e.target.value);
+            options={[
+              { value: "", label: "Versions…" },
+              ...versions.map((v, i) => ({
+                value: String(i),
+                label: `v${versions.length - i} · ${new Date(v.savedAt * 1000).toLocaleString()}`,
+              })),
+            ]}
+            onChange={(value) => {
+              const index = Number(value);
               setVersionChoice(""); // reset so the same entry can be picked again
               const entry = record?.versions?.[index];
               if (!entry) return;
@@ -399,16 +408,7 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
               setResult(null);
               refreshMarkers();
             }}
-            className="rounded bg-ev-bg px-2 py-1.5 text-base text-ev-strong outline-none"
-          >
-            <option value="">Versions…</option>
-            {/* Newest first; the archive is prepend-ordered in the store. */}
-            {versions.map((v, i) => (
-              <option key={`${v.savedAt}-${i}`} value={String(i)}>
-                v{versions.length - i} · {new Date(v.savedAt * 1000).toLocaleString()}
-              </option>
-            ))}
-          </select>
+          />
         )}
         <button
           type="button"

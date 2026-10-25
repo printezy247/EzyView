@@ -3,6 +3,7 @@ import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
 import { useShortcut, useShortcutLayer } from "./shortcuts";
+import { popupPosition } from "./ui/popup";
 
 /**
  * One row in a dropdown: an action, a checkable option, a divider or a heading.
@@ -157,8 +158,8 @@ export function Menu({ label, caption, entries, icon, badge, triggerActive, alig
             role="menu"
             aria-label={caption ?? label}
             onKeyDown={onListKey}
-            className="fixed z-[var(--z-dropdown)] min-w-44 whitespace-nowrap rounded border border-ev-line bg-ev-panel py-1 shadow-xl"
-            style={popupPosition(triggerRef.current, align)}
+            className="fixed z-[var(--z-dropdown)] whitespace-nowrap rounded border border-ev-line bg-ev-panel py-1 shadow-xl"
+            style={{ ...popupPosition(triggerRef.current, { align, minWidth: 220 }), overflowY: "auto" }}
           >
             <MenuItems entries={entries} onPick={pick} />
           </div>,
@@ -166,20 +167,6 @@ export function Menu({ label, caption, entries, icon, badge, triggerActive, alig
         )}
     </div>
   );
-}
-
-/** Where the popup goes: under the trigger, kept inside the window. */
-function popupPosition(trigger: HTMLElement | null, align: "left" | "right"): React.CSSProperties {
-  if (!trigger) return { top: 0, left: 0 };
-  const rect = trigger.getBoundingClientRect();
-  const width = 220;
-  const left = align === "right" ? Math.max(8, rect.right - width) : Math.min(rect.left, window.innerWidth - width - 8);
-  return {
-    top: Math.min(rect.bottom + 4, window.innerHeight - 40),
-    left: Math.max(8, left),
-    maxHeight: "min(70vh, 520px)",
-    overflowY: "auto",
-  };
 }
 
 /** The rows of a menu popup; shared by dropdown menus and the chart's right-click menu. */
