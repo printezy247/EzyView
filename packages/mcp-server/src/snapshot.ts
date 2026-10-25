@@ -9,7 +9,7 @@
  */
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { posix, win32 } from "node:path";
 
 export const APP_ID = "com.printezy247.ezyview";
 export const SNAPSHOT_FILE = "workspace-snapshot.json";
@@ -47,13 +47,15 @@ export function defaultSnapshotPath(
   home: string = homedir(),
 ): string {
   if (env.EZYVIEW_SNAPSHOT && env.EZYVIEW_SNAPSHOT.trim() !== "") return env.EZYVIEW_SNAPSHOT.trim();
+  // Join with the separators of the platform being asked about, not the host's.
+  const p = platform === "win32" ? win32 : posix;
   if (platform === "win32") {
-    const appData = env.APPDATA && env.APPDATA.trim() !== "" ? env.APPDATA.trim() : join(home, "AppData", "Roaming");
-    return join(appData, APP_ID, SNAPSHOT_FILE);
+    const appData = env.APPDATA && env.APPDATA.trim() !== "" ? env.APPDATA.trim() : p.join(home, "AppData", "Roaming");
+    return p.join(appData, APP_ID, SNAPSHOT_FILE);
   }
-  if (platform === "darwin") return join(home, "Library", "Application Support", APP_ID, SNAPSHOT_FILE);
-  const xdg = env.XDG_DATA_HOME && env.XDG_DATA_HOME.trim() !== "" ? env.XDG_DATA_HOME.trim() : join(home, ".local", "share");
-  return join(xdg, APP_ID, SNAPSHOT_FILE);
+  if (platform === "darwin") return p.join(home, "Library", "Application Support", APP_ID, SNAPSHOT_FILE);
+  const xdg = env.XDG_DATA_HOME && env.XDG_DATA_HOME.trim() !== "" ? env.XDG_DATA_HOME.trim() : p.join(home, ".local", "share");
+  return p.join(xdg, APP_ID, SNAPSHOT_FILE);
 }
 
 /** Structural check; anything else is "no usable snapshot". */

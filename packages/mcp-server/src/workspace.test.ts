@@ -108,5 +108,8 @@ describe("snapshot parsing and paths", () => {
       "/Users/u/Library/Application Support/com.printezy247.ezyview/workspace-snapshot.json",
     );
     expect(defaultSnapshotPath("linux", { EZYVIEW_SNAPSHOT: "/x/s.json" }, "/h")).toBe("/x/s.json");
+    expect(defaultSnapshotPath("win32", { APPDATA: "C:\\Users\\u\\AppData\\Roaming" }, "C:\\Users\\u")).toBe(
+      "C:\\Users\\u\\AppData\\Roaming\\com.printezy247.ezyview\\workspace-snapshot.json",
+    );
   });
 });

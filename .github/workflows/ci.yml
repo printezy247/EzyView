@@ -7,9 +7,16 @@ on:
     branches: [main]
 
 jobs:
+  # The web shell is the part every platform shares, so it is checked on all
+  # three: a Windows-only path or line-ending bug is a real bug, and this is
+  # the cheapest place to catch it.
   web:
-    name: lint · typecheck · test · build
-    runs-on: ubuntu-latest
+    name: lint · typecheck · test · build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -56,8 +63,12 @@ jobs:
         run: cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
 
   e2e:
-    name: end-to-end smoke
-    runs-on: ubuntu-latest
+    name: end-to-end smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -67,6 +78,10 @@ jobs:
       - run: npm ci
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+        if: runner.os == 'Linux'
+      - name: Install Chromium
+        run: npx playwright install chromium
+        if: runner.os != 'Linux'
       # Only the smoke spec runs here. The visual baselines are a local tool:
       # they compare rendered pixels, and a runner's font rasteriser is not
       # the same as a developer's, so a CI pixel diff would report a
