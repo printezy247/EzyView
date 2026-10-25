@@ -7,6 +7,7 @@ import type { DrawingTemplate } from "./drawingTemplates";
 import { syncPositionDrawingToOrderTicket } from "./orderDraft";
 import { useDrawingUi } from "./drawingUi";
 import { newAssetId, putImageAsset, readImageSize } from "./imageAssets";
+import { Select } from "./ui";
 
 const COLORS = ["#d91400", "#0ea600", "#f2a93b", "#4a90e2", "#9c27b0", "#00bcd4", "#ffd700", "#ffffff"];
 const WIDTHS = [1, 2, 3, 4];
@@ -156,23 +157,18 @@ export function DrawingProperties() {
       <div className="mb-2">
         <span className="mb-1 block text-dense text-ev-muted">Template</span>
         <div className="flex gap-1">
-          <select
+          <Select
+            label="Apply drawing template"
             value=""
-            onChange={(e) => {
-              if (e.target.value && applyDrawingTemplate(e.target.value, d.id)) {
+            onChange={(value) => {
+              if (value && applyDrawingTemplate(value, d.id)) {
                 setTemplates(listDrawingTemplates());
               }
             }}
-            aria-label="Apply drawing template"
-            className="rounded border border-ev-line bg-ev-panel px-1.5 py-1 text-base text-ev-text"
-          >
-            <option value="">Apply…</option>
-            {templates.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
+            placeholder="Apply…"
+            options={[{ value: "", label: "Apply…" }, ...templates.map((t) => ({ value: t.id, label: t.name }))]}
+            className="shrink-0"
+          />
           <input
             value={templateName}
             placeholder="Name"

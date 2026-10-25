@@ -5,6 +5,7 @@ import { loadHistory } from "./data";
 import { useWorkspace } from "./store";
 import type { ReplaySpeed } from "./layout";
 import { useShortcut } from "./shortcuts";
+import { Select } from "./ui";
 
 interface Props {
   /** Total bars loaded for the active symbol. */
@@ -16,6 +17,17 @@ interface Props {
 
 /** Base milliseconds per bar at 1×; the speed selector divides it. */
 const BASE_MS = 500;
+
+/** Multipliers over BASE_MS, with the wall-clock time each one gives per bar. */
+const SPEED_OPTIONS = [
+  { value: "0.1", label: "5s / bar" },
+  { value: "0.167", label: "3s / bar" },
+  { value: "0.5", label: "1s / bar" },
+  { value: "1", label: "0.5s / bar" },
+  { value: "2", label: "0.25s / bar" },
+  { value: "3", label: "0.17s / bar" },
+  { value: "5", label: "0.1s / bar" },
+];
 
 export function ReplayBar({ totalBars, symbol: symbolProp, resolution: resolutionProp }: Props) {
   const symbol = symbolProp ?? useWorkspace.getState().activeChart().symbol;
@@ -240,23 +252,17 @@ export function ReplayBar({ totalBars, symbol: symbolProp, resolution: resolutio
       />
 
       {/* Speed Selector */}
-      <label className="flex items-center gap-1.5 text-dense text-ev-muted font-medium">
-        <span>Speed</span>
-        <select
-          value={replaySpeed}
-          onChange={(e) => setReplaySpeed(Number(e.target.value) as ReplaySpeed)}
-          className="rounded border border-ev-line bg-ev-raised px-1.5 py-0.5 text-dense font-semibold text-ev-strong cursor-pointer"
-          aria-label="Replay speed"
-        >
-          <option value={0.1}>5s / bar</option>
-          <option value={0.167}>3s / bar</option>
-          <option value={0.5}>1s / bar</option>
-          <option value={1}>0.5s / bar</option>
-          <option value={2}>0.25s / bar</option>
-          <option value={3}>0.17s / bar</option>
-          <option value={5}>0.1s / bar</option>
-        </select>
-      </label>
+      <div className="flex items-center gap-1.5 text-dense text-ev-muted font-medium">
+        <span aria-hidden>Speed</span>
+        <Select
+          label="Replay speed"
+          size="sm"
+          value={String(replaySpeed)}
+          onChange={(value) => setReplaySpeed(Number(value) as ReplaySpeed)}
+          options={SPEED_OPTIONS}
+          className="shrink-0"
+        />
+      </div>
 
       {/* Exit Button */}
       <button

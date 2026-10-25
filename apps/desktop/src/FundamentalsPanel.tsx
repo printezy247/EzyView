@@ -13,7 +13,7 @@ import { useApiKeys } from "./apiKeys";
 import { market } from "./data";
 import { CalendarTab, DAY, day, DividendsTab, EarningsTab, Empty, Failed, NewsTab, pct, tone, useLoad } from "./FundamentalsTabs";
 import type { Src } from "./FundamentalsTabs";
-import { inputClass } from "./ui";
+import { Select, inputClass } from "./ui";
 
 interface Props {
   symbol: string;
@@ -194,25 +194,25 @@ function ScreenerTab({ onPick }: { onPick: (symbol: string) => void }) {
     <div className="text-dense">
       <div className="sticky top-0 flex flex-wrap items-center gap-2 bg-ev-bg px-3 py-1.5">
         <input aria-label="Search symbols" placeholder="Search" value={text} onChange={(e) => setText(e.target.value)} className={`${input} w-24`} />
-        <select aria-label="Asset class" value={assetClass} onChange={(e) => setAssetClass(e.target.value)} className={input}>
-          <option value="">All classes</option>
-          {[...new Set((universe ?? []).map((r) => r.assetClass))].map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
+        <Select
+          label="Asset class"
+          value={assetClass}
+          onChange={setAssetClass}
+          options={[
+            { value: "", label: "All classes" },
+            ...[...new Set((universe ?? []).map((r) => r.assetClass))].map((c) => ({ value: c, label: c })),
+          ]}
+        />
         <span className="text-ev-muted">RSI</span>
         <input aria-label="RSI minimum" placeholder="min" inputMode="decimal" value={rsiMin} onChange={(e) => setRsiMin(e.target.value)} className={`${input} w-14`} />
         <input aria-label="RSI maximum" placeholder="max" inputMode="decimal" value={rsiMax} onChange={(e) => setRsiMax(e.target.value)} className={`${input} w-14`} />
         <span className="text-ev-muted">Sort</span>
-        <select aria-label="Sort by" value={sortBy} onChange={(e) => setSortBy(e.target.value as ScreenerField | "ticker")} className={input}>
-          {SORTS.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.label}
-            </option>
-          ))}
-        </select>
+        <Select
+          label="Sort by"
+          value={sortBy}
+          onChange={(v) => setSortBy(v as ScreenerField | "ticker")}
+          options={SORTS.map((s) => ({ value: s.id, label: s.label }))}
+        />
         <button type="button" onClick={() => setDescending((d) => !d)} className={`${input} hover:text-ev-strong`}>
           {descending ? "↓ desc" : "↑ asc"}
         </button>

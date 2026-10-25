@@ -4,6 +4,7 @@ import { useQuote } from "./quotePoller";
 import { useWorkspace } from "./store";
 import { useTrading } from "./trading";
 import { createLockout, roundPrice } from "./tradeMath";
+import { Select } from "./ui";
 
 interface Props {
   symbol: string;
@@ -54,21 +55,17 @@ export function DepthOfMarket({ symbol, precision }: Props) {
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold uppercase tracking-wider text-ev-muted">Depth of Market</h2>
             <div className="flex items-center gap-2">
-              <label className="flex items-center gap-1 text-micro text-ev-muted">
+              <div className="flex items-center gap-1 text-micro text-ev-muted">
                 <span>Lot:</span>
-                <select
-                  aria-label="Order size"
-                  value={qty}
-                  onChange={(e) => setQty(Number(e.target.value))}
-                  className="rounded border border-ev-line bg-ev-panel px-1 py-0.5 text-micro text-ev-strong"
-                >
-                  {[0.1, 0.5, 1, 2, 5, 10].map((v) => (
-                    <option key={v} value={v}>
-                      {v}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                <Select
+                  label="Order size"
+                  size="sm"
+                  className="w-16"
+                  value={String(qty)}
+                  onChange={(v) => setQty(Number(v))}
+                  options={[0.1, 0.5, 1, 2, 5, 10].map((v) => ({ value: String(v), label: String(v) }))}
+                />
+              </div>
               <span className="text-dense num text-ev-faint">{symbol}</span>
             </div>
           </div>

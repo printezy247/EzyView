@@ -5,7 +5,7 @@ import type { FundamentalsSources } from "@ezyview/fundamentals";
 import { annualisedDividend, nextExDate, totalForYear } from "./dividends";
 import { tickerOf } from "./data";
 import { safeHref } from "./links";
-import { inputClass } from "./ui";
+import { Select, inputClass } from "./ui";
 
 /** Current providers plus a version string that changes when they do. */
 export interface Src {
@@ -123,31 +123,30 @@ export function CalendarTab({ src }: { src: Src }) {
   return (
     <div className="text-dense">
       <div className="sticky top-0 flex flex-wrap items-center gap-2 bg-ev-bg px-3 py-1.5">
-        <label className="text-ev-muted" htmlFor="impact">
-          Impact
-        </label>
-        <select
+        <span className="text-ev-muted">Impact</span>
+        <Select
           id="impact"
+          label="Impact"
           value={impact}
-          onChange={(e) => setImpact(e.target.value as Impact | "all")}
-          className={input}
-        >
-          <option value="all">All</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-        </select>
-        <label className="text-ev-muted" htmlFor="currency">
-          Currency
-        </label>
-        <select id="currency" value={currency} onChange={(e) => setCurrency(e.target.value)} className={input}>
-          <option value="all">All</option>
-          {currencies.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
+          onChange={(v) => setImpact(v as Impact | "all")}
+          options={[
+            { value: "all", label: "All" },
+            { value: "high", label: "High" },
+            { value: "medium", label: "Medium" },
+            { value: "low", label: "Low" },
+          ]}
+        />
+        <span className="text-ev-muted">Currency</span>
+        <Select
+          id="currency"
+          label="Currency"
+          value={currency}
+          onChange={setCurrency}
+          options={[
+            { value: "all", label: "All" },
+            ...currencies.map((c) => ({ value: c, label: c })),
+          ]}
+        />
         <input
           type="search"
           aria-label="Search events"

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Bell, BellRing, Trash2 } from "lucide-react";
 import type { AlertCondition, AlertFrequency, PriceAlert } from "@ezyview/data-adapters";
 import { Modal } from "./Modal";
+import { Select } from "./ui";
 
 /** One controlled field in the alert form. */
 function useAlertField<T>(initial: T): [T, (next: T) => void] {
@@ -160,18 +161,12 @@ function AlertForm({
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-ev-raised px-4 py-3">
-      <select
-        aria-label="Alert condition"
+      <Select
+        label="Alert condition"
         value={kind}
-        onChange={(e) => setKind(e.target.value as AlertCondition["kind"])}
-        className="rounded border border-ev-line bg-ev-bg px-2 py-1 text-base text-ev-strong"
-      >
-        {Object.entries(CONDITION_LABELS).map(([k, label]) => (
-          <option key={k} value={k}>
-            {label}
-          </option>
-        ))}
-      </select>
+        onChange={(v) => setKind(v as AlertCondition["kind"])}
+        options={Object.entries(CONDITION_LABELS).map(([k, label]) => ({ value: k, label }))}
+      />
 
       {needsValue && (
         <input
@@ -207,18 +202,12 @@ function AlertForm({
         />
       )}
 
-      <select
-        aria-label="Alert frequency"
+      <Select
+        label="Alert frequency"
         value={frequency}
-        onChange={(e) => setFrequency(e.target.value as AlertFrequency)}
-        className="rounded border border-ev-line bg-ev-bg px-2 py-1 text-base text-ev-strong"
-      >
-        {Object.entries(FREQ_LABELS).map(([k, label]) => (
-          <option key={k} value={k}>
-            {label}
-          </option>
-        ))}
-      </select>
+        onChange={(v) => setFrequency(v as AlertFrequency)}
+        options={Object.entries(FREQ_LABELS).map(([k, label]) => ({ value: k, label }))}
+      />
 
       <input
         aria-label="Alert message"

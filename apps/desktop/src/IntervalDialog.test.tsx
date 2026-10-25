@@ -64,10 +64,10 @@ describe("IntervalDialog", () => {
     expect(onPick).not.toHaveBeenCalled();
   });
 
-  it("is announced as a dialog with a title", () => {
+  it("is announced as a dialog named by its title and described by its help text", () => {
     render(<IntervalDialog open onClose={() => {}} onPick={() => {}} />);
-    const dialog = screen.getByRole("dialog");
-    expect(dialog.getAttribute("aria-labelledby")).toBe("interval-dialog-title");
-    expect(screen.getByText("Custom interval")).toBeTruthy();
+    const dialog = screen.getByRole("dialog", { name: "Custom interval" });
+    const described = document.getElementById(dialog.getAttribute("aria-describedby") ?? "");
+    expect(described?.textContent).toContain("Type a count and a unit");
   });
 });

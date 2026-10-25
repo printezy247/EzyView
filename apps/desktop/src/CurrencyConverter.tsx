@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { convert, formatAmount, type Rates } from "./currency";
-import { Input } from "./ui";
+import { Input, Select } from "./ui";
 import { tickerOf } from "./data";
 import { useWorkspace } from "./store";
 
@@ -26,8 +26,7 @@ const CURRENCIES: Record<string, string> = {
 
 const CODES = Object.keys(RATES);
 
-const selectClass =
-  "h-7 rounded border border-ev-line bg-ev-bg px-2 text-base text-ev-text focus:border-ev-accent focus:outline-none";
+const CURRENCY_OPTIONS = CODES.map((code) => ({ value: code, label: `${code} — ${CURRENCIES[code]}` }));
 
 /** Currency converter over the bundled snapshot, with the active symbol as context. */
 export function CurrencyConverter() {
@@ -60,16 +59,10 @@ export function CurrencyConverter() {
             aria-label="Amount to convert"
           />
         </label>
-        <label className="flex flex-col gap-1 text-dense text-ev-muted">
-          From
-          <select value={from} onChange={(e) => setFrom(e.target.value)} aria-label="Convert from currency" className={selectClass}>
-            {CODES.map((c) => (
-              <option key={c} value={c}>
-                {c} — {CURRENCIES[c]}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="flex flex-col gap-1 text-dense text-ev-muted">
+          <span aria-hidden>From</span>
+          <Select label="Convert from currency" value={from} onChange={setFrom} options={CURRENCY_OPTIONS} className="w-48" />
+        </div>
         <button
           type="button"
           onClick={() => {
@@ -81,16 +74,10 @@ export function CurrencyConverter() {
         >
           swap
         </button>
-        <label className="flex flex-col gap-1 text-dense text-ev-muted">
-          To
-          <select value={to} onChange={(e) => setTo(e.target.value)} aria-label="Convert to currency" className={selectClass}>
-            {CODES.map((c) => (
-              <option key={c} value={c}>
-                {c} — {CURRENCIES[c]}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="flex flex-col gap-1 text-dense text-ev-muted">
+          <span aria-hidden>To</span>
+          <Select label="Convert to currency" value={to} onChange={setTo} options={CURRENCY_OPTIONS} className="w-48" />
+        </div>
       </div>
 
       <div className="rounded border border-ev-line p-4">

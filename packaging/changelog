@@ -1,3 +1,21 @@
+ezy-view (0.4.0) unstable; urgency=medium
+
+  * UI kit: one primitive set for the whole app — Select, Combobox, Tabs,
+    Popover, Tooltip, Dialog, Field/Checkbox/RadioGroup/Toggle/Slider/
+    NumberInput/DatePicker, SegmentedControl, Badge and Toast — each with
+    keyboard, focus and aria tests.
+  * Every native select is gone: 18 files now use the shared listbox, so
+    dropdowns share positioning, typeahead, Escape and disabled-option rules.
+  * Toolbar and chart chrome rebuilt on the kit: interval pills are a
+    segmented control, the box-size field is a validated number input, and
+    snapshot/settings/alert/replay actions are labelled tooltip buttons.
+  * Dialogs: the custom-interval and link-group dialogs moved to the shared
+    Dialog shell with footer actions, describedby wiring and live validation.
+  * docs/ui-audit.md records the baseline (286 raw buttons, 37 selects, 162
+    inputs) and scripts/ui-audit.mjs enforces the budget from here on.
+
+ -- printezy247 <printezy247@users.noreply.github.com>  Sun, 25 Oct 2026 19:15:00 +0000
+
 ezy-view (0.3.2) unstable; urgency=medium
 
   * Market data accuracy: symbol-metadata precision everywhere (no more

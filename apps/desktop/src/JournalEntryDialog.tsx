@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import type { TradeEmotion } from "@ezyview/journal";
 import { useJournal } from "./journal";
 import { Modal } from "./Modal";
+import { Select } from "./ui";
 
 interface Props {
   onClose: () => void;
@@ -138,10 +139,17 @@ export function JournalEntryDialog({ onClose }: Props) {
             <label className={label} htmlFor="je-side">
               Side
             </label>
-            <select id="je-side" value={side} onChange={(e) => setSide(e.target.value === "short" ? "short" : "long")} className={field}>
-              <option value="long">Long</option>
-              <option value="short">Short</option>
-            </select>
+            <Select
+              id="je-side"
+              label="Side"
+              value={side}
+              onChange={(v) => setSide(v === "short" ? "short" : "long")}
+              options={[
+                { value: "long", label: "Long" },
+                { value: "short", label: "Short" },
+              ]}
+              className="w-full"
+            />
           </div>
           <div>
             <label className={label} htmlFor="je-qty">
@@ -219,27 +227,30 @@ export function JournalEntryDialog({ onClose }: Props) {
             <label className={label} htmlFor="je-emotion">
               Emotion
             </label>
-            <select id="je-emotion" value={emotion} onChange={(e) => setEmotion(e.target.value as TradeEmotion | "")} className={field}>
-              <option value="">—</option>
-              {EMOTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
+            <Select
+              id="je-emotion"
+              label="Emotion"
+              value={emotion}
+              onChange={(v) => setEmotion(v as TradeEmotion | "")}
+              options={[{ value: "", label: "—" }, ...EMOTIONS.map((option) => ({ value: option, label: option }))]}
+              className="w-full"
+            />
           </div>
           <div>
             <label className={label} htmlFor="je-rating">
               Rating
             </label>
-            <select id="je-rating" value={rating} onChange={(e) => setRating(e.target.value)} className={field}>
-              <option value="0">—</option>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <option key={star} value={String(star)}>
-                  {star}/5
-                </option>
-              ))}
-            </select>
+            <Select
+              id="je-rating"
+              label="Rating"
+              value={rating}
+              onChange={setRating}
+              options={[
+                { value: "0", label: "—" },
+                ...[1, 2, 3, 4, 5].map((star) => ({ value: String(star), label: `${star}/5` })),
+              ]}
+              className="w-full"
+            />
           </div>
           <div>
             <label className={label} htmlFor="je-shot">

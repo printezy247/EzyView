@@ -7,10 +7,14 @@ import type { ActiveIndicator } from "./store";
 import { DrawingProperties } from "./DrawingProperties";
 import { parseDrawings, serializeDrawings } from "./drawingsIO";
 import { saveBlob } from "./exportUi";
+import { Select } from "./ui";
 
 interface Props {
   onClose: () => void;
 }
+
+/** Price sources an indicator's string parameter can be computed from. */
+const SOURCE_OPTIONS = ["close", "open", "high", "low", "hl2", "hlc3", "ohlc4"].map((src) => ({ value: src, label: src }));
 
 /** "trend_line" → "Trend line". */
 export const toolName = (tool: string): string => {
@@ -127,7 +131,7 @@ export function ObjectTree({ onClose }: Props) {
                 {expandedInd === i.uid && i.def.params.length > 0 && (
                   <div className="space-y-1 border-b border-ev-raised bg-ev-panel px-3 py-1.5 text-dense">
                     {i.def.params.map((p) => (
-                      <label key={p.id} className="flex items-center justify-between gap-2 text-ev-muted">
+                      <div key={p.id} className="flex items-center justify-between gap-2 text-ev-muted">
                         <span>{p.label}</span>
                         {p.type === "int" || p.type === "float" ? (
                           <input
@@ -149,19 +153,16 @@ export function ObjectTree({ onClose }: Props) {
                             onChange={(e) => updateIndicatorParams(i.uid, { ...i.params, [p.id]: e.target.checked })}
                           />
                         ) : (
-                          <select
+                          <Select
+                            label={p.label}
+                            size="sm"
                             value={String(i.params[p.id] ?? p.default)}
-                            onChange={(e) => updateIndicatorParams(i.uid, { ...i.params, [p.id]: e.target.value })}
-                            className="rounded border border-ev-line bg-ev-bg px-1 py-0.5 text-ev-strong"
-                          >
-                            {["close", "open", "high", "low", "hl2", "hlc3", "ohlc4"].map((src) => (
-                              <option key={src} value={src}>
-                                {src}
-                              </option>
-                            ))}
-                          </select>
+                            onChange={(value) => updateIndicatorParams(i.uid, { ...i.params, [p.id]: value })}
+                            options={SOURCE_OPTIONS}
+                            className="shrink-0"
+                          />
                         )}
-                      </label>
+                      </div>
                     ))}
                   </div>
                 )}

@@ -3,7 +3,7 @@ import { Eye, EyeOff, Trash2 } from "lucide-react";
 import type { CompareMode } from "@ezyview/chart-engine";
 import { useWorkspace } from "./store";
 import { Modal } from "./Modal";
-import { Button, Input } from "./ui";
+import { Button, Input, Select } from "./ui";
 
 interface Props {
   open: boolean;
@@ -70,18 +70,13 @@ export function CompareDialog({ open, onClose }: Props) {
           aria-label="Compare symbol"
           className="min-w-0 flex-1"
         />
-        <select
+        <Select
+          label="Comparison mode"
           value={mode}
-          onChange={(e) => setMode(e.target.value as CompareMode)}
-          aria-label="Comparison mode"
-          className="rounded border border-ev-line bg-ev-bg px-1.5 text-dense text-ev-strong"
-        >
-          {MODES.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.label}
-            </option>
-          ))}
-        </select>
+          onChange={(v) => setMode(v as CompareMode)}
+          options={MODES.map((m) => ({ value: m.id, label: m.label }))}
+          className="px-1.5 text-dense"
+        />
         <Button type="submit" variant="solid" disabled={symbol.trim() === ""}>
           Add
         </Button>
@@ -101,18 +96,14 @@ export function CompareDialog({ open, onClose }: Props) {
                 className="size-5 shrink-0 cursor-pointer rounded border border-ev-line bg-transparent"
               />
               <span className="min-w-0 flex-1 truncate text-ev-text">{entry.symbol}</span>
-              <select
+              <Select
+                label={`Mode for ${entry.symbol}`}
                 value={entry.mode}
-                onChange={(e) => updateCompare(entry.id, { mode: e.target.value as CompareMode })}
-                aria-label={`Mode for ${entry.symbol}`}
-                className="rounded border border-ev-line bg-ev-panel px-1 text-micro text-ev-strong"
-              >
-                {MODES.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => updateCompare(entry.id, { mode: v as CompareMode })}
+                options={MODES.map((m) => ({ value: m.id, label: m.label }))}
+                size="sm"
+                className="px-1 text-micro"
+              />
               <button
                 type="button"
                 aria-label={entry.visible === false ? `Show ${entry.symbol}` : `Hide ${entry.symbol}`}

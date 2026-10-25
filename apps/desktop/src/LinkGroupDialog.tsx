@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { Modal } from "./Modal";
-import { Button, Input } from "./ui";
+import { Button, Dialog, Field, Input } from "./ui";
 
 interface Props {
   open: boolean;
@@ -37,77 +36,67 @@ export function LinkGroupDialog({ open, onClose, current, available, onPick }: P
   };
 
   return (
-    <Modal
+    <Dialog
       open={open}
       onClose={onClose}
-      labelledBy="link-group-title"
-      className="w-[min(24rem,92vw)] rounded-lg border border-ev-line bg-ev-panel p-4 shadow-xl"
-    >
-      <h2 id="link-group-title" className="text-title font-semibold text-ev-strong">
-        Link this chart
-      </h2>
-      <p className="mt-1 text-dense text-ev-muted">
-        Cells in the same group share their symbol, interval and crosshair.
-      </p>
-
-      <form
-        className="mt-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          apply(value);
-        }}
-      >
-        <label className="text-dense text-ev-muted" htmlFor="link-group-name">
-          Group name
-        </label>
-        <Input
-          id="link-group-name"
-          // eslint-disable-next-line jsx-a11y/no-autofocus -- the dialog exists to take this one value
-          autoFocus
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder="A"
-          aria-label="Link group name"
-          className="mt-1 w-full"
-        />
-
-        {available.length > 0 && (
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <span className="text-micro uppercase tracking-wider text-ev-faint">In use</span>
-            {available.map((g) => (
-              <button
-                key={g}
-                type="button"
-                onClick={() => apply(g)}
-                className="rounded bg-ev-raised px-1.5 py-0.5 text-dense text-ev-muted hover:bg-ev-line hover:text-ev-strong"
-              >
-                {g}
-              </button>
-            ))}
-          </div>
-        )}
-
-        <div className="mt-4 flex justify-between gap-2">
+      title="Link this chart"
+      size="sm"
+      description="Cells in the same group share their symbol, interval and crosshair."
+      actions={
+        <>
           <Button
             type="button"
             variant="ghost"
             size="lg"
+            className="mr-auto"
             onClick={() => apply("")}
             disabled={current === null}
             title="Take this cell out of its group"
           >
             Unlink
           </Button>
-          <div className="flex gap-2">
-            <Button type="button" variant="ghost" size="lg" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="solid" size="lg" disabled={value.trim() === ""}>
-              Link
-            </Button>
+          <Button type="button" variant="ghost" size="lg" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" form="link-group-form" variant="solid" size="lg" disabled={value.trim() === ""}>
+            Link
+          </Button>
+        </>
+      }
+    >
+      <form
+        id="link-group-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          apply(value);
+        }}
+      >
+        <Field label="Group name" hint="Pick a name already in use, or type a new one.">
+          {({ controlId }) => (
+            <Input
+              id={controlId}
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- the dialog exists to take this one value
+              autoFocus
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder="A"
+              aria-label="Link group name"
+              className="w-full"
+            />
+          )}
+        </Field>
+
+        {available.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span className="text-micro uppercase tracking-wider text-ev-faint">In use</span>
+            {available.map((g) => (
+              <Button key={g} type="button" size="sm" variant="outline" onClick={() => apply(g)}>
+                {g}
+              </Button>
+            ))}
           </div>
-        </div>
+        )}
       </form>
-    </Modal>
+    </Dialog>
   );
 }

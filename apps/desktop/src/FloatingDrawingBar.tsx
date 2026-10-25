@@ -32,6 +32,7 @@ import {
 } from "./drawingTemplates";
 import { drawingLabel } from "./ObjectTree";
 import type { DrawingBox } from "./ChartHost";
+import { Select } from "./ui";
 
 /** TradingView's stroke palette, plus white for dark themes. */
 const PALETTE = ["#2962ff", "#089981", "#f23645", "#ff9800", "#e91e63", "#9c27b0", "#00bcd4", "#ffeb3b", "#ffffff", "#787b86"];
@@ -323,21 +324,17 @@ export function FloatingDrawingBar({ anchor }: Props) {
             {menu === "text" && (
               <div className="space-y-2">
                 <p className="text-dense font-medium uppercase tracking-wider text-ev-faint">Text</p>
-                <label className="flex items-center justify-between gap-2 text-dense text-ev-muted">
-                  Size
-                  <select
-                    value={style.fontSize ?? 13}
-                    onChange={(e) => patchStyle({ fontSize: Number(e.target.value) })}
-                    aria-label="Text size"
-                    className="rounded border border-ev-line bg-ev-bg px-1 py-0.5 text-ev-strong"
-                  >
-                    {[10, 12, 13, 14, 16, 20, 24, 32].map((s) => (
-                      <option key={s} value={s}>
-                        {s}px
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <div className="flex items-center justify-between gap-2 text-dense text-ev-muted">
+                  <span>Size</span>
+                  <Select
+                    label="Text size"
+                    size="sm"
+                    className="w-20"
+                    value={String(style.fontSize ?? 13)}
+                    onChange={(v) => patchStyle({ fontSize: Number(v) })}
+                    options={[10, 12, 13, 14, 16, 20, 24, 32].map((s) => ({ value: String(s), label: `${s}px` }))}
+                  />
+                </div>
                 <div className="flex gap-1">
                   <button
                     type="button"

@@ -45,6 +45,7 @@ import { useZen } from "./zen";
 import { useShortcut } from "./shortcuts";
 import type { MagnetMode } from "@ezyview/drawing-tools";
 import { notice } from "./notice";
+import { Button, IconButton, NumberInput, SegmentedControl, Tooltip } from "./ui";
 
 /** Timezones offered in the View menu; empty = exchange/UTC default. */
 const TIMEZONES: { id: string; label: string }[] = [
@@ -557,27 +558,14 @@ export function Toolbar(props: Props) {
       <div className="mx-1 h-4 w-px shrink-0 bg-ev-raised" />
 
       {/* 1-click favorite interval pills (TradingView style) */}
-      <div className="hidden items-center gap-0.5 lg:flex" role="group" aria-label="Favorite intervals">
-        {PICKER_RESOLUTIONS.map((r) => {
-          const active = props.resolution === r;
-          return (
-            <button
-              key={r}
-              type="button"
-              title={resolutionName(r)}
-              aria-pressed={active}
-              onClick={() => props.onResolution(r)}
-              className={
-                active
-                  ? "rounded bg-ev-accent/20 px-1.5 py-0.5 text-dense font-semibold text-ev-accent-text"
-                  : "rounded px-1.5 py-0.5 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-              }
-            >
-              {r}
-            </button>
-          );
-        })}
-      </div>
+      <SegmentedControl
+        label="Favorite intervals"
+        size="sm"
+        className="hidden lg:inline-flex"
+        value={props.resolution}
+        onChange={(r) => props.onResolution(r as Resolution)}
+        options={PICKER_RESOLUTIONS.map((r) => ({ value: r, label: r, title: resolutionName(r) }))}
+      />
 
       <Menu label={props.resolution} caption="Interval" icon={<Clock size={13} aria-hidden />} entries={intervalEntries} />
       <Menu
@@ -597,25 +585,16 @@ export function Toolbar(props: Props) {
         props.chartType === "pnf" ||
         props.chartType === "linebreak" ||
         props.chartType === "rangebars") && (
-        <label
-          className="ml-1 flex items-center gap-1 text-dense text-ev-muted"
-          title={`${props.chartType === "kagi" ? "Reversal amount" : props.chartType === "linebreak" ? "Lines per break" : "Box size"}; leave empty to size it from the average true range`}
-        >
-          {props.chartType === "kagi" ? "Reversal" : props.chartType === "linebreak" ? "Lines" : "Box"}
-          <input
-            type="number"
-            min={0}
-            step="any"
-            inputMode="decimal"
-            placeholder="auto"
-            value={props.boxSize ?? ""}
-            onChange={(e) => {
-              const v = Number(e.target.value);
-              props.onBoxSize(e.target.value === "" || !(v > 0) ? null : v);
-            }}
-            className="w-16 rounded border border-ev-line bg-ev-panel px-1.5 py-0.5 text-dense text-ev-text placeholder:text-ev-faint"
-          />
-        </label>
+        <NumberInput
+          inline
+          className="ml-1"
+          label={props.chartType === "kagi" ? "Reversal" : props.chartType === "linebreak" ? "Lines" : "Box"}
+          hint={`${props.chartType === "kagi" ? "Reversal amount" : props.chartType === "linebreak" ? "Lines per break" : "Box size"}; leave empty to size it from the average true range`}
+          min={0}
+          step={0.01}
+          value={props.boxSize}
+          onValueChange={(v) => props.onBoxSize(v !== null && v > 0 ? v : null)}
+        />
       )}
 
       <div className="mx-1 h-4 w-px shrink-0 bg-ev-raised" />
@@ -643,30 +622,24 @@ export function Toolbar(props: Props) {
       <div className="mx-1 h-4 w-px shrink-0 bg-ev-raised" />
 
       {/* Direct 1-click TradingView action buttons: Alert, Replay, Grid, Snapshot */}
-      <button
-        type="button"
-        title="Create price alert on active symbol"
-        onClick={props.onOpenAlerts}
-        className="flex h-6 shrink-0 items-center gap-1 rounded px-2 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-      >
-        <BellPlus size={13} aria-hidden />
-        <span className="hidden xl:inline">Alert</span>
-      </button>
+      <Tooltip content="Create a price alert on the active symbol">
+        <Button size="sm" variant="ghost" onClick={props.onOpenAlerts} aria-label="Create price alert">
+          <BellPlus size={13} aria-hidden />
+          <span className="hidden xl:inline">Alert</span>
+        </Button>
+      </Tooltip>
 
-      <button
-        type="button"
+      <Button
+        size="sm"
+        variant="ghost"
         aria-pressed={props.replayActive}
-        title="Toggle bar replay mode"
+        aria-label="Toggle bar replay mode"
         onClick={props.onToggleReplay}
-        className={
-          props.replayActive
-            ? "flex h-6 shrink-0 items-center gap-1 rounded bg-ev-accent/20 px-2 text-dense font-medium text-ev-accent-text"
-            : "flex h-6 shrink-0 items-center gap-1 rounded px-2 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-        }
+        className={props.replayActive ? "bg-ev-accent/20 text-ev-accent-text hover:bg-ev-accent/25" : ""}
       >
         <Rewind size={13} aria-hidden />
         <span className="hidden xl:inline">Replay</span>
-      </button>
+      </Button>
 
       <Menu
         label={props.grid}
@@ -675,46 +648,43 @@ export function Toolbar(props: Props) {
         entries={gridEntries}
       />
 
-      <button
-        type="button"
-        title="Take instant chart snapshot (PNG)"
-        aria-label="Take chart snapshot"
-        disabled={snapshotBusy}
-        onClick={() => {
-          if (snapshotBusy) return;
-          setSnapshotBusy(true);
-          try {
-            const src = getActiveExportSource();
-            if (src) saveChartPng(src);
-          } finally {
-            setTimeout(() => setSnapshotBusy(false), 500);
-          }
-        }}
-        className="flex size-6 shrink-0 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong disabled:opacity-40"
-      >
-        <Camera size={13} aria-hidden />
-      </button>
+      <Tooltip content="Take an instant chart snapshot (PNG)">
+        <IconButton
+          label="Take chart snapshot"
+          size="sm"
+          disabled={snapshotBusy}
+          onClick={() => {
+            if (snapshotBusy) return;
+            setSnapshotBusy(true);
+            try {
+              const src = getActiveExportSource();
+              if (src) saveChartPng(src);
+            } finally {
+              setTimeout(() => setSnapshotBusy(false), 500);
+            }
+          }}
+        >
+          <Camera size={13} aria-hidden />
+        </IconButton>
+      </Tooltip>
 
-      <button
-        type="button"
-        title="Chart settings"
-        aria-label="Chart settings"
-        onClick={props.onOpenSettings}
-        className="flex size-6 shrink-0 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-      >
-        <Settings size={13} aria-hidden />
-      </button>
+      <Tooltip content="Chart settings">
+        <IconButton label="Chart settings" size="sm" onClick={props.onOpenSettings}>
+          <Settings size={13} aria-hidden />
+        </IconButton>
+      </Tooltip>
 
-      <button
-        type="button"
+      <Button
+        size="sm"
+        variant="outline"
         onClick={() => setPaletteOpen(true)}
         aria-keyshortcuts="Control+K"
-        className="ml-auto flex h-6 w-48 shrink-0 items-center gap-2 rounded border border-ev-line px-2 text-dense text-ev-muted hover:border-ev-dim hover:text-ev-strong"
+        className="ml-auto w-48 justify-start gap-2 font-normal text-ev-muted"
       >
         <Search size={12} aria-hidden />
         <span className="flex-1 truncate text-left">Search features</span>
         <kbd className="text-dense text-ev-faint">{PALETTE_KEY}</kbd>
-      </button>
+      </Button>
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} groups={groups} />
       <IntervalDialog open={intervalOpen} onClose={() => setIntervalOpen(false)} onPick={props.onResolution} />

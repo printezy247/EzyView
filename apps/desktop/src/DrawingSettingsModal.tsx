@@ -16,6 +16,7 @@ import {
   type Point,
 } from "@ezyview/drawing-tools";
 import { Modal } from "./Modal";
+import { Select } from "./ui";
 import { useWorkspace } from "./store";
 import { useDrawingUi } from "./drawingUi";
 import type { DrawingSettingsTab } from "./drawingUi";
@@ -369,15 +370,17 @@ function StyleTab({
                 aria-label="Risk size"
                 className="w-16 rounded border border-ev-line bg-ev-bg px-1.5 py-0.5 text-right num text-ev-strong"
               />
-              <select
+              <Select
+                label="Risk mode"
+                size="sm"
                 value={style.riskMode ?? "percent"}
-                onChange={(e) => onStyle({ riskMode: e.target.value as "percent" | "currency" })}
-                aria-label="Risk mode"
-                className="rounded border border-ev-line bg-ev-bg px-1 py-0.5 text-ev-strong"
-              >
-                <option value="percent">%</option>
-                <option value="currency">$</option>
-              </select>
+                onChange={(v) => onStyle({ riskMode: v as "percent" | "currency" })}
+                options={[
+                  { value: "percent", label: "%" },
+                  { value: "currency", label: "$" },
+                ]}
+                className="w-16"
+              />
             </label>
           </div>
           <ColorRow label="Stop colour" value={style.stopColor ?? "#ef5350"} onChange={(stopColor) => onStyle({ stopColor })} />
@@ -421,18 +424,14 @@ function TextTab({
       />
       <div className="flex items-center gap-2">
         <span className="w-24 text-dense text-ev-muted">Size</span>
-        <select
-          value={style.fontSize ?? 13}
-          onChange={(e) => onStyle({ fontSize: Number(e.target.value) })}
-          aria-label="Font size"
-          className="rounded border border-ev-line bg-ev-bg px-1.5 py-0.5 text-ev-strong"
-        >
-          {FONT_SIZES.map((size) => (
-            <option key={size} value={size}>
-              {size}
-            </option>
-          ))}
-        </select>
+        <Select
+          label="Font size"
+          size="sm"
+          value={String(style.fontSize ?? 13)}
+          onChange={(v) => onStyle({ fontSize: Number(v) })}
+          options={FONT_SIZES.map((size) => ({ value: String(size), label: String(size) }))}
+          className="w-20"
+        />
         <button
           type="button"
           aria-label="Bold"
@@ -566,22 +565,17 @@ function Footer({
   return (
     <div className="flex items-center justify-between gap-2 border-t border-ev-raised px-3 py-2">
       <div className="flex min-w-0 items-center gap-1">
-        <select
-          aria-label="Apply drawing template"
+        <Select
+          label="Apply drawing template"
+          size="sm"
+          placeholder="Template ▾"
           value=""
-          onChange={(e) => {
-            if (e.target.value) onApplyTemplate(e.target.value);
-            e.target.value = "";
+          onChange={(v) => {
+            if (v) onApplyTemplate(v);
           }}
-          className="max-w-40 rounded border border-ev-line bg-ev-panel px-1.5 py-1 text-dense text-ev-text"
-        >
-          <option value="">Template ▾</option>
-          {templates.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
-          ))}
-        </select>
+          options={templates.map((t) => ({ value: t.id, label: t.name }))}
+          className="w-36"
+        />
         {saving ? (
           <>
             <input
@@ -716,21 +710,10 @@ function SelectRow({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="flex items-center gap-2 text-dense text-ev-muted">
+    <div className="flex items-center gap-2 text-dense text-ev-muted">
       <span className="w-28">{label}</span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        aria-label={label}
-        className="rounded border border-ev-line bg-ev-bg px-1.5 py-0.5 text-ev-strong"
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </label>
+      <Select label={label} size="sm" value={value} onChange={onChange} options={options} />
+    </div>
   );
 }
 
