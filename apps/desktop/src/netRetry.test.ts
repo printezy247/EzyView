@@ -61,6 +61,34 @@ describe("withRetry", () => {
       }),
     ).rejects.toThrow(/Timed out/);
   });
+
+  it("does not retry when shouldRetry says the failure is permanent", async () => {
+    let calls = 0;
+    await expect(
+      withRetry(
+        async () => {
+          calls += 1;
+          throw new Error("HTTP 400");
+        },
+        { attempts: 3, sleep: noSleep, shouldRetry: () => false },
+      ),
+    ).rejects.toThrow("HTTP 400");
+    expect(calls).toBe(1);
+  });
+
+  it("retries only the failures shouldRetry accepts", async () => {
+    let calls = 0;
+    const value = await withRetry(
+      async () => {
+        calls += 1;
+        if (calls === 1) throw new Error("HTTP 429");
+        return "ok";
+      },
+      { attempts: 3, sleep: noSleep, shouldRetry: (err) => !String(err).includes("400") },
+    );
+    expect(value).toBe("ok");
+    expect(calls).toBe(2);
+  });
 });
 
 describe("CircuitBreaker", () => {

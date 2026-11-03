@@ -8,6 +8,19 @@ import { create } from "zustand";
  * A single slot is deliberate: these are acknowledgement dialogs, not a
  * notification centre, and two stacked confirms is a worse experience than
  * the second one waiting its turn.
+ *
+ * Notification policy (where a message goes):
+ *  - Blocking, must be acknowledged (`notice.alert` / `notice.confirm`):
+ *    destructive or money-affecting actions — trade confirms, quota loss,
+ *    connect failures the user must answer.
+ *  - Inline (`set({ error })` in a store or form): per-surface validation
+ *    and submit failures; stays next to the control that failed.
+ *  - Transient (`toast()` from `./ui`): non-blocking confirmations that need
+ *    no answer — "Layout saved", background job done. Mounted by `<Toaster />`
+ *    in App.
+ *  - Silent: best-effort persistence (localStorage fallbacks) where failing
+ *    quietly is correct; anything questionable also lands in the diagnostics
+ *    crash log via `logCatch`.
  */
 
 export interface Notice {

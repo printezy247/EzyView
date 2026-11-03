@@ -11,6 +11,7 @@ import { catalog, getIndicator } from "@ezyview/indicators";
 import type { IndicatorDef } from "@ezyview/indicators";
 import type { PinePlot, PineOrder, ScriptOptions } from "@ezyview/pine-transpiler";
 import { DEFAULT_SYMBOL, stopTicking } from "./data";
+import { notice } from "./notice";
 import { DEFAULT_EVENT_OPTIONS, restoreEventOptions } from "./eventOptions";
 import type { EventOptions } from "./eventOptions";
 import { applyTemplate, restoreTemplates, templateFromChart } from "./chartTemplates";
@@ -473,10 +474,15 @@ function writeWorkspace(name: string, value: string): void {
       localStorage.removeItem(`${name}.corrupt`);
       localStorage.setItem(name, value);
     } catch {
-      // Still full: the workspace stays in memory and is lost on quit.
+      // Still full: the workspace stays in memory. Tell the user once so the
+      // loss on quit is not a surprise.
+      notice.alert("Storage is full — recent changes may be lost when you quit.");
     }
   }
 }
+
+/** Test seam: the quota-failure path must be observable without real storage. */
+export const writeWorkspaceForTest = writeWorkspace;
 
 /** The slice of the workspace that reaches localStorage. */
 type PersistedState = PersistedWorkspace & {

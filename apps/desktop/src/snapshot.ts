@@ -12,6 +12,7 @@ import type { Layout } from "./layout";
 import { useWorkspace } from "./store";
 import type { PriceAlert } from "@ezyview/data-adapters";
 import type { WatchEntry } from "./store";
+import { logCatch } from "./diagnostics";
 
 /** Newest-first caps keep the file small enough to rewrite on every change. */
 const MAX_ENTRIES = 2000;
@@ -78,11 +79,12 @@ async function writeSnapshot(attempt = 0): Promise<boolean> {
     const { invoke } = await import("@tauri-apps/api/core");
     await invoke("write_snapshot", { json });
     return true;
-  } catch {
+  } catch (err) {
     if (attempt < 2) {
       await new Promise((r) => setTimeout(r, 500 * 2 ** attempt));
       return writeSnapshot(attempt + 1);
     }
+    logCatch("snapshot-write", err);
     return false;
   }
 }

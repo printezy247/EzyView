@@ -39,6 +39,17 @@ export async function appendCrash(block: string): Promise<void> {
   }
 }
 
+/**
+ * Record a swallowed catch in the crash log.
+ *
+ * For catches that deliberately ignore a failure but should still leave a
+ * trace (a bad share URL, a corrupt settings blob). Never throws; the log is
+ * best-effort by design.
+ */
+export function logCatch(kind: string, error: unknown): void {
+  void appendCrash(formatCrash(kind, error));
+}
+
 export async function readCrashLog(): Promise<string> {
   try {
     if (inTauri()) {

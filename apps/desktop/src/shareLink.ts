@@ -8,6 +8,7 @@
  */
 import type { Resolution } from "@ezyview/data-adapters";
 import { RESOLUTION_GROUPS } from "./data";
+import { logCatch } from "./diagnostics";
 
 export interface ShareTarget {
   symbol: string;
@@ -29,7 +30,8 @@ export function parseShareLink(url: string): ShareTarget | null {
   let value: string | null;
   try {
     value = new URL(url, "http://localhost").searchParams.get("share");
-  } catch {
+  } catch (err) {
+    logCatch("share-link", err);
     return null;
   }
   if (!value) return null;

@@ -33,6 +33,8 @@ export interface ProvenanceInput {
   status: Mt5Status;
   /** Age of the last quote in seconds; omitted when unknown. */
   ageSeconds?: number;
+  /** The data source reported a failure: the price on screen is the last one. */
+  feedFailed?: boolean;
 }
 
 /**
@@ -42,8 +44,11 @@ export interface ProvenanceInput {
  * quote is, and the demo feed is `demo` whatever its quotes look like — it is
  * not a delayed live feed, it is not live at all.
  */
-export function provenanceOf({ source, status, ageSeconds }: ProvenanceInput): Provenance {
+export function provenanceOf({ source, status, ageSeconds, feedFailed }: ProvenanceInput): Provenance {
   if (source !== "mt5") return "demo";
+  // The provider answered with an error: nothing is arriving, so the price on
+  // screen is the last one that did — even if the bridge itself is up.
+  if (feedFailed) return "cached";
   // Not running and not running well: nothing is arriving, so the price on
   // screen is the last one that did.
   if (status === "error" || status === "idle") return "cached";

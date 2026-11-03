@@ -48,6 +48,16 @@ describe("provenanceOf", () => {
   it("ignores the age of the demo feed's own quotes", () => {
     expect(provenanceOf({ source: "ezyview", status: "online", ageSeconds: 100_000 })).toBe("demo");
   });
+
+  it("calls a feed that reported a failure cached, even while the bridge is up", () => {
+    // The provider answered with an error: the price on screen is the last one
+    // that arrived, whatever the bridge's own connection state says.
+    expect(provenanceOf({ source: "mt5", status: "online", feedFailed: true })).toBe("cached");
+  });
+
+  it("calls a failed live source cached and keeps the demo feed demo", () => {
+    expect(provenanceOf({ source: "ezyview", status: "online", feedFailed: true })).toBe("demo");
+  });
 });
 
 describe("provenanceLabel", () => {
