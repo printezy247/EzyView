@@ -11,6 +11,7 @@
 import { backtest, optimizePine, runPine } from "@ezyview/pine-transpiler";
 import type { BacktestOptions, BacktestResult, Context, OptimizationResult, ParamSpec, PineResult } from "@ezyview/pine-transpiler";
 import type { PineBars, PineErrorResponse, PineResponse } from "./pine.worker";
+import { logCatch } from "./diagnostics";
 
 const DEFAULT_RUN_BUDGET_MS = 5_000;
 const DEFAULT_OPTIMIZE_BUDGET_MS = 15_000;
@@ -94,7 +95,10 @@ const obtainWorker = (): Worker | null => {
     });
     singleWorker = w;
     return w;
-  } catch {
+  } catch (err) {
+    // No Worker (old host / blocked): falls back to inline runs, but the
+    // degradation should be visible in the log.
+    logCatch("pine-worker", err);
     return null;
   }
 };

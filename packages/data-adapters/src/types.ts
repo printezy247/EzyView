@@ -106,8 +106,8 @@ export type UnsubscribeFn = () => void;
 /**
  * Historical + streaming market data source.
  *
- * Implementations: CCXT (crypto), Alpaca (stocks/ETFs), MT5 bridge (forex),
- * Yahoo (delayed equities), plus an in-memory demo feed for offline use.
+ * Implementations: the public exchange feeds (Binance, Kraken, Twelve Data),
+ * the MT5 bridge (forex), plus an in-memory demo feed for offline use.
  */
 export interface MarketDataAdapter {
   /** Unique provider id, e.g. "ccxt". */

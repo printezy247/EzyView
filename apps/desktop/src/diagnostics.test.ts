@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { fpsOf, formatCrash, trimLog } from "./diagnostics";
+import { describe, expect, it, vi } from "vitest";
+import { fpsOf, formatCrash, logCatch, readCrashLog, trimLog } from "./diagnostics";
 
 describe("diagnostics", () => {
   it("formats an error with ISO time, kind, message and stack", () => {
@@ -26,5 +26,22 @@ describe("diagnostics", () => {
     expect(fpsOf(60, 1000)).toBe(60);
     expect(fpsOf(30, 500)).toBe(60);
     expect(fpsOf(10, 0)).toBe(0);
+  });
+
+  it("routes a swallowed catch into the crash log", async () => {
+    const mem = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      getItem: (k: string) => mem.get(k) ?? null,
+      setItem: (k: string, v: string) => void mem.set(k, v),
+      removeItem: (k: string) => void mem.delete(k),
+    });
+    try {
+      logCatch("share-link", new Error("bad url"));
+      // appendCrash is async; one microtask flush is enough for its body.
+      await Promise.resolve();
+      expect(await readCrashLog()).toContain("share-link: bad url");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

@@ -3,12 +3,15 @@
  * Only absolute http(s) URLs pass; `javascript:`, `data:`, `file:` and
  * relative URLs return undefined so the caller renders plain text instead.
  */
+import { logCatch } from "./diagnostics";
+
 export function safeHref(url: string | undefined): string | undefined {
   if (!url) return undefined;
   try {
     const parsed = new URL(url);
     return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed.href : undefined;
-  } catch {
+  } catch (err) {
+    logCatch("safe-href", err);
     return undefined;
   }
 }

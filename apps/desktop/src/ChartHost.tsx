@@ -33,6 +33,7 @@ import { THEME_OF, uid as newId, useWorkspace } from "./store";
 import type { ActiveIndicator, PineScriptRecord } from "./store";
 import type { ChartThemeName, CrosshairModeName, PriceScaleModeName } from "./layout";
 import { loadHistory, safeHistory, resolveSource, RESOLUTION_SECONDS, subscribeLive, tickerOf } from "./data";
+import { logCatch } from "./diagnostics";
 import { subscribeQuote } from "./quotePoller";
 import { isLiveSourceChoice } from "./chartSource";
 import type { DataSourceChoice } from "./chartSource";
@@ -712,8 +713,9 @@ export function ChartHost(props: Props) {
       }
       try {
         el.releasePointerCapture(e.pointerId);
-      } catch {
+      } catch (err) {
         // Capture can already be gone (e.g. the window lost the pointer).
+        logCatch("pointer-capture", err);
       }
       chartRef.current?.setPanEnabled(true);
       chartRef.current?.setHovered(null);

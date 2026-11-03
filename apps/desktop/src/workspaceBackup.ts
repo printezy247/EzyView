@@ -6,6 +6,7 @@
  * Import is additive: a namespace the backup does not carry is left untouched,
  * so restoring an older backup cannot silently erase newer journal notes.
  */
+import { logCatch } from "./diagnostics";
 
 /** Every localStorage key a backup carries, in stable order. */
 export const BACKUP_KEYS = [
@@ -128,7 +129,8 @@ export function applyWorkspaceBackup(backup: WorkspaceBackup): ApplyResult {
     if (current !== null) {
       try {
         JSON.parse(current);
-      } catch {
+      } catch (err) {
+        logCatch(`backup-corrupt:${key}`, err);
         localStorage.setItem(corruptKeyOf(key), current);
       }
     }

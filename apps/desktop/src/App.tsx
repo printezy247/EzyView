@@ -29,6 +29,7 @@ import { describeRealSource } from "./realSource";
 import type { RealSource } from "./realSource";
 import { Modal } from "./Modal";
 import { NoticeHost } from "./NoticeHost";
+import { Toaster } from "./ui";
 import { useShortcut, useShortcutDispatcher } from "./shortcuts";
 import { isLivePublicSymbol, quoteOf } from "./data";
 import { useTrading } from "./trading";
@@ -458,6 +459,7 @@ export default function App() {
         </footer>
       </div>
       <NoticeHost />
+      <Toaster />
       {hotkeysOpen && <HotkeySheet onClose={() => setHotkeysOpen(false)} />}
     </div>
   );

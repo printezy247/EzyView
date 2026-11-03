@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { DEFAULT_BRIDGE_URL, DEFAULT_MCP_URL, createMt5 } from "@ezyview/mt5-adapter";
 import type { Mt5Adapter, TransportKind } from "@ezyview/mt5-adapter";
 import { keyringAvailable } from "./apiKeys";
+import { logCatch } from "./diagnostics";
 
 /**
  * Chart price source and the MT5 connection behind it.
@@ -46,7 +47,9 @@ function readSettings(): { settings: Mt5Settings; source: ChartSource } {
       settings: { ...DEFAULT_SETTINGS, ...parsed },
       source: parsed.source === "mt5" ? "mt5" : "ezyview",
     };
-  } catch {
+  } catch (err) {
+    // Settings could not be parsed: falling back to defaults loses them.
+    logCatch("mt5-settings", err);
     return { settings: DEFAULT_SETTINGS, source: "ezyview" };
   }
 }
