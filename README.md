@@ -2,7 +2,7 @@
   <img src="https://img.shields.io/badge/release-0.4.0-2962ff?style=flat-square" alt="release">
   <img src="https://img.shields.io/badge/tests-1,240-26a69a?style=flat-square" alt="tests">
   <img src="https://img.shields.io/badge/license-MIT-181c21?style=flat-square" alt="MIT license">
-  <a href="../../actions/workflows/ci.yml"><img src="../../actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/printezy247/EzyView/actions/workflows/ci.yml"><img src="https://github.com/printezy247/EzyView/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20macOS-0ea600?style=flat-square" alt="platforms">
 </p>
 
@@ -104,5 +104,5 @@ TradingView Lightweight Charts™ is licensed under the Apache License 2.0. That
 ---
 
 <p align="center">
-  <sub>MIT © 2026 <a href="https://github.com/printezy247">printezy247</a> · <a href="../../releases/latest">Downloads</a> · <a href="../../issues">Issues</a></sub>
+  <sub>MIT © 2026 <a href="https://github.com/printezy247">printezy247</a> · <a href="https://github.com/printezy247/EzyView/releases/latest">Downloads</a> · <a href="https://github.com/printezy247/EzyView/issues">Issues</a></sub>
 </p>
