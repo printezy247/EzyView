@@ -6,7 +6,7 @@ import type { PaperSnapshot } from "@ezyview/paper-trading";
 import { quoteOf } from "./data";
 import { accountKindOf, useMt5Accounts } from "./mt5Accounts";
 import { getMt5, useMt5 } from "./mt5";
-import { approvalTokens, gateAction } from "./tradingSafety";
+import { approvalTokens, gateAction, riskSessionSync } from "./tradingSafety";
 import type { GateInput, GateResult } from "./tradingSafety";
 
 const STORAGE_KEY = "ezyview.paper-account.v1";
@@ -130,6 +130,16 @@ function mt5Gate(action: Omit<GateInput, "accountKind">): GateResult {
   );
 }
 
+/**
+ * The paper venue runs the same blocking rails as the broker.
+ *
+ * Paper is always a demo account, so it never asks for the second
+ * confirmation and never shows a dialog — only the hard blocks apply.
+ */
+function paperGate(action: Omit<GateInput, "accountKind">): GateResult {
+  return gateAction({ ...action, accountKind: "demo" }, useMt5Accounts.getState().safety);
+}
+
 function park(set: (patch: Partial<TradingState>) => void, gate: GateResult, pending: PendingAction): boolean {
   if (gate.decision === "block") {
     approvalTokens.consume(pending.token);
@@ -193,8 +203,15 @@ export const useTrading = create<TradingState & TradingActions>((set, get) => ({
   note: null,
 
   async submit(request) {
-    // Same ticket, two venues: paper keeps its engine, MT5 passes the gate.
+    // Same ticket, two venues. Both pass the blocking rails — paper trades
+    // against the user's own money mindset too, and a habit that ignores the
+    // volume cap in demo carries into the real account.
     if (useMt5.getState().source !== "mt5") {
+      const gate = paperGate({ action: "place", symbol: request.symbol, volume: request.qty });
+      if (gate.decision === "block") {
+        set({ error: gate.reasons.join("; ") || "blocked by the safety rails", note: null });
+        return false;
+      }
       try {
         await paperEngine.placeOrder(request);
         set({ error: null, note: null });
@@ -226,6 +243,11 @@ export const useTrading = create<TradingState & TradingActions>((set, get) => ({
 
   async close(symbol, qty) {
     if (useMt5.getState().source !== "mt5") {
+      const gate = paperGate({ action: "close", symbol, volume: qty });
+      if (gate.decision === "block") {
+        set({ error: gate.reasons.join("; ") || "blocked by the safety rails", note: null });
+        return false;
+      }
       let ok = false;
       try {
         await paperEngine.closePosition(symbol, qty);
@@ -325,6 +347,8 @@ export const useTrading = create<TradingState & TradingActions>((set, get) => ({
       return;
     }
     paperEngine.reset();
+    // A wiped account has no loss history: the breaker starts from the new base.
+    riskSessionSync.reset();
     set({ error: null });
     await refreshInto(set);
   },
@@ -355,6 +379,8 @@ async function refreshInto(set: SetState): Promise<void> {
       // A slower earlier refresh must not overwrite a newer snapshot.
       if (stale()) return;
       set({ account, positions, orders, deals });
+      // Feed the daily-loss breaker: it needs the balance base and the closed deals.
+      riskSessionSync.sync(account, deals);
       if (useMt5.getState().status !== "online") useMt5.setState({ status: "online", error: null });
     } catch (err) {
       // Keep the last good rows on screen and say why they stopped moving.
@@ -384,6 +410,8 @@ async function refreshInto(set: SetState): Promise<void> {
     return;
   }
   set({ account, positions, orders, deals });
+  // The paper account feeds the same daily-loss breaker as the broker one.
+  riskSessionSync.sync(account, deals);
 }
 
 // One hook for every fill, exit and stop-out: the panels just re-read state.

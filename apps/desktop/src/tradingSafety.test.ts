@@ -209,8 +209,9 @@ describe("parseSafety", () => {
       maxOrderVolume: 0.5,
       symbolAllowList: ["EURUSD"],
       dryRun: true,
-      maxDailyLossPct: 0,
-      lossCooldownSeconds: 0,
+      // A blob saved before the breakers existed picks up today's defaults.
+      maxDailyLossPct: DEFAULT_SAFETY.maxDailyLossPct,
+      lossCooldownSeconds: DEFAULT_SAFETY.lossCooldownSeconds,
     });
   });
 });

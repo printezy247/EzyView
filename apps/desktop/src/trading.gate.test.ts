@@ -38,6 +38,8 @@ import { useMt5Accounts } from "./mt5Accounts";
 import { useMt5 } from "./mt5";
 
 const marketReq = (qty: number): OrderRequest => ({ symbol: "XAUUSD", side: "buy", type: "market", qty });
+/** A priced limit order: the paper engine has no market price of its own. */
+const paperReq = (qty: number): OrderRequest => ({ symbol: "XAUUSD", side: "buy", type: "limit", qty, price: 4000 });
 
 function demoSession(): void {
   useMt5Accounts.setState({ session: { server: "S", login: "4123", demo: true, summary: {} } });
@@ -218,7 +220,7 @@ describe("MT5 actions pass the safety gate", () => {
   });
 });
 
-describe("paper venue skips the gate", () => {
+describe("paper venue enforces the blocking rails too", () => {
   it("submits and cancels without parking", async () => {
     useMt5.setState({ source: "ezyview" });
     const request: OrderRequest = { symbol: "XAUUSD", side: "buy", type: "limit", qty: 0.1, price: 4000 };
@@ -229,6 +231,33 @@ describe("paper venue skips the gate", () => {
     const first = orders[0];
     expect(await useTrading.getState().cancel(first?.id ?? "")).toBe(true);
     expect(useTrading.getState().orders).toHaveLength(0);
+    await paperEngine.reset();
+  });
+
+  it("refuses a paper order above the volume cap without placing it", async () => {
+    useMt5.setState({ source: "ezyview" });
+    useMt5Accounts.getState().saveSafety({ maxOrderVolume: 0.5 });
+    const ok = await useTrading.getState().submit(paperReq(1));
+    expect(ok).toBe(false);
+    expect(useTrading.getState().error).toMatch(/exceeds the max order size/);
+    expect(useTrading.getState().orders).toHaveLength(0);
+    await paperEngine.reset();
+  });
+
+  it("refuses a paper order on a symbol outside the allow-list", async () => {
+    useMt5.setState({ source: "ezyview" });
+    useMt5Accounts.getState().saveSafety({ symbolAllowList: ["EURUSD"] });
+    const ok = await useTrading.getState().submit(paperReq(0.1));
+    expect(ok).toBe(false);
+    expect(useTrading.getState().error).toMatch(/allow-list/);
+    expect(useTrading.getState().orders).toHaveLength(0);
+    await paperEngine.reset();
+  });
+
+  it("does not park a paper order at a confirmation dialog", async () => {
+    useMt5.setState({ source: "ezyview" });
+    expect(await useTrading.getState().submit(paperReq(0.1))).toBe(true);
+    expect(useTrading.getState().pending).toBeNull();
     await paperEngine.reset();
   });
 });

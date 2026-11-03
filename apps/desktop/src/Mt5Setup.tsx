@@ -18,6 +18,11 @@ import { inputClass } from "./ui";
 
 const field = inputClass("w-full");
 
+/** A readable message for anything thrown by the keyring, the bridge or the store. */
+function describe(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 function money(value: number | undefined, currency: string | undefined): string {
   if (value === undefined || !Number.isFinite(value)) return "—";
   return `${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${currency ? ` ${currency}` : ""}`;
@@ -120,18 +125,34 @@ export function BrokerTab() {
   const [password, setPassword] = useState("");
   const [riskPending, setRiskPending] = useState(false);
   const [riskOk, setRiskOk] = useState(false);
+  // Failures that never reached the store (a rejected keyring write, a refused
+  // add-account) must still be visible: a silent failure looks like a success.
+  const [localError, setLocalError] = useState<string | null>(null);
 
   const runConnect = async (accepted: boolean) => {
     setRiskOk(false);
+    setLocalError(null);
     try {
       if (password) {
-        await addAccount({ server, login, password }).catch(() => undefined);
+        try {
+          await addAccount({ server, login, password });
+        } catch (err) {
+          // The password may not have been stored, but the connect below can
+          // still work with the password typed here. Say what failed.
+          setLocalError(`Could not save the password for next time: ${describe(err)}`);
+        }
       }
       await connect({ server, login, password: password || undefined, riskAccepted: accepted || undefined });
       setPassword("");
       setRiskPending(false);
     } catch (err) {
-      if (err instanceof RiskRequiredError) setRiskPending(true);
+      if (err instanceof RiskRequiredError) {
+        setRiskPending(true);
+        setLocalError(null);
+      } else {
+        setRiskPending(false);
+        setLocalError(describe(err));
+      }
     }
   };
 
@@ -201,6 +222,7 @@ export function BrokerTab() {
                     setLogin(a.login);
                     void connect({ server: a.server, login: a.login }).catch((e) => {
                       if (e instanceof RiskRequiredError) setRiskPending(true);
+                      else setLocalError(describe(e));
                     });
                   }}
                   className="px-1 text-dense text-ev-accent hover:underline"
@@ -236,6 +258,7 @@ export function BrokerTab() {
         </label>
       )}
       {error && <p className="rounded border border-ev-down/40 bg-ev-down/10 p-1.5 text-dense text-ev-down-text">{error}</p>}
+      {localError && <p className="rounded border border-ev-down/40 bg-ev-down/10 p-1.5 text-dense text-ev-down-text">{localError}</p>}
       <div className="flex justify-end">
         <button
           type="button"
@@ -279,12 +302,42 @@ export function SafetyTab() {
           spellCheck={false}
         />
       </label>
+      <label className="block text-dense text-ev-muted">
+        Daily loss limit (%, 0 = off)
+        <input
+          className={field}
+          type="number"
+          min={0}
+          step={0.5}
+          value={safety.maxDailyLossPct ?? 0}
+          onChange={(e) => {
+            const v = Number(e.target.value);
+            if (Number.isFinite(v) && v >= 0) saveSafety({ maxDailyLossPct: v });
+          }}
+        />
+      </label>
+      <label className="block text-dense text-ev-muted">
+        Loss cooldown (seconds, 0 = off)
+        <input
+          className={field}
+          type="number"
+          min={0}
+          step={15}
+          value={safety.lossCooldownSeconds ?? 0}
+          onChange={(e) => {
+            const v = Number(e.target.value);
+            if (Number.isFinite(v) && v >= 0) saveSafety({ lossCooldownSeconds: v });
+          }}
+        />
+      </label>
       <label className="flex items-center gap-2 text-dense text-ev-text">
         <input type="checkbox" checked={safety.dryRun} onChange={(e) => saveSafety({ dryRun: e.target.checked })} />
         Dry-run: validate orders at the bridge, never send
       </label>
       <p className="text-dense text-ev-muted">
-        Every MT5 action still asks for confirmation; these rails block what should never be sent. The MCP transport cannot dry-run and refuses the flag.
+        Every MT5 action still asks for confirmation; these rails block what should never be sent. The paper account
+        follows the volume cap and the allow-list too, so a habit built in demo carries over safely. The MCP transport
+        cannot dry-run and refuses the flag.
       </p>
     </div>
   );
