@@ -39,6 +39,8 @@ export function ScreenerTab() {
     let cancelled = false;
     const tick = () => {
       const rows = useWorkspace.getState().watchlist;
+      // `quoteOf` already resolves a provider outage to null; the catch is
+      // only here so one bad row cannot reject the whole batch.
       void Promise.all(rows.map((row) => quoteOf(row.symbol, row.source).catch(() => null))).then((quotes) => {
         if (cancelled) return;
         quotes.forEach((q) => {

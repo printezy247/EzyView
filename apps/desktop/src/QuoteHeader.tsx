@@ -6,6 +6,7 @@ import type { DataSourceChoice } from "./chartSource";
 import { isLivePublicSymbol } from "./data";
 import { precisionForSymbol } from "./pricePrecision";
 import { useQuote } from "./quotePoller";
+import { useFeedHealth } from "./useFeedHealth";
 import { useMt5 } from "./mt5";
 import { useWorkspace } from "./store";
 import { provenanceLabel, provenanceOf, provenanceTitle, provenanceTone } from "./provenance";
@@ -26,6 +27,10 @@ export function QuoteHeader({ symbol, dataSource }: { symbol: string; dataSource
   const status = useMt5((s) => s.status);
   const isReplay = useWorkspace((s) => s.replayBar !== null);
   const { quote } = useQuote(symbol, { source: dataSource, intervalMs: 1000, enabled: !isReplay });
+  // A provider that is failing must not leave the last price looking live.
+  const effective = dataSource ?? (source === "mt5" ? "mt5" : "demo");
+  const { status: feedStatus, message: feedMessage } = useFeedHealth(effective);
+  const feedFailed = feedStatus === "failed";
   const [flash, setFlash] = useState<"up" | "down" | null>(null);
   const prevLastRef = useRef<number | null>(null);
 
@@ -47,7 +52,12 @@ export function QuoteHeader({ symbol, dataSource }: { symbol: string; dataSource
   }, [flash]);
 
   const ageSeconds = quote ? Math.floor(Date.now() / 1000) - quote.time : undefined;
-  const baseProvenance = provenanceOf({ source: dataSource === "mt5" ? "mt5" : dataSource === "demo" ? "ezyview" : source, status, ageSeconds });
+  const baseProvenance = provenanceOf({
+    source: dataSource === "mt5" ? "mt5" : dataSource === "demo" ? "ezyview" : source,
+    status,
+    ageSeconds,
+    feedFailed,
+  });
   const provenance =
     isLiveSourceChoice(dataSource ?? "auto") && quote
       ? "live"
@@ -70,7 +80,7 @@ export function QuoteHeader({ symbol, dataSource }: { symbol: string; dataSource
           </span>
         )}
       </div>
-      <Chip tone={provenanceTone(provenance)} title={provenanceTitle(provenance)}>
+      <Chip tone={provenanceTone(provenance)} title={feedMessage ? `${provenanceTitle(provenance)} — ${feedMessage}` : provenanceTitle(provenance)}>
         {provenanceLabel(provenance)}
       </Chip>
     </div>

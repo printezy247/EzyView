@@ -27,6 +27,8 @@ export interface RetryOptions {
   sleep?: (ms: number) => Promise<void>;
   /** Injected clock for the circuit breaker tests. */
   now?: () => number;
+  /** Decide whether a failure is worth another attempt. Default: every failure is. */
+  shouldRetry?: (err: unknown, attempt: number) => boolean;
 }
 
 const defaultSleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
@@ -62,6 +64,9 @@ export async function withRetry<T>(fn: (signal: AbortSignal | undefined) => Prom
       lastErr = err;
       // Last attempt: nothing left to wait for.
       if (attempt === attempts - 1) break;
+      // A permanent failure (a rejected key, a malformed request) is rethrown
+      // straight away instead of burning the remaining attempts.
+      if (opts.shouldRetry && !opts.shouldRetry(err, attempt)) break;
       // oxlint-disable-next-line no-await-in-loop
       await sleep(backoffDelay(attempt, base, max));
     }

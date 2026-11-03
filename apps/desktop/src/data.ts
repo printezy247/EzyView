@@ -1,10 +1,11 @@
 import { createLiveSources, DemoMarketAdapter } from "@ezyview/data-adapters";
 import type { Candle, LiveSource, LiveSourceId, Quote, Resolution, SymbolInfo, UnsubscribeFn } from "@ezyview/data-adapters";
-import { CircuitBreaker, CircuitOpenError } from "./netRetry";
+import { CircuitBreaker, CircuitOpenError, withRetry } from "./netRetry";
 import { readApiKey, useApiKeys } from "./apiKeys";
 import { effectiveSource, isLiveSourceChoice } from "./chartSource";
 import type { DataSourceChoice, EffectiveSource } from "./chartSource";
 import { getMt5, useMt5 } from "./mt5";
+import { recordFeedFailure, recordFeedSuccess } from "./feedHealth";
 
 /** Single shared demo adapter. The broker feed is reached via `quoteOf`/`loadHistory`. */
 export const market = new DemoMarketAdapter();
@@ -151,6 +152,14 @@ const livePublicTickers = new Set<string>();
  */
 const publicBreaker = new CircuitBreaker({ threshold: 3, cooldownMs: 15_000 });
 
+/** A 4xx that must not be retried: the request itself is wrong. */
+class NonRetryableError extends Error {
+  constructor(readonly status: number) {
+    super(`HTTP ${status}`);
+    this.name = "NonRetryableError";
+  }
+}
+
 /** True when `symbol` has received a real live market quote from the public feed. */
 export function isLivePublicSymbol(symbol: string): boolean {
   return livePublicTickers.has(tickerOf(symbol).toUpperCase());
@@ -178,9 +187,18 @@ async function fetchPublicQuote(symbol: string): Promise<Quote | null> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 3500);
   try {
-    const res = await fetch(`https://data-api.binance.vision/api/v3/ticker/24hr?symbol=${pair}`, {
-      signal: ctrl.signal,
-    });
+    const res = await withRetry(
+      async () => {
+        const r = await fetch(`https://data-api.binance.vision/api/v3/ticker/24hr?symbol=${pair}`, {
+          signal: ctrl.signal,
+        });
+        // A 4xx is the caller's fault and will not fix itself; only a 5xx or
+        // a network blip is worth another try.
+        if (r.status >= 400 && r.status < 500) throw new NonRetryableError(r.status);
+        return r;
+      },
+      { attempts: 3, timeoutMs: 3500, shouldRetry: (err) => !(err instanceof NonRetryableError) },
+    );
     if (!res.ok) {
       publicBreaker.recordFailure();
       return null;
@@ -231,9 +249,16 @@ async function fetchPublicHistory(symbol: string, resolution: Resolution, limit:
   const timer = setTimeout(() => ctrl.abort(), 4500);
   try {
     const clamped = Math.max(10, Math.min(1000, limit));
-    const res = await fetch(
-      `https://data-api.binance.vision/api/v3/klines?symbol=${pair}&interval=${interval}&limit=${clamped}`,
-      { signal: ctrl.signal },
+    const res = await withRetry(
+      async () => {
+        const r = await fetch(
+          `https://data-api.binance.vision/api/v3/klines?symbol=${pair}&interval=${interval}&limit=${clamped}`,
+          { signal: ctrl.signal },
+        );
+        if (r.status >= 400 && r.status < 500) throw new NonRetryableError(r.status);
+        return r;
+      },
+      { attempts: 3, timeoutMs: 4500, shouldRetry: (err) => !(err instanceof NonRetryableError) },
     );
     if (!res.ok) {
       publicBreaker.recordFailure();
@@ -390,14 +415,29 @@ export async function quoteOf(symbol: string, source?: DataSourceChoice): Promis
 
   const promise = (async () => {
     try {
-      if (isLiveSourceChoice(feed)) return await getLiveSources()[feed].getQuote(symbol);
-      if (feed === "mt5") return await getMt5().data.getQuote(symbol);
+      if (isLiveSourceChoice(feed)) {
+        const quote = await getLiveSources()[feed].getQuote(symbol);
+        if (quote) recordFeedSuccess(feed);
+        else recordFeedFailure(feed, "no quote returned");
+        return quote;
+      }
+      if (feed === "mt5") {
+        const quote = await getMt5().data.getQuote(symbol);
+        if (quote) recordFeedSuccess("mt5");
+        else recordFeedFailure("mt5", "no quote returned");
+        return quote;
+      }
+      // The bundled feed: the public market data first, the demo adapter as
+      // the fallback. The demo adapter always answers, so this source is
+      // never "down" — the provenance chip already calls it DEMO.
       const live = await fetchPublicQuote(symbol);
       if (live) return live;
       return await market.getQuote(symbol);
-    } catch {
+    } catch (err) {
       // A provider outage is a stale price, not an unhandled rejection in
-      // every panel that polls it.
+      // every panel that polls it. The reason is kept so the panels can say
+      // the price is stale instead of showing it as live.
+      recordFeedFailure(feed, err instanceof Error ? err.message : String(err));
       return null;
     } finally {
       inFlightQuotes.delete(flightKey);

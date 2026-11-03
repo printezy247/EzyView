@@ -2,6 +2,7 @@ import { Crosshair, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { searchSymbolsForSource } from "./data";
 import { subscribeQuote } from "./quotePoller";
+import { useFeedHealth } from "./useFeedHealth";
 import { activeChartOf } from "./layout";
 import { effectiveSource, sourceLabel } from "./chartSource";
 import { useMt5 } from "./mt5";
@@ -19,13 +20,20 @@ function WatchRow({
   active,
   onSelect,
   onRemove,
+  feedSource,
 }: {
   item: WatchEntry;
   active: boolean;
   onSelect: () => void;
   onRemove: () => void;
+  /** Which feed this row reads: its own, or the global one. */
+  feedSource: string;
 }) {
   const prevPriceRef = useRef<number | null>(item.price);
+  // A row whose feed is failing shows the last known price as stale, so it
+  // does not read as a live tick.
+  const { status: feedStatus, message: feedMessage } = useFeedHealth(feedSource);
+  const feedFailed = feedStatus === "failed";
   // `n` changes on every tick, so the CSS animation restarts (via key) and the
   // timer is re-armed even when the price moves the same way twice in a row.
   const [flash, setFlash] = useState<{ dir: "up" | "down"; n: number } | null>(null);
@@ -67,6 +75,11 @@ function WatchRow({
           >
             {flash && <span aria-hidden>{flash.dir === "up" ? "▲ " : "▼ "}</span>}
             {item.price === null ? "—" : item.price.toFixed(item.precision)}
+            {feedFailed && (
+              <span className="ml-1 text-micro uppercase text-ev-warn" title={feedMessage ? `Feed unavailable: ${feedMessage}` : "Feed unavailable — this price is the last one received"}>
+                stale
+              </span>
+            )}
             {flash && <span className="sr-only">{flash.dir === "up" ? " rising" : " falling"}</span>}
           </span>
         </div>
@@ -330,6 +343,7 @@ export function Watchlist({ onOpenAlerts }: Props) {
                 active={w.symbol === activeSymbol}
                 onSelect={() => openSymbol(w)}
                 onRemove={() => removeFromWatchlist(w.symbol)}
+                feedSource={w.source ?? source}
               />
             ))}
           </ul>

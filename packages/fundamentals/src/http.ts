@@ -3,6 +3,26 @@ import type { EpochSeconds } from "@ezyview/data-adapters";
 /** The slice of `fetch` the live adapters use, so tests can inject a fake. */
 export type FetchLike = (url: string) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;
 
+/** How a request should be retried when the provider is having a bad day. */
+export interface RetryOptions {
+  /** Total attempts including the first. Default 3. */
+  attempts?: number;
+  /** Base delay in ms before the first retry. Default 250. */
+  baseDelayMs?: number;
+  /** Cap on any single backoff delay. Default 2000. */
+  maxDelayMs?: number;
+  /** Injected for deterministic tests. */
+  sleep?: (ms: number) => Promise<void>;
+}
+
+const defaultSleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Exponential backoff with full jitter: `random(0 .. min(max, base * 2^n))`. */
+export function backoffDelay(attempt: number, baseDelayMs: number, maxDelayMs: number, rand = Math.random): number {
+  const exp = Math.min(maxDelayMs, baseDelayMs * 2 ** attempt);
+  return Math.floor(rand() * exp);
+}
+
 /** A provider answered with an error (bad key, rate limit, plan without access). */
 export class ProviderError extends Error {
   constructor(
@@ -21,7 +41,35 @@ export class ProviderError extends Error {
 }
 
 /** GET a JSON document, turning HTTP failures into a ProviderError. */
-export async function getJson(fetchFn: FetchLike, provider: string, url: string): Promise<unknown> {
+export async function getJson(
+  fetchFn: FetchLike,
+  provider: string,
+  url: string,
+  options: RetryOptions = {},
+): Promise<unknown> {
+  const attempts = Math.max(1, options.attempts ?? 3);
+  const sleep = options.sleep ?? defaultSleep;
+  let lastErr: unknown;
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      // oxlint-disable-next-line no-await-in-loop -- retries are sequential by design
+      return await getJsonOnce(fetchFn, provider, url);
+    } catch (err) {
+      lastErr = err;
+      // A bad key or a missing endpoint will not fix itself: only a network
+      // blip, a rate limit or a server error is worth another try.
+      if (!isTransient(err)) break;
+      if (attempt === attempts - 1) break;
+      // oxlint-disable-next-line no-await-in-loop
+      await sleep(backoffDelay(attempt, options.baseDelayMs ?? 250, options.maxDelayMs ?? 2000));
+    }
+  }
+  throw lastErr;
+}
+
+/** One request, with the HTTP status turned into a ProviderError. */
+async function getJsonOnce(fetchFn: FetchLike, provider: string, url: string): Promise<unknown> {
   let res: Awaited<ReturnType<FetchLike>>;
   try {
     res = await fetchFn(url);
@@ -40,6 +88,13 @@ export async function getJson(fetchFn: FetchLike, provider: string, url: string)
     throw new ProviderError(provider, res.status, hint);
   }
   return res.json();
+}
+
+/** A failure worth another attempt: the network, a rate limit or a server error. */
+function isTransient(err: unknown): boolean {
+  if (!(err instanceof ProviderError)) return false;
+  // 0 is the network error. 429 is the rate limit. 5xx is the provider's fault.
+  return err.status === 0 || err.status === 429 || err.status >= 500;
 }
 
 /** Epoch seconds → "YYYY-MM-DD" (UTC). */
