@@ -25,6 +25,8 @@ import { bootstrapMt5, getMt5, useMt5 } from "./mt5";
 import type { ChartSource } from "./mt5";
 import { useMt5Accounts } from "./mt5Accounts";
 import { maskLogin } from "./tradingSafety";
+import { describeRealSource } from "./realSource";
+import type { RealSource } from "./realSource";
 import { Modal } from "./Modal";
 import { NoticeHost } from "./NoticeHost";
 import { useShortcut, useShortcutDispatcher } from "./shortcuts";
@@ -472,17 +474,22 @@ const realSourceAcked = new Set<string>();
 /**
  * Which account the MT5 source would drive: the app-logged session, or — when
  * the bridge merely attached to a running terminal — the terminal's own
- * account type. Returns the risk key only for a real account.
+ * account type. Fails closed: an unreadable terminal is "unknown" and still
+ * needs the user's acknowledgement.
  */
 async function realSourceKey(): Promise<string | null> {
   const session = useMt5Accounts.getState().session;
-  if (session) return session.demo ? null : `${session.server}|${session.login}`;
-  try {
-    const raw = (await getMt5().transport.account()) as { trade_mode?: number; login?: number | string };
-    return raw.trade_mode === 1 ? `attached|${String(raw.login ?? "")}` : null;
-  } catch {
-    return null;
-  }
+  const source: RealSource = session
+    ? { kind: "session", demo: session.demo, server: session.server, login: session.login }
+    : await getMt5()
+        .transport.account()
+        .then((raw) => ({
+          kind: "attached" as const,
+          tradeMode: (raw as { trade_mode?: number }).trade_mode,
+          login: (raw as { login?: number | string }).login,
+        }))
+        .catch((err: unknown) => ({ kind: "error" as const, message: err instanceof Error ? err.message : String(err) }));
+  return describeRealSource(source).key;
 }
 
 /** Segmented switch between the bundled feed and the connected broker. */

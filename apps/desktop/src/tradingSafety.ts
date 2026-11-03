@@ -18,18 +18,25 @@ export interface SafetyConfig {
   symbolAllowList: string[];
   /** Validate at the bridge but never send. */
   dryRun: boolean;
-  /** Max daily loss percentage (e.g. 5 = 5%). Once tripped, blocks all new orders. Default 0 (disabled). */
+  /** Max daily loss percentage (e.g. 5 = 5%). Once tripped, blocks all new orders. 0 disables it. */
   maxDailyLossPct?: number;
-  /** Cooldown window in seconds after a closed loss before allowing a new entry on that symbol. Default 0 (disabled). */
+  /** Cooldown window in seconds after a closed loss before allowing a new entry on that symbol. 0 disables it. */
   lossCooldownSeconds?: number;
 }
 
+/**
+ * The rails the app ships with.
+ *
+ * The breakers start ON: a terminal that silently loses its daily-loss limit
+ * and its post-loss cooldown is unsafe by default. Users who want them off
+ * can set 0 in Settings → Safety — the value is remembered either way.
+ */
 export const DEFAULT_SAFETY: SafetyConfig = {
   maxOrderVolume: 1.0,
   symbolAllowList: [],
   dryRun: false,
-  maxDailyLossPct: 0,
-  lossCooldownSeconds: 0,
+  maxDailyLossPct: 5,
+  lossCooldownSeconds: 60,
 };
 
 export interface GateInput {
@@ -142,6 +149,48 @@ export class DailyRiskTracker {
 }
 
 export const dailyRiskTracker = new DailyRiskTracker();
+
+/**
+ * Keeps the daily tracker fed from the live account.
+ *
+ * The tracker only knows about losses it is told about, and the drawdown
+ * breaker only works when it knows the starting balance. Without this the
+ * rails look armed but never fire.
+ */
+export class RiskSessionSync {
+  private seenDealIds = new Set<string>();
+  private lastBalance: number | null = null;
+
+  /**
+   * Feed the current account and the deal history.
+   *
+   * The starting balance is captured once per session: it is the balance at
+   * the first sync, not the balance right now, otherwise a losing trade would
+   * reset the drawdown base and the breaker would never trip.
+   */
+  sync(account: { balance: number } | null, deals: readonly { id: string; symbol: string; pnl: number; time: number }[]): void {
+    if (!account) return;
+    if (!Number.isFinite(account.balance) || account.balance <= 0) return;
+    if (this.lastBalance === null) {
+      this.lastBalance = account.balance;
+      dailyRiskTracker.initSession(account.balance);
+    }
+    for (const deal of deals) {
+      if (this.seenDealIds.has(deal.id)) continue;
+      this.seenDealIds.add(deal.id);
+      if (deal.pnl < 0) dailyRiskTracker.recordClosedTrade(deal.symbol, deal.pnl, deal.time * 1000);
+    }
+  }
+
+  /** Forget everything — a reset wipes the base balance and the loss history. */
+  reset(): void {
+    this.seenDealIds.clear();
+    this.lastBalance = null;
+    dailyRiskTracker.reset();
+  }
+}
+
+export const riskSessionSync = new RiskSessionSync();
 
 /**
  * The single decision point for MT5 trade actions. Blocking beats asking:
