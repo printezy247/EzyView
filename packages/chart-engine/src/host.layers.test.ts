@@ -98,7 +98,9 @@ function stubHost(overrides: AnyRecord = {}): AnyRecord {
     currentPlots: [],
     currentBands: [],
     markerLayer: [],
-    fundamentalMarkerLayer: [],
+    fundamentalEventRows: [],
+    eventStrip: { setMarkers: vi.fn(), chipAt: vi.fn(() => null) },
+    lastEventOid: null,
     markerApi: null,
     tradingLines: [],
     priceLineApi: [],
@@ -315,27 +317,31 @@ describe("syncScriptLayers", () => {
   it("maps bgcolor() values to lit flags and drops future fundamentals", () => {
     const data = candles(4);
     const bgBands = { setBands: vi.fn() };
+    const setMarkers = vi.fn();
     const applyMarkers = vi.fn();
     const self = stubHost({
       data,
       bgBands,
+      eventStrip: { setMarkers, chipAt: vi.fn(() => null) },
       currentBands: [{ color: "#f00", values: [1, null, 5] }],
       currentPlots: [
         { uid: "p1", title: "Shape", style: "circle", values: [10, null, 20, 30], color: "#0f0", linewidth: 1, overlay: true } as ScriptPlotSpec,
       ],
-      fundamentalMarkerLayer: [
-        { time: data[0]!.time, position: "aboveBar", shape: "circle", color: "#fff" },
-        { time: data[data.length - 1]!.time + 10_000, position: "aboveBar", shape: "circle", color: "#fff" },
+      fundamentalEventRows: [
+        { time: data[0]!.time, kind: "event", title: "past" },
+        { time: data[data.length - 1]!.time + 10_000, kind: "event", title: "future" },
       ],
     });
     self["applyMarkers"] = applyMarkers;
     protoCall("syncScriptLayers", self);
     expect(bgBands.setBands).toHaveBeenCalledTimes(1);
     expect(bgBands.setBands.mock.calls[0]![0]).toEqual([{ color: "#f00", flags: [true, false, true, false] }]);
-    // One future fundamental marker is filtered out; script markers survive.
+    // Script markers still go above the bars; one future event stays off the strip.
     expect(applyMarkers).toHaveBeenCalledTimes(1);
-    expect(applyMarkers.mock.calls[0]![0]).toHaveLength(1);
+    expect(applyMarkers).toHaveBeenCalledWith();
     expect(self["markerLayer"]).toHaveLength(3);
+    expect(setMarkers).toHaveBeenCalledTimes(1);
+    expect(setMarkers.mock.calls[0]![0].map((m: { title: string }) => m.title)).toEqual(["past"]);
   });
 });
 

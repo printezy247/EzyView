@@ -10,6 +10,9 @@ import type {
 } from "@ezyview/chart-engine";
 import type { Drawing, DrawingToolId, ScreenPoint } from "@ezyview/drawing-tools";
 import { isComplete, isPositionTool, visibleOnResolution } from "@ezyview/drawing-tools";
+import { HoverCard } from "./ui";
+import { EventStripCard } from "./EventStripCard";
+import type { EventStripHit } from "@ezyview/chart-engine";
 import { THEME_OF, useWorkspace } from "./store";
 import type { ActiveIndicator } from "./store";
 import type { ChartThemeName, CrosshairModeName, PriceScaleModeName } from "./layout";
@@ -156,6 +159,15 @@ export function ChartHost(props: Props) {
   const shownRef = useRef<Candle[]>([]);
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  /** Transient strip preview (hover) and the pinned card (click). */
+  const [eventHover, setEventHover] = useState<{ hit: EventStripHit; x: number; y: number } | null>(null);
+  const [eventPinned, setEventPinned] = useState<{ hit: EventStripHit; x: number; y: number } | null>(null);
+  /** Last viewport pointer position, so the engine's hit-only callback can place the card. */
+  const mouseRef = useRef({ x: 0, y: 0 });
+  const eventHoverRef = useRef<(hit: EventStripHit | null) => void>(() => {});
+  eventHoverRef.current = (hit) => {
+    setEventHover(hit ? { hit, x: mouseRef.current.x, y: mouseRef.current.y } : null);
+  };
   /** Shift-drag selection rectangle, in container pixels. */
   const [marquee, setMarquee] = useState<{ from: ScreenPoint; to: ScreenPoint } | null>(null);
 
@@ -211,10 +223,17 @@ export function ChartHost(props: Props) {
       theme: THEME_OF[props.theme],
       onCrosshairTime: (t) => crosshairRef.current?.(t),
       onCrosshairMove: (t, p) => crosshairMoveRef.current?.(t, p),
+      onEventHover: (hit) => eventHoverRef.current(hit),
       onClick: (info) => {
         const now = Date.now();
         if (now - lastClickAtRef.current < 150) return;
         lastClickAtRef.current = now;
+        // A strip chip pins its preview card; drawing tools stand down.
+        if (info.eventHit) {
+          setEventPinned({ hit: info.eventHit, x: mouseRef.current.x, y: mouseRef.current.y });
+          return;
+        }
+        setEventPinned(null);
         if (drawingInProgressRef.current) return;
         const st = useWorkspace.getState();
         const tool = st.activeTool;
@@ -368,6 +387,9 @@ export function ChartHost(props: Props) {
         aria-label={summary}
         className="absolute inset-0"
         data-testid="chart-host"
+        onMouseMove={(e) => {
+          mouseRef.current = { x: e.clientX, y: e.clientY };
+        }}
         onContextMenu={(e) => {
           const handler = propsRef.current.onContextMenu;
           const chart = chartRef.current;
@@ -423,6 +445,16 @@ export function ChartHost(props: Props) {
         <p className="pointer-events-none absolute bottom-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-ev-panel/90 px-2 py-1 text-dense text-ev-muted">
           {flash}
         </p>
+      )}
+      {(eventPinned ?? eventHover) && (
+        <HoverCard
+          title={(eventPinned ?? eventHover)!.hit.count === 1 ? (eventPinned ?? eventHover)!.hit.markers[0]!.title : `${(eventPinned ?? eventHover)!.hit.count} events`}
+          x={(eventPinned ?? eventHover)!.x}
+          y={(eventPinned ?? eventHover)!.y}
+          onClose={eventPinned ? () => setEventPinned(null) : undefined}
+        >
+          <EventStripCard hit={(eventPinned ?? eventHover)!.hit} />
+        </HoverCard>
       )}
       {hidesLayers && (
         <p className="pointer-events-none absolute bottom-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-ev-panel/90 px-2 py-1 text-dense text-ev-muted">

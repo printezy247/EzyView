@@ -29,6 +29,11 @@ import type { IndicatorDef, SeriesResult, SeriesValue } from "@ezyview/indicator
 import type { Drawing, ScreenPoint } from "@ezyview/drawing-tools";
 import { BgBandsPrimitive } from "./bands.js";
 import { FundamentalLinesPrimitive, type FundamentalLine } from "./fundamentalLines.js";
+import {
+  EventStripPrimitive,
+  type EventStripChip,
+  type EventStripMarker,
+} from "./eventStrip.js";
 import { DrawingsPrimitive } from "./drawings.js";
 import { timeToX, xToTime } from "./timeAxis.js";
 import { DARK_THEME, colorAt, type ChartTheme } from "./theme.js";
@@ -102,6 +107,8 @@ export interface ClickInfo {
   price: number | null;
   x: number;
   y: number;
+  /** Set when the click landed on an event-strip chip (drawing tools stand down). */
+  eventHit?: EventStripHit | null;
 }
 
 /** One constant level drawn across the price scale for the open position. */
@@ -125,6 +132,8 @@ export interface EzyChartOptions {
   /** Crosshair move with both coordinates — feeds crosshair sync across cells. */
   onCrosshairMove?: (time: number | null, price: number | null) => void;
   onClick?: (info: ClickInfo) => void;
+  /** Strip hover: the hit (or null when the pointer left it) plus pane pixels. */
+  onEventHover?: (hit: EventStripHit | null, point: { x: number; y: number } | null) => void;
 }
 
 /** Horizontal reference lines drawn automatically for certain indicators. */
@@ -191,6 +200,24 @@ export interface FundamentalEventMarker {
   title: string;
   kind: "earnings" | "event";
   impact?: Impact;
+  /** Carried through the overlay so the hover card needs no refetch. */
+  actual?: string | null;
+  forecast?: string | null;
+  previous?: string | null;
+  currency?: string;
+  source?: string;
+  url?: string;
+  eps?: number | null;
+  estimate?: number | null;
+  revenue?: number | null;
+  quarter?: string;
+}
+
+/** What a strip hover/click resolves to: the chip and its markers. */
+export interface EventStripHit {
+  chipId: string;
+  count: number;
+  markers: EventStripMarker[];
 }
 
 /** Impact colours shared by event markers and their vertical lines. */
@@ -280,8 +307,12 @@ export class EzyChart {
   /** Compare symbols drawn on their own normalised scale. */
   private compareInputs: CompareSeries[] = [];
   private readonly compareSeries = new Map<string, ISeriesApi<never>>();
-  /** Earnings dots + event squares from `setFundamentalEvents`, kept apart from script markers. */
-  private fundamentalMarkerLayer: SeriesMarker<Time>[] = [];
+  /** Raw event rows from `setFundamentalEvents`; the strip filters them per replay. */
+  private fundamentalEventRows: FundamentalEventMarker[] = [];
+  /** Bottom-strip event dots; a primitive, never a drawing. */
+  private readonly eventStrip = new EventStripPrimitive();
+  /** Last strip chip id sent to `onEventHover`; hover only fires on change. */
+  private lastEventOid: string | null = null;
   /** Full-pane dashed lines for macro events; a primitive, never a drawing. */
   private readonly fundamentalLines = new FundamentalLinesPrimitive((time) => this.timeToCoordinate(time));
   /** v5 exposes markers as a series plugin, so it is bound to the main series. */
@@ -402,6 +433,7 @@ export class EzyChart {
     this.chart.panes()[0]!.attachPrimitive(this.drawings);
     this.chart.panes()[0]!.attachPrimitive(this.bgBands);
     this.chart.panes()[0]!.attachPrimitive(this.sessionBands);
+    this.chart.panes()[0]!.attachPrimitive(this.eventStrip);
     this.chart.panes()[0]!.attachPrimitive(this.fundamentalLines);
     this.chart.panes()[0]!.attachPrimitive(this.volumeProfile);
     this.volumeProfile.setEnabled(options.showVolumeProfile ?? false);
@@ -412,6 +444,14 @@ export class EzyChart {
     this.chart.subscribeCrosshairMove((param) => {
       const time = param.time === undefined ? null : Number(param.time);
       this.opts.onCrosshairTime?.(time);
+      const oid = typeof param.hoveredInfo?.objectId === "string" ? param.hoveredInfo.objectId : null;
+      const key = oid?.startsWith("evstrip:") ? oid : null;
+      if (key !== this.lastEventOid) {
+        this.lastEventOid = key;
+        const hit = key ? this.eventStripHit(key) : null;
+        const point = param.point ? { x: param.point.x, y: param.point.y } : null;
+        this.opts.onEventHover?.(hit, point);
+      }
       if (this.opts.onCrosshairMove) {
         const y = param.point?.y;
         const price = y === undefined || !this.mainSeries ? null : this.mainSeries.coordinateToPrice(y);
@@ -427,11 +467,14 @@ export class EzyChart {
         return;
       }
       const result = this.screenToTimePrice(point.x, point.y);
+      const oid = typeof param.hoveredInfo?.objectId === "string" ? param.hoveredInfo.objectId : null;
+      const eventHit = oid?.startsWith("evstrip:") ? this.eventStripHit(oid) : null;
       this.opts.onClick?.({
         time: result.time,
         price: result.price,
         x: point.x,
         y: point.y,
+        eventHit,
       });
     });
   }
@@ -759,18 +802,37 @@ export class EzyChart {
     else this.watermark = createTextWatermark(pane, { lines, horzAlign: "center", vertAlign: "center" });
   }
 
+  /** Resolve a strip chip id from a hover/click to its markers. */
+  eventStripHit(objectId: string): EventStripHit | null {
+    const chip: EventStripChip | null = this.eventStrip.chipAt(objectId);
+    if (!chip) return null;
+    return { chipId: chip.id, count: chip.count, markers: chip.members };
+  }
+
   /**
-   * Draw (or replace) earnings markers and macro-event vertical lines.
+   * Draw (or replace) the bottom-strip event dots and macro-event lines.
    *
-   * Kept in a layer of its own so a refresh never disturbs script markers;
+   * Kept in layers of their own so a refresh never disturbs script markers;
    * empty overlays clear the fundamentals state and leave the script layer
-   * alone. Lines are a pane primitive, so they survive series rebuilds and
+   * alone. Both are pane primitives, so they survive series rebuilds and
    * never enter the drawings/undo stack.
    */
   setFundamentalEvents(overlays: FundamentalEventOverlay): void {
-    this.fundamentalMarkerLayer = toFundamentalMarkers(overlays.markers);
+    this.fundamentalEventRows = overlays.markers;
     this.fundamentalLines.setLines(toFundamentalLines(overlays));
+    this.syncEventStrip();
     this.applyMarkers();
+  }
+
+  /**
+   * Push event rows to the strip, hiding markers past the visible bars so a
+   * replay never previews events from the future it has not revealed yet.
+   */
+  private syncEventStrip(): void {
+    const data = this.layerData;
+    const maxTime = data.length > 0 ? Number(data[data.length - 1]!.time) : Infinity;
+    const visible = Number.isFinite(maxTime) ? this.fundamentalEventRows.filter((m) => m.time <= maxTime) : [];
+    this.eventStrip.setMarkers(visible);
   }
 
   /**
@@ -908,13 +970,8 @@ export class EzyChart {
     );
     this.markerLayer = this.buildMarkers();
 
-    // In replay mode, do not pass future fundamental markers ahead of visible candles
-    const maxTime = data.length > 0 ? Number(data[data.length - 1]!.time) : Infinity;
-    const visibleFundamentals = Number.isFinite(maxTime)
-      ? this.fundamentalMarkerLayer.filter((m) => Number(m.time) <= maxTime)
-      : this.fundamentalMarkerLayer;
-
-    this.applyMarkers(visibleFundamentals);
+    this.syncEventStrip();
+    this.applyMarkers();
   }
 
   /** A band is lit wherever its value is a present, non-`na` number. */
@@ -944,13 +1001,14 @@ export class EzyChart {
   }
 
   /**
-   * Push the composited script + fundamental markers onto the main series,
-   * creating the plugin on first use so an empty chart costs nothing.
+   * Push the script markers onto the main series, creating the plugin on
+   * first use so an empty chart costs nothing. Fundamentals live on the
+   * bottom strip now; only script `plotshape()` markers go above the bars.
    */
-  private applyMarkers(fundamentals = this.fundamentalMarkerLayer): void {
+  private applyMarkers(): void {
     const series = this.mainSeries;
     if (!series) return;
-    const merged = mergeMarkerLayers(this.markerLayer, fundamentals);
+    const merged = mergeMarkerLayers(this.markerLayer, []);
     if (this.markerApi === null) {
       if (merged.length === 0) return;
       this.markerApi = createSeriesMarkers(

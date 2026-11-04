@@ -90,7 +90,9 @@ function stubHost(overrides: AnyRecord = {}): AnyRecord {
     currentPlots: [],
     currentBands: [],
     markerLayer: [],
-    fundamentalMarkerLayer: [],
+    fundamentalEventRows: [],
+    eventStrip: { setMarkers: vi.fn(), chipAt: vi.fn(() => null) },
+    lastEventOid: null,
     markerApi: null,
     tradingLines: [],
     priceLineApi: [],
@@ -199,19 +201,42 @@ describe("setWatermark", () => {
 });
 
 describe("setFundamentalEvents", () => {
-  it("stores the marker layer and pushes the lines primitive", () => {
+  it("stores the rows, feeds the strip and pushes the lines primitive", () => {
     const setLines = vi.fn();
+    const setMarkers = vi.fn();
     const applyMarkers = vi.fn();
     const fundamentalLines = { setLines };
-    const self = stubHost({ fundamentalLines });
+    const self = stubHost({ fundamentalLines, eventStrip: { setMarkers, chipAt: vi.fn(() => null) } });
     self["applyMarkers"] = applyMarkers;
-    (EzyChart.prototype.setFundamentalEvents as (o: unknown) => void).call(self, {
-      markers: [{ time: 1000, kind: "earnings" }],
-      lines: [1000],
-    });
-    expect((self["fundamentalMarkerLayer"] as unknown[]).length).toBe(1);
+    const markers = [{ time: 1000, kind: "earnings", title: "AAPL" }];
+    (EzyChart.prototype.setFundamentalEvents as (o: unknown) => void).call(self, { markers, lines: [1000] });
+    expect(self["fundamentalEventRows"]).toEqual(markers);
+    expect(setMarkers).toHaveBeenCalledTimes(1);
+    expect(setMarkers.mock.calls[0]![0]).toEqual(markers);
     expect(setLines).toHaveBeenCalledWith([{ time: 1000, color: expect.any(String) }]);
     expect(applyMarkers).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides markers past the visible bars so replay never previews the future", () => {
+    const setMarkers = vi.fn();
+    const self = stubHost({ eventStrip: { setMarkers, chipAt: vi.fn(() => null) }, data: candles(4) });
+    const lastTime = 1_700_000_000 + 3 * 86400;
+    const markers = [
+      { time: 1_700_000_000, kind: "event", title: "past" },
+      { time: lastTime + 10_000, kind: "event", title: "future" },
+    ];
+    (EzyChart.prototype.setFundamentalEvents as (o: unknown) => void).call(self, { markers, lines: [] });
+    expect(setMarkers.mock.calls[0]![0].map((m: { title: string }) => m.title)).toEqual(["past"]);
+  });
+});
+
+describe("eventStripHit", () => {
+  it("resolves a chip id to its markers and null otherwise", () => {
+    const chip = { id: "evstrip:0", count: 2, members: [{ time: 1, title: "a" }] };
+    const self = stubHost({ eventStrip: { setMarkers: vi.fn(), chipAt: (id: string) => (id === "evstrip:0" ? chip : null) } });
+    const hit = (EzyChart.prototype.eventStripHit as (id: string) => unknown).call(self, "evstrip:0");
+    expect(hit).toEqual({ chipId: "evstrip:0", count: 2, markers: chip.members });
+    expect((EzyChart.prototype.eventStripHit as (id: string) => unknown).call(self, "evstrip:9")).toBeNull();
   });
 });
 

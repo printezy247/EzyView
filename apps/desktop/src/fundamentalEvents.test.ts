@@ -34,8 +34,8 @@ describe("fetchFundamentalEvents", () => {
     const sources = stubSources();
     const overlay = await fetchFundamentalEvents(sources, "AAPL", NOW, DEFAULT_EVENT_OPTIONS);
     expect(overlay.markers).toEqual([
-      { time: NOW - 2 * DAY, title: "AAPL", kind: "earnings" },
-      { time: NOW - DAY, title: "CPI y/y", kind: "event", impact: "high" },
+      { time: NOW - 2 * DAY, title: "AAPL", kind: "earnings", quarter: "Q3", source: "demo" },
+      { time: NOW - DAY, title: "CPI y/y", kind: "event", impact: "high", currency: "USD", source: "demo" },
     ]);
     expect(overlay.lines).toEqual([NOW - DAY]);
     // Calendar is asked for the ±60 day window around `now`.
