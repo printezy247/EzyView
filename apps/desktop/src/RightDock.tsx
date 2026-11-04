@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Activity, BookOpen, Columns, Layers, List, PanelRightClose } from "lucide-react";
+import { IconButton, SHELL_BAR_HEIGHT, SHELL_BAR_ICON, SHELL_RAIL_ICON, SHELL_RAIL_WIDTH, shellToolClass } from "./ui";
 
 /**
  * The right-dock tabs. Declared here rather than in the toolbar so every
@@ -20,10 +21,10 @@ export interface DockTab {
 }
 
 const TAB_ICON: Record<DockTabId, ReactNode> = {
-  watchlist: <List size={14} aria-hidden />,
-  depth: <BookOpen size={14} aria-hidden />,
-  objects: <Layers size={14} aria-hidden />,
-  tape: <Activity size={14} aria-hidden />,
+  watchlist: <List size={SHELL_RAIL_ICON} aria-hidden />,
+  depth: <BookOpen size={SHELL_RAIL_ICON} aria-hidden />,
+  objects: <Layers size={SHELL_RAIL_ICON} aria-hidden />,
+  tape: <Activity size={SHELL_RAIL_ICON} aria-hidden />,
 };
 
 const WIDTH_PRESETS = [256, 300, 360] as const;
@@ -47,7 +48,7 @@ export function RightDock({ tabs, active, onSelect, width }: Props) {
       <aside
         key="rail"
         aria-label="Chart panels"
-        className="flex w-10 shrink-0 flex-col items-center gap-1 border-l border-ev-raised bg-ev-chrome py-2"
+        className={`flex ${SHELL_RAIL_WIDTH} shrink-0 flex-col items-center gap-1 border-l border-ev-raised bg-ev-chrome py-2`}
       >
         <div role="tablist" aria-label="Panel" className="flex flex-col items-center gap-1">
           {tabs.map((tab) => (
@@ -58,7 +59,7 @@ export function RightDock({ tabs, active, onSelect, width }: Props) {
               aria-selected={false}
               title={`${tab.label} — ${tab.hint ?? "Click to expand panel"}`}
               onClick={() => onSelect(tab.id)}
-              className="relative flex size-8 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+              className={shellToolClass({ className: "relative" })}
             >
               {TAB_ICON[tab.id]}
               <span className="sr-only">{tab.label}</span>
@@ -84,7 +85,7 @@ export function RightDock({ tabs, active, onSelect, width }: Props) {
       <div
         role="tablist"
         aria-label="Panel"
-        className="flex h-8 shrink-0 items-center gap-0.5 border-b border-ev-raised bg-ev-chrome px-1"
+        className={`flex ${SHELL_BAR_HEIGHT} shrink-0 items-center gap-0.5 border-b border-ev-raised bg-ev-chrome px-1`}
         onKeyDown={(e) => {
           // The ARIA tabs pattern wants arrow keys to move between tabs.
           const ids = tabs.map((t) => t.id);
@@ -130,24 +131,16 @@ export function RightDock({ tabs, active, onSelect, width }: Props) {
           );
         })}
         <div className="ml-auto flex items-center gap-0.5">
-          <button
-            type="button"
-            title="Cycle panel width (Compact / Standard / Wide)"
-            aria-label="Cycle panel width"
+          <IconButton
+            label="Cycle panel width (Compact / Standard / Wide)"
+            size="sm"
             onClick={() => setWidthIdx((i) => (i + 1) % WIDTH_PRESETS.length)}
-            className="rounded p-1 text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
           >
-            <Columns size={12} aria-hidden />
-          </button>
-          <button
-            type="button"
-            onClick={() => onSelect(null)}
-            title="Collapse panel to right rail"
-            aria-label="Hide panel"
-            className="rounded p-1 text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-          >
-            <PanelRightClose size={13} aria-hidden />
-          </button>
+            <Columns size={SHELL_BAR_ICON} aria-hidden />
+          </IconButton>
+          <IconButton label="Collapse panel to right rail" size="sm" onClick={() => onSelect(null)}>
+            <PanelRightClose size={SHELL_BAR_ICON} aria-hidden />
+          </IconButton>
         </div>
       </div>
 

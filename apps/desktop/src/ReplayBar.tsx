@@ -5,7 +5,7 @@ import { loadHistory } from "./data";
 import { useWorkspace } from "./store";
 import type { ReplaySpeed } from "./layout";
 import { useShortcut } from "./shortcuts";
-import { Select } from "./ui";
+import { Select, inputClass } from "./ui";
 
 interface Props {
   /** Total bars loaded for the active symbol. */
@@ -248,7 +248,7 @@ export function ReplayBar({ totalBars, symbol: symbolProp, resolution: resolutio
             setReplay(Math.min(maxBar, Math.max(0, index)));
           });
         }}
-        className="h-6 rounded border border-ev-line bg-ev-raised px-1 text-dense text-ev-strong"
+        className={inputClass("h-6 w-32 px-1 text-dense")}
       />
 
       {/* Speed Selector */}

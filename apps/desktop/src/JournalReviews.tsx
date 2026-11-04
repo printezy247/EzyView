@@ -3,6 +3,7 @@ import { Sparkles, Trash2 } from "lucide-react";
 import { composeReview, computeStats, reviewWindow } from "@ezyview/journal";
 import type { JournalEntry, JournalNote } from "@ezyview/journal";
 import { useJournal } from "./journal";
+import { Button, inputClass } from "./ui";
 
 interface Props {
   entries: readonly JournalEntry[];
@@ -67,17 +68,16 @@ export function JournalReviews({ entries, notes, selectedDay, onSelectDay }: Pro
   };
 
   const periodBtn = (value: "daily" | "weekly", label: string) => (
-    <button
+    <Button
       key={value}
-      type="button"
-      onClick={() => setPeriod(value)}
+      variant="outline"
+      size="sm"
       aria-pressed={period === value}
-      className={`rounded border px-2 py-0.5 text-dense ${
-        period === value ? "border-ev-accent text-ev-strong" : "border-ev-line text-ev-muted hover:text-ev-strong"
-      }`}
+      onClick={() => setPeriod(value)}
+      className={period === value ? "border-ev-accent font-medium" : undefined}
     >
       {label}
-    </button>
+    </Button>
   );
 
   const textarea =
@@ -95,7 +95,7 @@ export function JournalReviews({ entries, notes, selectedDay, onSelectDay }: Pro
           onChange={(e) => {
             if (e.target.value) onSelectDay(e.target.value);
           }}
-          className="rounded border border-ev-line bg-ev-bg px-2 py-0.5 text-ev-text focus:border-ev-accent"
+          className={inputClass("h-6 w-auto")}
         />
         <span className="text-ev-faint num">
           {new Date(win.start * 1000).toLocaleString()} → {new Date(win.end * 1000).toLocaleString()}

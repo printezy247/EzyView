@@ -10,6 +10,7 @@ import { Dialog } from "./Dialog";
 import { Checkbox, Field, NumberInput, RadioGroup, Slider, Toggle } from "./Field";
 import { Popover, Tooltip } from "./Popover";
 import { HoverCard } from "./HoverCard";
+import { SHELL_BAR_HEIGHT, SHELL_RAIL_WIDTH, shellToolClass } from "./classNames";
 import { SegmentedControl } from "./SegmentedControl";
 import { Select } from "./Select";
 import { Tabs } from "./Tabs";
@@ -309,6 +310,18 @@ describe("HoverCard", () => {
     const dialog = screen.getByRole("dialog", { name: "CPI" });
     expect(dialog.style.bottom).toBe("24px");
     expect(dialog.style.top).toBe("");
+  });
+});
+
+describe("shell chrome tokens", () => {
+  it("pins one bar height, one rail width and one tool state", () => {
+    expect(SHELL_BAR_HEIGHT).toBe("h-8");
+    expect(SHELL_RAIL_WIDTH).toBe("w-12");
+    const idle = shellToolClass();
+    const active = shellToolClass({ active: true });
+    expect(idle).toContain("size-8");
+    expect(active).toContain("bg-ev-raised");
+    expect(active).not.toBe(idle);
   });
 });
 

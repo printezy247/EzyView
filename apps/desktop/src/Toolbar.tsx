@@ -37,7 +37,7 @@ import { activeChartOf } from "./layout";
 import { defaultChartState, useWorkspace } from "./store";
 import { useShortcut } from "./shortcuts";
 import { notice } from "./notice";
-import { Button, IconButton, NumberInput, SegmentedControl, Tooltip } from "./ui";
+import { Button, IconButton, NumberInput, SegmentedControl, SHELL_BAR_HEIGHT, Tooltip } from "./ui";
 import { CHART_TYPES, PALETTE_KEY, buildToolbarMenus, type ExportMenuApi } from "./toolbarMenus";
 
 /**
@@ -210,7 +210,7 @@ export function Toolbar(props: Props) {
   const analysisOpen = replayActive;
 
   return (
-    <div className="flex h-9 shrink-0 items-center gap-0.5 overflow-x-auto border-b border-ev-raised px-2">
+    <div className={`flex ${SHELL_BAR_HEIGHT} shrink-0 items-center gap-0.5 overflow-x-auto border-b border-ev-raised px-2`}>
       <SymbolSearch symbol={chart.symbol} onSelect={actions.setSymbol} />
       <Menu
         label=""

@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
 import { useShortcut, useShortcutLayer } from "./shortcuts";
 import { popupPosition } from "./ui/popup";
+import { buttonClass, cn } from "./ui";
 
 /**
  * One row in a dropdown: an action, a checkable option, a divider or a heading.
@@ -121,7 +122,7 @@ export function Menu({ label, caption, entries, icon, badge, triggerActive, alig
     }
   };
 
-  const triggerTone = open || triggerActive ? "bg-ev-raised text-ev-strong" : "text-ev-muted hover:bg-ev-raised hover:text-ev-strong";
+  const triggerLit = open || triggerActive ? "bg-ev-raised text-ev-strong" : "";
 
   return (
     <div className="relative" ref={rootRef}>
@@ -140,7 +141,7 @@ export function Menu({ label, caption, entries, icon, badge, triggerActive, alig
             setOpen(true);
           }
         }}
-        className={`flex items-center gap-1 rounded px-2 py-1 text-base ${triggerTone}`}
+        className={cn(buttonClass({ size: "sm", variant: "ghost" }), triggerLit)}
       >
         {icon}
         {label}
