@@ -106,7 +106,7 @@ jobs:
               ;;
           esac
           ls -lh release-assets
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ezyview-${{ matrix.name }}
           path: release-assets/
