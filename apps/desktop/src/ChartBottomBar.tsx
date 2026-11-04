@@ -4,11 +4,12 @@ import { formatClock, parseGoToDate, RANGE_PRESETS } from "./chartView";
 import { EventsControls } from "./EventsControls";
 import { CompareDialog } from "./CompareDialog";
 import { useWorkspace } from "./store";
-import { buttonClass } from "./ui";
+import { buttonClass, cn, inputClass } from "./ui";
+
+/** Lit pill shared with the footer dock toggles. */
+const litPill = "bg-ev-raised font-medium text-ev-strong";
 
 const chip = buttonClass({ size: "sm", variant: "ghost" });
-const idle = "text-ev-muted hover:bg-ev-raised hover:text-ev-strong";
-const lit = "bg-ev-raised font-medium text-ev-strong";
 
 /**
  * The strip under the chart, as in TradingView: range presets, go-to-date,
@@ -36,7 +37,7 @@ export function ChartBottomBar({ onOpenHotkeys }: { onOpenHotkeys: () => void })
     <div
       role="toolbar"
       aria-label="Chart range and events"
-      className="flex h-7 shrink-0 items-center gap-1 overflow-x-auto border-t border-ev-raised px-2"
+      className="flex h-7 shrink-0 items-center gap-1 overflow-x-auto border-t border-ev-raised bg-ev-chrome px-2"
     >
       {RANGE_PRESETS.map(({ id, description }) => (
         <button
@@ -45,7 +46,7 @@ export function ChartBottomBar({ onOpenHotkeys }: { onOpenHotkeys: () => void })
           disabled={!view}
           title={description}
           onClick={() => void view?.showRange(id)}
-          className={`${chip} ${idle}`}
+          className={chip}
         >
           {id}
         </button>
@@ -60,14 +61,14 @@ export function ChartBottomBar({ onOpenHotkeys }: { onOpenHotkeys: () => void })
           const t = parseGoToDate(e.target.value);
           if (t !== null) void view?.goTo(t);
         }}
-        className="ml-1 h-5 rounded border border-ev-line bg-ev-panel px-1 text-dense text-ev-text disabled:opacity-40"
+        className={inputClass("h-5 w-28 px-1 text-dense")}
       />
 
       <button
         type="button"
         onClick={() => setCompareOpen(true)}
         title="Overlay another symbol on this chart"
-        className={`${chip} ${idle} ml-1`}
+        className={cn(chip, "ml-1")}
       >
         Compare
       </button>
@@ -76,10 +77,10 @@ export function ChartBottomBar({ onOpenHotkeys }: { onOpenHotkeys: () => void })
       <EventsControls layout="bar" />
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5">
-        <button type="button" disabled={!view} title="Reset zoom, scroll and price scale" onClick={() => view?.reset()} className={`${chip} ${idle}`}>
+        <button type="button" disabled={!view} title="Reset zoom, scroll and price scale" onClick={() => view?.reset()} className={chip}>
           Reset
         </button>
-        <button type="button" disabled={!view} title="Fit the price scale to the visible bars" onClick={() => view?.autoScale()} className={`${chip} ${idle}`}>
+        <button type="button" disabled={!view} title="Fit the price scale to the visible bars" onClick={() => view?.autoScale()} className={chip}>
           Auto
         </button>
         <button
@@ -87,7 +88,7 @@ export function ChartBottomBar({ onOpenHotkeys }: { onOpenHotkeys: () => void })
           aria-pressed={priceScale === "log"}
           title="Logarithmic price scale"
           onClick={() => updateActive({ priceScale: priceScale === "log" ? "normal" : "log" })}
-          className={`${chip} ${priceScale === "log" ? lit : idle}`}
+          className={cn(chip, priceScale === "log" && litPill)}
         >
           Log
         </button>
@@ -96,7 +97,7 @@ export function ChartBottomBar({ onOpenHotkeys }: { onOpenHotkeys: () => void })
           aria-pressed={priceScale === "percentage"}
           title="Show price as percent change from the first visible bar"
           onClick={() => updateActive({ priceScale: priceScale === "percentage" ? "normal" : "percentage" })}
-          className={`${chip} ${priceScale === "percentage" ? lit : idle}`}
+          className={cn(chip, priceScale === "percentage" && litPill)}
         >
           %
         </button>
@@ -108,7 +109,7 @@ export function ChartBottomBar({ onOpenHotkeys }: { onOpenHotkeys: () => void })
           onClick={onOpenHotkeys}
           title="Keyboard shortcuts (?)"
           aria-keyshortcuts="?"
-          className={`${chip} ${idle} ml-auto`}
+          className={cn(chip, "ml-auto")}
         >
           Shortcuts
         </button>

@@ -21,7 +21,7 @@ import { notice } from "./notice";
 import { linkGroupOf } from "./linkGroups";
 import { openChartWindow } from "./windows";
 import { useZen } from "./zen";
-import { Button, IconButton, Input } from "./ui";
+import { Button, IconButton, Input, SHELL_BAR_HEIGHT } from "./ui";
 
 const LINK_COLORS: { id: string; label: string; hex: string }[] = [
   { id: "", label: "Unlinked", hex: "transparent" },
@@ -83,7 +83,7 @@ export function TabBar() {
   };
 
   return (
-    <div className="flex h-8 shrink-0 items-center gap-1 border-b border-ev-raised bg-ev-chrome px-2">
+    <div className={`flex ${SHELL_BAR_HEIGHT} shrink-0 items-center gap-1 border-b border-ev-raised bg-ev-chrome px-2`}>
       {/* Browser/Desktop history navigation controls */}
       <div className="mr-1 flex items-center gap-0.5">
         <IconButton label="Go back" size="sm" onClick={() => window.history.back()}>

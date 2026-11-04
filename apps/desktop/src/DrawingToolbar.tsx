@@ -23,7 +23,7 @@ import { useWorkspace } from "./store";
 import { useDrawingUi } from "./drawingUi";
 import { notice } from "./notice";
 import { TOOL_ICONS } from "./drawingToolIcons";
-import { Button, IconButton } from "./ui";
+import { Button, IconButton, SHELL_RAIL_ICON, SHELL_RAIL_WIDTH } from "./ui";
 
 /** The rail button cycles off → weak → strong. */
 const NEXT_MAGNET: Record<MagnetMode, MagnetMode> = { off: "weak", weak: "strong", strong: "off" };
@@ -112,10 +112,10 @@ export function DrawingToolbar() {
         role="toolbar"
         aria-orientation="vertical"
         aria-label="Drawing tools"
-        className="flex w-6 shrink-0 flex-col items-center border-r border-ev-raised bg-ev-chrome py-2"
+        className={`flex ${SHELL_RAIL_WIDTH} shrink-0 flex-col items-center border-r border-ev-raised bg-ev-chrome py-2`}
       >
         <IconButton label="Show drawing tools" size="sm" onClick={() => setCollapsed(false)}>
-          <PanelLeftOpen size={13} aria-hidden />
+          <PanelLeftOpen size={SHELL_RAIL_ICON} aria-hidden />
         </IconButton>
       </div>
     );
@@ -130,7 +130,7 @@ export function DrawingToolbar() {
         role="toolbar"
         aria-orientation="vertical"
         aria-label="Drawing tools"
-        className="flex w-10 shrink-0 flex-col items-center gap-0.5 overflow-y-auto border-r border-ev-raised py-2"
+        className={`flex ${SHELL_RAIL_WIDTH} shrink-0 flex-col items-center gap-0.5 overflow-y-auto border-r border-ev-raised py-2`}
       >
         {/* Cursors: navigate, crosshair and the click-to-delete eraser. */}
         <IconButton
@@ -235,7 +235,7 @@ export function DrawingToolbar() {
           onClick={() => setStayInDrawingMode(!stayInDrawingMode)}
           className={stayInDrawingMode ? `relative ${activeCls}` : "relative"}
         >
-          <Pencil size={15} aria-hidden />
+          <Pencil size={SHELL_RAIL_ICON} aria-hidden />
           <span className="absolute bottom-0.5 right-0.5 size-1.5 rounded-full border border-ev-chrome bg-ev-accent" aria-hidden />
         </IconButton>
         <IconButton
@@ -245,7 +245,7 @@ export function DrawingToolbar() {
           onClick={() => setLockAllDrawings(!lockAllDrawings)}
           className={lockAllDrawings ? activeCls : undefined}
         >
-          {lockAllDrawings ? <Lock size={15} aria-hidden /> : <LockOpen size={15} aria-hidden />}
+          {lockAllDrawings ? <Lock size={SHELL_RAIL_ICON} aria-hidden /> : <LockOpen size={SHELL_RAIL_ICON} aria-hidden />}
         </IconButton>
         <IconButton
           label="Hide all drawings without deleting them"
@@ -254,7 +254,7 @@ export function DrawingToolbar() {
           onClick={() => setHideAllDrawings(!hideAllDrawings)}
           className={hideAllDrawings ? activeCls : undefined}
         >
-          {hideAllDrawings ? <EyeOff size={15} aria-hidden /> : <Eye size={15} aria-hidden />}
+          {hideAllDrawings ? <EyeOff size={SHELL_RAIL_ICON} aria-hidden /> : <Eye size={SHELL_RAIL_ICON} aria-hidden />}
         </IconButton>
 
         <div className="my-1 h-px w-5 bg-ev-raised" />
@@ -264,7 +264,7 @@ export function DrawingToolbar() {
           onClick={() => undoDrawing()}
           disabled={!canUndo}
         >
-          <Undo2 size={15} aria-hidden />
+          <Undo2 size={SHELL_RAIL_ICON} aria-hidden />
         </IconButton>
         <IconButton
           label="Redo last drawing (Ctrl+Y)"
@@ -272,7 +272,7 @@ export function DrawingToolbar() {
           onClick={() => redoDrawing()}
           disabled={!canRedo}
         >
-          <Redo2 size={15} aria-hidden />
+          <Redo2 size={SHELL_RAIL_ICON} aria-hidden />
         </IconButton>
         <IconButton
           data-rail-trigger
@@ -283,7 +283,7 @@ export function DrawingToolbar() {
           onClick={(e) => openPopover("remove", e.currentTarget)}
           className={popover?.id === "remove" ? activeCls : undefined}
         >
-          <Trash2 size={15} aria-hidden />
+          <Trash2 size={SHELL_RAIL_ICON} aria-hidden />
         </IconButton>
 
         <div className="mt-auto pt-1">

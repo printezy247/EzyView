@@ -6,7 +6,7 @@ import { useMt5 } from "./mt5";
 import { useTrading } from "./trading";
 import { notice } from "./notice";
 import { canBreakEven } from "./tradeMath";
-import { Button } from "./ui";
+import { Button, SHELL_BAR_HEIGHT } from "./ui";
 
 interface Props {
   symbol: string;
@@ -66,7 +66,7 @@ export function TradingPanel({ symbol }: Props) {
 
   return (
     <section aria-label="Trading" className={`flex ${heightClass} shrink-0 flex-col border-t border-ev-raised bg-ev-bg transition-[height] duration-150`}>
-      <header className="flex h-8 shrink-0 items-center gap-3 border-b border-ev-raised bg-ev-chrome px-3 text-dense">
+      <header className={`flex ${SHELL_BAR_HEIGHT} shrink-0 items-center gap-3 border-b border-ev-raised bg-ev-chrome px-3 text-dense`}>
         <Button
           variant="ghost"
           size="sm"

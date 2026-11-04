@@ -139,6 +139,31 @@ export function segmentClass(options: { active?: boolean; className?: ClassValue
 /** Dialog surface: one radius, one border, one shadow. */
 export const DIALOG_CLASS = "flex max-h-[85vh] flex-col rounded border border-ev-line bg-ev-panel shadow-2xl";
 
+/**
+ * Shell chrome: one bar height, one rail width, one icon scale, one
+ * active/hover language for every toolbar, tab strip, dock and rail.
+ * Individual bars/rails keep their own border side and padding, but the
+ * height, width, icon size and tool-button states come from here so the
+ * chrome reads as one surface instead of six similar ones.
+ */
+export const SHELL_BAR_HEIGHT = "h-8";
+export const SHELL_RAIL_WIDTH = "w-12";
+/** Icons inside horizontal bars. */
+export const SHELL_BAR_ICON = 14;
+/** Icons on the vertical rails. */
+export const SHELL_RAIL_ICON = 16;
+
+/** One tool button for bars and rails. `active` pins the pressed state. */
+export function shellToolClass(options: { active?: boolean; className?: ClassValue } = {}): string {
+  return cn(
+    "relative flex size-8 shrink-0 items-center justify-center rounded text-ev-muted transition",
+    "hover:bg-ev-raised hover:text-ev-strong",
+    "focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
+    options.active ? "bg-ev-raised text-ev-strong" : "",
+    options.className,
+  );
+}
+
 /** Table row. Compact by default.
  *
  * Every row carries the `.ev-row` marker so the root `[data-density]` rule in

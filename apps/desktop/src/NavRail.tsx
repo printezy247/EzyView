@@ -11,35 +11,32 @@ import {
   Wallet,
 } from "lucide-react";
 import { NAV_SECTIONS } from "./nav";
+import { SHELL_RAIL_ICON, SHELL_RAIL_WIDTH, shellToolClass } from "./ui";
 
 /** Left-edge section rail: one lit icon per destination, in redesign order. */
 const ICONS: Record<string, ReactNode> = {
-  "/chart": <LineChart size={17} aria-hidden />,
-  "/markets": <Globe size={17} aria-hidden />,
-  "/trade": <Wallet size={17} aria-hidden />,
-  "/research": <BarChart3 size={17} aria-hidden />,
-  "/journal": <BookOpen size={17} aria-hidden />,
-  "/strategies": <Code size={17} aria-hidden />,
-  "/alerts": <Bell size={17} aria-hidden />,
-  "/settings": <Settings size={17} aria-hidden />,
+  "/chart": <LineChart size={SHELL_RAIL_ICON} aria-hidden />,
+  "/markets": <Globe size={SHELL_RAIL_ICON} aria-hidden />,
+  "/trade": <Wallet size={SHELL_RAIL_ICON} aria-hidden />,
+  "/research": <BarChart3 size={SHELL_RAIL_ICON} aria-hidden />,
+  "/journal": <BookOpen size={SHELL_RAIL_ICON} aria-hidden />,
+  "/strategies": <Code size={SHELL_RAIL_ICON} aria-hidden />,
+  "/alerts": <Bell size={SHELL_RAIL_ICON} aria-hidden />,
+  "/settings": <Settings size={SHELL_RAIL_ICON} aria-hidden />,
 };
 
 export function NavRail() {
   return (
     <nav
       aria-label="Sections"
-      className="flex w-12 shrink-0 flex-col items-center gap-1 border-r border-ev-raised bg-ev-chrome py-2"
+      className={`flex ${SHELL_RAIL_WIDTH} shrink-0 flex-col items-center gap-1 border-r border-ev-raised bg-ev-chrome py-2`}
     >
       {NAV_SECTIONS.map((item) => (
         <NavLink
           key={item.key}
           to={item.to}
           title={`${item.label} — ${item.description}`}
-          className={({ isActive }) =>
-            `group relative flex size-9 items-center justify-center rounded ${
-              isActive ? "bg-ev-raised text-ev-strong" : "text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-            }`
-          }
+          className={({ isActive }) => shellToolClass({ active: isActive, className: "group size-9" })}
         >
           {({ isActive }) => (
             <>

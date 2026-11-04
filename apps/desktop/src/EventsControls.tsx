@@ -1,4 +1,5 @@
 import { useWorkspace } from "./store";
+import { segmentClass } from "./ui";
 import type { EventOptions } from "./eventOptions";
 
 type Key = "earnings" | "economic" | "high" | "medium" | "low";
@@ -72,9 +73,7 @@ export function EventsControls({ layout }: { layout: "bar" | "panel" }) {
             disabled={disabled}
             title={`${description} (${on ? "on" : "off"})`}
             onClick={() => toggleEventSwitch(options, key)}
-            className={`rounded px-1.5 py-0.5 text-dense disabled:opacity-40 ${
-              on ? "bg-ev-accent/15 font-medium text-ev-accent-text" : "text-ev-muted hover:text-ev-strong"
-            }`}
+            className={segmentClass({ active: on })}
           >
             {label}
           </button>

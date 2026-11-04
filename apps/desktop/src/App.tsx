@@ -24,7 +24,7 @@ import { normalizePath, rememberRoute } from "./nav";
 import { bootstrapMt5, getMt5, useMt5 } from "./mt5";
 import { useMt5Accounts } from "./mt5Accounts";
 import { NoticeHost } from "./NoticeHost";
-import { Button, Toaster } from "./ui";
+import { Button, Toaster, buttonClass } from "./ui";
 import { useShortcut, useShortcutDispatcher } from "./shortcuts";
 import { quoteOf } from "./data";
 import { SourceToggle } from "./SourceToggle";
@@ -44,6 +44,9 @@ const SettingsPage = lazy(() => import("./SettingsPage").then((m) => ({ default:
  * only the chart's side panels (watchlist/depth/objects/trading) are
  * page-local booleans, handed down to the chart page.
  */
+/** Footer nav links share the kit ghost-button hover language. */
+const footerLink = buttonClass({ size: "sm", variant: "ghost" });
+
 export default function App() {
   const {
     layout,
@@ -368,25 +371,13 @@ export default function App() {
             >
               DOM
             </Button>
-            <Link
-              to="/markets"
-              title="Open Stock, Crypto & Forex Screener / Heatmaps"
-              className="rounded px-2 py-0.5 hover:bg-ev-raised hover:text-ev-strong"
-            >
+            <Link to="/markets" title="Open Stock, Crypto & Forex Screener / Heatmaps" className={footerLink}>
               Screener & Heatmaps
             </Link>
-            <Link
-              to="/strategies"
-              title="Open Pine Script Editor & Strategy Tester"
-              className="rounded px-2 py-0.5 hover:bg-ev-raised hover:text-ev-strong"
-            >
+            <Link to="/strategies" title="Open Pine Script Editor & Strategy Tester" className={footerLink}>
               Pine Editor
             </Link>
-            <Link
-              to="/journal"
-              title="Open Trading Journal & AI Coach"
-              className="rounded px-2 py-0.5 hover:bg-ev-raised hover:text-ev-strong"
-            >
+            <Link to="/journal" title="Open Trading Journal & AI Coach" className={footerLink}>
               Journal
             </Link>
           </div>
@@ -399,7 +390,7 @@ export default function App() {
             <Link
               to="/settings"
               title="Settings — MT5 connection, broker logins, safety rails"
-              className="rounded px-1.5 py-0.5 hover:bg-ev-raised hover:text-ev-strong"
+              className={footerLink}
             >
               Settings
               {mt5Badge && <span className={`ml-1 inline-block size-1.5 rounded-full ${mt5Badge}`} aria-hidden />}
