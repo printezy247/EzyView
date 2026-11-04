@@ -18,6 +18,7 @@
     "@ezyview/journal": "*",
     "@ezyview/paper-trading": "*",
     "@ezyview/pine-transpiler": "*",
+    "@tanstack/react-virtual": "^3.14.26",
     "@tauri-apps/api": "^2.12.4",
     "clsx": "^2.1.1",
     "lightweight-charts": "^5.2.1",

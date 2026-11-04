@@ -1,6 +1,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/release-0.4.0-2962ff?style=flat-square" alt="release">
-  <img src="https://img.shields.io/badge/tests-1,240-26a69a?style=flat-square" alt="tests">
+  <img src="https://img.shields.io/badge/tests-1393-26a69a?style=flat-square" alt="tests">
   <img src="https://img.shields.io/badge/license-MIT-181c21?style=flat-square" alt="MIT license">
   <a href="https://github.com/printezy247/EzyView/actions/workflows/ci.yml"><img src="https://github.com/printezy247/EzyView/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20macOS-0ea600?style=flat-square" alt="platforms">
@@ -80,7 +80,7 @@ Desktop builds need Linux WebKit/GTK packages — exact list in CI workflow. Rel
 ## Verification
 
 ```bash
-npm run test         # Vitest — 175 files, 1,240 tests
+npm run test         # Vitest — 138 files, 1393 tests
 npm run test:e2e     # Playwright — smoke + visual baselines
 npm run lint         # oxlint
 npm run typecheck    # tsc --noEmit

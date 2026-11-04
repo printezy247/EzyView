@@ -1,6 +1,5 @@
 import { useNotice } from "./notice";
-import { Modal } from "./Modal";
-import { Button } from "./ui";
+import { Button, Dialog } from "./ui";
 
 /**
  * Renders the open notice from `notice.ts`. Mounted once by the shell so a
@@ -12,13 +11,14 @@ export function NoticeHost() {
   const settle = useNotice((s) => s.settle);
 
   return (
-    <Modal open={notice !== null} onClose={() => settle(false)} labelledBy="notice-title">
-      <div className="w-96 rounded-md border border-ev-line bg-ev-panel p-4 shadow-2xl">
-        <h2 id="notice-title" className="text-body font-semibold text-ev-strong">
-          {notice?.title}
-        </h2>
-        {notice?.body && <p className="mt-2 text-base text-ev-muted">{notice.body}</p>}
-        <div className="mt-4 flex justify-end gap-2">
+    <Dialog
+      open={notice !== null}
+      onClose={() => settle(false)}
+      title={notice?.title ?? "Notice"}
+      description={notice?.body}
+      size="sm"
+      actions={
+        <>
           {notice?.kind === "confirm" && (
             <Button variant="outline" size="lg" onClick={() => settle(false)}>
               Cancel
@@ -31,8 +31,10 @@ export function NoticeHost() {
           >
             {notice?.kind === "confirm" ? (notice.confirmLabel ?? "Continue") : "Dismiss"}
           </Button>
-        </div>
-      </div>
-    </Modal>
+        </>
+      }
+    >
+      {null}
+    </Dialog>
   );
 }

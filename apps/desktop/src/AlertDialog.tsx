@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Bell, BellRing, Trash2 } from "lucide-react";
+import { BellRing, Bell } from "lucide-react";
 import type { AlertCondition, AlertFrequency, PriceAlert } from "@ezyview/data-adapters";
-import { Modal } from "./Modal";
-import { Select } from "./ui";
+import { Button, Dialog, IconButton, Input, NumberInput, Select } from "./ui";
 
 /** One controlled field in the alert form. */
 function useAlertField<T>(initial: T): [T, (next: T) => void] {
@@ -48,30 +47,27 @@ export function AlertDialog({
   if (!open) return null;
 
   return (
-    <Modal
+    <Dialog
+      open={open}
       onClose={onClose}
-      labelledBy="alert-dialog-title"
-      className="flex h-[28rem] w-[min(32rem,92vw)] flex-col rounded-md border border-ev-line bg-ev-panel shadow-2xl"
-    >
-      <div className="flex items-center justify-between border-b border-ev-raised px-4 py-2.5">
-        <h2 id="alert-dialog-title" className="flex items-center gap-2 text-body font-semibold text-ev-strong">
-          <Bell size={14} aria-hidden />
-          Alerts on {symbol}
-        </h2>
-        <button type="button" onClick={onClose} className="text-ev-muted hover:text-ev-strong">
+      title={`Alerts on ${symbol}`}
+      size="lg"
+      className="h-[28rem]"
+      actions={
+        <Button variant="ghost" size="md" onClick={onClose}>
           Close
-        </button>
-      </div>
-
+        </Button>
+      }
+    >
       <AlertForm symbol={symbol} lastPrice={lastPrice} onAdd={onAdd} />
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-2">
+      <div className="min-h-0 flex-1 overflow-y-auto py-2">
         {alerts.length === 0 ? (
           <p className="py-6 text-center text-body text-ev-muted">
             No alerts yet. Set a condition above to get notified when price reaches it.
           </p>
         ) : (
-          <ul className="space-y-1">
+          <ul className="space-y-1" role="list" aria-label={`Alerts on ${symbol}`}>
             {alerts.map((a) => (
               <li
                 key={a.id}
@@ -88,20 +84,21 @@ export function AlertDialog({
                   <span className="rounded bg-ev-line px-1.5 text-dense text-ev-orange">triggered</span>
                 )}
                 {a.message && <span className="truncate text-dense text-ev-muted">{a.message}</span>}
-                <button
-                  type="button"
+                <IconButton
+                  label="Delete alert"
+                  size="sm"
                   onClick={() => onRemove(a.id)}
-                  className="ml-auto text-ev-faint hover:text-ev-down-text"
-                  aria-label="Delete alert"
+                  className="ml-auto hover:text-ev-down-text"
                 >
-                  <Trash2 size={13} aria-hidden />
-                </button>
+                  <Bell size={13} aria-hidden className="hidden" />
+                  <span aria-hidden className="text-base leading-none">×</span>
+                </IconButton>
               </li>
             ))}
           </ul>
         )}
       </div>
-    </Modal>
+    </Dialog>
   );
 }
 
@@ -115,9 +112,9 @@ function AlertForm({
   onAdd: Props["onAdd"];
 }) {
   const [kind, setKind] = useAlertField<AlertCondition["kind"]>("crossing_up");
-  const [value, setValue] = useAlertField<string>(lastPrice === null ? "" : String(lastPrice));
-  const [bars, setBars] = useAlertField<string>("3");
-  const [mult, setMult] = useAlertField<string>("2");
+  const [value, setValue] = useAlertField<number | null>(lastPrice);
+  const [bars, setBars] = useAlertField<number | null>(3);
+  const [mult, setMult] = useAlertField<number | null>(2);
   const [frequency, setFrequency] = useAlertField<AlertFrequency>("once_per_bar_close");
   const [message, setMessage] = useAlertField<string>("");
   const [busy, setBusy] = useState(false);
@@ -128,7 +125,7 @@ function AlertForm({
   useEffect(() => {
     if (touched.current) return;
     if (lastPrice === null) return;
-    setValue(String(lastPrice));
+    setValue(lastPrice);
   }, [lastPrice, setValue]);
 
   const needsValue = ["crossing", "crossing_up", "crossing_down", "greater", "less"].includes(kind);
@@ -139,7 +136,7 @@ function AlertForm({
     if (disabled || busy) return;
     setBusy(true);
     const condition: AlertCondition = needsValue
-      ? ({ kind, value: valueNumber ?? 0 } as AlertCondition)
+      ? ({ kind, value: value ?? 0 } as AlertCondition)
       : needsBars
         ? ({ kind, bars: Number(bars) } as AlertCondition)
         : ({ kind, mult: Number(mult) } as AlertCondition);
@@ -151,16 +148,15 @@ function AlertForm({
     }
   };
 
-  // An empty field is not a price: `Number("")` is 0, which armed an alert at
-  // zero that could never fire while looking armed on screen.
-  const valueNumber = value.trim() === "" ? null : Number(value);
+  // An empty field is not a price: it reports null, which stays disabled
+  // instead of arming an alert at zero.
   const disabled =
-    (needsValue && (valueNumber === null || !Number.isFinite(valueNumber) || valueNumber <= 0)) ||
-    (needsBars && Number(bars) < 1) ||
+    (needsValue && (value === null || !Number.isFinite(value) || value <= 0)) ||
+    (needsBars && (bars === null || bars < 1)) ||
     busy;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-ev-raised px-4 py-3">
+    <div className="flex flex-wrap items-center gap-2 border-b border-ev-raised pb-3">
       <Select
         label="Alert condition"
         value={kind}
@@ -169,36 +165,38 @@ function AlertForm({
       />
 
       {needsValue && (
-        <input
-          aria-label="Alert price"
+        <NumberInput
+          label="Alert price"
           value={value}
-          onChange={(e) => {
+          min={0}
+          onValueChange={(v) => {
             touched.current = true;
-            setValue(e.target.value);
+            setValue(v);
           }}
           placeholder="Price"
-          inputMode="decimal"
-          className="w-24 rounded border border-ev-line bg-ev-bg px-2 py-1 text-base text-ev-strong"
+          className="w-28"
         />
       )}
       {needsBars && (
-        <input
-          aria-label="Bars"
+        <NumberInput
+          label="Bars"
           value={bars}
-          onChange={(e) => setBars(e.target.value)}
-          placeholder="Bars"
-          inputMode="numeric"
-          className="w-16 rounded border border-ev-line bg-ev-bg px-2 py-1 text-base text-ev-strong"
+          min={1}
+          step={1}
+          precision={0}
+          onValueChange={setBars}
+          className="w-20"
         />
       )}
       {needsMult && (
-        <input
-          aria-label="Multiplier"
+        <NumberInput
+          label="Multiplier"
           value={mult}
-          onChange={(e) => setMult(e.target.value)}
+          min={0}
+          step={0.5}
+          onValueChange={setMult}
           placeholder="σ mult"
-          inputMode="decimal"
-          className="w-16 rounded border border-ev-line bg-ev-bg px-2 py-1 text-base text-ev-strong"
+          className="w-20"
         />
       )}
 
@@ -209,22 +207,20 @@ function AlertForm({
         options={Object.entries(FREQ_LABELS).map(([k, label]) => ({ value: k, label }))}
       />
 
-      <input
+      <Input
         aria-label="Alert message"
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         placeholder="Message (optional)"
-        className="min-w-32 flex-1 rounded border border-ev-line bg-ev-bg px-2 py-1 text-base text-ev-strong"
+        className="min-w-32 flex-1"
       />
 
-      <button
-        type="button"
+      <Button
         onClick={submit}
         disabled={disabled}
-        className="rounded bg-ev-accent px-3 py-1 text-base font-medium text-white disabled:opacity-40"
       >
         {busy ? "Creating…" : "Create"}
-      </button>
+      </Button>
     </div>
   );
 }

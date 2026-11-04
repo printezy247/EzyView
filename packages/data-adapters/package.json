@@ -9,5 +9,8 @@
     ".": "./src/index.ts",
     "./*": "./src/*.ts"
   },
-  "dependencies": {}
+  "dependencies": {},
+  "scripts": {
+    "test": "vitest run src"
+  }
 }

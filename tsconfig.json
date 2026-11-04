@@ -14,7 +14,9 @@
       "@ezyview/paper-trading": ["packages/paper-trading/src/index.ts"],
       "@ezyview/mt5-adapter": ["packages/mt5-adapter/src/index.ts"],
       "@ezyview/fundamentals": ["packages/fundamentals/src/index.ts"],
-      "@ezyview/options": ["packages/options/src/index.ts"]
+      "@ezyview/options": ["packages/options/src/index.ts"],
+      "@ezyview/brand": ["packages/brand/src/index.ts"],
+      "@ezyview/mcp-server": ["packages/mcp-server/src/index.ts"]
     }
   },
   "include": [
@@ -22,7 +24,9 @@
     "apps/desktop/src/**/*.ts",
     "apps/desktop/src/**/*.tsx",
     "apps/desktop/vite.config.ts",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "e2e/**/*.ts",
+    "playwright.config.ts"
   ],
   "exclude": ["node_modules", "dist", ".next", "target"]
 }

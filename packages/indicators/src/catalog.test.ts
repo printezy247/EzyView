@@ -57,7 +57,7 @@ describe("oscillators", () => {
   });
 
   it("stochastic stays inside 0..100", () => {
-    const d = make({ close: closes.map((c, i) => 100 + Math.sin(i) * 5) });
+    const d = make({ close: closes.map((_c, i) => 100 + Math.sin(i) * 5) });
     const out = getIndicator("stoch")!.compute(d, { k: 5, d: 3, smooth: 3 });
     for (const v of [...out.values, ...(out.plots?.d ?? [])]) {
       if (v === null) continue;
@@ -67,7 +67,7 @@ describe("oscillators", () => {
   });
 
   it("williams %R stays inside -100..0", () => {
-    const d = make({ close: closes.map((c, i) => 100 + Math.cos(i) * 4) });
+    const d = make({ close: closes.map((_c, i) => 100 + Math.cos(i) * 4) });
     const out = getIndicator("willr")!.compute(d, { length: 5 }).values;
     for (const v of out) {
       if (v === null) continue;
@@ -87,7 +87,7 @@ describe("oscillators", () => {
 
 describe("bands", () => {
   it("bollinger upper > middle > lower wherever warm", () => {
-    const d = make({ close: closes.map((c, i) => 100 + Math.sin(i) * 10) });
+    const d = make({ close: closes.map((_c, i) => 100 + Math.sin(i) * 10) });
     const out = getIndicator("bb")!.compute(d, { length: 5, mult: 2, source: "close" });
     const upper = out.plots?.upper ?? [];
     const lower = out.plots?.lower ?? [];

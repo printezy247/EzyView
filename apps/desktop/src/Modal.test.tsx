@@ -97,6 +97,20 @@ describe("Modal", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it("locks body scroll and marks the app background inert while open", async () => {
+    document.body.innerHTML = '<div id="root"><p>behind</p></div>';
+    const { unmount } = render(
+      <Modal open onClose={() => {}} labelledBy="t">
+        <h2 id="t">Title</h2>
+      </Modal>,
+    );
+    expect(document.body.style.overflow).toBe("hidden");
+    expect(document.getElementById("root")?.hasAttribute("inert")).toBe(true);
+    unmount();
+    expect(document.body.style.overflow).toBe("");
+    expect(document.getElementById("root")?.hasAttribute("inert")).toBe(false);
+  });
+
   it("wraps focus past hidden controls", async () => {
     const user = userEvent.setup();
     render(

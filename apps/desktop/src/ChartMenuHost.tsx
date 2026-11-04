@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router";
+import { useShallow } from "zustand/react/shallow";
 import { ChartContextMenu } from "./ChartContextMenu";
 import type { DockTabId } from "./RightDock";
 import { buildChartMenu } from "./chartMenu";
@@ -62,8 +63,45 @@ export function ChartMenuHost({
   onClose,
 }: Props) {
   const navigate = useNavigate();
-  const ws = useWorkspace();
-  const chart = ws.activeChart();
+  // Only the focused chart and the actions the menu calls: a whole-store
+  // subscription re-rendered the menu on every quote tick and drawing drag.
+  const {
+    chart,
+    alerts,
+    drawingClipboard,
+    chartTemplates,
+    eventOptions,
+    pasteDrawing,
+    addAlert,
+    deleteDrawing,
+    setDrawings,
+    applyChartTemplate,
+    deleteChartTemplate,
+    removeIndicator,
+    duplicateDrawing,
+    copyDrawing,
+    updateDrawing,
+    moveDrawing,
+  } = useWorkspace(
+    useShallow((s) => ({
+      chart: s.activeChart(),
+      alerts: s.alerts,
+      drawingClipboard: s.drawingClipboard,
+      chartTemplates: s.chartTemplates,
+      eventOptions: s.eventOptions,
+      pasteDrawing: s.pasteDrawing,
+      addAlert: s.addAlert,
+      deleteDrawing: s.deleteDrawing,
+      setDrawings: s.setDrawings,
+      applyChartTemplate: s.applyChartTemplate,
+      deleteChartTemplate: s.deleteChartTemplate,
+      removeIndicator: s.removeIndicator,
+      duplicateDrawing: s.duplicateDrawing,
+      copyDrawing: s.copyDrawing,
+      updateDrawing: s.updateDrawing,
+      moveDrawing: s.moveDrawing,
+    })),
+  );
   const { price, time } = request;
   const precision = precisionFor(price);
 
@@ -77,17 +115,17 @@ export function ChartMenuHost({
     copyPrice: () => {
       void navigator.clipboard?.writeText(price.toFixed(precision)).catch(() => {});
     },
-    paste: () => ws.pasteDrawing({ time, price }),
+    paste: () => pasteDrawing({ time, price }),
     addAlert: () =>
-      ws.addAlert(chart.symbol, { kind: "crossing", value: Number(price.toFixed(precision)) }, "once", `${chart.symbol} crossing ${price.toFixed(precision)}`),
+      addAlert(chart.symbol, { kind: "crossing", value: Number(price.toFixed(precision)) }, "once", `${chart.symbol} crossing ${price.toFixed(precision)}`),
     sellLimit: () => prefill("sell", "limit"),
     buyStop: () => prefill("buy", "stop"),
     addOrder: () => prefill(draftSideForPrice(price, getActiveExportSource()?.getCandles().at(-1)?.close ?? null), "limit"),
     toggleCursorLock: () => {
       const existing = chart.drawings.find((d) => d.name === LOCK_NAME);
-      if (existing) ws.deleteDrawing(existing.id);
+      if (existing) deleteDrawing(existing.id);
       else
-        ws.setDrawings([
+        setDrawings([
           ...chart.drawings,
           { id: uid(), tool: "vertical_line", points: [{ time, price }], style: { ...DEFAULT_DRAWING_STYLE }, name: LOCK_NAME },
         ]);
@@ -95,9 +133,9 @@ export function ChartMenuHost({
     openTable: onOpenTable,
     toggleObjectTree: () => onOpenDockTab("objects"),
     saveTemplate: onSaveTemplate,
-    applyTemplate: ws.applyChartTemplate,
-    deleteTemplate: ws.deleteChartTemplate,
-    removeIndicator: ws.removeIndicator,
+    applyTemplate: applyChartTemplate,
+    deleteTemplate: deleteChartTemplate,
+    removeIndicator: removeIndicator,
     toggleEvent: (key) => toggleEventSwitch(useWorkspace.getState().eventOptions, key),
     openSettings: () => (onOpenSettings ? onOpenSettings() : navigate("/settings?tab=appearance")),
     openLinkGroup: onOpenLinkGroup,
@@ -116,14 +154,14 @@ export function ChartMenuHost({
         label: drawingLabel(target),
         locked: target.locked === true,
         hidden: target.hidden === true,
-        hasAlert: ws.alerts.some((a) => a.drawingId === target.id),
+        hasAlert: alerts.some((a) => a.drawingId === target.id),
         hasLevel,
         templates: listDrawingTemplates().map((t) => ({ id: t.id, name: t.name })),
         actions: {
           settings: () => useDrawingUi.getState().openSettings(target.id, "style"),
           addAlert: () => {
             if (levelPrice === undefined) return;
-            ws.addAlert(
+            addAlert(
               chart.symbol,
               { kind: "crossing", value: levelPrice },
               "once_per_bar_close",
@@ -134,12 +172,12 @@ export function ChartMenuHost({
           },
           saveTemplate: () => saveDrawingTemplate(uniqueDrawingTemplateName(drawingLabel(target)), target.style),
           applyTemplate: (id: string) => void applyDrawingTemplate(id, target.id),
-          clone: () => ws.duplicateDrawing(target.id),
-          copy: () => ws.copyDrawing(target.id),
-          toggleLock: () => ws.updateDrawing(target.id, { locked: !target.locked }),
-          toggleHide: () => ws.updateDrawing(target.id, { hidden: !target.hidden }),
-          move: (to: "front" | "forward" | "backward" | "back") => ws.moveDrawing(target.id, to),
-          remove: () => ws.deleteDrawing(target.id),
+          clone: () => duplicateDrawing(target.id),
+          copy: () => copyDrawing(target.id),
+          toggleLock: () => updateDrawing(target.id, { locked: !target.locked }),
+          toggleHide: () => updateDrawing(target.id, { hidden: !target.hidden }),
+          move: (to: "front" | "forward" | "backward" | "back") => moveDrawing(target.id, to),
+          remove: () => deleteDrawing(target.id),
         },
       }
     : undefined;
@@ -149,12 +187,12 @@ export function ChartMenuHost({
     price,
     precision,
     mt5: brokerFeed(),
-    hasClipboard: ws.drawingClipboard !== null,
+    hasClipboard: drawingClipboard !== null,
     cursorLocked: chart.drawings.some((d) => d.name === LOCK_NAME),
     objectTreeOpen: dockTab === "objects",
     indicators: chart.indicators.map((i) => ({ uid: i.uid, name: i.name ?? i.def.name })),
-    templates: ws.chartTemplates.map((t) => ({ id: t.id, name: t.name })),
-    eventOptions: ws.eventOptions,
+    templates: chartTemplates.map((t) => ({ id: t.id, name: t.name })),
+    eventOptions: eventOptions,
     linkGroup: linkGroupOf(chart),
     ...(drawing ? { drawing } : {}),
     actions,

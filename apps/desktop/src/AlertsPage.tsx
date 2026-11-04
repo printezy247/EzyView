@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { memo, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { activeChartOf } from "./layout";
 import { useWorkspace } from "./store";
 import { Button, IconButton, rowClass } from "./ui";
+import { VirtualTableBody } from "./VirtualList";
 
 const CONDITION_TEXT: Record<string, string> = {
   crossing: "crossing",
@@ -55,9 +56,10 @@ export function AlertsPage() {
   const state = activeChartOf(layout);
   const setSymbol = useWorkspace((s) => s.setSymbol);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLElement>(null);
 
   return (
-    <section aria-label="Alerts" className="flex min-h-0 flex-1 flex-col overflow-y-auto text-base">
+    <section ref={scrollRef} aria-label="Alerts" className="flex min-h-0 flex-1 flex-col overflow-y-auto text-base">
       <header className="flex h-9 shrink-0 items-center gap-3 border-b border-ev-raised px-3">
         <h2 className="text-body font-semibold text-ev-strong">Price alerts</h2>
         <span className="text-dense text-ev-faint">
@@ -89,10 +91,14 @@ export function AlertsPage() {
                 <th scope="col" className="py-1 text-right"> </th>
               </tr>
             </thead>
-            <tbody>
-              {alerts.map((a) => (
+            <VirtualTableBody
+              items={alerts}
+              colSpan={8}
+              scrollRef={scrollRef}
+              itemKey={(a) => a.id}
+              estimateSize={(index) => (alerts[index]?.id === expanded ? 66 : 34)}
+              renderRow={(a) => (
                 <FragmentRow
-                  key={a.id}
                   alert={a}
                   closes={alertHistory[a.id] ?? []}
                   expanded={expanded === a.id}
@@ -104,8 +110,8 @@ export function AlertsPage() {
                   onDelete={() => removeAlert(a.id)}
                   onSnooze={(seconds) => snoozeAlert(a.id, Math.floor(Date.now() / 1000) + seconds)}
                 />
-              ))}
-            </tbody>
+              )}
+            />
           </table>
         )}
       </div>
@@ -123,7 +129,7 @@ interface RowProps {
   onSnooze: (seconds: number) => void;
 }
 
-function FragmentRow({ alert: a, closes, expanded, onToggle, onOpenSymbol, onDelete, onSnooze }: RowProps) {
+const FragmentRow = memo(function FragmentRow({ alert: a, closes, expanded, onToggle, onOpenSymbol, onDelete, onSnooze }: RowProps) {
   return (
     <>
       <tr
@@ -212,4 +218,4 @@ function FragmentRow({ alert: a, closes, expanded, onToggle, onOpenSymbol, onDel
       )}
     </>
   );
-}
+});

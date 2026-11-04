@@ -275,7 +275,7 @@ const ichimokuDef: IndicatorDef = {
     // Leading spans are plotted `shift` bars ahead; shift backwards so the cloud
     // sits under the current bar like TradingView draws it.
     const back = <T extends SeriesValue>(values: T[]): SeriesValue[] =>
-      values.map((v, i) => (i < shift ? null : (values[i - shift] ?? null)));
+      values.map((_v, i) => (i < shift ? null : (values[i - shift] ?? null)));
     return res("ichimoku", "Ichimoku", conv, {
       base,
       spanA: back(spanA),

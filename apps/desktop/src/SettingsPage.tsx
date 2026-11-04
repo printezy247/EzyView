@@ -9,6 +9,7 @@ import { DesktopTab } from "./DesktopTab";
 import { DiagnosticsTab } from "./DiagnosticsTab";
 import { AuditTab, BrokerTab, ConnectionTab, SafetyTab } from "./Mt5Setup";
 import { downloadBlob } from "./exportUi";
+import { Button, RadioGroup, Tabs } from "./ui";
 import {
   applyWorkspaceBackup,
   dismissParkedCorrupt,
@@ -85,20 +86,12 @@ export function BackupsSection() {
         single JSON file. Secrets (API keys, bridge tokens) are never included.
       </p>
       <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={exportNow}
-          className="rounded bg-ev-line px-3 py-1.5 text-dense text-ev-strong hover:bg-ev-line-strong"
-        >
+        <Button variant="outline" size="md" onClick={exportNow}>
           Export workspace backup
-        </button>
-        <button
-          type="button"
-          onClick={() => fileInput.current?.click()}
-          className="rounded border border-ev-line px-3 py-1.5 text-dense text-ev-muted hover:text-ev-strong"
-        >
+        </Button>
+        <Button variant="outline" size="md" onClick={() => fileInput.current?.click()}>
           Import workspace backup
-        </button>
+        </Button>
         <input
           ref={fileInput}
           type="file"
@@ -137,30 +130,20 @@ export function BackupsSection() {
                 <code className="flex-1 text-dense text-ev-text">{key}</code>
                 {["export", "dismiss"].map((action) =>
                   action === "export" ? (
-                    <button
-                      key="export"
-                      type="button"
-                      onClick={() => {
+                    <Button key="export" variant="outline" size="sm" onClick={() => {
                         const raw = downloadCorruptBackup(key);
                         if (raw === null) return;
                         downloadBlob(new Blob([raw], { type: "application/json" }), `${key}.json`);
-                      }}
-                      className="rounded border border-ev-line px-2 py-0.5 text-dense text-ev-muted hover:text-ev-strong"
-                    >
+                      }}>
                       Download
-                    </button>
+                    </Button>
                   ) : (
-                    <button
-                      key="dismiss"
-                      type="button"
-                      onClick={() => {
+                    <Button key="dismiss" variant="ghost" size="sm" onClick={() => {
                         dismissParkedCorrupt(key);
                         setCorruptVersion((v) => v + 1);
-                      }}
-                      className="rounded px-2 py-0.5 text-dense text-ev-muted hover:text-ev-strong"
-                    >
+                      }}>
                       Discard
-                    </button>
+                    </Button>
                   ),
                 )}
               </li>
@@ -201,24 +184,8 @@ export function SettingsPage() {
         <h1 className="text-body font-semibold text-ev-strong">Settings</h1>
       </div>
 
-      <div role="tablist" aria-label="Settings sections" className="flex gap-1 border-b border-ev-raised px-4 py-2">
-        {TABS.map(({ id, label }) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={tab === id}
-            aria-pressed={tab === id}
-            onClick={() => setTab(id)}
-            className={
-              tab === id
-                ? "rounded bg-ev-raised px-2.5 py-1.5 text-dense font-medium text-ev-strong"
-                : "rounded px-2.5 py-1.5 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-            }
-          >
-            {label}
-          </button>
-        ))}
+      <div className="border-b border-ev-raised px-4 py-2">
+        <Tabs label="Settings sections" items={TABS} value={tab} onChange={(v) => setTab(v as Tab)} />
       </div>
 
       <div className="max-w-2xl p-4">
@@ -232,13 +199,9 @@ export function SettingsPage() {
               Provider API keys (Finnhub, Alpha Vantage) for fundamentals data. Keys live in the OS keyring only —
               never in a file or localStorage.
             </p>
-            <button
-              type="button"
-              onClick={openDialog}
-              className="rounded bg-ev-line px-3 py-1.5 text-dense text-ev-strong hover:bg-ev-line-strong"
-            >
+            <Button variant="outline" size="md" onClick={openDialog}>
               Manage API keys
-            </button>
+            </Button>
             <BackupsSection />
           </>
         )}
@@ -247,67 +210,16 @@ export function SettingsPage() {
         {tab === "appearance" && (
           <>
             <p className="mb-3 text-dense text-ev-muted">Colour theme for the shell and the active chart.</p>
-            <div className="flex gap-2" role="radiogroup" aria-label="App theme">
-              {(["auto", "dark", "light", "tokyo"] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  role="radio"
-                  aria-checked={appTheme === t}
-                  onClick={() => setAppTheme(t)}
-                  className={
-                    appTheme === t
-                      ? "rounded bg-ev-raised px-3 py-1.5 text-dense font-medium capitalize text-ev-strong"
-                      : "rounded border border-ev-line px-3 py-1.5 text-dense capitalize text-ev-muted hover:text-ev-strong"
-                  }
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
+            <RadioGroup label="App theme" value={appTheme} onChange={(v) => setAppTheme(v as typeof appTheme)} options={["auto", "dark", "light", "tokyo"].map((v) => ({ value: v, label: v }))} inline />
             <p className="mb-3 mt-1.5 text-dense text-ev-faint">
               Auto follows the focused chart. Pin a theme to keep the chrome still across a mixed grid.
             </p>
             <h2 className="mb-1 text-dense font-medium uppercase tracking-wider text-ev-faint">Chart theme</h2>
             <p className="mb-3 text-dense text-ev-muted">Palette for this chart cell only.</p>
-            <div className="flex gap-2" role="radiogroup" aria-label="Theme">
-              {(["dark", "light", "tokyo"] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  role="radio"
-                  aria-checked={theme === t}
-                  onClick={() => updateActive({ theme: t })}
-                  className={
-                    theme === t
-                      ? "rounded bg-ev-raised px-3 py-1.5 text-dense font-medium capitalize text-ev-strong"
-                      : "rounded border border-ev-line px-3 py-1.5 text-dense capitalize text-ev-muted hover:text-ev-strong"
-                  }
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
+            <RadioGroup label="Theme" value={theme} onChange={(v) => updateActive({ theme: v as typeof theme })} options={["dark", "light", "tokyo"].map((v) => ({ value: v, label: v }))} inline />
             <h2 className="mb-1 mt-5 text-dense font-medium uppercase tracking-wider text-ev-faint">Density</h2>
             <p className="mb-3 text-dense text-ev-muted">Row height for tables, blotter and lists.</p>
-            <div className="flex gap-2" role="radiogroup" aria-label="Density">
-              {(["compact", "comfortable"] as const).map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  role="radio"
-                  aria-checked={density === d}
-                  onClick={() => setDensity(d)}
-                  className={
-                    density === d
-                      ? "rounded bg-ev-raised px-3 py-1.5 text-dense font-medium capitalize text-ev-strong"
-                      : "rounded border border-ev-line px-3 py-1.5 text-dense capitalize text-ev-muted hover:text-ev-strong"
-                  }
-                >
-                  {d}
-                </button>
-              ))}
-            </div>
+            <RadioGroup label="Density" value={density} onChange={(v) => setDensity(v as typeof density)} options={["compact", "comfortable"].map((v) => ({ value: v, label: v }))} inline />
             <p className="mb-3 mt-1.5 text-dense text-ev-faint">
               Comfortable gives each row a full line of breathing room for long table reading.
             </p>

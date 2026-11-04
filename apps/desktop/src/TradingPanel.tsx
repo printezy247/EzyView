@@ -6,6 +6,7 @@ import { useMt5 } from "./mt5";
 import { useTrading } from "./trading";
 import { notice } from "./notice";
 import { canBreakEven } from "./tradeMath";
+import { Button } from "./ui";
 
 interface Props {
   symbol: string;
@@ -66,15 +67,18 @@ export function TradingPanel({ symbol }: Props) {
   return (
     <section aria-label="Trading" className={`flex ${heightClass} shrink-0 flex-col border-t border-ev-raised bg-ev-bg transition-[height] duration-150`}>
       <header className="flex h-8 shrink-0 items-center gap-3 border-b border-ev-raised bg-ev-chrome px-3 text-dense">
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-expanded={!minimized}
+          aria-label={minimized ? "Expand trading panel" : "Minimize trading panel to summary strip"}
           title={minimized ? "Expand trading panel" : "Minimize trading panel to summary strip"}
           onClick={() => setMinimized((v) => !v)}
-          className="flex items-center gap-1 font-semibold uppercase tracking-wider text-ev-muted hover:text-ev-strong"
+          className="font-semibold uppercase tracking-wider"
         >
-          <span>{minimized ? "▴" : "▾"}</span>
+          <span aria-hidden>{minimized ? "▴" : "▾"}</span>
           <span>Trading</span>
-        </button>
+        </Button>
 
         <dl className="flex items-center gap-3 num">
           <Fact label="Balance" value={account ? money(account.balance) : "—"} />
@@ -90,8 +94,9 @@ export function TradingPanel({ symbol }: Props) {
 
         <div className="ml-auto flex items-center gap-2">
           <span className="text-ev-faint">{openPositions} open</span>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => {
               // The broker feed confirms at the safety gate; the paper feed
               // has no gate, so it asks here instead.
@@ -109,14 +114,16 @@ export function TradingPanel({ symbol }: Props) {
                 });
             }}
             disabled={openPositions === 0}
+            aria-label="Close every open position"
             title="Close every open position"
-            className="rounded px-2 py-0.5 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong disabled:opacity-40"
           >
             Close all
-          </button>
+          </Button>
           {source === "ezyview" && (
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="Reset the paper account to its starting balance"
               title="Reset the paper account to its starting balance"
               onClick={() => {
                 // The reset wipes the paper balance and the whole deal
@@ -130,33 +137,34 @@ export function TradingPanel({ symbol }: Props) {
                     if (ok) void reset();
                   });
               }}
-              className="rounded px-2 py-0.5 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
             >
               Reset
-            </button>
+            </Button>
           )}
           {source === "mt5" && (
             <span className="rounded bg-ev-accent/15 px-1.5 py-0.5 text-dense text-ev-accent-text">broker</span>
           )}
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label={expanded ? "Restore standard panel height" : "Maximize trading panel height"}
             title={expanded ? "Restore standard panel height" : "Maximize trading panel height"}
             onClick={() => {
               setMinimized(false);
               setExpanded((v) => !v);
             }}
-            className="rounded px-1.5 py-0.5 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
           >
-            {expanded ? "⤡" : "⤢"}
-          </button>
-          <button
-            type="button"
+            <span aria-hidden>{expanded ? "⤡" : "⤢"}</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label={minimized ? "Expand trading panel" : "Minimize trading panel"}
             title={minimized ? "Expand trading panel" : "Minimize trading panel"}
             onClick={() => setMinimized((v) => !v)}
-            className="rounded px-1.5 py-0.5 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
           >
             {minimized ? "Expand" : "Minimize"}
-          </button>
+          </Button>
         </div>
       </header>
 
@@ -165,16 +173,18 @@ export function TradingPanel({ symbol }: Props) {
         <OrderTicket symbol={symbol} />
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <nav className="flex h-7 shrink-0 items-center gap-1 border-b border-ev-raised px-2">
+          <nav aria-label="Trading records" className="flex h-7 shrink-0 items-center gap-1 border-b border-ev-raised px-2">
             {TABS.map((t) => (
-              <button
+              <Button
                 key={t.id}
-                type="button"
+                variant="ghost"
+                size="sm"
+                aria-pressed={tab === t.id}
                 onClick={() => setTab(t.id)}
                 className={
                   tab === t.id
-                    ? "border-b-2 border-ev-accent px-2 py-1 text-dense font-medium text-ev-strong"
-                    : "border-b-2 border-transparent px-2 py-1 text-dense text-ev-muted hover:text-ev-strong"
+                    ? "rounded-none border-b-2 border-ev-accent font-medium text-ev-strong"
+                    : "rounded-none border-b-2 border-transparent text-ev-muted"
                 }
               >
                 {t.label}
@@ -184,7 +194,7 @@ export function TradingPanel({ symbol }: Props) {
                 {t.id === "orders" && orders.length > 0 && (
                   <span className="ml-1 rounded bg-ev-dim px-1 text-dense text-ev-strong">{orders.length}</span>
                 )}
-              </button>
+              </Button>
             ))}
           </nav>
 
@@ -208,25 +218,29 @@ export function TradingPanel({ symbol }: Props) {
                       {p.margin === undefined ? "—" : money(p.margin)}
                     </span>,
                     <div className="flex justify-end gap-1">
-                      <button
-                        type="button"
+                      <Button
+                        variant="outline"
+                        size="sm"
                         disabled={!canBreakEven({ side: p.side, entry: p.entryPrice, mark: p.markPrice, stopLoss: p.stopLoss })}
+                        aria-label={`Move stop loss to break-even at ${p.entryPrice.toFixed(precision)}`}
                         title={`Move stop loss to break-even (${p.entryPrice.toFixed(precision)}); available once in profit`}
                         onClick={() => void amend(p.symbol, { stopLoss: p.entryPrice })}
-                        className="rounded border border-ev-line px-1.5 py-0.5 text-dense text-ev-muted hover:border-ev-accent hover:text-ev-strong cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         BE
-                      </button>
-                      <button
-                        type="button"
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        aria-label="Close 50% of position"
                         title="Close 50% of position"
                         onClick={() => void close(p.symbol, Number((p.qty / 2).toFixed(4)) || p.qty)}
-                        className="rounded border border-ev-line px-1.5 py-0.5 text-dense text-ev-muted hover:border-ev-accent hover:text-ev-strong"
                       >
                         50%
-                      </button>
-                      <button
-                        type="button"
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        aria-label="Reverse position direction"
                         title="Reverse position direction"
                         onClick={() => {
                           void (async () => {
@@ -247,17 +261,17 @@ export function TradingPanel({ symbol }: Props) {
                             });
                           })();
                         }}
-                        className="rounded border border-ev-line px-1.5 py-0.5 text-dense text-ev-muted hover:border-ev-accent hover:text-ev-strong"
                       >
                         Rev
-                      </button>
-                      <button
-                        type="button"
+                      </Button>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        aria-label={`Close ${p.symbol} position`}
                         onClick={() => void close(p.symbol)}
-                        className="rounded border border-ev-line px-1.5 py-0.5 text-dense text-ev-muted hover:border-ev-down hover:text-ev-down-text"
                       >
                         Close
-                      </button>
+                      </Button>
                       {p.stopLoss !== undefined && (
                         <span className="rounded border border-ev-down/40 px-1.5 py-0.5 text-dense text-ev-down-text">
                           SL {p.stopLoss.toFixed(precision)}
@@ -290,13 +304,9 @@ export function TradingPanel({ symbol }: Props) {
                     <span className="num">{o.price?.toFixed(precision) ?? "market"}</span>,
                     <span className="num text-ev-muted">{clock(o.time)}</span>,
                     <div className="flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => void cancel(o.id)}
-                        className="rounded border border-ev-line px-1.5 py-0.5 text-dense text-ev-muted hover:border-ev-down hover:text-ev-down-text"
-                      >
+                      <Button variant="danger" size="sm" aria-label={`Cancel ${o.symbol} order`} onClick={() => void cancel(o.id)}>
                         Cancel
-                      </button>
+                      </Button>
                     </div>,
                   ],
                 }))}

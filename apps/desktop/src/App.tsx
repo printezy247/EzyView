@@ -22,17 +22,13 @@ import { activeChartOf } from "./layout";
 import { themeWindowColor } from "@ezyview/brand";
 import { normalizePath, rememberRoute } from "./nav";
 import { bootstrapMt5, getMt5, useMt5 } from "./mt5";
-import type { ChartSource } from "./mt5";
 import { useMt5Accounts } from "./mt5Accounts";
-import { maskLogin } from "./tradingSafety";
-import { describeRealSource } from "./realSource";
-import type { RealSource } from "./realSource";
-import { Modal } from "./Modal";
 import { NoticeHost } from "./NoticeHost";
-import { Toaster } from "./ui";
+import { Button, Toaster } from "./ui";
 import { useShortcut, useShortcutDispatcher } from "./shortcuts";
-import { isLivePublicSymbol, quoteOf } from "./data";
-import { useTrading } from "./trading";
+import { quoteOf } from "./data";
+import { SourceToggle } from "./SourceToggle";
+import { FeedStatus } from "./FeedStatus";
 
 const MarketsPage = lazy(() => import("./MarketsPage").then((m) => ({ default: m.MarketsPage })));
 const TradePage = lazy(() => import("./TradePage").then((m) => ({ default: m.TradePage })));
@@ -51,27 +47,19 @@ const SettingsPage = lazy(() => import("./SettingsPage").then((m) => ({ default:
 export default function App() {
   const {
     layout,
-    setGrid,
     updateActive,
     setSymbol,
-    setResolution,
     alerts,
     addAlert,
     removeAlert,
-    replayBar,
-    setReplay,
   } = useWorkspace(
     useShallow((s) => ({
       layout: s.activeLayout(),
-      setGrid: s.setGrid,
       updateActive: s.updateActive,
       setSymbol: s.setSymbol,
-      setResolution: s.setResolution,
       alerts: s.alerts,
       addAlert: s.addAlert,
       removeAlert: s.removeAlert,
-      replayBar: s.replayBar,
-      setReplay: s.setReplay,
     })),
   );
   const state = activeChartOf(layout);
@@ -236,50 +224,15 @@ export default function App() {
           {!zen && <TabBar />}
 
           <Toolbar
-            symbol={state.symbol}
-            resolution={state.resolution}
-            chartType={state.chartType}
-            showVolume={state.showVolume}
-            showVolumeProfile={state.showVolumeProfile ?? false}
-            showGrid={state.showGrid}
-            indicatorCount={state.indicators.length}
-            onSymbol={(symbol) => setSymbol(symbol)}
-            onResolution={(resolution) => setResolution(resolution)}
-            onChartType={(chartType) => updateActive({ chartType })}
-            onToggleVolume={() => updateActive({ showVolume: !state.showVolume })}
-            onToggleVolumeProfile={() => updateActive({ showVolumeProfile: !state.showVolumeProfile })}
-            boxSize={state.boxSize ?? null}
-            onBoxSize={(boxSize) => updateActive({ boxSize })}
-            onToggleGrid={() => updateActive({ showGrid: !state.showGrid })}
-            onSetTheme={(theme) => updateActive({ theme })}
-            theme={state.theme}
-            crosshairMode={state.crosshairMode ?? "normal"}
-            onCrosshairMode={(crosshairMode) => updateActive({ crosshairMode })}
-            priceScale={state.priceScale ?? "normal"}
-            onPriceScale={(priceScale) => updateActive({ priceScale })}
-            invertScale={state.invertScale ?? false}
-            onInvertScale={() => updateActive({ invertScale: !state.invertScale })}
-            timezone={state.timezone}
-            onTimezone={(timezone) => updateActive({ timezone })}
-            dataSource={state.dataSource ?? "auto"}
-            onDataSource={(dataSource) => updateActive({ dataSource })}
-            watermark={state.watermark ?? false}
-            onWatermark={() => updateActive({ watermark: !state.watermark })}
-            sessionBreaks={state.showSessionBreaks !== false}
-            onToggleSessionBreaks={() => updateActive({ showSessionBreaks: state.showSessionBreaks === false })}
-            onOpenIndicators={() => setDialogOpen(true)}
-            onToggleReplay={() => setReplay(replayBar === null ? -30 : null)}
-            replayActive={replayBar !== null}
             dockTab={dockTab}
             tradingOpen={tradingOpen}
-            onOpenWindow={() => void openChartWindow(state.symbol, state.resolution)}
+            onOpenIndicators={() => setDialogOpen(true)}
             onOpenAlerts={() => setAlertOpen(true)}
             onOpenApiKeys={openApiKeys}
+            onOpenWindow={() => void openChartWindow(state.symbol, state.resolution)}
             onOpenSettings={() => setChartSettingsOpen(true)}
             onSelectDockTab={selectDockTab}
             onToggleTrading={toggleTrading}
-            grid={layout.grid}
-            onGrid={setGrid}
           />
         </header>
 
@@ -304,23 +257,20 @@ export default function App() {
                           A chart error was caught and isolated so the rest of the application remains functional.
                         </p>
                         <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={reset}
-                            className="rounded bg-ev-accent px-3 py-1.5 text-base font-medium text-white hover:bg-ev-accent-hover"
-                          >
+                          <Button size="lg" onClick={reset}>
                             Retry Chart
-                          </button>
-                          <button
-                            type="button"
+                          </Button>
+                          <Button
+                            size="lg"
+                            variant="ghost"
                             onClick={() => {
                               useWorkspace.getState().updateActive({ indicators: [], drawings: [] });
                               reset();
                             }}
-                            className="rounded bg-ev-raised px-3 py-1.5 text-base font-medium text-ev-strong hover:bg-ev-line"
+                            className="bg-ev-raised text-ev-strong hover:bg-ev-line"
                           >
                             Reset Chart to Clean State
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     )}
@@ -385,39 +335,39 @@ export default function App() {
 
           {/* TradingView-style bottom drawer & workspace quick-toggles */}
           <div className="flex items-center gap-1">
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
               aria-pressed={tradingOpen}
+              aria-label="Toggle bottom Trading Panel and Order Ticket"
               title="Toggle bottom Trading Panel & Order Ticket"
               onClick={toggleTrading}
-              className={`rounded px-2 py-0.5 font-medium ${
-                tradingOpen ? "bg-ev-accent/20 text-ev-accent-text" : "hover:bg-ev-raised hover:text-ev-strong"
-              }`}
+              className={tradingOpen ? "bg-ev-accent/20 font-medium text-ev-accent-text" : undefined}
             >
               Trading Panel
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               aria-pressed={dockTab === "watchlist"}
+              aria-label="Toggle right-hand Watchlist dock"
               title="Toggle right-hand Watchlist dock"
               onClick={() => selectDockTab("watchlist")}
-              className={`rounded px-2 py-0.5 ${
-                dockTab === "watchlist" ? "bg-ev-raised font-medium text-ev-strong" : "hover:bg-ev-raised hover:text-ev-strong"
-              }`}
+              className={dockTab === "watchlist" ? "bg-ev-raised font-medium text-ev-strong" : undefined}
             >
               Watchlist
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               aria-pressed={dockTab === "depth"}
+              aria-label="Toggle right-hand Depth of Market dock"
               title="Toggle right-hand Depth of Market (DOM)"
               onClick={() => selectDockTab("depth")}
-              className={`rounded px-2 py-0.5 ${
-                dockTab === "depth" ? "bg-ev-raised font-medium text-ev-strong" : "hover:bg-ev-raised hover:text-ev-strong"
-              }`}
+              className={dockTab === "depth" ? "bg-ev-raised font-medium text-ev-strong" : undefined}
             >
               DOM
-            </button>
+            </Button>
             <Link
               to="/markets"
               title="Open Stock, Crypto & Forex Screener / Heatmaps"
@@ -465,198 +415,3 @@ export default function App() {
   );
 }
 
-const SOURCE_LABEL: Record<ChartSource, string> = {
-  ezyview: "EzyView feed",
-  mt5: "Broker · MT5",
-};
-
-/** Real accounts the user already acknowledged this session, keyed `server|login`. */
-const realSourceAcked = new Set<string>();
-
-/**
- * Which account the MT5 source would drive: the app-logged session, or — when
- * the bridge merely attached to a running terminal — the terminal's own
- * account type. Fails closed: an unreadable terminal is "unknown" and still
- * needs the user's acknowledgement.
- */
-async function realSourceKey(): Promise<string | null> {
-  const session = useMt5Accounts.getState().session;
-  const source: RealSource = session
-    ? { kind: "session", demo: session.demo, server: session.server, login: session.login }
-    : await getMt5()
-        .transport.account()
-        .then((raw) => ({
-          kind: "attached" as const,
-          tradeMode: (raw as { trade_mode?: number }).trade_mode,
-          login: (raw as { login?: number | string }).login,
-        }))
-        .catch((err: unknown) => ({ kind: "error" as const, message: err instanceof Error ? err.message : String(err) }));
-  return describeRealSource(source).key;
-}
-
-/** Segmented switch between the bundled feed and the connected broker. */
-function SourceToggle() {
-  const source = useMt5((s) => s.source);
-  const setSource = useMt5((s) => s.setSource);
-  const [busy, setBusy] = useState(false);
-  const [risk, setRisk] = useState<string | null>(null);
-  const [switchWarning, setSwitchWarning] = useState<string | null>(null);
-
-  const executeSourceSwitch = (id: ChartSource) => {
-    setBusy(true);
-    void (async () => {
-      await setSource(id);
-      if (id !== "mt5" || useMt5.getState().source !== "mt5") return;
-      const key = await realSourceKey();
-      if (key && !realSourceAcked.has(key)) setRisk(key);
-    })().finally(() => setBusy(false));
-  };
-
-  const pick = (id: ChartSource) => {
-    if (busy || id === source) return;
-    if (source === "mt5" && id === "ezyview") {
-      const activeCount = useTrading.getState().positions.length;
-      const isOnline = useMt5.getState().status === "online";
-      if (isOnline && activeCount > 0) {
-        setSwitchWarning(`${activeCount} active position${activeCount > 1 ? "s are" : " is"} currently open on MT5`);
-        return;
-      }
-    }
-    executeSourceSwitch(id);
-  };
-
-  const acceptRisk = () => {
-    if (risk) realSourceAcked.add(risk);
-    setRisk(null);
-  };
-  const refuseRisk = () => {
-    setRisk(null);
-    void setSource("ezyview");
-  };
-
-  return (
-    <div
-      role="group"
-      aria-label="Chart price source"
-      className="flex items-center rounded border border-ev-line p-px"
-    >
-      {(Object.keys(SOURCE_LABEL) as ChartSource[]).map((id) => (
-        <button
-          key={id}
-          type="button"
-          aria-pressed={source === id}
-          disabled={busy}
-          onClick={() => pick(id)}
-          title={
-            id === "mt5"
-              ? "Candles, quotes, account and orders from the connected MT5 terminal"
-              : "Bundled demo market feed"
-          }
-          className={
-            source === id
-              ? `rounded px-2 py-px font-medium ${id === "mt5" ? "bg-ev-accent text-white" : "bg-ev-raised text-ev-strong"}`
-              : "rounded px-2 py-px text-ev-muted hover:text-ev-strong"
-          }
-        >
-          {SOURCE_LABEL[id]}
-        </button>
-      ))}
-      {switchWarning && (
-        <Modal
-          onClose={() => setSwitchWarning(null)}
-          labelledBy="switch-warn-title"
-          className="w-[min(26rem,92vw)] rounded-md border border-ev-warn/40 bg-ev-panel text-base shadow-2xl"
-        >
-          <div className="space-y-3 p-4">
-            <h2 id="switch-warn-title" className="text-body font-semibold text-ev-warn">
-              Active MT5 Trading State
-            </h2>
-            <p className="text-ev-text leading-relaxed">
-              {switchWarning}. Switching your chart to the Demo feed will detach live chart execution and hide active broker levels.
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                autoFocus
-                onClick={() => setSwitchWarning(null)}
-                className="rounded border border-ev-line px-3 py-1 text-ev-muted hover:text-ev-strong"
-              >
-                Stay on MT5
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setSwitchWarning(null);
-                  executeSourceSwitch("ezyview");
-                }}
-                className="rounded bg-ev-warn px-3 py-1 font-semibold text-white hover:brightness-110"
-              >
-                Switch to Demo anyway
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-      {risk && (
-        <Modal
-          onClose={refuseRisk}
-          labelledBy="real-source-title"
-          className="w-[min(24rem,92vw)] rounded-md border border-ev-warn/40 bg-ev-panel text-base shadow-2xl"
-        >
-          <div className="space-y-3 p-4">
-            <h2 id="real-source-title" className="text-body font-semibold text-ev-warn">
-              Real account detected — {maskLogin(risk.split("|")[1] ?? "")}
-            </h2>
-            <p className="text-ev-text">
-              The broker feed is live on a real-money account. EzyView keeps asking to confirm every order, but
-              a confirmation now trades real money.
-            </p>
-            <div className="flex justify-end gap-2">
-              <button type="button" autoFocus onClick={refuseRisk} className="rounded border border-ev-line px-3 py-1 text-ev-muted hover:text-ev-strong">
-                Switch back to demo data
-              </button>
-              <button type="button" onClick={acceptRisk} className="rounded bg-ev-warn px-3 py-1 font-semibold text-white">
-                I understand — continue
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
-}
-
-/** One dot that says whether the broker or public live feed is answering. */
-function FeedStatus({ symbol }: { symbol: string }) {
-  const source = useMt5((s) => s.source);
-  const status = useMt5((s) => s.status);
-  const error = useMt5((s) => s.error);
-
-  if (source !== "mt5") {
-    const livePublic = isLivePublicSymbol(symbol);
-    return (
-      <span className="flex items-center gap-1.5">
-        <span className="size-1.5 rounded-full bg-ev-up" aria-hidden />
-        {livePublic ? "live market feed" : "market feed"}
-      </span>
-    );
-  }
-
-  const dot =
-    status === "online"
-      ? "var(--ev-up)"
-      : status === "connecting"
-        ? "var(--ev-warn)"
-        : status === "error"
-          ? "var(--ev-down)"
-          : "var(--ev-dim)";
-  const label =
-    status === "online" ? "MT5 live" : status === "connecting" ? "MT5 connecting…" : status === "error" ? "MT5 offline" : "MT5";
-
-  return (
-    <span role="status" className="flex items-center gap-1.5" title={error ?? undefined}>
-      <span className="size-1.5 rounded-full" style={{ background: dot }} aria-hidden />
-      {label}
-    </span>
-  );
-}

@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { KeyRound } from "lucide-react";
 import type { KeyName } from "./apiKeys";
 import { keyringAvailable, saveApiKey, useApiKeys } from "./apiKeys";
-import { Modal } from "./Modal";
+import { Button, Dialog, Input } from "./ui";
 
 const PROVIDERS: { name: KeyName; label: string; signup: string; covers: string; limit: string }[] = [
   {
@@ -34,21 +33,18 @@ export function ApiKeysDialog() {
   const onChanged = () => void reload();
   const canStore = keyringAvailable();
   return (
-    <Modal
+    <Dialog
       onClose={onClose}
-      labelledBy="api-keys-title"
-      className="w-[min(30rem,92vw)] rounded-md border border-ev-line bg-ev-panel text-base shadow-2xl"
-    >
-      <div className="flex items-center justify-between border-b border-ev-raised px-4 py-2.5">
-        <h2 id="api-keys-title" className="flex items-center gap-2 text-body font-semibold text-ev-strong">
-          <KeyRound size={14} aria-hidden />
-          Data provider API keys
-        </h2>
-        <button type="button" onClick={onClose} className="text-ev-muted hover:text-ev-strong">
+      title="Data provider API keys"
+      description="All providers have free plans. Keys are stored in your system keyring (never in a file), and any panel without a key keeps showing demo data."
+      size="md"
+      actions={
+        <Button variant="ghost" size="md" onClick={onClose}>
           Close
-        </button>
-      </div>
-      <div className="space-y-4 p-4">
+        </Button>
+      }
+    >
+      <div className="space-y-4">
         <p className="text-ev-muted">
           All providers have free plans. Keys are stored in your system keyring (never in a file), and
           any panel without a key keeps showing demo data.
@@ -62,7 +58,7 @@ export function ApiKeysDialog() {
           <KeyRow key={p.name} provider={p} saved={Boolean(keys[p.name])} disabled={!canStore} onChanged={onChanged} />
         ))}
       </div>
-    </Modal>
+    </Dialog>
   );
 }
 
@@ -118,7 +114,7 @@ function KeyRow({
         </a>
       </p>
       <div className="flex gap-2">
-        <input
+        <Input
           id={id}
           type="password"
           autoComplete="off"
@@ -127,24 +123,22 @@ function KeyRow({
           value={value}
           disabled={disabled || busy}
           onChange={(e) => setValue(e.target.value)}
-          className="flex-1 rounded border border-ev-line bg-ev-bg px-2 py-1 text-ev-strong disabled:opacity-50"
+          className="flex-1"
         />
-        <button
+        <Button
           type="submit"
           disabled={disabled || busy || !value.trim()}
-          className="rounded bg-ev-accent px-3 py-1 font-medium text-white disabled:opacity-40"
         >
           Save
-        </button>
+        </Button>
         {saved && (
-          <button
-            type="button"
+          <Button
+            variant="outline"
             disabled={disabled || busy}
             onClick={() => void store("")}
-            className="rounded border border-ev-line px-3 py-1 text-ev-muted hover:text-ev-strong disabled:opacity-40"
           >
             Remove
-          </button>
+          </Button>
         )}
       </div>
       {status && (

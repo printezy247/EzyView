@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { quoteOf } from "./data";
 import { useWorkspace } from "./store";
+import type { WatchEntry } from "./store";
 import { Input, rowClass } from "./ui";
+import { VirtualTableBody } from "./VirtualList";
 
 type SortKey = "ticker" | "price" | "change";
 
@@ -32,6 +34,14 @@ export function ScreenerTab() {
   const [preset, setPreset] = useState<ScreenerPreset>("all");
   const [sort, setSort] = useState<SortKey>("change");
   const [desc, setDesc] = useState(true);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const openRow = useCallback(
+    (symbol: string) => {
+      setSymbol(symbol);
+      navigate("/chart");
+    },
+    [navigate, setSymbol],
+  );
   const symbolKey = watchlist.map((w) => w.symbol).join(",");
 
   useEffect(() => {
@@ -150,7 +160,7 @@ export function ScreenerTab() {
       {watchlist.length === 0 ? (
         <p className="text-base text-ev-faint">Add symbols to the watchlist to screen them here.</p>
       ) : (
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
           <table className="w-full border-collapse text-left">
             <thead className="sticky top-0 bg-ev-bg">
               <tr className="border-b border-ev-line">
@@ -165,71 +175,73 @@ export function ScreenerTab() {
                 </th>
               </tr>
             </thead>
-            <tbody>
-              {rows.map((w) => {
-                const change = w.changePct ?? 0;
-                let signalBadge = null;
-                if (change >= 2.0) {
-                  signalBadge = (
-                    <span className="rounded bg-ev-up/20 px-1.5 py-0.5 text-[11px] font-semibold text-ev-up-text">
-                      Breakout ▲
-                    </span>
-                  );
-                } else if (change <= -2.0) {
-                  signalBadge = (
-                    <span className="rounded bg-ev-down/20 px-1.5 py-0.5 text-[11px] font-semibold text-ev-down-text">
-                      Breakdown ▼
-                    </span>
-                  );
-                } else if (Math.abs(change) <= 0.4) {
-                  signalBadge = (
-                    <span className="rounded bg-ev-raised px-1.5 py-0.5 text-[11px] font-medium text-ev-muted">
-                      Contraction ⬍
-                    </span>
-                  );
-                }
-
-                return (
-                  <tr
-                    key={w.symbol}
-                    className={rowClass({ className: "cursor-pointer hover:bg-ev-raised" })}
-                    onClick={() => {
-                      setSymbol(w.symbol);
-                      navigate("/chart");
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        setSymbol(w.symbol);
-                        navigate("/chart");
-                      }
-                    }}
-                    tabIndex={0}
-                    role="link"
-                    title={`Open ${w.description} on the chart`}
-                  >
-                    <td className="font-medium text-ev-strong">{w.ticker}</td>
-                    <td className="text-right text-ev-text">{w.price === null ? "—" : w.price.toFixed(w.precision)}</td>
-                    <td
-                      className={
-                        w.changePct === null
-                          ? "text-right text-ev-faint"
-                          : w.changePct >= 0
-                            ? "text-right text-ev-up-text"
-                            : "text-right text-ev-down-text"
-                      }
-                    >
-                      {w.changePct === null ? "—" : `${w.changePct >= 0 ? "+" : ""}${w.changePct.toFixed(2)}%`}
-                    </td>
-                    <td>{signalBadge}</td>
-                    <td className="text-ev-muted">{w.assetClass}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
+            <VirtualTableBody
+              items={rows}
+              colSpan={5}
+              scrollRef={scrollRef}
+              itemKey={(w) => w.symbol}
+              estimateSize={30}
+              renderRow={(w) => <ScreenerRow row={w} onOpen={openRow} />}
+            />
           </table>
         </div>
       )}
     </div>
   );
 }
+
+const ScreenerRow = memo(function ScreenerRow({ row: w, onOpen }: { row: WatchEntry; onOpen: (symbol: string) => void }) {
+  const change = w.changePct ?? 0;
+  let signalBadge = null;
+  if (change >= 2.0) {
+    signalBadge = (
+      <span className="rounded bg-ev-up/20 px-1.5 py-0.5 text-[11px] font-semibold text-ev-up-text">
+        Breakout ▲
+      </span>
+    );
+  } else if (change <= -2.0) {
+    signalBadge = (
+      <span className="rounded bg-ev-down/20 px-1.5 py-0.5 text-[11px] font-semibold text-ev-down-text">
+        Breakdown ▼
+      </span>
+    );
+  } else if (Math.abs(change) <= 0.4) {
+    signalBadge = (
+      <span className="rounded bg-ev-raised px-1.5 py-0.5 text-[11px] font-medium text-ev-muted">
+        Contraction ⬍
+      </span>
+    );
+  }
+
+  return (
+    <tr
+      className={rowClass({ className: "cursor-pointer hover:bg-ev-raised" })}
+      onClick={() => onOpen(w.symbol)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen(w.symbol);
+        }
+      }}
+      tabIndex={0}
+      role="link"
+      title={`Open ${w.description} on the chart`}
+    >
+      <td className="font-medium text-ev-strong">{w.ticker}</td>
+      <td className="text-right text-ev-text">{w.price === null ? "—" : w.price.toFixed(w.precision)}</td>
+      <td
+        className={
+          w.changePct === null
+            ? "text-right text-ev-faint"
+            : w.changePct >= 0
+              ? "text-right text-ev-up-text"
+              : "text-right text-ev-down-text"
+        }
+      >
+        {w.changePct === null ? "—" : `${w.changePct >= 0 ? "+" : ""}${w.changePct.toFixed(2)}%`}
+      </td>
+      <td>{signalBadge}</td>
+      <td className="text-ev-muted">{w.assetClass}</td>
+    </tr>
+  );
+});

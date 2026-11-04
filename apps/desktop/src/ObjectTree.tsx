@@ -7,7 +7,7 @@ import type { ActiveIndicator } from "./store";
 import { DrawingProperties } from "./DrawingProperties";
 import { parseDrawings, serializeDrawings } from "./drawingsIO";
 import { saveBlob } from "./exportUi";
-import { Select } from "./ui";
+import { Button, Checkbox, IconButton, Input, Select } from "./ui";
 
 interface Props {
   onClose: () => void;
@@ -94,18 +94,12 @@ export function ObjectTree({ onClose }: Props) {
     <aside aria-label="Object tree" className="flex w-full min-w-0 flex-1 flex-col bg-ev-bg">
       <div className="flex items-center justify-between border-b border-ev-raised px-3 py-2">
         <h2 className="text-base font-semibold uppercase tracking-wider text-ev-muted">Object tree</h2>
-        <button
-          type="button"
-          aria-label="Close object tree"
-          title="Close"
-          onClick={onClose}
-          className="flex size-6 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-        >
+        <IconButton label="Close object tree" size="sm" onClick={onClose}>
           <X size={13} aria-hidden />
-        </button>
+        </IconButton>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto py-1 text-base">
+      <div className="min-h-0 flex-1 overflow-y-auto py-1 text-base" role="tree" aria-label="Chart objects">
         <p className="truncate px-3 pb-1 text-dense text-ev-muted">
           {chart.symbol} · {chart.resolution}
         </p>
@@ -134,7 +128,7 @@ export function ObjectTree({ onClose }: Props) {
                       <div key={p.id} className="flex items-center justify-between gap-2 text-ev-muted">
                         <span>{p.label}</span>
                         {p.type === "int" || p.type === "float" ? (
-                          <input
+                          <Input
                             type="number"
                             value={Number(i.params[p.id] ?? p.default)}
                             min={p.min}
@@ -144,13 +138,14 @@ export function ObjectTree({ onClose }: Props) {
                               const val = Number(e.target.value);
                               if (Number.isFinite(val)) updateIndicatorParams(i.uid, { ...i.params, [p.id]: val });
                             }}
-                            className="w-16 rounded border border-ev-line bg-ev-bg px-1.5 py-0.5 text-right num text-ev-strong"
+                            aria-label={p.label}
+                            className="w-16 text-right num"
                           />
                         ) : p.type === "bool" ? (
-                          <input
-                            type="checkbox"
+                          <Checkbox
+                            label={p.label}
                             checked={Boolean(i.params[p.id] ?? p.default)}
-                            onChange={(e) => updateIndicatorParams(i.uid, { ...i.params, [p.id]: e.target.checked })}
+                            onChange={(checked) => updateIndicatorParams(i.uid, { ...i.params, [p.id]: checked })}
                           />
                         ) : (
                           <Select
@@ -175,58 +170,38 @@ export function ObjectTree({ onClose }: Props) {
           <Section title="Drawings">
             <div className="flex items-center gap-1 px-3 pb-1.5">
               <Search size={12} aria-hidden className="shrink-0 text-ev-faint" />
-              <input
+              <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Filter objects"
                 aria-label="Filter objects"
-                className="min-w-0 flex-1 rounded bg-ev-panel px-1.5 py-1 text-dense text-ev-strong outline-none ring-1 ring-ev-line focus:ring-ev-accent"
+                className="min-w-0 flex-1"
               />
             </div>
             {selectedIds.length > 1 && (
               <div className="mx-2 mb-1.5 flex flex-wrap items-center gap-1 rounded border border-ev-accent/40 bg-ev-accent/10 px-1.5 py-1 text-dense">
                 <span className="mr-auto text-ev-accent-text">{selectedIds.length} selected</span>
-                <button type="button" onClick={() => groupSelectedDrawings()} className="rounded px-1 py-0.5 hover:bg-ev-raised">
+                <Button variant="ghost" size="sm" onClick={() => groupSelectedDrawings()}>
                   Group
-                </button>
-                <button type="button" onClick={() => ungroupSelectedDrawings()} className="rounded px-1 py-0.5 hover:bg-ev-raised">
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => ungroupSelectedDrawings()}>
                   Ungroup
-                </button>
-                <button
-                  type="button"
-                  onClick={() => updateDrawings(selectedIds, { hidden: true })}
-                  className="rounded px-1 py-0.5 hover:bg-ev-raised"
-                >
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => updateDrawings(selectedIds, { hidden: true })}>
                   Hide
-                </button>
-                <button
-                  type="button"
-                  onClick={() => updateDrawings(selectedIds, { locked: true })}
-                  className="rounded px-1 py-0.5 hover:bg-ev-raised"
-                >
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => updateDrawings(selectedIds, { locked: true })}>
                   Lock
-                </button>
-                <button
-                  type="button"
-                  onClick={() => updateDrawings(selectedIds, { zIndex: Math.max(0, ...chart.drawings.map((d) => d.zIndex ?? 0)) + 1 })}
-                  className="rounded px-1 py-0.5 hover:bg-ev-raised"
-                >
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => updateDrawings(selectedIds, { zIndex: Math.max(0, ...chart.drawings.map((d) => d.zIndex ?? 0)) + 1 })}>
                   Front
-                </button>
-                <button
-                  type="button"
-                  onClick={() => updateDrawings(selectedIds, { zIndex: Math.min(0, ...chart.drawings.map((d) => d.zIndex ?? 0)) - 1 })}
-                  className="rounded px-1 py-0.5 hover:bg-ev-raised"
-                >
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => updateDrawings(selectedIds, { zIndex: Math.min(0, ...chart.drawings.map((d) => d.zIndex ?? 0)) - 1 })}>
                   Back
-                </button>
-                <button
-                  type="button"
-                  onClick={() => deleteDrawings(selectedIds)}
-                  className="rounded px-1 py-0.5 text-ev-down-text hover:bg-ev-raised"
-                >
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => deleteDrawings(selectedIds)} className="text-ev-down-text">
                   Delete
-                </button>
+                </Button>
               </div>
             )}
             {[...grouped.entries()].map(([groupId, list]) => {
@@ -237,46 +212,27 @@ export function ObjectTree({ onClose }: Props) {
               return (
                 <div key={groupId}>
                   <div className="flex h-7 items-center gap-1 bg-ev-panel/60 px-2 text-dense">
-                    <button
-                      type="button"
+                    <IconButton
+                      label={open ? "Collapse group" : "Expand group"}
+                      size="sm"
                       aria-expanded={open}
-                      aria-label={open ? "Collapse group" : "Expand group"}
                       onClick={() => setCollapsedGroups((prev) => ({ ...prev, [groupId]: open }))}
-                      className="flex size-5 items-center justify-center rounded text-ev-muted hover:bg-ev-raised"
+                      className="size-5"
                     >
                       {open ? <ChevronDown size={12} aria-hidden /> : <ChevronRight size={12} aria-hidden />}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDrawingSelection(ids)}
-                      className="min-w-0 flex-1 truncate text-left font-medium text-ev-text"
-                    >
+                    </IconButton>
+                    <Button variant="ghost" size="sm" onClick={() => setDrawingSelection(ids)} className="min-w-0 flex-1 justify-start truncate font-medium">
                       Group · {list.length}
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Toggle group visibility"
-                      onClick={() => updateDrawings(ids, { hidden: !anyHidden })}
-                      className="flex size-5 items-center justify-center rounded text-ev-muted hover:bg-ev-raised"
-                    >
+                    </Button>
+                    <IconButton label="Toggle group visibility" size="sm" onClick={() => updateDrawings(ids, { hidden: !anyHidden })} className="size-5">
                       {anyHidden ? <EyeOff size={11} aria-hidden /> : <Eye size={11} aria-hidden />}
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Toggle group lock"
-                      onClick={() => updateDrawings(ids, { locked: !anyLocked })}
-                      className="flex size-5 items-center justify-center rounded text-ev-muted hover:bg-ev-raised"
-                    >
+                    </IconButton>
+                    <IconButton label="Toggle group lock" size="sm" onClick={() => updateDrawings(ids, { locked: !anyLocked })} className="size-5">
                       {anyLocked ? <Lock size={11} aria-hidden /> : <LockOpen size={11} aria-hidden />}
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Delete group"
-                      onClick={() => deleteDrawings(ids)}
-                      className="flex size-5 items-center justify-center rounded text-ev-muted hover:text-ev-down-text"
-                    >
+                    </IconButton>
+                    <IconButton label="Delete group" size="sm" onClick={() => deleteDrawings(ids)} className="size-5 hover:text-ev-down-text">
                       <Trash2 size={11} aria-hidden />
-                    </button>
+                    </IconButton>
                   </div>
                   {open &&
                     list.map((d) => (
@@ -321,23 +277,14 @@ export function ObjectTree({ onClose }: Props) {
 
       <div className="border-t border-ev-raised px-3 py-2 text-dense">
         <div className="flex gap-2">
-          <button
-            type="button"
-            disabled={chart.drawings.length === 0}
-            onClick={exportDrawings}
-            className="flex flex-1 items-center justify-center gap-1 rounded border border-ev-line px-2 py-1 text-ev-text hover:bg-ev-raised hover:text-ev-strong disabled:cursor-not-allowed disabled:opacity-40"
-          >
+          <Button variant="outline" size="sm" disabled={chart.drawings.length === 0} onClick={exportDrawings} className="flex-1">
             <Download size={12} aria-hidden />
             Export
-          </button>
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            className="flex flex-1 items-center justify-center gap-1 rounded border border-ev-line px-2 py-1 text-ev-text hover:bg-ev-raised hover:text-ev-strong"
-          >
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} className="flex-1">
             <Upload size={12} aria-hidden />
             Import
-          </button>
+          </Button>
           <input
             ref={fileRef}
             type="file"
@@ -396,9 +343,6 @@ function Row({ label, swatch, hidden, selected, locked, grouped, onSelect, onTog
     if (name !== label) onRename(name);
   };
 
-  const iconBtn =
-    "flex size-6 shrink-0 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong";
-
   return (
     <li
       aria-current={selected ? "true" : undefined}
@@ -411,14 +355,16 @@ function Row({ label, swatch, hidden, selected, locked, grouped, onSelect, onTog
         }
       }}
       tabIndex={0}
-      role="button"
+      role="treeitem"
+      aria-selected={selected ?? false}
+      aria-label={label}
       className={`flex h-7 items-center gap-1.5 ${grouped ? "pl-7 pr-3" : "px-3"} hover:bg-ev-panel ${
         selected ? "bg-ev-raised ring-1 ring-inset ring-ev-accent" : ""
       }`}
     >
       {swatch && <span className="size-2 shrink-0 rounded-full" style={{ background: swatch }} aria-hidden />}
       {editing ? (
-        <input
+        <Input
           aria-label={`Rename ${label}`}
           autoFocus
           value={draft}
@@ -433,7 +379,7 @@ function Row({ label, swatch, hidden, selected, locked, grouped, onSelect, onTog
             // Keep Escape from also disarming the drawing tool.
             e.stopPropagation();
           }}
-          className="min-w-0 flex-1 rounded bg-ev-panel px-1 py-0.5 text-base text-ev-strong outline-none ring-1 ring-ev-accent"
+          className="min-w-0 flex-1"
         />
       ) : (
         <span
@@ -447,59 +393,55 @@ function Row({ label, swatch, hidden, selected, locked, grouped, onSelect, onTog
           {label}
         </span>
       )}
-      <button
-        type="button"
-        aria-label={hidden ? `Show ${label}` : `Hide ${label}`}
+      <IconButton
+        label={hidden ? `Show ${label}` : `Hide ${label}`}
         aria-pressed={hidden}
-        title={hidden ? "Show" : "Hide"}
         onClick={(e) => {
           e.stopPropagation();
           onToggle();
         }}
-        className={iconBtn}
+        size="sm"
+        className="size-6"
       >
         {hidden ? <EyeOff size={12} aria-hidden /> : <Eye size={12} aria-hidden />}
-      </button>
+      </IconButton>
       {onLock && (
-        <button
-          type="button"
-          aria-label={locked ? `Unlock ${label}` : `Lock ${label}`}
+        <IconButton
+          label={locked ? `Unlock ${label}` : `Lock ${label}`}
           aria-pressed={locked}
-          title={locked ? "Unlock" : "Lock"}
           onClick={(e) => {
             e.stopPropagation();
             onLock();
           }}
-          className={iconBtn}
+          size="sm"
+          className="size-6"
         >
           {locked ? <Lock size={12} aria-hidden /> : <LockOpen size={12} aria-hidden />}
-        </button>
+        </IconButton>
       )}
-      <button
-        type="button"
-        aria-label={`Rename ${label}`}
-        title="Rename"
+      <IconButton
+        label={`Rename ${label}`}
         onClick={(e) => {
           e.stopPropagation();
           setDraft(label);
           setEditing(true);
         }}
-        className={iconBtn}
+        size="sm"
+          className="size-6"
       >
         <Pencil size={12} aria-hidden />
-      </button>
-      <button
-        type="button"
-        aria-label={`Delete ${label}`}
-        title="Delete"
+      </IconButton>
+      <IconButton
+        label={`Delete ${label}`}
         onClick={(e) => {
           e.stopPropagation();
           onDelete();
         }}
-        className={iconBtn}
+        size="sm"
+          className="size-6"
       >
         <Trash2 size={12} aria-hidden />
-      </button>
+      </IconButton>
     </li>
   );
 }

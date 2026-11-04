@@ -8,8 +8,12 @@ under `bundle.linux.deb.files`.
 | `copyright` (DEP-5) | `/usr/share/doc/ezy-view/copyright` |
 | `changelog.gz` | `/usr/share/doc/ezy-view/changelog.gz` |
 | `ezyview.1.gz` | `/usr/share/man/man1/ezyview.1.gz` |
+| `ezyview-mcp` | `/usr/bin/ezyview-mcp` |
+| `ezyview-mcp.1.gz` | `/usr/share/man/man1/ezyview-mcp.1.gz` |
 | `ezyview-mt5-bridge` | `/usr/bin/ezyview-mt5-bridge` |
 | `ezyview-mt5-bridge.1.gz` | `/usr/share/man/man1/ezyview-mt5-bridge.1.gz` |
+| `LICENSE` | `/usr/share/doc/ezy-view/copyright` (via `copyright`) + `/usr/share/doc/ezy-view/LICENSE` |
+| `NOTICE` | `/usr/share/doc/ezy-view/NOTICE` |
 | `../tools/mt5-bridge/README.md` | `/usr/share/doc/ezy-view/mt5-bridge.md` |
 | `../tools/mt5-bridge/bridge.py` | `/usr/lib/EzyView/mt5-bridge/` (Tauri resource) |
 | `com.printezy247.ezyview.metainfo.xml` | `/usr/share/metainfo/` |
@@ -30,7 +34,7 @@ copyright and man-page files, validates the desktop entry and AppStream data,
 and is called by both the desktop CI job and the release workflow.
 `scripts/smoke-deb.sh` installs the package and proves the binary starts.
 
-Bump the version in all four declarations together (`npm run check:versions`
+Bump the version in all four app declarations (plus mcp-server 0.1.0) together (`npm run check:versions`
 enforces it) and add both a `changelog` entry and an AppStream `<release>`.
 The declared glibc floor (`libc6 (>= 2.39)`) matches the Ubuntu 24.04 / Mint 22
 build host; change both together if the build baseline moves.

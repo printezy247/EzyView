@@ -2,8 +2,7 @@ import { useState } from "react";
 import { Eye, EyeOff, Trash2 } from "lucide-react";
 import type { CompareMode } from "@ezyview/chart-engine";
 import { useWorkspace } from "./store";
-import { Modal } from "./Modal";
-import { Button, Input, Select } from "./ui";
+import { Button, Dialog, IconButton, Input, Select } from "./ui";
 
 interface Props {
   open: boolean;
@@ -42,18 +41,18 @@ export function CompareDialog({ open, onClose }: Props) {
   };
 
   return (
-    <Modal
+    <Dialog
       open={open}
       onClose={onClose}
-      labelledBy="compare-title"
-      className="w-[min(30rem,94vw)] rounded-lg border border-ev-line bg-ev-panel p-4 shadow-xl"
+      title="Compare symbols"
+      description="Overlays are normalised to the primary chart's first common bar."
+      size="md"
+      actions={
+        <Button type="button" variant="ghost" size="lg" onClick={onClose}>
+          Done
+        </Button>
+      }
     >
-      <h2 id="compare-title" className="text-title font-semibold text-ev-strong">
-        Compare symbols
-      </h2>
-      <p className="mt-1 text-dense text-ev-muted">
-        Overlays are normalised to the primary chart's first common bar.
-      </p>
 
       <form
         className="mt-3 flex gap-1.5"
@@ -104,33 +103,27 @@ export function CompareDialog({ open, onClose }: Props) {
                 size="sm"
                 className="px-1 text-micro"
               />
-              <button
-                type="button"
-                aria-label={entry.visible === false ? `Show ${entry.symbol}` : `Hide ${entry.symbol}`}
+              <IconButton
+                label={entry.visible === false ? `Show ${entry.symbol}` : `Hide ${entry.symbol}`}
+                size="sm"
                 aria-pressed={entry.visible === false}
                 onClick={() => updateCompare(entry.id, { visible: entry.visible === false })}
-                className="flex size-6 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
               >
                 {entry.visible === false ? <EyeOff size={12} aria-hidden /> : <Eye size={12} aria-hidden />}
-              </button>
-              <button
-                type="button"
-                aria-label={`Remove ${entry.symbol}`}
+              </IconButton>
+              <IconButton
+                label={`Remove ${entry.symbol}`}
+                size="sm"
                 onClick={() => removeCompare(entry.id)}
-                className="flex size-6 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-down-text"
+                className="hover:text-ev-down-text"
               >
                 <Trash2 size={12} aria-hidden />
-              </button>
+              </IconButton>
             </li>
           ))}
         </ul>
       )}
 
-      <div className="mt-4 flex justify-end">
-        <Button type="button" variant="ghost" size="lg" onClick={onClose}>
-          Done
-        </Button>
-      </div>
-    </Modal>
+    </Dialog>
   );
 }

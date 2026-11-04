@@ -23,6 +23,7 @@ import { useWorkspace } from "./store";
 import { useDrawingUi } from "./drawingUi";
 import { notice } from "./notice";
 import { TOOL_ICONS } from "./drawingToolIcons";
+import { Button, IconButton } from "./ui";
 
 /** The rail button cycles off → weak → strong. */
 const NEXT_MAGNET: Record<MagnetMode, MagnetMode> = { off: "weak", weak: "strong", strong: "off" };
@@ -113,20 +114,15 @@ export function DrawingToolbar() {
         aria-label="Drawing tools"
         className="flex w-6 shrink-0 flex-col items-center border-r border-ev-raised bg-ev-chrome py-2"
       >
-        <button
-          type="button"
-          title="Show drawing tools toolbar"
-          aria-label="Show drawing tools"
-          onClick={() => setCollapsed(false)}
-          className="flex size-6 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-        >
+        <IconButton label="Show drawing tools" size="sm" onClick={() => setCollapsed(false)}>
           <PanelLeftOpen size={13} aria-hidden />
-        </button>
+        </IconButton>
       </div>
     );
   }
 
   const activeCategory = TOOL_CATEGORIES.find((c) => c.tools.includes(activeTool as DrawingToolId));
+  const activeCls = "bg-ev-raised text-ev-accent-text";
 
   return (
     <>
@@ -137,60 +133,57 @@ export function DrawingToolbar() {
         className="flex w-10 shrink-0 flex-col items-center gap-0.5 overflow-y-auto border-r border-ev-raised py-2"
       >
         {/* Cursors: navigate, crosshair and the click-to-delete eraser. */}
-        <button
-          type="button"
-          title="Cursor"
-          aria-label="Cursor"
+        <IconButton
+          label="Cursor"
+          size="lg"
           aria-pressed={activeTool === null && !eraserMode && !crosshairCursor}
           onClick={() => {
             setActiveTool(null);
             setEraserMode(false);
             setCrosshairCursor(false);
           }}
-          className={iconClass(activeTool === null && !eraserMode && !crosshairCursor)}
+          className={activeTool === null && !eraserMode && !crosshairCursor ? activeCls : undefined}
         >
           <MousePointer2 size={16} aria-hidden />
-        </button>
-        <button
-          type="button"
-          title="Crosshair cursor"
-          aria-label="Crosshair cursor"
+        </IconButton>
+        <IconButton
+          label="Crosshair cursor"
+          size="lg"
           aria-pressed={crosshairCursor}
           onClick={() => {
             setActiveTool(null);
             setEraserMode(false);
             setCrosshairCursor(!crosshairCursor);
           }}
-          className={iconClass(crosshairCursor)}
+          className={crosshairCursor ? activeCls : undefined}
         >
           <Crosshair size={16} aria-hidden />
-        </button>
-        <button
-          type="button"
-          title="Eraser: click a drawing to delete it"
-          aria-label="Eraser"
+        </IconButton>
+        <IconButton
+          label="Eraser: click a drawing to delete it"
+          size="lg"
           aria-pressed={eraserMode}
           onClick={() => setEraserMode(!eraserMode)}
-          className={iconClass(eraserMode)}
+          className={eraserMode ? activeCls : undefined}
         >
           <Eraser size={16} aria-hidden />
-        </button>
+        </IconButton>
 
         {TOOL_CATEGORIES.map((category) => {
           const last = lastTools[category.id] ?? category.tools[0]!;
           const shown = activeCategory?.id === category.id && activeTool ? activeTool : last;
           const Icon = TOOL_ICONS[shown];
           const isOpen = popover?.id === category.id;
+          const isActive = activeCategory?.id === category.id;
           return (
             <div key={category.id} className="contents">
               <div className="my-1 h-px w-5 bg-ev-raised" />
               <div className="relative">
-                <button
-                  type="button"
+                <IconButton
                   data-rail-trigger
-                  title={`${category.title}: ${toolSpec(shown).label}`}
-                  aria-label={`${category.title}: ${toolSpec(shown).label}`}
-                  aria-pressed={activeCategory?.id === category.id}
+                  label={`${category.title}: ${toolSpec(shown).label}`}
+                  size="lg"
+                  aria-pressed={isActive}
                   aria-haspopup="menu"
                   aria-expanded={isOpen}
                   onClick={() => arm(shown)}
@@ -198,14 +191,14 @@ export function DrawingToolbar() {
                     e.preventDefault();
                     openPopover(category.id, e.currentTarget);
                   }}
-                  className={iconClass(activeCategory?.id === category.id)}
+                  className={isActive ? activeCls : undefined}
                 >
                   <Icon size={16} aria-hidden />
-                </button>
-                <button
-                  type="button"
+                </IconButton>
+                <IconButton
                   data-rail-trigger
-                  aria-label={`Show ${category.title}`}
+                  label={`Show ${category.title}`}
+                  size="sm"
                   aria-haspopup="menu"
                   aria-expanded={isOpen}
                   tabIndex={-1}
@@ -213,105 +206,90 @@ export function DrawingToolbar() {
                     e.stopPropagation();
                     openPopover(category.id, e.currentTarget.parentElement ?? e.currentTarget);
                   }}
-                  className="absolute bottom-0 right-0 flex size-3 items-center justify-center rounded-sm text-ev-faint hover:text-ev-strong"
+                  className="absolute bottom-0 right-0 size-3 rounded-sm"
                 >
                   <ChevronDown size={9} aria-hidden />
-                </button>
+                </IconButton>
               </div>
             </div>
           );
         })}
 
         <div className="my-1 h-px w-5 bg-ev-raised" />
-        <button
-          type="button"
-          title={`${MAGNET_TITLE[magnet]} (click to change)`}
-          aria-label={`Magnet mode: ${magnet}`}
+        <IconButton
+          label={`${MAGNET_TITLE[magnet]} (click to change)`}
+          size="lg"
           aria-pressed={magnet !== "off"}
           onClick={() => setMagnet(NEXT_MAGNET[magnet])}
-          className={`relative ${iconClass(magnet !== "off")}`}
+          className={magnet !== "off" ? `relative ${activeCls}` : "relative"}
         >
           <Magnet size={16} aria-hidden />
           {magnet === "strong" && (
             <span className="absolute bottom-1 right-1 size-1.5 rounded-full bg-ev-accent" aria-hidden />
           )}
-        </button>
-        <button
-          type="button"
-          title="Stay in drawing mode: keep the tool armed for rapid placement"
-          aria-label="Stay in drawing mode"
+        </IconButton>
+        <IconButton
+          label="Stay in drawing mode: keep the tool armed for rapid placement"
+          size="lg"
           aria-pressed={stayInDrawingMode}
           onClick={() => setStayInDrawingMode(!stayInDrawingMode)}
-          className={`relative ${iconClass(stayInDrawingMode)}`}
+          className={stayInDrawingMode ? `relative ${activeCls}` : "relative"}
         >
           <Pencil size={15} aria-hidden />
           <span className="absolute bottom-0.5 right-0.5 size-1.5 rounded-full border border-ev-chrome bg-ev-accent" aria-hidden />
-        </button>
-        <button
-          type="button"
-          title="Lock all drawings: visible, but nothing can be dragged"
-          aria-label="Lock all drawings"
+        </IconButton>
+        <IconButton
+          label="Lock all drawings: visible, but nothing can be dragged"
+          size="lg"
           aria-pressed={lockAllDrawings}
           onClick={() => setLockAllDrawings(!lockAllDrawings)}
-          className={iconClass(lockAllDrawings)}
+          className={lockAllDrawings ? activeCls : undefined}
         >
           {lockAllDrawings ? <Lock size={15} aria-hidden /> : <LockOpen size={15} aria-hidden />}
-        </button>
-        <button
-          type="button"
-          title="Hide all drawings without deleting them"
-          aria-label="Hide all drawings"
+        </IconButton>
+        <IconButton
+          label="Hide all drawings without deleting them"
+          size="lg"
           aria-pressed={hideAllDrawings}
           onClick={() => setHideAllDrawings(!hideAllDrawings)}
-          className={iconClass(hideAllDrawings)}
+          className={hideAllDrawings ? activeCls : undefined}
         >
           {hideAllDrawings ? <EyeOff size={15} aria-hidden /> : <Eye size={15} aria-hidden />}
-        </button>
+        </IconButton>
 
         <div className="my-1 h-px w-5 bg-ev-raised" />
-        <button
-          type="button"
-          title="Undo last drawing (Ctrl+Z)"
-          aria-label="Undo last drawing"
+        <IconButton
+          label="Undo last drawing (Ctrl+Z)"
+          size="lg"
           onClick={() => undoDrawing()}
           disabled={!canUndo}
-          className={iconClass(false)}
         >
           <Undo2 size={15} aria-hidden />
-        </button>
-        <button
-          type="button"
-          title="Redo last drawing (Ctrl+Y)"
-          aria-label="Redo last drawing"
+        </IconButton>
+        <IconButton
+          label="Redo last drawing (Ctrl+Y)"
+          size="lg"
           onClick={() => redoDrawing()}
           disabled={!canRedo}
-          className={iconClass(false)}
         >
           <Redo2 size={15} aria-hidden />
-        </button>
-        <button
-          type="button"
+        </IconButton>
+        <IconButton
           data-rail-trigger
-          title="Remove drawings, indicators or everything on this chart"
-          aria-label="Remove objects"
+          label="Remove drawings, indicators or everything on this chart"
+          size="lg"
           aria-haspopup="menu"
           aria-expanded={popover?.id === "remove"}
           onClick={(e) => openPopover("remove", e.currentTarget)}
-          className={iconClass(popover?.id === "remove")}
+          className={popover?.id === "remove" ? activeCls : undefined}
         >
           <Trash2 size={15} aria-hidden />
-        </button>
+        </IconButton>
 
         <div className="mt-auto pt-1">
-          <button
-            type="button"
-            title="Collapse drawing tools toolbar"
-            aria-label="Collapse drawing tools"
-            onClick={() => setCollapsed(true)}
-            className="flex size-7 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-          >
+          <IconButton label="Collapse drawing tools" onClick={() => setCollapsed(true)}>
             <PanelLeftClose size={14} aria-hidden />
-          </button>
+          </IconButton>
         </div>
       </div>
 
@@ -327,30 +305,33 @@ export function DrawingToolbar() {
           {popover.id === "remove" ? (
             <>
               <p className="px-2 py-1 text-dense font-semibold uppercase tracking-wider text-ev-faint">Remove</p>
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="sm"
                 disabled={drawingCount === 0}
                 onClick={() => {
                   setDrawings([]);
                   setPopover(null);
                 }}
-                className="block w-full px-2 py-1 text-left text-ev-text hover:bg-ev-raised disabled:opacity-40"
+                className="w-full justify-start"
               >
                 Remove {drawingCount} drawing{drawingCount === 1 ? "" : "s"}
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
                 disabled={indicatorCount === 0}
                 onClick={() => {
                   clearIndicators();
                   setPopover(null);
                 }}
-                className="block w-full px-2 py-1 text-left text-ev-text hover:bg-ev-raised disabled:opacity-40"
+                className="w-full justify-start"
               >
                 Remove {indicatorCount} indicator{indicatorCount === 1 ? "" : "s"}
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
                 disabled={drawingCount === 0 && indicatorCount === 0}
                 onClick={() => {
                   setPopover(null);
@@ -365,10 +346,10 @@ export function DrawingToolbar() {
                       clearIndicators();
                     });
                 }}
-                className="block w-full px-2 py-1 text-left text-ev-down-text hover:bg-ev-raised disabled:opacity-40"
+                className="w-full justify-start text-ev-down-text"
               >
                 Remove all
-              </button>
+              </Button>
             </>
           ) : (
             TOOL_CATEGORIES.find((c) => c.id === popover.id)?.tools.map((tool) => {
@@ -380,29 +361,28 @@ export function DrawingToolbar() {
                   key={tool}
                   className={`flex items-center gap-1 px-1 ${activeTool === tool ? "bg-ev-raised" : ""}`}
                 >
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => {
                       setLastTools((prev) => ({ ...prev, [popover.id as DrawingToolCategory]: tool }));
                       arm(tool);
                     }}
-                    className="flex min-w-0 flex-1 items-center gap-2 rounded px-1.5 py-1 text-left text-ev-text hover:bg-ev-raised"
+                    className="min-w-0 flex-1 justify-start"
                   >
                     <Icon size={14} aria-hidden />
                     <span className="min-w-0 flex-1 truncate">{spec.label}</span>
                     {spec.shortcut && <span className="text-micro text-ev-faint">{spec.shortcut}</span>}
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={starred ? `Unstar ${spec.label}` : `Star ${spec.label}`}
+                  </Button>
+                  <IconButton
+                    label={starred ? `Unstar ${spec.label}` : `Star ${spec.label}`}
+                    size="sm"
                     aria-pressed={starred}
                     onClick={() => toggleFavoriteTool(tool)}
-                    className={`flex size-5 items-center justify-center rounded ${
-                      starred ? "text-ev-accent-text" : "text-ev-faint hover:text-ev-strong"
-                    }`}
+                    className={starred ? "text-ev-accent-text" : "text-ev-faint"}
                   >
                     <Star size={12} fill={starred ? "currentColor" : "none"} aria-hidden />
-                  </button>
+                  </IconButton>
                 </div>
               );
             })
@@ -411,12 +391,6 @@ export function DrawingToolbar() {
       )}
     </>
   );
-}
-
-function iconClass(active: boolean): string {
-  return active
-    ? "flex size-8 shrink-0 items-center justify-center rounded bg-ev-raised text-ev-accent-text"
-    : "flex size-8 shrink-0 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong disabled:opacity-40";
 }
 
 /** Every tool the rail exposes, for hint text and tests. */
