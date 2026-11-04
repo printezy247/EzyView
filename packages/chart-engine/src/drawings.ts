@@ -756,7 +756,7 @@ function drawPillText(
 }
 
 /** Stats lines: price change, percent, bars, duration, angle. */
-function statsFor(drawing: Drawing, bars: readonly DrawingBar[], lineTool: boolean): string[] | null {
+export function statsFor(drawing: Drawing, bars: readonly DrawingBar[], lineTool: boolean): string[] | null {
   const p0 = drawing.points[0]?.price;
   const p1 = drawing.points[1]?.price;
   if (!lineTool) {
@@ -777,7 +777,7 @@ function statsFor(drawing: Drawing, bars: readonly DrawingBar[], lineTool: boole
   return tail.length > 0 ? [first, tail.join(" · ")] : [first];
 }
 
-function statsAnchor(
+export function statsAnchor(
   drawing: Drawing,
   a: ScreenPoint,
   b: ScreenPoint,
@@ -874,22 +874,22 @@ function drawLabel(
   ctx.fillText(text, x, y);
 }
 
-function lineDash(style: DrawingStyle["lineStyle"]): number[] {
+export function lineDash(style: DrawingStyle["lineStyle"]): number[] {
   if (style === "dashed") return [6, 4];
   if (style === "dotted") return [2, 3];
   return [];
 }
 
-function fontOf(style: DrawingStyle): string {
+export function fontOf(style: DrawingStyle): string {
   const fontStyle = style.fontStyle ?? "normal";
   const weight = style.fontWeight ?? "normal";
   return `${fontStyle} ${weight} ${style.fontSize ?? 13}px Inter, system-ui, sans-serif`;
 }
 
-const extendOf = (d: Drawing): [boolean, boolean] => [d.style.extendLeft === true, d.style.extendRight === true];
+export const extendOf = (d: Drawing): [boolean, boolean] => [d.style.extendLeft === true, d.style.extendRight === true];
 
 /** The segment a straight tool actually paints, after its extend settings. */
-function displaySegment(d: Drawing, a: ScreenPoint, b: ScreenPoint, width: number, height: number): [ScreenPoint, ScreenPoint] {
+export function displaySegment(d: Drawing, a: ScreenPoint, b: ScreenPoint, width: number, height: number): [ScreenPoint, ScreenPoint] {
   const [left, right] = extendOf(d);
   if (left && right) return lineToEdges(a, b, width, height);
   if (right) return [a, extendToEdge(a, b, width, height)[1]];
@@ -898,7 +898,7 @@ function displaySegment(d: Drawing, a: ScreenPoint, b: ScreenPoint, width: numbe
 }
 
 /** Price text that stays readable whether the instrument is a index or a satoshi. */
-function labelOf(price: number): string {
+export function labelOf(price: number): string {
   const abs = Math.abs(price);
   if (abs >= 1000) return price.toFixed(2);
   if (abs >= 1) return price.toFixed(4);
@@ -906,7 +906,7 @@ function labelOf(price: number): string {
 }
 
 /** Blend a hex colour with alpha; named/rgb colours are returned unchanged. */
-function withAlpha(color: string, alpha: number): string {
+export function withAlpha(color: string, alpha: number): string {
   const a = Math.max(0, Math.min(1, alpha));
   const hex = color.trim();
   const short = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(hex);
@@ -921,7 +921,7 @@ function withAlpha(color: string, alpha: number): string {
 }
 
 /** Hours/minutes representation of a bar span, the way TradingView prints it. */
-function formatDuration(seconds: number): string {
+export function formatDuration(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds <= 0) return "0m";
   if (seconds < 60) return `${Math.round(seconds)}s`;
   const minutes = Math.floor(seconds / 60);
@@ -932,13 +932,13 @@ function formatDuration(seconds: number): string {
   return hours % 24 === 0 ? `${days}d` : `${days}d ${hours % 24}h`;
 }
 
-function angleLabel(a: ScreenPoint, b: ScreenPoint): string {
+export function angleLabel(a: ScreenPoint, b: ScreenPoint): string {
   const degrees = (Math.atan2(-(b.y - a.y), b.x - a.x) * 180) / Math.PI;
   return `${Math.round(degrees)}°`;
 }
 
 /** Count bars whose time falls inside `[t0, t1]` of a bounded bar list. */
-function countBars(bars: readonly DrawingBar[], t0: number, t1: number): number {
+export function countBars(bars: readonly DrawingBar[], t0: number, t1: number): number {
   if (bars.length === 0) return 0;
   const from = Math.min(t0, t1);
   const to = Math.max(t0, t1);
@@ -946,7 +946,7 @@ function countBars(bars: readonly DrawingBar[], t0: number, t1: number): number 
 }
 
 /** First index whose time is >= `time`. */
-function lowerBound(bars: readonly DrawingBar[], time: number): number {
+export function lowerBound(bars: readonly DrawingBar[], time: number): number {
   let lo = 0;
   let hi = bars.length;
   while (lo < hi) {
@@ -957,19 +957,19 @@ function lowerBound(bars: readonly DrawingBar[], time: number): number {
   return lo;
 }
 
-function hasTime(bars: readonly DrawingBar[], time: number): boolean {
+export function hasTime(bars: readonly DrawingBar[], time: number): boolean {
   const i = lowerBound(bars, time);
   return bars[i]?.time === time;
 }
 
-function priceToYFor(drawing: Drawing, price: number, a: ScreenPoint, b: ScreenPoint): number | null {
+export function priceToYFor(drawing: Drawing, price: number, a: ScreenPoint, b: ScreenPoint): number | null {
   const p0 = drawing.points[0]?.price;
   const p1 = drawing.points[1]?.price;
   if (p0 === undefined || p1 === undefined || p1 === p0) return null;
   return a.y + ((price - p0) / (p1 - p0)) * (b.y - a.y);
 }
 
-function midpoint(a: ScreenPoint, b: ScreenPoint): ScreenPoint {
+export function midpoint(a: ScreenPoint, b: ScreenPoint): ScreenPoint {
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
 }
 
@@ -980,7 +980,7 @@ function midpoint(a: ScreenPoint, b: ScreenPoint): ScreenPoint {
  * pane, then backs off one step. Bisection would be tighter but a coarse march
  * is exact enough at pane scale and cannot divide by a zero component.
  */
-function extendToEdge(a: ScreenPoint, b: ScreenPoint, width: number, height: number): [ScreenPoint, ScreenPoint] {
+export function extendToEdge(a: ScreenPoint, b: ScreenPoint, width: number, height: number): [ScreenPoint, ScreenPoint] {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   if (dx === 0 && dy === 0) return [a, b];
@@ -997,7 +997,7 @@ function extendToEdge(a: ScreenPoint, b: ScreenPoint, width: number, height: num
 }
 
 /** Extend a line through both pane edges, for the infinite-line tool. */
-function lineToEdges(a: ScreenPoint, b: ScreenPoint, width: number, height: number): [ScreenPoint, ScreenPoint] {
+export function lineToEdges(a: ScreenPoint, b: ScreenPoint, width: number, height: number): [ScreenPoint, ScreenPoint] {
   const [, far] = extendToEdge(a, b, width, height);
   const [, back] = extendToEdge(b, a, width, height);
   return [back, far];
