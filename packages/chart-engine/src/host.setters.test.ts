@@ -51,6 +51,7 @@ function fakeChart() {
       applyOptions: vi.fn(),
       coordinateToTime: vi.fn(() => 1_700_000_000),
       timeToCoordinate: vi.fn(() => 10),
+      logicalToCoordinate: vi.fn(() => null),
       scrollToRealTime: vi.fn(),
       setVisibleRange: vi.fn(),
     })),
@@ -528,3 +529,42 @@ describe("coordinate wrappers", () => {
     expect((EzyChart.prototype.coordinateToPrice as (y: number) => number | null).call(self, 10)).toBeNull();
   });
 });
+
+describe("time mapping beyond the loaded bars", () => {
+  // 30 bars; bar i is drawn at x = 100 + 10 * i.
+  const gridChart = (): AnyRecord => {
+    const chart = fakeChart();
+    chart.timeScale = vi.fn(() => ({
+      logicalToCoordinate: vi.fn((i: number) => 100 + 10 * i),
+      coordinateToTime: vi.fn(() => null),
+      timeToCoordinate: vi.fn(() => null),
+    })) as never;
+    return chart;
+  };
+
+  it("coordinateToTime extrapolates to the right of the last bar", () => {
+    const self = stubHost({ chart: gridChart() });
+    const data = self["data"] as Candle[];
+    const step = data[1]!.time - data[0]!.time;
+    const x = 100 + 10 * (data.length - 1 + 50);
+    const t = (EzyChart.prototype.coordinateToTime as (x: number) => number | null).call(self, x);
+    expect(t).toBe(data.at(-1)!.time + 50 * step);
+  });
+
+  it("timeToCoordinate places a future time on the canvas", () => {
+    const self = stubHost({ chart: gridChart() });
+    const data = self["data"] as Candle[];
+    const step = data[1]!.time - data[0]!.time;
+    const x = (EzyChart.prototype.timeToCoordinate as (t: number) => number | null).call(self, data.at(-1)!.time + 50 * step);
+    expect(x).toBeCloseTo(100 + 10 * (data.length - 1 + 50), 6);
+  });
+
+  it("timeToCoordinate handles an off-grid time between two bars", () => {
+    const self = stubHost({ chart: gridChart() });
+    const data = self["data"] as Candle[];
+    const mid = (data[3]!.time + data[4]!.time) / 2;
+    const x = (EzyChart.prototype.timeToCoordinate as (t: number) => number | null).call(self, mid);
+    expect(x).toBeCloseTo(135, 6);
+  });
+});
+
