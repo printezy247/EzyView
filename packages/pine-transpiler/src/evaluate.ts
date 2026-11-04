@@ -394,10 +394,10 @@ function inputCall(
   site: number,
   kwargs: Kwargs,
   defval?: PineValue,
-  title?: string,
-  options?: PineValue,
-  confirm?: PineValue,
-  active?: PineValue,
+  _title?: string,
+  _options?: PineValue,
+  _confirm?: PineValue,
+  _active?: PineValue,
   id?: string,
 ): PineValue {
   // Pine keys an input by `id` when given, else by declaration order. The

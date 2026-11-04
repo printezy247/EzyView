@@ -1,6 +1,6 @@
 # EzyView Mega Plan — TradingView-Class Parity + MT5 Real-Account Trading
 
-> Status: **research and planning only.** No source code changes in this phase.
+> Status: **Phases 0-10 shipped and archived in MASTERPLAN.md.** This file retains the original research notes; see MASTERPLAN §7-§12 for delivered scope and §8 for known gaps.
 > Owner: printezy247 · Date: 2026-10-20
 > Sources: TradingView Desktop v3.4.1 extracted resources (`/tmp/claude-1000/tv-asar`), existing EzyView codebase, `MASTERPLAN.md`, `docs/*`, MT5 install under `~/.mt5`, MQL5 MT5-on-Linux article.
 
@@ -178,9 +178,9 @@ Flow (per user "git ops" convention):
 - Post-merge: report branch, PR number, CI run, merged commit, and what shipped.
 
 CI verification checklist:
-- `pnpm typecheck` (all packages)
-- `pnpm test` (Vitest) — drawing-tools, chart-engine, journal, mt5-adapter
-- `pnpm build` (desktop + packages)
+- `npm run typecheck` (all packages)
+- `npm run test` (Vitest) — drawing-tools, chart-engine, journal, mt5-adapter
+- `npm run build:desktop` (desktop + packages)
 - Lint (oxlint) clean
 - Tauri build smoke (desktop app launches)
 

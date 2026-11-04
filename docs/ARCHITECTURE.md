@@ -73,5 +73,6 @@ Local state is split deliberately:
 - **Unit (vitest, `node`):** all of `packages/*` — indicator math against known values, drawing
   geometry, journal statistics, Pine transpilation, adapter determinism.
 - **Integration (vitest):** store + adapter wiring with the demo feed.
-- **E2E (Playwright, later):** chart renders, drawing is created, a paper order fills.
+- **E2E (Playwright):** `e2e/smoke.spec.ts` runs in CI on all OSes; `e2e/visual.spec.ts` runs nightly + manual dispatch (font raster differs per runner).
+- **Rust:** `cargo test` for the Tauri shell in the desktop CI job.
 - **Rust:** `cargo check` in CI on every push.

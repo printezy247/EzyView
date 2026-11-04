@@ -11,5 +11,8 @@
   },
   "dependencies": {
     "@ezyview/brand": "*"
+  },
+  "scripts": {
+    "test": "vitest run src"
   }
 }

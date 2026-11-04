@@ -1,6 +1,30 @@
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import type { KeyboardEvent, ReactNode } from "react";
 import { useShortcut, useShortcutLayer } from "./shortcuts";
+
+/** Open modal count, so nested dialogs share one body lock + background inert. */
+let openModals = 0;
+
+function lockBackground(): () => void {
+  if (typeof document === "undefined") return () => {};
+  openModals += 1;
+  const body = document.body;
+  const prevOverflow = body.style.overflow;
+  if (openModals === 1) body.style.overflow = "hidden";
+  const root = document.getElementById("root");
+  const hadInert = root?.hasAttribute("inert") ?? false;
+  // The dialog renders in a portal under <body>, outside #root, so marking
+  // #root inert hides the whole app behind the dialog from AT + keyboard.
+  if (openModals === 1) root?.setAttribute("inert", "");
+  return () => {
+    openModals = Math.max(0, openModals - 1);
+    if (openModals === 0) {
+      body.style.overflow = prevOverflow;
+      if (!hadInert) root?.removeAttribute("inert");
+    }
+  };
+}
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -65,12 +89,16 @@ export function Modal({
 
   useEffect(() => {
     if (!open) return;
+    const unlock = lockBackground();
     const opener = document.activeElement as HTMLElement | null;
     const box = ref.current;
     if (box && !box.contains(document.activeElement)) {
       (box.querySelector<HTMLElement>("[autofocus]") ?? visibleFocusables(box)[0] ?? box).focus();
     }
-    return () => opener?.focus?.();
+    return () => {
+      unlock();
+      opener?.focus?.();
+    };
     // Re-running on `open` keeps the focus/keyboard wiring honest when a host
     // keeps the component mounted across open/close cycles.
   }, [open]);
@@ -87,9 +115,9 @@ export function Modal({
     items[nextFocusIndex(items.length, current, e.shiftKey)]?.focus();
   };
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
-  return (
+  return createPortal(
     <div className={backdropClassName} onClick={onClose}>
       <div
         ref={ref}
@@ -104,6 +132,7 @@ export function Modal({
       >
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

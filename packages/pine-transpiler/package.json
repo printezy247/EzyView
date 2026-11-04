@@ -11,5 +11,8 @@
   },
   "dependencies": {
     "@ezyview/indicators": "*"
+  },
+  "scripts": {
+    "test": "vitest run src"
   }
 }

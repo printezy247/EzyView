@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { X, ChevronDown, RotateCcw } from "lucide-react";
-import { Modal } from "./Modal";
+import { useRef, useState } from "react";
+import { RotateCcw, ChevronDown } from "lucide-react";
+import { Dialog, Button, IconButton } from "./ui";
 import { SymbolSettingsTab } from "./settings-tabs/SymbolSettingsTab";
 import { StatusLineSettingsTab } from "./settings-tabs/StatusLineSettingsTab";
 import { ScalesSettingsTab } from "./settings-tabs/ScalesSettingsTab";
@@ -36,6 +36,7 @@ export function ChartSettingsDialog({ open, onClose }: Props) {
 
   // Active tab selection
   const [activeTab, setActiveTab] = useState<TabId>("symbol");
+  const tabListRef = useRef<HTMLDivElement>(null);
 
   // Local draft of settings; initialized from chart state or defaults
   const [draft, setDraft] = useState<ChartSettings>(() => ({
@@ -90,32 +91,63 @@ export function ChartSettingsDialog({ open, onClose }: Props) {
     setTemplateMenuOpen(false);
   };
 
+  const focusTab = (index: number) => {
+    tabListRef.current?.querySelectorAll<HTMLButtonElement>("[role='tab']")[index]?.focus();
+  };
+
+  const moveTab = (delta: 1 | -1) => {
+    const idx = TABS.findIndex((t) => t.id === activeTab);
+    const next = TABS[(idx + delta + TABS.length) % TABS.length]!;
+    setActiveTab(next.id);
+    queueMicrotask(() => focusTab(TABS.indexOf(next)));
+  };
+
   return (
-    <Modal
+    <Dialog
       open={open}
       onClose={onClose}
-      labelledBy="chart-settings-dialog-title"
-      className="flex h-[36rem] w-[min(48rem,96vw)] flex-col rounded-lg border border-ev-line bg-ev-panel text-ev-strong shadow-2xl"
+      title="Chart settings"
+      description="Appearance, scales, trading overlays and event markers."
+      size="xl"
+      className="h-[36rem]"
+      actions={
+        <>
+          <Button variant="ghost" size="md" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="solid" size="md" onClick={handleApply}>
+            Ok
+          </Button>
+        </>
+      }
     >
-      {/* Dialog Header */}
-      <div className="flex items-center justify-between border-b border-ev-raised px-5 py-3">
-        <h2 id="chart-settings-dialog-title" className="text-body font-semibold text-ev-strong">
-          Chart settings
-        </h2>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded p-1 text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-          aria-label="Close"
-        >
-          <X size={16} aria-hidden />
-        </button>
-      </div>
-
       {/* Dialog Main Content (Tabs Sidebar + Tab Panel) */}
       <div className="flex min-h-0 flex-1">
-        {/* Sidebar Tabs */}
-        <div className="w-44 shrink-0 border-r border-ev-raised bg-ev-panel/40 p-2" role="tablist" aria-orientation="vertical">
+        {/* Sidebar Tabs — roving tabindex, arrows move selection (WAI-ARIA tabs). */}
+        <div
+          ref={tabListRef}
+          className="w-44 shrink-0 border-r border-ev-raised bg-ev-panel/40 p-2"
+          role="tablist"
+          aria-orientation="vertical"
+          aria-label="Chart settings sections"
+          onKeyDown={(e) => {
+            if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+              e.preventDefault();
+              moveTab(1);
+            } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+              e.preventDefault();
+              moveTab(-1);
+            } else if (e.key === "Home") {
+              e.preventDefault();
+              setActiveTab(TABS[0]!.id);
+              queueMicrotask(() => focusTab(0));
+            } else if (e.key === "End") {
+              e.preventDefault();
+              setActiveTab(TABS[TABS.length - 1]!.id);
+              queueMicrotask(() => focusTab(TABS.length - 1));
+            }
+          }}
+        >
           {TABS.map((tab) => {
             const active = activeTab === tab.id;
             return (
@@ -125,6 +157,7 @@ export function ChartSettingsDialog({ open, onClose }: Props) {
                 id={`tab-${tab.id}`}
                 aria-selected={active}
                 aria-controls={`panel-${tab.id}`}
+                tabIndex={active ? 0 : -1}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
                 className={`w-full rounded px-3 py-2 text-left text-dense font-medium transition-colors ${
@@ -162,54 +195,45 @@ export function ChartSettingsDialog({ open, onClose }: Props) {
         </div>
       </div>
 
-      {/* Dialog Footer */}
-      <div className="flex items-center justify-between border-t border-ev-raised px-5 py-3">
-        {/* Template Menu */}
+      {/* Dialog Footer template menu */}
+      <div className="flex items-center gap-2 border-t border-ev-raised px-5 py-3">
         <div className="relative">
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="sm"
+            aria-haspopup="menu"
+            aria-expanded={templateMenuOpen}
             onClick={() => setTemplateMenuOpen((v) => !v)}
-            className="flex items-center gap-1.5 rounded border border-ev-line bg-ev-panel px-3 py-1.5 text-dense font-medium text-ev-text hover:border-ev-dim hover:text-ev-strong"
           >
             <span>Template</span>
             <ChevronDown size={14} aria-hidden />
-          </button>
+          </Button>
 
           {templateMenuOpen && (
             <div
+              role="menu"
+              aria-label="Chart template"
               onClick={(e) => e.stopPropagation()}
               className="absolute bottom-full left-0 mb-1 w-44 rounded-md border border-ev-line bg-ev-panel py-1 shadow-xl z-20"
             >
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="sm"
+                role="menuitem"
                 onClick={handleResetDefaults}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-dense text-ev-text hover:bg-ev-raised hover:text-ev-strong"
+                className="w-full justify-start"
               >
                 <RotateCcw size={13} aria-hidden />
                 <span>Apply Defaults</span>
-              </button>
+              </Button>
             </div>
           )}
         </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded px-4 py-1.5 text-dense font-medium text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleApply}
-            className="rounded bg-ev-accent px-5 py-1.5 text-dense font-medium text-white hover:bg-ev-accent-hover"
-          >
-            Ok
-          </button>
-        </div>
+        <span className="ml-auto text-dense text-ev-faint">Use Cancel/Ok above to discard or apply.</span>
+        <IconButton label="Reset to defaults" size="sm" onClick={handleResetDefaults} className="ml-1">
+          <RotateCcw size={13} aria-hidden />
+        </IconButton>
       </div>
-    </Modal>
+    </Dialog>
   );
 }

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { X } from "lucide-react";
 import {
   fibLevelStyles,
   isPositionTool,
@@ -15,8 +14,7 @@ import {
   type FibLevelStyle,
   type Point,
 } from "@ezyview/drawing-tools";
-import { Modal } from "./Modal";
-import { Select } from "./ui";
+import { Button, Dialog, Select, Tabs } from "./ui";
 import { useWorkspace } from "./store";
 import { useDrawingUi } from "./drawingUi";
 import type { DrawingSettingsTab } from "./drawingUi";
@@ -146,41 +144,34 @@ export function DrawingSettingsModal() {
     closeSettings();
   };
 
-  const labelledBy = "drawing-settings-title";
-
   return (
-    <Modal onClose={cancel} labelledBy={labelledBy} className="flex max-h-[85vh] w-[min(560px,92vw)] flex-col rounded border border-ev-line bg-ev-panel shadow-2xl">
-      <div className="flex items-center justify-between border-b border-ev-raised px-4 py-2.5">
-        <h2 id={labelledBy} className="text-body font-semibold text-ev-strong">
-          {spec.label} Settings
-          <span className="ml-2 text-dense font-normal text-ev-faint">{drawingLabel(drawing)}</span>
-        </h2>
-        <button
-          type="button"
-          aria-label="Close drawing settings"
-          onClick={cancel}
-          className="flex size-6 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-        >
-          <X size={14} aria-hidden />
-        </button>
-      </div>
+    <Dialog
+      onClose={cancel}
+      title={`${spec.label} Settings`}
+      description={drawingLabel(drawing)}
+      size="lg"
+      className="max-h-[85vh]"
+      actions={
+        <>
+          <Button variant="ghost" size="md" onClick={cancel}>
+            Cancel
+          </Button>
+          <Button variant="solid" size="md" onClick={ok}>
+            OK
+          </Button>
+        </>
+      }
+      headerExtra={
+        <Tabs
+          label="Drawing settings sections"
+          items={TABS}
+          value={settingsTab}
+          onChange={(v) => openSettings(id, v as DrawingSettingsTab)}
+          className="ml-2"
+        />
+      }
+    >
 
-      <div role="tablist" aria-label="Drawing settings sections" className="flex gap-1 border-b border-ev-raised px-3 pt-1.5">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            aria-selected={settingsTab === tab.id}
-            onClick={() => openSettings(id, tab.id)}
-            className={`rounded-t px-3 py-1.5 text-dense ${
-              settingsTab === tab.id ? "bg-ev-raised text-ev-strong" : "text-ev-muted hover:text-ev-strong"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 text-base">
         {settingsTab === "style" && (
@@ -203,9 +194,7 @@ export function DrawingSettingsModal() {
         )}
       </div>
 
-      <Footer
-        onCancel={cancel}
-        onOk={ok}
+      <TemplateFooter
         onApplyTemplate={(templateId) => {
           const template = listDrawingTemplates().find((t) => t.id === templateId);
           if (!template) return;
@@ -217,7 +206,7 @@ export function DrawingSettingsModal() {
         }}
         onSaveTemplate={(name) => saveDrawingTemplate(name, style)}
       />
-    </Modal>
+    </Dialog>
   );
 }
 
@@ -547,14 +536,10 @@ function VisibilityTab({
   );
 }
 
-function Footer({
-  onCancel,
-  onOk,
+function TemplateFooter({
   onApplyTemplate,
   onSaveTemplate,
 }: {
-  onCancel: () => void;
-  onOk: () => void;
   onApplyTemplate: (id: string) => void;
   onSaveTemplate: (name: string) => void;
 }) {
@@ -611,22 +596,7 @@ function Footer({
           </button>
         )}
       </div>
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded border border-ev-line px-3 py-1 text-dense text-ev-text hover:bg-ev-raised"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={onOk}
-          className="rounded bg-ev-accent px-3 py-1 text-dense font-medium text-white hover:opacity-90"
-        >
-          OK
-        </button>
-      </div>
+
     </div>
   );
 }

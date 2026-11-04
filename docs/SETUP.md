@@ -39,6 +39,9 @@ npm install
 | `npm run format` | oxfmt |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run test` | vitest unit tests |
+| `npm run check:versions` | verify all version files agree |
+| `npm run build:mcp` | bundle the MCP server |
+| `npm run test:e2e` | Playwright smoke (visual baselines are local-only) |
 
 ## Install the .deb (Linux Mint / Ubuntu / Debian)
 
@@ -47,7 +50,7 @@ ships the man pages, MCP wrapper and AppStream metadata, and upgrades cleanly.
 
 ```bash
 npm run tauri -- build --bundles deb
-sudo apt install ./apps/desktop/src-tauri/target/release/bundle/deb/EzyView_0.1.0_amd64.deb
+sudo apt install ./apps/desktop/src-tauri/target/release/bundle/deb/EzyView_0.4.0_amd64.deb
 ```
 
 ## AppImage (FUSE)
@@ -117,13 +120,13 @@ free plan's limit was hit; wait a minute (Finnhub) or until tomorrow (Alpha Vant
 ## MT5 bridge (Linux)
 
 MetaTrader 5 runs in Wine (`~/.mt5`). The MT5 bridge is a Python service that runs **inside the
-Wine prefix** (or on a Windows host) and exposes REST. See `apps/mt5-bridge/README.md` (arrives in P5).
+Wine prefix** (or on a Windows host) and exposes REST. See `tools/mt5-bridge/README.md` (shipped).
 
 ## Repository layout
 
 ```
 apps/desktop/       Tauri v2 shell + React renderer (primary app)
-apps/mt5-bridge/    Python MT5 bridge (P5)
+tools/mt5-bridge/    Python MT5 bridge (P5)
 packages/
   data-adapters/    market data / trading / fundamentals contracts + adapters
   indicators/       pure indicator math

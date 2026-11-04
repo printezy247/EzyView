@@ -10,6 +10,7 @@ import { useWorkspace } from "./store";
 import { useOrderDraft } from "./orderDraft";
 import { useTrading } from "./trading";
 import { calculateRiskReward, getContractMultiplier, riskQty } from "./tradeMath";
+import { Button, NumberInput, SegmentedControl } from "./ui";
 
 interface Props {
   symbol: string;
@@ -20,10 +21,6 @@ const ORDER_TYPES: { id: OrderType; label: string }[] = [
   { id: "limit", label: "Limit" },
   { id: "stop", label: "Stop" },
 ];
-
-const INPUT =
-  "w-full rounded bg-ev-panel px-2 py-1 text-base text-ev-strong outline-none placeholder:text-ev-faint focus:ring-1 focus:ring-ev-accent";
-const LABEL = "block text-dense uppercase tracking-wider text-ev-muted";
 
 /**
  * Order ticket for the active symbol.
@@ -44,10 +41,10 @@ export function OrderTicket({ symbol }: Props) {
 
   const [side, setSide] = useState<OrderSide>("buy");
   const [type, setType] = useState<OrderType>("market");
-  const [qty, setQty] = useState("1");
-  const [limitPrice, setLimitPrice] = useState("");
-  const [stopLoss, setStopLoss] = useState("");
-  const [takeProfit, setTakeProfit] = useState("");
+  const [qty, setQty] = useState<number | null>(1);
+  const [limitPrice, setLimitPrice] = useState<number | null>(null);
+  const [stopLoss, setStopLoss] = useState<number | null>(null);
+  const [takeProfit, setTakeProfit] = useState<number | null>(null);
   const [last, setLast] = useState<number | null>(null);
 
   /** Screen-reader confirmation of the last order sent. */
@@ -55,9 +52,9 @@ export function OrderTicket({ symbol }: Props) {
   // A different symbol is a different instrument: stale prices and levels
   // from the old one must not carry into an order for the new one.
   useEffect(() => {
-    setLimitPrice("");
-    setStopLoss("");
-    setTakeProfit("");
+    setLimitPrice(null);
+    setStopLoss(null);
+    setTakeProfit(null);
     setNotice("");
     setLast(null);
   }, [symbol]);
@@ -69,9 +66,9 @@ export function OrderTicket({ symbol }: Props) {
     if (!draft || draft.symbol !== symbol) return;
     setSide(draft.side);
     setType(draft.type);
-    setLimitPrice(draft.price);
-    if (draft.stopLoss !== undefined) setStopLoss(draft.stopLoss);
-    if (draft.takeProfit !== undefined) setTakeProfit(draft.takeProfit);
+    setLimitPrice(draft.price.trim() === "" ? null : Number(draft.price));
+    if (draft.stopLoss !== undefined) setStopLoss(draft.stopLoss.trim() === "" ? null : Number(draft.stopLoss));
+    if (draft.takeProfit !== undefined) setTakeProfit(draft.takeProfit.trim() === "" ? null : Number(draft.takeProfit));
     // Consume it, so reopening the panel later does not replay an old draft.
     useOrderDraft.setState({ draft: null });
     // Keyed on the sequence so a repeated identical draft still applies.
@@ -87,21 +84,21 @@ export function OrderTicket({ symbol }: Props) {
   useEffect(() => {
     if (!quote) return;
     setLast(quote.last);
-    setLimitPrice((current) => (current === "" ? quote.last.toFixed(precisionForSymbol(symbol, quote.last)) : current));
+    setLimitPrice((current) => (current === null ? quote.last : current));
   }, [quote, symbol]);
 
   const precision = precisionForSymbol(symbol, last);
   const ticker = tickerOf(symbol);
 
-  // An empty field is not a price: `Number("")` is 0, which would send a live
-  // order at zero and fill a sell limit against any quote.
-  const limitValue = limitPrice.trim() === "" ? null : Number(limitPrice);
+  // An empty field is not a price: null stays disabled instead of sending a
+  // live order at zero and filling a sell limit against any quote.
+  const limitValue = limitPrice;
   const workingPrice = type === "market" ? last : limitValue;
-  const quantity = Number(qty);
+  const quantity = qty ?? NaN;
   const value = workingPrice !== null && Number.isFinite(workingPrice) ? workingPrice * quantity : null;
   const margin = value !== null ? value / maxLeverage : null;
-  const stopValue = stopLoss.trim() === "" ? undefined : Number(stopLoss);
-  const targetValue = takeProfit.trim() === "" ? undefined : Number(takeProfit);
+  const stopValue = stopLoss ?? undefined;
+  const targetValue = takeProfit ?? undefined;
   const levelsValid =
     (stopValue === undefined || (Number.isFinite(stopValue) && stopValue > 0)) &&
     (targetValue === undefined || (Number.isFinite(targetValue) && targetValue > 0));
@@ -110,7 +107,7 @@ export function OrderTicket({ symbol }: Props) {
     quantity > 0 &&
     workingPrice !== null &&
     Number.isFinite(workingPrice) &&
-    workingPrice > 0 &&
+    (workingPrice as number) > 0 &&
     levelsValid &&
     !sending;
 
@@ -139,7 +136,7 @@ export function OrderTicket({ symbol }: Props) {
       setNotice("Enter a valid stop loss on the correct side of the entry price to size by risk.");
       return;
     }
-    setQty(qtyOut >= 10 ? Math.round(qtyOut).toString() : qtyOut.toFixed(2));
+    setQty(qtyOut >= 10 ? Math.round(qtyOut) : Number(qtyOut.toFixed(2)));
   };
 
   const send = async () => {
@@ -176,124 +173,59 @@ export function OrderTicket({ symbol }: Props) {
       </div>
 
       <div className="grid grid-cols-2 gap-1" role="group" aria-label="Order side">
-        <button
-          type="button"
+        <Button
+          variant={side === "buy" ? "solid" : "ghost"}
           onClick={() => setSide("buy")}
           aria-pressed={side === "buy"}
-          className={
-            side === "buy"
-              ? "rounded bg-ev-up-solid py-1.5 text-base font-semibold text-white"
-              : "rounded bg-ev-panel py-1.5 text-base font-medium text-ev-muted hover:text-ev-strong"
-          }
+          className={side === "buy" ? "bg-ev-up-solid hover:bg-ev-up" : undefined}
         >
           Buy
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant={side === "sell" ? "solid" : "ghost"}
           onClick={() => setSide("sell")}
           aria-pressed={side === "sell"}
-          className={
-            side === "sell"
-              ? "rounded bg-ev-down-solid py-1.5 text-base font-semibold text-white"
-              : "rounded bg-ev-panel py-1.5 text-base font-medium text-ev-muted hover:text-ev-strong"
-          }
+          className={side === "sell" ? "bg-ev-down-solid hover:bg-ev-down" : undefined}
         >
           Sell
-        </button>
+        </Button>
       </div>
 
-      <div>
-        <span className={LABEL}>Type</span>
-        <div className="mt-1 flex gap-1" role="group" aria-label="Order type">
-          {ORDER_TYPES.map((o) => (
-            <button
-              key={o.id}
-              type="button"
-              onClick={() => setType(o.id)}
-              aria-pressed={type === o.id}
-              className={
-                type === o.id
-                  ? "flex-1 rounded bg-ev-raised px-1 py-1 text-base font-medium text-ev-strong"
-                  : "flex-1 rounded px-1 py-1 text-base text-ev-muted hover:text-ev-strong"
-              }
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <SegmentedControl
+        label="Order type"
+        value={type}
+        onChange={(v) => setType(v as OrderType)}
+        options={ORDER_TYPES.map((o) => ({ value: o.id, label: o.label }))}
+      />
 
       <div>
         <div className="flex items-center justify-between">
-          <label className={LABEL} htmlFor="order-qty">
-            Quantity
-          </label>
+          <span className="block text-dense uppercase tracking-wider text-ev-muted">Quantity</span>
           <div className="flex items-center gap-1 text-[11px] text-ev-muted">
             <span>Risk:</span>
             {[1, 2, 5].map((pct) => (
-              <button
-                key={pct}
-                type="button"
-                onClick={() => calcRiskQty(pct)}
-                className="rounded border border-ev-line bg-ev-panel px-1 py-px hover:border-ev-dim hover:text-ev-strong cursor-pointer"
-              >
+              <Button key={pct} variant="outline" size="sm" onClick={() => calcRiskQty(pct)} aria-label={`Size by ${pct} percent risk`}>
                 {pct}%
-              </button>
+              </Button>
             ))}
           </div>
         </div>
-        <input
-          id="order-qty"
-          inputMode="decimal"
-          value={qty}
-          onChange={(e) => setQty(e.target.value)}
-          className={`${INPUT} mt-1`}
-        />
+        <NumberInput label="Quantity" value={qty} min={0} onValueChange={setQty} className="mt-1" />
       </div>
 
       {type !== "market" && (
-        <div>
-          <label className={LABEL} htmlFor="order-price">
-            {type === "limit" ? "Limit price" : "Stop price"}
-          </label>
-          <input
-            id="order-price"
-            inputMode="decimal"
-            value={limitPrice}
-            onChange={(e) => setLimitPrice(e.target.value)}
-            placeholder={last === null ? "—" : last.toFixed(precision)}
-            className={`${INPUT} mt-1`}
-          />
-        </div>
+        <NumberInput
+          label={type === "limit" ? "Limit price" : "Stop price"}
+          value={limitPrice}
+          min={0}
+          onValueChange={setLimitPrice}
+          placeholder={last === null ? "—" : last.toFixed(precision)}
+        />
       )}
 
       <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className={LABEL} htmlFor="order-sl">
-            Stop loss
-          </label>
-          <input
-            id="order-sl"
-            inputMode="decimal"
-            value={stopLoss}
-            onChange={(e) => setStopLoss(e.target.value)}
-            placeholder="off"
-            className={`${INPUT} mt-1`}
-          />
-        </div>
-        <div>
-          <label className={LABEL} htmlFor="order-tp">
-            Take profit
-          </label>
-          <input
-            id="order-tp"
-            inputMode="decimal"
-            value={takeProfit}
-            onChange={(e) => setTakeProfit(e.target.value)}
-            placeholder="off"
-            className={`${INPUT} mt-1`}
-          />
-        </div>
+        <NumberInput label="Stop loss" value={stopLoss} min={0} onValueChange={setStopLoss} placeholder="off" />
+        <NumberInput label="Take profit" value={takeProfit} min={0} onValueChange={setTakeProfit} placeholder="off" />
       </div>
 
       <dl className="space-y-1 border-t border-ev-raised pt-2 text-dense">
@@ -359,19 +291,17 @@ export function OrderTicket({ symbol }: Props) {
         </p>
       )}
 
-      <button
-        type="button"
+      <Button
         onClick={() => {
           clearError();
           void send();
         }}
         disabled={!ready}
-        className={`rounded py-2 text-base font-semibold text-white transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-          side === "buy" ? "bg-ev-up-solid hover:bg-ev-up" : "bg-ev-down-solid hover:bg-ev-down"
-        }`}
+        aria-label={`${side === "buy" ? "Buy" : "Sell"} ${type === "market" ? "at market" : type}`}
+        className={side === "buy" ? "bg-ev-up-solid hover:bg-ev-up" : "bg-ev-down-solid hover:bg-ev-down"}
       >
         {side === "buy" ? "Buy" : "Sell"} {type === "market" ? "at market" : type}
-      </button>
+      </Button>
 
       <SourceWarning source={chartSource} />
 

@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { ReactNode } from "react";
 import {
   Bell,
   Bookmark,
@@ -32,7 +31,7 @@ import {
 } from "./drawingTemplates";
 import { drawingLabel } from "./ObjectTree";
 import type { DrawingBox } from "./ChartHost";
-import { Select } from "./ui";
+import { Button, IconButton, Input, Select, Slider } from "./ui";
 
 /** TradingView's stroke palette, plus white for dark themes. */
 const PALETTE = ["#2962ff", "#089981", "#f23645", "#ff9800", "#e91e63", "#9c27b0", "#00bcd4", "#ffeb3b", "#ffffff", "#787b86"];
@@ -78,6 +77,7 @@ export function FloatingDrawingBar({ anchor }: Props) {
 
   const wrapRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
   const [container, setContainer] = useState({ w: 0, h: 0 });
   const [menu, setMenu] = useState<MenuId>(null);
@@ -102,6 +102,37 @@ export function FloatingDrawingBar({ anchor }: Props) {
     setBox((prev) => (prev.w === nextBox.w && prev.h === nextBox.h ? prev : nextBox));
     setContainer((prev) => (prev.w === nextContainer.w && prev.h === nextContainer.h ? prev : nextContainer));
   });
+
+  // Escape closes the open submenu and returns focus to the toolbar; Tab
+  // cycles inside the open submenu so keyboard users cannot lose the bar.
+  useEffect(() => {
+    if (menu === null) return;
+    menuRef.current?.querySelector<HTMLElement>("button, input")?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setMenu(null);
+        barRef.current?.querySelector<HTMLElement>("button")?.focus();
+        return;
+      }
+      if (e.key !== "Tab" || !menuRef.current) return;
+      const items = [...menuRef.current.querySelectorAll<HTMLElement>("button:not([disabled]), input:not([disabled])")].filter(
+        (el) => getComputedStyle(el).display !== "none",
+      );
+      if (items.length === 0) return;
+      const first = items[0]!;
+      const last = items[items.length - 1]!;
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, [menu]);
 
   if (!drawing) return null;
 
@@ -155,29 +186,28 @@ export function FloatingDrawingBar({ anchor }: Props) {
         }`}
         style={{ left: pos.x, top: pos.y }}
       >
-        <button
-          type="button"
-          aria-label="Drag drawing toolbar"
-          title="Drag"
+        <IconButton
+          label="Drag drawing toolbar"
+          size="sm"
           onPointerDown={startDrag}
           onPointerMove={onDragMove}
           onPointerUp={endDrag}
           onPointerCancel={endDrag}
-          className="flex cursor-grab touch-none items-center rounded px-0.5 text-ev-faint hover:text-ev-strong"
+          className="cursor-grab touch-none px-0.5"
         >
           <GripVertical size={14} aria-hidden />
-        </button>
+        </IconButton>
 
         <BarButton label="Drawing templates" active={menu === "template"} onClick={() => toggle("template")}>
           <Bookmark size={13} aria-hidden />
         </BarButton>
 
-        <BarButton label="Line colour" onClick={() => toggle("color")}>
+        <BarButton label="Line colour" active={menu === "color"} onClick={() => toggle("color")}>
           <span className="size-3.5 rounded-sm ring-1 ring-ev-line" style={{ background: style.color }} aria-hidden />
         </BarButton>
 
         {toolHasFill(drawing.tool) && (
-          <BarButton label="Fill colour" onClick={() => toggle("fill")}>
+          <BarButton label="Fill colour" active={menu === "fill"} onClick={() => toggle("fill")}>
             <span
               className="size-3.5 rounded-sm ring-1 ring-ev-line"
               style={{ background: style.fill ?? style.color, opacity: Math.max(0.25, (style.fillOpacity ?? 20) / 100) }}
@@ -254,6 +284,7 @@ export function FloatingDrawingBar({ anchor }: Props) {
 
         {menu !== null && (
           <div
+            ref={menuRef}
             role="dialog"
             aria-label={MENU_TITLES[menu]}
             className="absolute left-0 top-full mt-1 w-56 rounded border border-ev-line bg-ev-panel p-2 shadow-xl"
@@ -263,28 +294,30 @@ export function FloatingDrawingBar({ anchor }: Props) {
                 <p className="text-dense font-medium uppercase tracking-wider text-ev-faint">Template</p>
                 {templates.length === 0 && <p className="text-dense text-ev-muted">No templates saved yet.</p>}
                 {templates.map((t) => (
-                  <button
+                  <Button
                     key={t.id}
-                    type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => {
                       applyDrawingTemplate(t.id, drawing.id);
                       setMenu(null);
                     }}
-                    className="block w-full truncate rounded px-1.5 py-1 text-left text-dense text-ev-text hover:bg-ev-raised"
+                    className="w-full justify-start"
                   >
-                    Apply “{t.name}”
-                  </button>
+                    <span className="truncate">Apply “{t.name}”</span>
+                  </Button>
                 ))}
                 <div className="flex gap-1 border-t border-ev-raised pt-1">
-                  <input
+                  <Input
                     value={templateName}
                     onChange={(e) => setTemplateName(e.target.value)}
                     placeholder="Save as…"
                     aria-label="Drawing template name"
-                    className="min-w-0 flex-1 rounded bg-ev-bg px-1.5 py-0.5 text-dense text-ev-strong outline-none ring-1 ring-ev-line focus:ring-ev-accent"
+                    className="min-w-0 flex-1"
                   />
-                  <button
-                    type="button"
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => {
                       const name = templateName.trim();
                       if (!name) return;
@@ -292,10 +325,9 @@ export function FloatingDrawingBar({ anchor }: Props) {
                       setTemplates(listDrawingTemplates());
                       setTemplateName("");
                     }}
-                    className="rounded border border-ev-line px-2 text-dense text-ev-text hover:bg-ev-raised"
                   >
                     Save
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -304,7 +336,7 @@ export function FloatingDrawingBar({ anchor }: Props) {
               <div>
                 <p className="mb-1 text-dense font-medium uppercase tracking-wider text-ev-faint">Line colour</p>
                 <Palette value={style.color} onPick={(c) => patchStyle({ color: c })} />
-                <OpacitySlider label="Opacity" value={style.opacity ?? 100} onChange={(v) => patchStyle({ opacity: v })} />
+                <Slider label="Opacity" value={style.opacity ?? 100} min={0} max={100} step={5} onChange={(v) => patchStyle({ opacity: v })} format={(v) => `${Math.round(v)}%`} />
                 <HexInput value={style.color} onCommit={(c) => patchStyle({ color: c })} />
               </div>
             )}
@@ -313,10 +345,14 @@ export function FloatingDrawingBar({ anchor }: Props) {
               <div>
                 <p className="mb-1 text-dense font-medium uppercase tracking-wider text-ev-faint">Background</p>
                 <Palette value={style.fill ?? style.color} onPick={(c) => patchStyle({ fill: c })} />
-                <OpacitySlider
+                <Slider
                   label="Fill opacity"
                   value={style.fillOpacity ?? 20}
+                  min={0}
+                  max={100}
+                  step={5}
                   onChange={(v) => patchStyle({ fillOpacity: v })}
+                  format={(v) => `${Math.round(v)}%`}
                 />
               </div>
             )}
@@ -336,24 +372,26 @@ export function FloatingDrawingBar({ anchor }: Props) {
                   />
                 </div>
                 <div className="flex gap-1">
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     aria-label="Bold text"
                     aria-pressed={style.fontWeight === "bold"}
                     onClick={() => patchStyle({ fontWeight: style.fontWeight === "bold" ? "normal" : "bold" })}
-                    className={`rounded border border-ev-line px-2 text-dense font-bold ${style.fontWeight === "bold" ? "bg-ev-raised text-ev-strong" : "text-ev-muted"}`}
+                    className={style.fontWeight === "bold" ? "bg-ev-raised font-bold text-ev-strong" : "font-bold"}
                   >
                     B
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     aria-label="Italic text"
                     aria-pressed={style.fontStyle === "italic"}
                     onClick={() => patchStyle({ fontStyle: style.fontStyle === "italic" ? "normal" : "italic" })}
-                    className={`rounded border border-ev-line px-2 text-dense italic ${style.fontStyle === "italic" ? "bg-ev-raised text-ev-strong" : "text-ev-muted"}`}
+                    className={style.fontStyle === "italic" ? "bg-ev-raised text-ev-strong italic" : "italic"}
                   >
                     I
-                  </button>
+                  </Button>
                 </div>
                 <Palette value={style.textColor ?? style.color} onPick={(c) => patchStyle({ textColor: c })} />
               </div>
@@ -364,30 +402,28 @@ export function FloatingDrawingBar({ anchor }: Props) {
                 <p className="mb-1 text-dense font-medium uppercase tracking-wider text-ev-faint">Line</p>
                 <div className="mb-1 flex gap-1">
                   {WIDTHS.map((w) => (
-                    <button
+                    <Button
                       key={w}
-                      type="button"
+                      variant="ghost"
+                      size="sm"
                       aria-label={`Width ${w}`}
                       aria-pressed={style.width === w}
                       onClick={() => patchStyle({ width: w })}
-                      className={`flex h-6 w-7 items-center justify-center rounded border text-dense ${
-                        style.width === w ? "border-ev-accent bg-ev-raised text-ev-strong" : "border-ev-line text-ev-muted"
-                      }`}
+                      className={style.width === w ? "w-7 bg-ev-raised text-ev-strong" : "w-7"}
                     >
                       {w}
-                    </button>
+                    </Button>
                   ))}
                 </div>
                 {LINE_STYLES.map((ls) => (
-                  <button
+                  <Button
                     key={ls.id}
-                    type="button"
+                    variant="ghost"
+                    size="sm"
                     aria-label={`Line style ${ls.label}`}
                     aria-pressed={style.lineStyle === ls.id}
                     onClick={() => patchStyle({ lineStyle: ls.id })}
-                    className={`flex w-full items-center gap-2 rounded px-1 py-1 text-left text-dense ${
-                      style.lineStyle === ls.id ? "bg-ev-raised text-ev-strong" : "text-ev-muted hover:bg-ev-raised"
-                    }`}
+                    className="w-full justify-start"
                   >
                     <svg width="42" height="8" aria-hidden>
                       <line
@@ -401,7 +437,7 @@ export function FloatingDrawingBar({ anchor }: Props) {
                       />
                     </svg>
                     {ls.label}
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}
@@ -417,17 +453,18 @@ export function FloatingDrawingBar({ anchor }: Props) {
                     ["back", "Send to back"],
                   ] as const
                 ).map(([to, label]) => (
-                  <button
+                  <Button
                     key={to}
-                    type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => {
                       move(drawing.id, to);
                       setMenu(null);
                     }}
-                    className="block w-full rounded px-1.5 py-1 text-left text-dense text-ev-text hover:bg-ev-raised"
+                    className="w-full justify-start"
                   >
                     {label}
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}
@@ -440,7 +477,7 @@ export function FloatingDrawingBar({ anchor }: Props) {
           className="pointer-events-auto absolute z-40 flex items-center gap-1 rounded border border-ev-line bg-ev-panel p-1 shadow-xl"
           style={{ left: pos.x, top: Math.min(container.h - 34, pos.y + box.h + 4) }}
         >
-          <input
+          <Input
             autoFocus
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -455,15 +492,11 @@ export function FloatingDrawingBar({ anchor }: Props) {
             onBlur={commitText}
             aria-label="Drawing text"
             placeholder="Type text…"
-            className="w-48 rounded bg-ev-bg px-1.5 py-0.5 text-base text-ev-strong outline-none ring-1 ring-ev-line focus:ring-ev-accent"
+            className="w-48"
           />
-          <button
-            type="button"
-            onClick={commitText}
-            className="rounded bg-ev-accent px-2 py-0.5 text-dense text-white"
-          >
+          <Button variant="solid" size="sm" onClick={commitText}>
             Done
-          </button>
+          </Button>
         </div>
       )}
     </div>
@@ -488,26 +521,23 @@ function BarButton({
   danger,
 }: {
   label: string;
-  children: ReactNode;
+  children: React.ReactNode;
   onClick: () => void;
   active?: boolean;
   disabled?: boolean;
   danger?: boolean;
 }) {
   return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
+    <IconButton
+      label={label}
+      size="md"
       aria-pressed={active}
       disabled={disabled}
       onClick={onClick}
-      className={`flex size-7 shrink-0 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong disabled:cursor-not-allowed disabled:opacity-40 ${
-        active ? "bg-ev-raised text-ev-accent-text" : ""
-      } ${danger ? "hover:text-ev-down-text" : ""}`}
+      className={`${active ? "bg-ev-raised text-ev-accent-text" : ""} ${danger ? "hover:text-ev-down-text" : ""}`}
     >
       {children}
-    </button>
+    </IconButton>
   );
 }
 
@@ -515,38 +545,19 @@ function Palette({ value, onPick }: { value: string; onPick: (color: string) => 
   return (
     <div className="mb-1.5 flex flex-wrap gap-1">
       {PALETTE.map((c) => (
-        <button
+        <IconButton
           key={c}
-          type="button"
-          aria-label={`Colour ${c}`}
+          label={`Colour ${c}`}
+          size="sm"
           aria-pressed={value.toLowerCase() === c}
           onClick={() => onPick(c)}
-          className={`size-4 rounded-full ring-1 ${value.toLowerCase() === c ? "ring-2 ring-ev-accent" : "ring-ev-line"}`}
+          className={`size-4 ${value.toLowerCase() === c ? "ring-2 ring-ev-accent" : "ring-1 ring-ev-line"}`}
           style={{ background: c }}
-        />
+        >
+          <span aria-hidden className="size-4" />
+        </IconButton>
       ))}
     </div>
-  );
-}
-
-function OpacitySlider({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
-  return (
-    <label className="mb-1.5 block text-dense text-ev-muted">
-      <span className="flex items-center justify-between">
-        {label}
-        <span className="num">{Math.round(value)}%</span>
-      </span>
-      <input
-        type="range"
-        min={0}
-        max={100}
-        step={5}
-        value={value}
-        aria-label={label}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full accent-ev-accent"
-      />
-    </label>
   );
 }
 
@@ -562,7 +573,7 @@ function HexInput({ value, onCommit }: { value: string; onCommit: (color: string
         onChange={(e) => onCommit(e.target.value)}
         className="h-6 w-8 cursor-pointer rounded border border-ev-line bg-ev-bg"
       />
-      <input
+      <Input
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={() => {
@@ -570,7 +581,7 @@ function HexInput({ value, onCommit }: { value: string; onCommit: (color: string
           else setDraft(value);
         }}
         aria-label="Custom colour hex"
-        className="min-w-0 flex-1 rounded bg-ev-bg px-1 py-0.5 text-dense text-ev-strong outline-none ring-1 ring-ev-line focus:ring-ev-accent"
+        className="min-w-0 flex-1"
       />
     </div>
   );
@@ -582,4 +593,3 @@ function normaliseHex(color: string): string {
   if (short) return `#${short[1]}${short[1]}${short[2]}${short[2]}${short[3]}${short[3]}`;
   return /^#[0-9a-f]{6}$/i.test(color) ? color : "#2962ff";
 }
-

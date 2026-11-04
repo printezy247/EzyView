@@ -73,7 +73,6 @@ export class DailyRiskTracker {
   private startingBalance: number | null = null;
   private sessionDate: string = "";
   private losses: LossEvent[] = [];
-  private tripped: boolean = false;
 
   /** Local calendar day, matching the journal's `dateKey` (not UTC). */
   private todayDate(): string {
@@ -90,7 +89,6 @@ export class DailyRiskTracker {
       this.sessionDate = today;
       this.startingBalance = null;
       this.losses = [];
-      this.tripped = false;
     }
   }
 
@@ -117,7 +115,6 @@ export class DailyRiskTracker {
     if (drop <= 0) return { tripped: false, drawdownPct: 0 };
     const dropPct = (drop / this.startingBalance) * 100;
     if (dropPct >= maxLossPct) {
-      this.tripped = true;
       return { tripped: true, drawdownPct: Number(dropPct.toFixed(2)) };
     }
     return { tripped: false, drawdownPct: Number(dropPct.toFixed(2)) };
@@ -144,7 +141,6 @@ export class DailyRiskTracker {
   reset(): void {
     this.startingBalance = null;
     this.losses = [];
-    this.tripped = false;
   }
 }
 

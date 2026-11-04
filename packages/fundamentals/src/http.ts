@@ -1,5 +1,33 @@
 import type { EpochSeconds } from "@ezyview/data-adapters";
 
+/** Minimal breaker interface so fundamentals does not depend on the desktop bundle. */
+interface BreakerLike {
+  before(): void;
+  recordSuccess(): void;
+  recordFailure(): void;
+}
+
+type BreakerFactory = (provider: string) => BreakerLike;
+
+const breakers = new Map<string, BreakerLike>();
+let breakerFactory: BreakerFactory | null = null;
+
+/** Inject the desktop `CircuitBreaker` (or a test fake) per provider. */
+export function setBreakerFactory(factory: BreakerFactory | null): void {
+  breakerFactory = factory;
+  breakers.clear();
+}
+
+function breakerFor(provider: string): BreakerLike | null {
+  if (!breakerFactory) return null;
+  let breaker = breakers.get(provider);
+  if (!breaker) {
+    breaker = breakerFactory(provider);
+    breakers.set(provider, breaker);
+  }
+  return breaker;
+}
+
 /** The slice of `fetch` the live adapters use, so tests can inject a fake. */
 export type FetchLike = (url: string) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;
 
@@ -51,10 +79,14 @@ export async function getJson(
   const sleep = options.sleep ?? defaultSleep;
   let lastErr: unknown;
 
+  const breaker = breakerFor(provider);
+  breaker?.before();
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
       // oxlint-disable-next-line no-await-in-loop -- retries are sequential by design
-      return await getJsonOnce(fetchFn, provider, url);
+      const result = await getJsonOnce(fetchFn, provider, url);
+      breaker?.recordSuccess();
+      return result;
     } catch (err) {
       lastErr = err;
       // A bad key or a missing endpoint will not fix itself: only a network
@@ -65,6 +97,7 @@ export async function getJson(
       await sleep(backoffDelay(attempt, options.baseDelayMs ?? 250, options.maxDelayMs ?? 2000));
     }
   }
+  breaker?.recordFailure();
   throw lastErr;
 }
 

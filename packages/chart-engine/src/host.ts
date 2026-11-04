@@ -350,7 +350,7 @@ export class EzyChart {
   /** Debug: most recent click coordinates and wall-clock time. */
   lastClick: { x: number; y: number; t: number } | null = null;
 
-  constructor(private readonly container: HTMLElement, options: EzyChartOptions = {}) {
+  constructor(container: HTMLElement, options: EzyChartOptions = {}) {
     this.opts = options;
     this.type = options.chartType ?? "candles";
     this.theme = options.theme ?? DARK_THEME;

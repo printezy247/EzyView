@@ -9,6 +9,7 @@ import { useMt5 } from "./mt5";
 import { useWorkspace } from "./store";
 import type { WatchEntry } from "./store";
 import { VirtualList } from "./VirtualList";
+import { Button, IconButton, Input } from "./ui";
 import { sortWatch } from "./watchSort";
 import type { WatchSortField } from "./watchSort";
 
@@ -59,12 +60,14 @@ const WatchRow = memo(function WatchRow({
         active ? "bg-ev-raised/40" : ""
       }`}
     >
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={onSelect}
         aria-current={active ? "true" : undefined}
-        className={`min-w-0 flex-1 text-left ${active ? "border-l-2 border-ev-accent pl-1.5" : ""}`}
+        aria-label={`Open ${item.description}`}
         title={`Open ${item.description}`}
+        className="min-w-0 flex-1 justify-start text-left"
       >
         <div className="flex items-baseline justify-between gap-2">
           <span className="truncate text-base font-medium text-ev-strong">{item.ticker}</span>
@@ -101,15 +104,15 @@ const WatchRow = memo(function WatchRow({
             {item.changePct === null ? "—" : `${item.changePct >= 0 ? "+" : ""}${item.changePct.toFixed(2)}%`}
           </span>
         </div>
-      </button>
-      <button
-        type="button"
-        title={`Remove ${item.ticker}`}
+      </Button>
+      <IconButton
+        label={`Remove ${item.ticker}`}
+        size="sm"
         onClick={onRemove}
-        className="text-ev-line opacity-0 transition-opacity hover:text-ev-down-text focus-visible:opacity-100 focus-visible:text-ev-down-text group-hover:opacity-100 group-focus-within:opacity-100"
+        className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
       >
         <Trash2 size={12} aria-hidden />
-      </button>
+      </IconButton>
     </div>
   );
 });
@@ -130,14 +133,11 @@ function SortHead({
   const active = current === field;
   return (
     <div role="columnheader" aria-sort={active ? (desc ? "descending" : "ascending") : "none"}>
-      <button
-        type="button"
-        onClick={onSort}
-        className="min-h-6 min-w-6 cursor-pointer px-1 uppercase hover:text-ev-strong"
-      >
+      <Button variant="ghost" size="sm" onClick={onSort} aria-label={`Sort by ${label}`} className="min-h-6 min-w-6 uppercase">
+
         {label}
         <span aria-hidden>{active ? (desc ? " ↓" : " ↑") : ""}</span>
-      </button>
+      </Button>
     </div>
   );
 }
@@ -268,39 +268,21 @@ export function Watchlist({ onOpenAlerts }: Props) {
       <div className="flex items-center justify-between border-b border-ev-raised px-3 py-2">
         <h2 className="text-base font-semibold uppercase tracking-wider text-ev-muted">Watchlist</h2>
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            title="Create alert for the active symbol"
-            onClick={onOpenAlerts}
-            className="min-h-6 rounded px-1.5 py-0.5 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-          >
+          <Button variant="ghost" size="sm" title="Create alert for the active symbol" onClick={onOpenAlerts}>
             Alerts
-          </button>
-          <button
-            type="button"
-            title="Add the active chart's symbol"
-            aria-label="Add the active chart's symbol"
-            onClick={() => void addFromActiveChart()}
-            className="flex size-6 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-          >
+          </Button>
+          <IconButton label="Add the active chart's symbol" size="sm" onClick={() => void addFromActiveChart()}>
             <Crosshair size={13} aria-hidden />
-          </button>
-          <button
-            type="button"
-            title="Add symbol"
-            aria-label="Add symbol"
-            aria-expanded={adding}
-            onClick={() => setAdding((v) => !v)}
-            className="flex size-6 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-          >
+          </IconButton>
+          <IconButton label="Add symbol" size="sm" aria-expanded={adding} onClick={() => setAdding((v) => !v)}>
             <Plus size={13} aria-hidden />
-          </button>
+          </IconButton>
         </div>
       </div>
 
       {adding && (
         <div className="border-b border-ev-raised px-2 py-1.5">
-          <input
+          <Input
             aria-label="Add symbol to watchlist"
             autoFocus
             value={query}

@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
- * The app version is declared in four places. A release built from a tree where
- * they disagree installs under one version and reports another, so fail the
- * build instead of trusting a human to keep them in step.
+ * The app version is declared in four places, plus the MCP server version.
+ * A release built from a tree where the app files disagree installs under
+ * one version and reports another, so fail the build instead of trusting a
+ * human to keep them in step.
  */
 import { readFileSync } from "node:fs";
 
@@ -12,18 +13,26 @@ const fromJson = (path) => JSON.parse(read(path)).version;
 const cargo = read("apps/desktop/src-tauri/Cargo.toml");
 const cargoVersion = /^version\s*=\s*"([^"]+)"/m.exec(cargo)?.[1];
 
-const versions = new Map([
+const appVersions = new Map([
   ["package.json", fromJson("package.json")],
   ["apps/desktop/package.json", fromJson("apps/desktop/package.json")],
   ["apps/desktop/src-tauri/tauri.conf.json", fromJson("apps/desktop/src-tauri/tauri.conf.json")],
   ["apps/desktop/src-tauri/Cargo.toml", cargoVersion],
 ]);
 
-const distinct = new Set(versions.values());
+const mcpVersion = fromJson("packages/mcp-server/package.json");
+
+const distinct = new Set(appVersions.values());
 if (distinct.size !== 1 || distinct.has(undefined)) {
   console.error("Version mismatch:");
-  for (const [file, version] of versions) console.error(`  ${file}: ${version ?? "missing"}`);
+  for (const [file, version] of appVersions) console.error(`  ${file}: ${version ?? "missing"}`);
+  process.exit(1);
+}
+if (!mcpVersion) {
+  console.error("Version mismatch:\n  packages/mcp-server/package.json: missing");
   process.exit(1);
 }
 
-process.stdout.write(`Version ${[...distinct][0]} is consistent across ${versions.size} files.\n`);
+process.stdout.write(
+  `Version ${[...distinct][0]} is consistent across ${appVersions.size} app files; mcp-server is ${mcpVersion}.\n`,
+);

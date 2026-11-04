@@ -24,7 +24,7 @@ import { normalizePath, rememberRoute } from "./nav";
 import { bootstrapMt5, getMt5, useMt5 } from "./mt5";
 import { useMt5Accounts } from "./mt5Accounts";
 import { NoticeHost } from "./NoticeHost";
-import { Toaster } from "./ui";
+import { Button, Toaster } from "./ui";
 import { useShortcut, useShortcutDispatcher } from "./shortcuts";
 import { quoteOf } from "./data";
 import { SourceToggle } from "./SourceToggle";
@@ -257,23 +257,20 @@ export default function App() {
                           A chart error was caught and isolated so the rest of the application remains functional.
                         </p>
                         <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={reset}
-                            className="rounded bg-ev-accent px-3 py-1.5 text-base font-medium text-white hover:bg-ev-accent-hover"
-                          >
+                          <Button size="lg" onClick={reset}>
                             Retry Chart
-                          </button>
-                          <button
-                            type="button"
+                          </Button>
+                          <Button
+                            size="lg"
+                            variant="ghost"
                             onClick={() => {
                               useWorkspace.getState().updateActive({ indicators: [], drawings: [] });
                               reset();
                             }}
-                            className="rounded bg-ev-raised px-3 py-1.5 text-base font-medium text-ev-strong hover:bg-ev-line"
+                            className="bg-ev-raised text-ev-strong hover:bg-ev-line"
                           >
                             Reset Chart to Clean State
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     )}
@@ -338,39 +335,39 @@ export default function App() {
 
           {/* TradingView-style bottom drawer & workspace quick-toggles */}
           <div className="flex items-center gap-1">
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
               aria-pressed={tradingOpen}
+              aria-label="Toggle bottom Trading Panel and Order Ticket"
               title="Toggle bottom Trading Panel & Order Ticket"
               onClick={toggleTrading}
-              className={`rounded px-2 py-0.5 font-medium ${
-                tradingOpen ? "bg-ev-accent/20 text-ev-accent-text" : "hover:bg-ev-raised hover:text-ev-strong"
-              }`}
+              className={tradingOpen ? "bg-ev-accent/20 font-medium text-ev-accent-text" : undefined}
             >
               Trading Panel
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               aria-pressed={dockTab === "watchlist"}
+              aria-label="Toggle right-hand Watchlist dock"
               title="Toggle right-hand Watchlist dock"
               onClick={() => selectDockTab("watchlist")}
-              className={`rounded px-2 py-0.5 ${
-                dockTab === "watchlist" ? "bg-ev-raised font-medium text-ev-strong" : "hover:bg-ev-raised hover:text-ev-strong"
-              }`}
+              className={dockTab === "watchlist" ? "bg-ev-raised font-medium text-ev-strong" : undefined}
             >
               Watchlist
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               aria-pressed={dockTab === "depth"}
+              aria-label="Toggle right-hand Depth of Market dock"
               title="Toggle right-hand Depth of Market (DOM)"
               onClick={() => selectDockTab("depth")}
-              className={`rounded px-2 py-0.5 ${
-                dockTab === "depth" ? "bg-ev-raised font-medium text-ev-strong" : "hover:bg-ev-raised hover:text-ev-strong"
-              }`}
+              className={dockTab === "depth" ? "bg-ev-raised font-medium text-ev-strong" : undefined}
             >
               DOM
-            </button>
+            </Button>
             <Link
               to="/markets"
               title="Open Stock, Crypto & Forex Screener / Heatmaps"

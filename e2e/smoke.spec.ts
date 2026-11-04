@@ -55,8 +55,8 @@ test("the old routes still land somewhere", async ({ page }) => {
     ["/#/options", "/research"],
     ["/#/pine", "/strategies"],
   ]) {
-    await page.goto(from);
-    await expect(page).toHaveURL(new RegExp(`#${to}(\\?|$)`));
+    await page.goto(from ?? "/");
+    await expect(page).toHaveURL(new RegExp(`#${to ?? ""}(\\?|$)`));
   }
   /* eslint-enable no-await-in-loop */
 });

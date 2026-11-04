@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Modal } from "./Modal";
 import { getMt5, useMt5 } from "./mt5";
 import type { ChartSource } from "./mt5";
 import { useMt5Accounts } from "./mt5Accounts";
@@ -7,6 +6,7 @@ import { maskLogin } from "./tradingSafety";
 import { describeRealSource } from "./realSource";
 import type { RealSource } from "./realSource";
 import { useTrading } from "./trading";
+import { Button, Dialog } from "./ui";
 
 const SOURCE_LABEL: Record<ChartSource, string> = {
   ezyview: "EzyView feed",
@@ -84,9 +84,10 @@ export function SourceToggle() {
       className="flex items-center rounded border border-ev-line p-px"
     >
       {(Object.keys(SOURCE_LABEL) as ChartSource[]).map((id) => (
-        <button
+        <Button
           key={id}
-          type="button"
+          variant="ghost"
+          size="sm"
           aria-pressed={source === id}
           disabled={busy}
           onClick={() => pick(id)}
@@ -97,12 +98,12 @@ export function SourceToggle() {
           }
           className={
             source === id
-              ? `rounded px-2 py-px font-medium ${id === "mt5" ? "bg-ev-accent text-white" : "bg-ev-raised text-ev-strong"}`
-              : "rounded px-2 py-px text-ev-muted hover:text-ev-strong"
+              ? `font-medium ${id === "mt5" ? "bg-ev-accent text-white" : "bg-ev-raised text-ev-strong"}`
+              : undefined
           }
         >
           {SOURCE_LABEL[id]}
-        </button>
+        </Button>
       ))}
       {switchWarning && (
         <SwitchWarningDialog
@@ -128,65 +129,47 @@ export function SourceToggle() {
 /** Confirmation when leaving a live MT5 session with positions open. */
 function SwitchWarningDialog({ warning, onStay, onSwitch }: { warning: string; onStay: () => void; onSwitch: () => void }) {
   return (
-    <Modal
+    <Dialog
       onClose={onStay}
-      labelledBy="switch-warn-title"
-      className="w-[min(26rem,92vw)] rounded-md border border-ev-warn/40 bg-ev-panel text-base shadow-2xl"
-    >
-      <div className="space-y-3 p-4">
-        <h2 id="switch-warn-title" className="text-body font-semibold text-ev-warn">
-          Active MT5 Trading State
-        </h2>
-        <p className="text-ev-text leading-relaxed">
-          {warning}. Switching your chart to the Demo feed will detach live chart execution and hide active broker levels.
-        </p>
-        <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            autoFocus
-            onClick={onStay}
-            className="rounded border border-ev-line px-3 py-1 text-ev-muted hover:text-ev-strong"
-          >
+      title="Active MT5 Trading State"
+      description={`${warning}. Switching your chart to the Demo feed will detach live chart execution and hide active broker levels.`}
+      size="md"
+      actions={
+        <>
+          <Button variant="outline" size="md" autoFocus onClick={onStay}>
             Stay on MT5
-          </button>
-          <button
-            type="button"
-            onClick={onSwitch}
-            className="rounded bg-ev-warn px-3 py-1 font-semibold text-white hover:brightness-110"
-          >
+          </Button>
+          <Button variant="solid" size="md" onClick={onSwitch} className="bg-ev-warn hover:brightness-110">
             Switch to Demo anyway
-          </button>
-        </div>
-      </div>
-    </Modal>
+          </Button>
+        </>
+      }
+    >
+      {null}
+    </Dialog>
   );
 }
 
 /** Confirmation before letting a real-money account drive the chart feed. */
 function RealSourceRiskDialog({ maskedLogin, onRefuse, onAccept }: { maskedLogin: string; onRefuse: () => void; onAccept: () => void }) {
   return (
-    <Modal
+    <Dialog
       onClose={onRefuse}
-      labelledBy="real-source-title"
-      className="w-[min(24rem,92vw)] rounded-md border border-ev-warn/40 bg-ev-panel text-base shadow-2xl"
-    >
-      <div className="space-y-3 p-4">
-        <h2 id="real-source-title" className="text-body font-semibold text-ev-warn">
-          Real account detected — {maskedLogin}
-        </h2>
-        <p className="text-ev-text">
-          The broker feed is live on a real-money account. EzyView keeps asking to confirm every order, but
-          a confirmation now trades real money.
-        </p>
-        <div className="flex justify-end gap-2">
-          <button type="button" autoFocus onClick={onRefuse} className="rounded border border-ev-line px-3 py-1 text-ev-muted hover:text-ev-strong">
+      title={`Real account detected — ${maskedLogin}`}
+      description="The broker feed is live on a real-money account. EzyView keeps asking to confirm every order, but a confirmation now trades real money."
+      size="md"
+      actions={
+        <>
+          <Button variant="outline" size="md" autoFocus onClick={onRefuse}>
             Switch back to demo data
-          </button>
-          <button type="button" onClick={onAccept} className="rounded bg-ev-warn px-3 py-1 font-semibold text-white">
+          </Button>
+          <Button variant="solid" size="md" onClick={onAccept} className="bg-ev-warn hover:brightness-110">
             I understand — continue
-          </button>
-        </div>
-      </div>
-    </Modal>
+          </Button>
+        </>
+      }
+    >
+      {null}
+    </Dialog>
   );
 }

@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { getActiveExportSource } from "./exportBridge";
 import { saveChartCsv } from "./exportUi";
-import { Modal } from "./Modal";
 import { tableRows } from "./barsTable";
 import { precisionFor } from "./data";
+import { Button, Dialog } from "./ui";
 
 /** The visible bars as a table (TradingView's "Table view"); newest first, capped. */
 export function BarsTable({ onClose }: { onClose: () => void }) {
@@ -13,28 +13,22 @@ export function BarsTable({ onClose }: { onClose: () => void }) {
   const meta = source?.meta();
 
   return (
-    <Modal
+    <Dialog
       onClose={onClose}
-      labelledBy="bars-table-title"
-      className="flex max-h-[80vh] w-[min(640px,92vw)] flex-col rounded-lg border border-ev-line bg-ev-panel shadow-2xl"
+      title={`Table view${meta ? ` — ${meta.symbol} ${meta.resolution}` : ""}`}
+      description={`${rows.length} bars, newest first (UTC)`}
+      size="lg"
+      actions={
+        <>
+          <Button variant="outline" size="md" disabled={!source} onClick={() => source && saveChartCsv(source)}>
+            Export CSV
+          </Button>
+          <Button variant="ghost" size="md" onClick={onClose}>
+            Close
+          </Button>
+        </>
+      }
     >
-      <div className="flex items-center gap-2 border-b border-ev-raised px-4 py-3">
-        <h2 id="bars-table-title" className="text-body font-semibold text-ev-strong">
-          Table view{meta ? ` — ${meta.symbol} ${meta.resolution}` : ""}
-        </h2>
-        <span className="text-dense text-ev-muted">{rows.length} bars, newest first (UTC)</span>
-        <button
-          type="button"
-          disabled={!source}
-          onClick={() => source && saveChartCsv(source)}
-          className="ml-auto rounded bg-ev-line px-2 py-1 text-dense text-ev-strong hover:bg-ev-line-strong disabled:opacity-40"
-        >
-          Export CSV
-        </button>
-        <button type="button" onClick={onClose} className="rounded px-2 py-1 text-dense text-ev-muted hover:text-ev-strong">
-          Close
-        </button>
-      </div>
       <div className="min-h-0 flex-1 overflow-auto">
         <table className="w-full text-right text-dense num">
           <thead className="sticky top-0 bg-ev-panel text-ev-muted">
@@ -67,6 +61,6 @@ export function BarsTable({ onClose }: { onClose: () => void }) {
           </tbody>
         </table>
       </div>
-    </Modal>
+    </Dialog>
   );
 }

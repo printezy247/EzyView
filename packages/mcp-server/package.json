@@ -7,7 +7,8 @@
   "main": "./src/server.ts",
   "types": "./src/server.ts",
   "scripts": {
-    "build": "esbuild src/stdio.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/ezyview-mcp.mjs"
+    "build": "esbuild src/stdio.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/ezyview-mcp.mjs",
+    "test": "vitest run src"
   },
   "dependencies": {
     "@ezyview/data-adapters": "*",

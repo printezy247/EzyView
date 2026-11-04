@@ -11,5 +11,8 @@
   },
   "dependencies": {
     "@ezyview/data-adapters": "*"
+  },
+  "scripts": {
+    "test": "vitest run src"
   }
 }

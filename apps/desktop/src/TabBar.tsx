@@ -21,6 +21,7 @@ import { notice } from "./notice";
 import { linkGroupOf } from "./linkGroups";
 import { openChartWindow } from "./windows";
 import { useZen } from "./zen";
+import { Button, IconButton, Input } from "./ui";
 
 const LINK_COLORS: { id: string; label: string; hex: string }[] = [
   { id: "", label: "Unlinked", hex: "transparent" },
@@ -85,33 +86,15 @@ export function TabBar() {
     <div className="flex h-8 shrink-0 items-center gap-1 border-b border-ev-raised bg-ev-chrome px-2">
       {/* Browser/Desktop history navigation controls */}
       <div className="mr-1 flex items-center gap-0.5">
-        <button
-          type="button"
-          title="Go back"
-          aria-label="Go back"
-          onClick={() => window.history.back()}
-          className="flex size-6 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-        >
+        <IconButton label="Go back" size="sm" onClick={() => window.history.back()}>
           <ArrowLeft size={13} aria-hidden />
-        </button>
-        <button
-          type="button"
-          title="Go forward"
-          aria-label="Go forward"
-          onClick={() => window.history.forward()}
-          className="flex size-6 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-        >
+        </IconButton>
+        <IconButton label="Go forward" size="sm" onClick={() => window.history.forward()}>
           <ArrowRight size={13} aria-hidden />
-        </button>
-        <button
-          type="button"
-          title="Reload tab"
-          aria-label="Reload tab"
-          onClick={() => window.location.reload()}
-          className="flex size-6 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-        >
+        </IconButton>
+        <IconButton label="Reload tab" size="sm" onClick={() => window.location.reload()}>
           <RotateCw size={12} aria-hidden />
-        </button>
+        </IconButton>
       </div>
 
       <div className="h-4 w-px bg-ev-raised" />
@@ -131,7 +114,7 @@ export function TabBar() {
               style={active ? { borderColor: layout.color } : undefined}
             >
               {renamingId === layout.id ? (
-                <input
+                <Input
                   type="text"
                   value={draftName}
                   autoFocus
@@ -142,19 +125,20 @@ export function TabBar() {
                     if (e.key === "Enter") commitRename(layout.id);
                     if (e.key === "Escape") setRenamingId(null);
                   }}
-                  className="w-28 rounded bg-ev-bg px-2 py-0.5 text-dense text-ev-strong outline-none ring-1 ring-ev-accent"
+                  className="w-28"
                 />
               ) : (
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setActive(layout.id)}
                   onDoubleClick={() => startRename(layout.id, layout.name)}
                   title="Click to switch layout · Double-click to customize tab title"
                   aria-current={active ? "true" : undefined}
                   className={
                     active
-                      ? "flex items-center gap-1.5 rounded-t px-2.5 py-1 text-base font-medium text-ev-strong"
-                      : "flex items-center gap-1.5 rounded px-2.5 py-1 text-base text-ev-muted hover:text-ev-strong"
+                      ? "gap-1.5 rounded-t px-2.5 py-1 font-medium text-ev-strong"
+                      : "gap-1.5 px-2.5 py-1 text-ev-muted"
                   }
                 >
                   <span
@@ -167,13 +151,12 @@ export function TabBar() {
                     {layout.charts[layout.activeChart]?.symbol.split(":").pop()}
                   </span>
                   {dirty[layout.id] && <span className="text-ev-muted">•</span>}
-                </button>
+                </Button>
               )}
               {active && layouts.length > 1 && (
-                <button
-                  type="button"
-                  title={`Close ${layout.name}`}
-                  aria-label={`Close layout ${layout.name}`}
+                <IconButton
+                  label={`Close layout ${layout.name}`}
+                  size="sm"
                   onClick={() => {
                     // Closing a layout throws away its charts and drawings.
                     void notice
@@ -185,25 +168,19 @@ export function TabBar() {
                         if (ok) deleteLayout(layout.id);
                       });
                   }}
-                  className="mr-1 flex size-6 items-center justify-center rounded text-ev-faint hover:bg-ev-line hover:text-ev-strong"
+                  className="mr-1 text-ev-faint"
                 >
                   <X size={12} aria-hidden />
-                </button>
+                </IconButton>
               )}
             </div>
           );
         })}
 
         {/* 1-click New Tab button */}
-        <button
-          type="button"
-          title="New Tab — Create new layout"
-          aria-label="New Tab"
-          onClick={addLayout}
-          className="flex size-6 shrink-0 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-        >
+        <IconButton label="New Tab — Create new layout" size="sm" onClick={addLayout} className="shrink-0">
           <Plus size={14} aria-hidden />
-        </button>
+        </IconButton>
       </div>
 
       {/* Layout actions menu */}
@@ -271,50 +248,45 @@ export function TabBar() {
 
       {/* Right-hand quick desktop controls */}
       <div className="ml-auto flex items-center gap-1">
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
           aria-pressed={crosshairSync}
+          aria-label="Crosshair sync across displays"
           title="Ideal for a thorough study of the market, your crosshairs will move in sync across all your displays"
           onClick={() => setCrosshairSync(!crosshairSync)}
-          className={`flex h-6 items-center gap-1 rounded px-2 text-dense ${
-            crosshairSync
-              ? "bg-ev-accent/20 font-medium text-ev-accent-text"
-              : "text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-          }`}
+          className={crosshairSync ? "bg-ev-accent/20 font-medium text-ev-accent-text" : undefined}
         >
           <Crosshair size={12} aria-hidden />
           <span className="hidden sm:inline">Crosshair sync</span>
-        </button>
+        </Button>
 
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label={`Color theme: ${activeChart.theme} (click to cycle Dark / Tokyo Night / Light)`}
           title={`Color theme: ${activeChart.theme} (click to cycle Dark / Tokyo Night / Light)`}
           onClick={cycleTheme}
-          className="flex h-6 items-center gap-1 rounded px-2 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
         >
           <Palette size={12} aria-hidden />
           <span className="hidden capitalize md:inline">{activeChart.theme}</span>
-        </button>
+        </Button>
 
-        <button
-          type="button"
-          title="Detach tab — Open chart in new window for multi-monitor support"
-          aria-label="Open in new window"
+        <IconButton
+          label="Detach tab — Open chart in new window for multi-monitor support"
+          size="sm"
           onClick={() => void openChartWindow(activeChart.symbol, activeChart.resolution)}
-          className="flex size-6 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
         >
           <ExternalLink size={13} aria-hidden />
-        </button>
+        </IconButton>
 
-        <button
-          type="button"
-          title="Toggle full screen (F11)"
-          aria-label="Toggle full screen"
+        <IconButton
+          label="Toggle full screen (F11)"
+          size="sm"
           onClick={() => useZen.getState().toggle()}
-          className="flex size-6 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
         >
           <Maximize2 size={13} aria-hidden />
-        </button>
+        </IconButton>
 
         <Menu
           label=""

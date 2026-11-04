@@ -14,7 +14,7 @@ import { JournalPropFirmBar } from "./JournalPropFirmBar";
 import { JournalReviews } from "./JournalReviews";
 import { JournalStatsView } from "./JournalStatsView";
 import { VirtualList } from "./VirtualList";
-import { buttonClass, chipClass } from "./ui";
+import { Button, IconButton, Tabs, chipClass } from "./ui";
 
 interface Props {
   onClose: () => void;
@@ -183,29 +183,13 @@ export function JournalPanel({ onClose }: Props) {
   };
 
   const chip = chipClass({ tone: "neutral" });
-  const headerBtn = buttonClass({ size: "sm", variant: "ghost" });
 
   return (
     <section aria-label="Trading journal" className="flex min-h-0 flex-1 flex-col border-t border-ev-raised bg-ev-bg">
       <header className="flex h-8 shrink-0 items-center gap-3 border-b border-ev-raised px-3 text-dense">
         <span className="font-semibold uppercase tracking-wider text-ev-muted">Journal</span>
 
-        <nav aria-label="Journal views" className="flex items-center gap-0.5">
-          {TABS.map(({ id, label }) => (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={tab === id}
-              onClick={() => setTab(id)}
-              className={`rounded px-2 py-0.5 ${
-                tab === id ? "bg-ev-raised font-medium text-ev-strong" : "text-ev-muted hover:text-ev-strong"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </nav>
+        <Tabs label="Journal views" items={TABS} value={tab} onChange={(v) => setTab(v as typeof tab)} />
 
         <dl className="flex items-center gap-3 num">
           <Fact label="Net" value={money(stats.netPnl)} tone={stats.netPnl >= 0 ? "text-ev-up-text" : "text-ev-down-text"} />
@@ -215,9 +199,9 @@ export function JournalPanel({ onClose }: Props) {
         </dl>
 
         <div className="ml-auto flex items-center gap-2">
-          <button type="button" onClick={importNow} title="Turn closed deals into journal trades" className={headerBtn}>
+          <Button variant="ghost" size="sm" onClick={importNow} title="Turn closed deals into journal trades">
             Import history
-          </button>
+          </Button>
           {lastImport !== null && (
             <span className="text-dense text-ev-up-text">
               {lastImport === 0 ? "nothing new" : `+${lastImport}`}
@@ -225,22 +209,17 @@ export function JournalPanel({ onClose }: Props) {
           )}
           {tab === "feed" && (
             <>
-              <button type="button" onClick={() => setDialogOpen(true)} className={headerBtn}>
+              <Button variant="ghost" size="sm" onClick={() => setDialogOpen(true)}>
                 + Manual entry
-              </button>
-              <button type="button" onClick={exportCsv} title="Download all entries as CSV" className={headerBtn}>
+              </Button>
+              <Button variant="ghost" size="sm" onClick={exportCsv} title="Download all entries as CSV">
                 Export CSV
-              </button>
+              </Button>
             </>
           )}
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close journal"
-            className="flex size-6 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-          >
+          <IconButton label="Close journal" size="sm" onClick={onClose}>
             <X size={13} aria-hidden />
-          </button>
+          </IconButton>
         </div>
       </header>
 
@@ -252,9 +231,9 @@ export function JournalPanel({ onClose }: Props) {
           className="flex items-center gap-2 rounded border border-ev-down/40 bg-ev-down/10 mx-3 mt-2 px-3 py-1.5 text-dense text-ev-down-text"
         >
           <span className="flex-1">Journal storage is full — recent screenshots and edits may not survive a restart.</span>
-          <button type="button" onClick={dismissStorageIssue} className="rounded px-2 py-0.5 text-dense text-ev-muted hover:text-ev-strong">
+          <Button variant="ghost" size="sm" onClick={dismissStorageIssue}>
             Dismiss
-          </button>
+          </Button>
         </div>
       )}
 
