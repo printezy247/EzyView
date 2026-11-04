@@ -892,15 +892,17 @@ export function ChartHost(props: Props) {
       const price = q.last + (feed === "demo" ? (anchor ?? 0) : 0);
       const merged = mergeQuote(history, price, q.time || Math.floor(Date.now() / 1000), step);
       if (merged === history) return;
+      const openedNewBar = merged.length !== history.length;
       historyRef.current = merged;
       shownRef.current = merged;
       const applyLive = () => {
         rafId = null;
         if (cancelled) return;
-        chartRef.current?.setData(historyRef.current);
-        if (merged.length !== history.length) {
-          setShown(merged);
-        }
+        // A tick inside the forming bar is one series.update; only a new bar
+        // needs the full setData (and the state update behind the legend).
+        if (!openedNewBar && chartRef.current?.updateLastBar(merged[merged.length - 1]!)) return;
+        chartRef.current?.setData(merged);
+        if (openedNewBar) setShown(merged);
       };
       if (typeof requestAnimationFrame === "function") {
         if (rafId === null) rafId = requestAnimationFrame(applyLive);

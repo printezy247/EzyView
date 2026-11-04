@@ -44,6 +44,7 @@ import { autoBoxSize, heikinAshi, kagi, lineBreak, pointAndFigure, rangeBars, re
 import { VolumeProfilePrimitive } from "./volumeProfile.js";
 import { sessionBreaks } from "./sessionBreaks.js";
 import { alignCompare, type CompareSeries } from "./overlays.js";
+import { canUpdateFormingBar, closedBarKey } from "./liveUpdate.js";
 
 export type ChartType =
   | "candles"
@@ -133,6 +134,22 @@ const LEVEL_LINES: Record<string, number[]> = {
 };
 
 const PANE_HEIGHT = 140;
+
+/**
+ * Chart types whose main-series point depends on one candle only. Heikin Ashi
+ * and the price-box types fold the whole history, and price-box types are not
+ * time based, so their ticks rebuild instead of updating in place.
+ */
+const INCREMENTAL_TYPES = new Set<ChartType>([
+  "candles",
+  "bars",
+  "hollow",
+  "line",
+  "area",
+  "baseline",
+  "column",
+  "highlow",
+]);
 
 /** Plot styles rendered as bar markers rather than a value series. */
 const MARKER_STYLES = new Set<ScriptPlotSpec["style"]>(["shape", "circle", "triangle", "cross"]);
@@ -431,6 +448,37 @@ export class EzyChart {
     this.syncScriptLayers();
     this.drawings.setDrawings(this.drawingsLayer);
     if (firstLoad) this.frameBars();
+  }
+
+  /**
+   * Apply a live tick in place when it only moves the last bar.
+   *
+   * The live feed calls this every second. `setData` rebuilds every series and
+   * re-renders every indicator; `update` on the existing series is O(1) per
+   * layer. Indicators are intentionally left alone: their cache key covers the
+   * closed bars only, so a forming-bar tick cannot change their values.
+   *
+   * Returns false when the caller must fall back to `setData` (a new bar, a
+   * price-box type, or no load yet).
+   */
+  updateLastBar(candle: Candle): boolean {
+    if (!canUpdateFormingBar(this.data, candle, INCREMENTAL_TYPES.has(this.type))) return false;
+    const next = this.data.slice();
+    next[next.length - 1] = candle;
+    this.data = next;
+    // The cached points/data arrays belong to the previous object.
+    this.seriesCache = null;
+    this.sharedOhlcv = null;
+    const point = mainSeriesPoint(this.type, candle, this.theme);
+    this.mainSeries?.update(point);
+    if (this.volumeSeries) {
+      const volume = toVolumeData([candle])[0];
+      if (volume) this.volumeSeries.update(volume);
+    }
+    // Compare overlays are aligned to every bar; only the last point moved.
+    this.rebuildCompare();
+    this.volumeProfile.setCandles(this.data);
+    return true;
   }
 
   /**
@@ -968,16 +1016,14 @@ export class EzyChart {
   /**
    * The indicator's values, recomputed only when they can have changed.
    *
-   * The live tick calls `setData` every second, and a full recompute over
-   * the whole history is O(n) per indicator - Ichimoku alone runs six
-   * O(n * period) helpers. The result is cached against the bar count, the
-   * last bar's time and the parameters, so a tick that only moves the last
-   * bar still recomputes (the values did change) but a re-render with the
-   * same data does not.
+   * The live tick calls `updateLastBar` every second, and a full recompute
+   * over the whole history is O(n) per indicator - Ichimoku alone runs six
+   * O(n * period) helpers. The result is cached against the closed-bar
+   * identity and the parameters, so a tick that only moves the forming bar
+   * reuses the cached values while a new closed bar invalidates them.
    */
   private indicatorValues(inst: IndicatorInstance): SeriesResult {
-    const last = this.data.at(-1);
-    const key = `${inst.uid}|${this.lastBarKey(last)}|${JSON.stringify(inst.params)}`;
+    const key = `${inst.uid}|${closedBarKey(this.data)}|${JSON.stringify(inst.params)}`;
     const cached = this.indicatorCache.get(inst.uid);
     if (cached && cached.key === key) return cached.values;
     const values = inst.def.compute(
@@ -1379,6 +1425,36 @@ export class EzyChart {
 }
 
 // --- data mapping -----------------------------------------------------------
+
+/** One point for the main series, matching `buildSeriesData` for the type. */
+function mainSeriesPoint(type: ChartType, candle: Candle, theme: ChartTheme): never {
+  if (type === "line" || type === "area" || type === "baseline") {
+    return { time: candle.time as UTCTimestamp, value: candle.close } as never;
+  }
+  if (type === "column") {
+    return {
+      time: candle.time as UTCTimestamp,
+      value: candle.close,
+      color: candle.close >= candle.open ? theme.upColor : theme.downColor,
+    } as never;
+  }
+  if (type === "highlow") {
+    return {
+      time: candle.time as UTCTimestamp,
+      open: (candle.high + candle.low) / 2,
+      high: candle.high,
+      low: candle.low,
+      close: (candle.high + candle.low) / 2,
+    } as never;
+  }
+  return {
+    time: candle.time as UTCTimestamp,
+    open: candle.open,
+    high: candle.high,
+    low: candle.low,
+    close: candle.close,
+  } as never;
+}
 
 function toSeriesData(type: ChartType, candles: Candle[]): never[] {
   if (type === "line" || type === "area" || type === "baseline") {
