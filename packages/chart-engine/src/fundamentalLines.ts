@@ -13,8 +13,10 @@ export interface FundamentalLine {
   color: string;
 }
 
+import { EVENT_STRIP_HEIGHT } from "./eventStrip.js";
+
 /**
- * Draws full-pane-height dashed vertical lines for economic events.
+ * Draws dashed vertical lines for economic events, ending at the event strip.
  *
  * Like {@link BgBandsPrimitive} this is a pane primitive, not a series: a
  * vertical event line has no price of its own. It is attached directly to the
@@ -61,6 +63,7 @@ export class FundamentalLinesPrimitive implements IPanePrimitive<Time> {
       ctx.globalAlpha = 0.55;
       ctx.lineWidth = 1;
       ctx.setLineDash([4, 4]);
+      const bottom = Math.max(0, height - EVENT_STRIP_HEIGHT);
       for (const line of this.lines) {
         // Out-of-range times have no coordinate; skip rather than crash.
         const x = this.timeToX ? this.timeToX(line.time) : scale.timeToCoordinate(line.time as Time);
@@ -68,7 +71,7 @@ export class FundamentalLinesPrimitive implements IPanePrimitive<Time> {
         ctx.strokeStyle = line.color;
         ctx.beginPath();
         ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
+        ctx.lineTo(x, bottom);
         ctx.stroke();
       }
       ctx.restore();

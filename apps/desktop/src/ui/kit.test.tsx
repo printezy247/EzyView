@@ -9,6 +9,7 @@ import { Combobox } from "./Combobox";
 import { Dialog } from "./Dialog";
 import { Checkbox, Field, NumberInput, RadioGroup, Slider, Toggle } from "./Field";
 import { Popover, Tooltip } from "./Popover";
+import { HoverCard } from "./HoverCard";
 import { SegmentedControl } from "./SegmentedControl";
 import { Select } from "./Select";
 import { Tabs } from "./Tabs";
@@ -276,6 +277,38 @@ describe("form fields", () => {
   it("announces the slider value as text", () => {
     render(<Slider label="Opacity" value={50} min={0} max={100} onChange={() => {}} format={(v) => `${v}%`} />);
     expect(screen.getByLabelText("Opacity").getAttribute("aria-valuetext")).toBe("50%");
+  });
+});
+
+describe("HoverCard", () => {
+  it("renders near the anchor without taking focus, and Escape closes a pinned card", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(
+      <HoverCard title="CPI" x={100} y={100} onClose={onClose}>
+        <p>detail</p>
+      </HoverCard>,
+    );
+    const dialog = screen.getByRole("dialog", { name: "CPI" });
+    expect(dialog.textContent).toContain("detail");
+    // A hover preview must not steal focus from the chart.
+    expect(document.activeElement).not.toBe(dialog);
+    expect(dialog.style.left).toBe("112px");
+    expect(dialog.style.top).toBe("114px");
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("flips above the anchor near the viewport bottom", () => {
+    Object.defineProperty(window, "innerHeight", { value: 800, configurable: true });
+    render(
+      <HoverCard title="CPI" x={900} y={790}>
+        <p>detail</p>
+      </HoverCard>,
+    );
+    const dialog = screen.getByRole("dialog", { name: "CPI" });
+    expect(dialog.style.bottom).toBe("24px");
+    expect(dialog.style.top).toBe("");
   });
 });
 

@@ -89,8 +89,8 @@ describe("fundamentalOverlays", () => {
     ];
     const out = fundamentalOverlays(earnings, [], {});
     expect(out.markers).toEqual([
-      { time: T0 + 100, title: "NASDAQ:MSFT", kind: "earnings" },
-      { time: T0 + 200, title: "NASDAQ:AAPL", kind: "earnings" },
+      { time: T0 + 100, title: "NASDAQ:MSFT", kind: "earnings", quarter: "Q1", source: "demo" },
+      { time: T0 + 200, title: "NASDAQ:AAPL", kind: "earnings", quarter: "Q1", source: "demo" },
     ]);
     expect(out.lines).toEqual([]);
   });
@@ -102,8 +102,61 @@ describe("fundamentalOverlays", () => {
       event({ id: "c", title: "PPI", impact: "low", time: T0 + 200 }),
     ];
     const out = fundamentalOverlays([], events, {});
-    expect(out.markers).toEqual([{ time: T0 + 300, title: "NFP", kind: "event", impact: "high" }]);
+    expect(out.markers).toEqual([
+      { time: T0 + 300, title: "NFP", kind: "event", impact: "high", currency: "USD", source: "demo" },
+    ]);
     expect(out.lines).toEqual([T0 + 300]);
+
+    const detailed = fundamentalOverlays(
+      [
+        earning({
+          symbol: "NASDAQ:AAPL",
+          time: T0,
+          eps: 2.1,
+          estimate: 2.0,
+          revenue: 120_000_000_000,
+          quarter: "Q3",
+          source: "edgar",
+        }),
+      ],
+      [
+        event({
+          title: "CPI",
+          time: T0 + 10,
+          actual: "3.2%",
+          forecast: "3.3%",
+          previous: "3.4%",
+          currency: "USD",
+          source: "bls",
+          url: "https://example.com/cpi",
+        }),
+      ],
+      {},
+    );
+    expect(detailed.markers).toEqual([
+      {
+        time: T0,
+        title: "NASDAQ:AAPL",
+        kind: "earnings",
+        eps: 2.1,
+        estimate: 2.0,
+        revenue: 120_000_000_000,
+        quarter: "Q3",
+        source: "edgar",
+      },
+      {
+        time: T0 + 10,
+        title: "CPI",
+        kind: "event",
+        impact: "high",
+        actual: "3.2%",
+        forecast: "3.3%",
+        previous: "3.4%",
+        currency: "USD",
+        source: "bls",
+        url: "https://example.com/cpi",
+      },
+    ]);
 
     const lowered = fundamentalOverlays([], events, { minImpact: "low" });
     expect(lowered.markers.map((m) => m.time)).toEqual([T0 + 100, T0 + 200, T0 + 300]);
@@ -151,10 +204,10 @@ describe("fundamentalOverlays", () => {
     ];
     const out = fundamentalOverlays(earnings, events, {});
     expect(out.markers).toEqual([
-      { time: T0 + 100, title: "CPI", kind: "event", impact: "high" },
-      { time: T0 + 200, title: "GDP", kind: "event", impact: "high" },
-      { time: T0 + 400, title: "NASDAQ:AAPL", kind: "earnings" },
-      { time: T0 + 400, title: "NFP", kind: "event", impact: "high" },
+      { time: T0 + 100, title: "CPI", kind: "event", impact: "high", currency: "USD", source: "demo" },
+      { time: T0 + 200, title: "GDP", kind: "event", impact: "high", currency: "USD", source: "demo" },
+      { time: T0 + 400, title: "NASDAQ:AAPL", kind: "earnings", quarter: "Q1", source: "demo" },
+      { time: T0 + 400, title: "NFP", kind: "event", impact: "high", currency: "USD", source: "demo" },
     ]);
     expect(out.lines).toEqual([T0 + 100, T0 + 200, T0 + 400]);
   });

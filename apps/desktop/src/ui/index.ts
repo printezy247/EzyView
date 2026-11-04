@@ -32,6 +32,8 @@ export { Checkbox, DatePicker, Field, NumberInput, RadioGroup, Slider, Toggle } 
 export type { CheckboxProps, DatePickerProps, FieldIds, FieldProps, NumberInputProps, RadioGroupProps, RadioOption, SliderProps, ToggleProps } from "./Field";
 export { Popover, Tooltip } from "./Popover";
 export type { PopoverProps, TooltipProps } from "./Popover";
+export { HoverCard } from "./HoverCard";
+export type { HoverCardProps } from "./HoverCard";
 export { SegmentedControl } from "./SegmentedControl";
 export type { SegmentOption, SegmentedControlProps } from "./SegmentedControl";
 export { Select } from "./Select";

@@ -19,6 +19,18 @@ export interface FundamentalMarker {
   title: string;
   kind: "earnings" | "event";
   impact?: Impact;
+  /** Economic-event detail, carried through so the hover card needs no refetch. */
+  actual?: string | null;
+  forecast?: string | null;
+  previous?: string | null;
+  currency?: string;
+  source?: string;
+  url?: string;
+  /** Earnings detail. */
+  eps?: number | null;
+  estimate?: number | null;
+  revenue?: number | null;
+  quarter?: string;
 }
 
 export interface OverlayOptions {
@@ -93,7 +105,17 @@ export function fundamentalOverlays(
   };
 
   for (const row of opts.showEarnings === false ? [] : earnings) {
-    if (Number.isFinite(row.time)) push({ time: row.time, title: row.symbol, kind: "earnings" });
+    if (Number.isFinite(row.time))
+      push({
+        time: row.time,
+        title: row.symbol,
+        kind: "earnings",
+        eps: row.eps,
+        estimate: row.estimate,
+        revenue: row.revenue,
+        quarter: row.quarter,
+        source: row.source,
+      });
   }
 
   const lineSet = new Set<number>();
@@ -101,7 +123,18 @@ export function fundamentalOverlays(
   for (const ev of opts.showEvents === false ? [] : events) {
     if (allowed ? !allowed.has(ev.impact) : IMPACT_RANK[ev.impact] < IMPACT_RANK[minImpact]) continue;
     lineSet.add(ev.time);
-    push({ time: ev.time, title: ev.title, kind: "event", impact: ev.impact });
+    push({
+      time: ev.time,
+      title: ev.title,
+      kind: "event",
+      impact: ev.impact,
+      actual: ev.actual,
+      forecast: ev.forecast,
+      previous: ev.previous,
+      currency: ev.currency,
+      source: ev.source,
+      url: ev.url,
+    });
   }
 
   markers.sort((a, b) => a.time - b.time);
