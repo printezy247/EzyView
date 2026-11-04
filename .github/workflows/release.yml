@@ -42,9 +42,22 @@ jobs:
       - run: npm run build:mcp
 
   package:
-    name: build · gate · draft release
-    runs-on: ubuntu-24.04
+    name: build · gate (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
     needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux
+            os: ubuntu-24.04
+            bundles: deb,appimage
+          - name: windows
+            os: windows-latest
+            bundles: nsis
+          - name: macos
+            os: macos-latest
+            bundles: dmg
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -52,6 +65,7 @@ jobs:
           node-version: 22
           cache: npm
       - name: Linux WebKit / GTK deps
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -63,25 +77,57 @@ jobs:
         with:
           workspaces: apps/desktop/src-tauri
       - run: npm ci
-      - run: npm run build:desktop
+      # `--bundles` overrides `bundle.targets` in tauri.conf.json, so the
+      # Linux config default (deb,appimage) never leaks into the other OSes.
+      - name: Build desktop bundles
+        run: npm run tauri -- build --bundles ${{ matrix.bundles }}
       - name: Debian package policy checks
+        if: runner.os == 'Linux'
         run: ./scripts/check-deb.sh
       - name: Install and launch the package
+        if: runner.os == 'Linux'
         run: ./scripts/smoke-deb.sh "$(find apps/desktop/src-tauri/target/release/bundle/deb -name 'EzyView_*.deb' | sort | tail -1)"
-      - name: Collect bundles and checksums
+      - name: Collect bundles
+        shell: bash
         run: |
           set -euo pipefail
           mkdir -p release-assets
-          cp apps/desktop/src-tauri/target/release/bundle/deb/*.deb release-assets/
-          cp apps/desktop/src-tauri/target/release/bundle/appimage/*.AppImage release-assets/
-          chmod +x release-assets/*.AppImage
-          (cd release-assets && sha256sum ./*.deb ./*.AppImage > SHA256SUMS)
+          case "${{ matrix.name }}" in
+            linux)
+              cp apps/desktop/src-tauri/target/release/bundle/deb/*.deb release-assets/
+              cp apps/desktop/src-tauri/target/release/bundle/appimage/*.AppImage release-assets/
+              chmod +x release-assets/*.AppImage
+              ;;
+            windows)
+              cp apps/desktop/src-tauri/target/release/bundle/nsis/*.exe release-assets/
+              ;;
+            macos)
+              cp apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg release-assets/
+              ;;
+          esac
           ls -lh release-assets
       - uses: actions/upload-artifact@v4
         with:
-          name: ezyview-linux
+          name: ezyview-${{ matrix.name }}
           path: release-assets/
           if-no-files-found: error
+
+  draft:
+    name: draft release
+    runs-on: ubuntu-24.04
+    needs: package
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ezyview-*
+          path: release-assets
+          merge-multiple: true
+      - name: Checksums
+        run: |
+          set -euo pipefail
+          (cd release-assets && sha256sum ./* > SHA256SUMS)
+          ls -lh release-assets
       - name: Create draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -92,11 +138,11 @@ jobs:
             --draft \
             --title "EzyView $version" \
             --generate-notes \
-            --notes "Linux builds. Prefer the .deb on Mint/Ubuntu. The AppImage needs FUSE 2 (\`libfuse2t64\` on Mint 22 / Ubuntu 24.04); without it run \`./EzyView_${version}_amd64.AppImage --appimage-extract-and-run\`. Verify downloads against \`SHA256SUMS\`."
+            --notes "Linux: prefer the .deb on Mint/Ubuntu. The AppImage needs FUSE 2 (\`libfuse2t64\` on Mint 22 / Ubuntu 24.04); without it run \`./EzyView_${version}_amd64.AppImage --appimage-extract-and-run\`. Windows: run the NSIS installer. macOS: open the .dmg (unsigned: right-click → Open on first launch). Verify downloads against \`SHA256SUMS\`."
       - name: Summary
         run: |
           {
             echo "### Draft release $GITHUB_REF_NAME"
-            echo "Bundles passed lintian, package-content checks, desktop-file-validate, appstreamcli and the install/launch smoke test."
+            echo "Linux bundles passed lintian, package-content checks, desktop-file-validate, appstreamcli and the install/launch smoke test."
             echo "Publish the draft on GitHub once it is reviewed; that is what makes \`releases/latest\` resolve."
           } >> "$GITHUB_STEP_SUMMARY"

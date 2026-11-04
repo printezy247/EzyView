@@ -3,6 +3,7 @@ import { GripVertical, Star } from "lucide-react";
 import { toolSpec } from "@ezyview/drawing-tools";
 import { useWorkspace } from "./store";
 import { TOOL_ICONS } from "./drawingToolIcons";
+import { IconButton } from "./ui";
 
 /**
  * The floating quick-access pill for starred drawing tools. It appears only
@@ -71,10 +72,9 @@ export function FavoriteDrawingsBar() {
         const spec = toolSpec(id);
         const Icon = TOOL_ICONS[id];
         return (
-          <button
+          <IconButton
             key={id}
-            type="button"
-            aria-label={spec.label}
+            label={spec.label}
             aria-pressed={activeTool === id}
             title={`${spec.label}${spec.shortcut ? ` (${spec.shortcut})` : ""} — right-click to unstar`}
             onClick={() => setActiveTool(activeTool === id ? null : id)}
@@ -82,12 +82,10 @@ export function FavoriteDrawingsBar() {
               e.preventDefault();
               toggleFavorite(id);
             }}
-            className={`flex size-7 items-center justify-center rounded ${
-              activeTool === id ? "bg-ev-raised text-ev-accent-text" : "text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-            }`}
+            className={activeTool === id ? "bg-ev-raised text-ev-accent-text" : "text-ev-muted"}
           >
             <Icon size={14} aria-hidden />
-          </button>
+          </IconButton>
         );
       })}
       <Star size={9} className="mx-0.5 text-ev-faint" aria-hidden />

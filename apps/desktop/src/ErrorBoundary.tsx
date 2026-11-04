@@ -1,6 +1,7 @@
 import { Component } from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import { appendCrash, formatCrash } from "./diagnostics";
+import { Button } from "./ui";
 
 interface Props {
   children: ReactNode;
@@ -43,13 +44,9 @@ export class ErrorBoundary extends Component<Props, State> {
       <div role="alert" className="flex h-screen flex-col items-center justify-center gap-3 bg-ev-bg text-ev-text">
         <p className="text-body font-semibold text-ev-strong">{this.props.title ?? "Something went wrong."}</p>
         <p className="text-base text-ev-muted">The error was saved to the local crash log (Settings → Diagnostics).</p>
-        <button
-          type="button"
-          onClick={() => window.location.reload()}
-          className="rounded bg-ev-line px-3 py-1.5 text-base text-ev-strong hover:bg-ev-line-strong"
-        >
+        <Button size="sm" onClick={() => window.location.reload()}>
           Reload
-        </button>
+        </Button>
       </div>
     );
   }

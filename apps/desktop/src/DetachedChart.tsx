@@ -3,6 +3,7 @@ import type { Resolution } from "@ezyview/data-adapters";
 import { ChartHost } from "./ChartHost";
 import { publishCrosshair, subscribeCrosshair } from "./crosshairBus";
 import { PICKER_RESOLUTIONS, tickerOf } from "./data";
+import { SegmentedControl } from "./ui";
 import { useWorkspace } from "./store";
 
 interface Props {
@@ -51,19 +52,13 @@ export function DetachedChart({ symbol, resolution: initial }: Props) {
     <div className="flex h-full flex-col bg-ev-bg text-ev-text">
       <header className="flex h-9 shrink-0 items-center gap-3 border-b border-ev-raised px-3 text-base">
         <span className="font-medium text-ev-strong">{symbol}</span>
-        <div role="group" aria-label="Interval" className="flex rounded border border-ev-line">
-          {PICKER_RESOLUTIONS.map((r) => (
-            <button
-              key={r}
-              type="button"
-              aria-pressed={r === resolution}
-              onClick={() => setResolution(r)}
-              className={r === resolution ? "bg-ev-raised px-2 py-1 font-medium text-ev-strong" : "px-2 py-1 text-ev-muted hover:text-ev-strong"}
-            >
-              {r}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          size="sm"
+          label="Interval"
+          value={resolution}
+          onChange={(v) => setResolution(v as Resolution)}
+          options={PICKER_RESOLUTIONS.map((r) => ({ value: r, label: r }))}
+        />
       </header>
       <div
         className="relative min-h-0 flex-1"

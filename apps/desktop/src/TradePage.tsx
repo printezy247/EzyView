@@ -8,7 +8,7 @@ import { DepthOfMarket } from "./DepthOfMarket";
 import { precisionForSymbol } from "./pricePrecision";
 import { useQuote } from "./quotePoller";
 import { useTrading } from "./trading";
-import { Button, rowClass } from "./ui";
+import { Button, Tabs, rowClass } from "./ui";
 import { CurrencyConverter } from "./CurrencyConverter";
 
 type Tab = "ticket" | "blotter" | "depth" | "fx";
@@ -39,24 +39,13 @@ export function TradePage() {
 
   return (
     <section aria-label="Trade" className="flex min-h-0 flex-1 flex-col text-base">
-      <div role="tablist" aria-label="Trade views" className="flex shrink-0 items-center gap-1 border-b border-ev-raised px-3 py-1.5">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            title={t.hint}
-            onClick={() => setTab(t.id)}
-            className={
-              tab === t.id
-                ? "rounded bg-ev-raised px-2.5 py-1 text-dense font-medium text-ev-strong"
-                : "rounded px-2.5 py-1 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-            }
-          >
-            {t.label}
-          </button>
-        ))}
+      <div className="flex shrink-0 items-center gap-1 border-b border-ev-raised px-3 py-1.5">
+        <Tabs
+          label="Trade views"
+          value={tab}
+          onChange={(id) => setTab(id as Tab)}
+          items={TABS.map((t) => ({ id: t.id, label: t.label, title: t.hint }))}
+        />
         <span className="ml-auto flex items-center gap-2">
           <span className="num text-dense text-ev-faint">
             {state.symbol} {last === null ? "" : last.toFixed(precisionForSymbol(state.symbol, last))}

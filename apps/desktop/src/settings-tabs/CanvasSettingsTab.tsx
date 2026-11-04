@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { ChartSettings } from "../layout";
-import { Select } from "../ui";
+import { Checkbox, ColorInput, NumberInput, Select } from "../ui";
 
 interface Props {
   draft: ChartSettings;
@@ -33,87 +33,45 @@ export function CanvasSettingsTab({ draft, setDraft }: Props) {
                 { value: "gradient", label: "Gradient" },
               ]}
             />
-            <input
-              type="color"
-              value={draft.canvas.backgroundColor}
-              onChange={(e) =>
+            <ColorInput label="Background colour" value={draft.canvas.backgroundColor} onChange={(value) =>
                 setDraft((d) => ({
                   ...d,
-                  canvas: { ...d.canvas, backgroundColor: e.target.value },
-                }))
-              }
-              className="size-6 cursor-pointer rounded border border-ev-line bg-transparent p-0"
-            />
+                  canvas: { ...d.canvas, backgroundColor: value },
+                }))} />
             {draft.canvas.backgroundType === "gradient" && (
-              <input
-                type="color"
-                value={draft.canvas.backgroundGradientColor}
-                onChange={(e) =>
+              <ColorInput label="Gradient colour" value={draft.canvas.backgroundGradientColor} onChange={(value) =>
                   setDraft((d) => ({
                     ...d,
-                    canvas: { ...d.canvas, backgroundGradientColor: e.target.value },
-                  }))
-                }
-                className="size-6 cursor-pointer rounded border border-ev-line bg-transparent p-0"
-              />
+                    canvas: { ...d.canvas, backgroundGradientColor: value },
+                  }))} />
             )}
           </div>
         </div>
 
         <div className="flex items-center justify-between">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={draft.canvas.vertGridLines}
-              onChange={(e) =>
+          <Checkbox label="Vert grid lines" checked={draft.canvas.vertGridLines} onChange={(checked) =>
                 setDraft((d) => ({
                   ...d,
-                  canvas: { ...d.canvas, vertGridLines: e.target.checked },
-                }))
-              }
-              className="accent-ev-accent"
-            />
-            <span>Vert grid lines</span>
-          </label>
-          <input
-            type="color"
-            value={draft.canvas.vertGridColor}
-            onChange={(e) =>
+                  canvas: { ...d.canvas, vertGridLines: checked },
+                }))} />
+          <ColorInput label="Vertical grid colour" value={draft.canvas.vertGridColor} onChange={(value) =>
               setDraft((d) => ({
                 ...d,
-                canvas: { ...d.canvas, vertGridColor: e.target.value },
-              }))
-            }
-            className="size-6 cursor-pointer rounded border border-ev-line bg-transparent p-0"
-          />
+                canvas: { ...d.canvas, vertGridColor: value },
+              }))} />
         </div>
 
         <div className="flex items-center justify-between">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={draft.canvas.horzGridLines}
-              onChange={(e) =>
+          <Checkbox label="Horz grid lines" checked={draft.canvas.horzGridLines} onChange={(checked) =>
                 setDraft((d) => ({
                   ...d,
-                  canvas: { ...d.canvas, horzGridLines: e.target.checked },
-                }))
-              }
-              className="accent-ev-accent"
-            />
-            <span>Horz grid lines</span>
-          </label>
-          <input
-            type="color"
-            value={draft.canvas.horzGridColor}
-            onChange={(e) =>
+                  canvas: { ...d.canvas, horzGridLines: checked },
+                }))} />
+          <ColorInput label="Horizontal grid colour" value={draft.canvas.horzGridColor} onChange={(value) =>
               setDraft((d) => ({
                 ...d,
-                canvas: { ...d.canvas, horzGridColor: e.target.value },
-              }))
-            }
-            className="size-6 cursor-pointer rounded border border-ev-line bg-transparent p-0"
-          />
+                canvas: { ...d.canvas, horzGridColor: value },
+              }))} />
         </div>
 
         <div className="flex items-center justify-between">
@@ -138,34 +96,19 @@ export function CanvasSettingsTab({ draft, setDraft }: Props) {
                 { value: "solid", label: "Solid" },
               ]}
             />
-            <input
-              type="color"
-              value={draft.canvas.crosshairColor}
-              onChange={(e) =>
+            <ColorInput label="Crosshair colour" value={draft.canvas.crosshairColor} onChange={(value) =>
                 setDraft((d) => ({
                   ...d,
-                  canvas: { ...d.canvas, crosshairColor: e.target.value },
-                }))
-              }
-              className="size-6 cursor-pointer rounded border border-ev-line bg-transparent p-0"
-            />
+                  canvas: { ...d.canvas, crosshairColor: value },
+                }))} />
           </div>
         </div>
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={draft.canvas.watermark}
-            onChange={(e) =>
+        <Checkbox label="Watermark (Symbol & interval)" checked={draft.canvas.watermark} onChange={(checked) =>
               setDraft((d) => ({
                 ...d,
-                canvas: { ...d.canvas, watermark: e.target.checked },
-              }))
-            }
-            className="accent-ev-accent"
-          />
-          <span>Watermark (Symbol & interval)</span>
-        </label>
+                canvas: { ...d.canvas, watermark: checked },
+              }))} />
 
         <div className="flex items-center justify-between">
           <span>Scales font size</span>
@@ -188,54 +131,27 @@ export function CanvasSettingsTab({ draft, setDraft }: Props) {
 
       <div className="font-semibold text-ev-strong">Margins</div>
       <div className="grid grid-cols-3 gap-3">
-        <label className="flex flex-col gap-1">
-          <span className="text-micro text-ev-muted">Top (%)</span>
-          <input
-            type="number"
-            min={0}
-            max={50}
-            value={draft.canvas.topMarginPct}
-            onChange={(e) =>
-              setDraft((d) => ({
-                ...d,
-                canvas: { ...d.canvas, topMarginPct: Number(e.target.value) },
-              }))
-            }
-            className="w-full rounded border border-ev-line bg-ev-panel px-2 py-1 text-dense text-ev-strong"
-          />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-micro text-ev-muted">Bottom (%)</span>
-          <input
-            type="number"
-            min={0}
-            max={50}
-            value={draft.canvas.bottomMarginPct}
-            onChange={(e) =>
-              setDraft((d) => ({
-                ...d,
-                canvas: { ...d.canvas, bottomMarginPct: Number(e.target.value) },
-              }))
-            }
-            className="w-full rounded border border-ev-line bg-ev-panel px-2 py-1 text-dense text-ev-strong"
-          />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-micro text-ev-muted">Right (bars)</span>
-          <input
-            type="number"
-            min={0}
-            max={100}
-            value={draft.canvas.rightMarginBars}
-            onChange={(e) =>
-              setDraft((d) => ({
-                ...d,
-                canvas: { ...d.canvas, rightMarginBars: Number(e.target.value) },
-              }))
-            }
-            className="w-full rounded border border-ev-line bg-ev-panel px-2 py-1 text-dense text-ev-strong"
-          />
-        </label>
+        <NumberInput
+          label="Top (%)"
+          min={0}
+          max={50}
+          value={draft.canvas.topMarginPct}
+          onValueChange={(v) => setDraft((d) => ({ ...d, canvas: { ...d.canvas, topMarginPct: v ?? 0 } }))}
+        />
+        <NumberInput
+          label="Bottom (%)"
+          min={0}
+          max={50}
+          value={draft.canvas.bottomMarginPct}
+          onValueChange={(v) => setDraft((d) => ({ ...d, canvas: { ...d.canvas, bottomMarginPct: v ?? 0 } }))}
+        />
+        <NumberInput
+          label="Right (bars)"
+          min={0}
+          max={100}
+          value={draft.canvas.rightMarginBars}
+          onValueChange={(v) => setDraft((d) => ({ ...d, canvas: { ...d.canvas, rightMarginBars: v ?? 0 } }))}
+        />
       </div>
     </div>
   );

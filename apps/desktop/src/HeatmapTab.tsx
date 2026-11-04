@@ -4,6 +4,7 @@ import { precisionFor, quoteOf } from "./data";
 import { useWorkspace } from "./store";
 import { market } from "./data";
 import type { Quote, SymbolInfo } from "@ezyview/data-adapters";
+import { Button, SegmentedControl } from "./ui";
 
 type Scope = "all" | "crypto" | "forex" | "commodity" | "stock" | "index";
 
@@ -161,44 +162,31 @@ export function HeatmapTab() {
       {/* Header filter & scope bar */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ev-raised px-4 py-2">
         <div className="flex items-center gap-1.5">
-          <div className="flex rounded border border-ev-line p-px">
-            <button
-              type="button"
-              onClick={() => setMode("universe")}
-              className={`rounded px-2.5 py-1 text-dense font-medium ${
-                mode === "universe" ? "bg-ev-raised text-ev-strong" : "text-ev-muted hover:text-ev-strong"
-              }`}
-            >
-              Market Universe
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("watchlist")}
-              className={`rounded px-2.5 py-1 text-dense font-medium ${
-                mode === "watchlist" ? "bg-ev-raised text-ev-strong" : "text-ev-muted hover:text-ev-strong"
-              }`}
-            >
-              Watchlist ({watchlist.length})
-            </button>
-          </div>
+          <SegmentedControl
+            label="Heatmap scope"
+            size="sm"
+            value={mode}
+            onChange={(v) => setMode(v as "universe" | "watchlist")}
+            options={[
+              { value: "universe", label: "Market Universe" },
+              { value: "watchlist", label: `Watchlist (${watchlist.length})` },
+            ]}
+          />
 
           <div className="mx-1 h-4 w-px bg-ev-raised" />
 
           {/* Sector filters */}
           <div className="flex flex-wrap items-center gap-1">
             {(Object.keys(ASSET_LABELS) as Scope[]).map((scopeKey) => (
-              <button
+              <Button
                 key={scopeKey}
-                type="button"
+                size="sm"
+                variant={filter === scopeKey ? "solid" : "ghost"}
+                aria-pressed={filter === scopeKey}
                 onClick={() => setFilter(scopeKey)}
-                className={`rounded px-2 py-0.5 text-dense ${
-                  filter === scopeKey
-                    ? "bg-ev-accent text-white font-medium"
-                    : "text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-                }`}
               >
                 {ASSET_LABELS[scopeKey]}
-              </button>
+              </Button>
             ))}
           </div>
         </div>

@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { ChartSettings } from "../layout";
+import { Checkbox, ColorInput, Slider } from "../ui";
 
 interface Props {
   draft: ChartSettings;
@@ -12,69 +13,37 @@ export function AlertsSettingsTab({ draft, setDraft }: Props) {
       <div className="font-semibold text-ev-strong">Chart Alerts</div>
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={draft.alerts.alertLines}
-              onChange={(e) =>
+          <Checkbox label="Alert lines on chart" checked={draft.alerts.alertLines} onChange={(checked) =>
                 setDraft((d) => ({
                   ...d,
-                  alerts: { ...d.alerts, alertLines: e.target.checked },
-                }))
-              }
-              className="accent-ev-accent"
-            />
-            <span>Alert lines on chart</span>
-          </label>
-          <input
-            type="color"
-            value={draft.alerts.alertLineColor}
-            onChange={(e) =>
+                  alerts: { ...d.alerts, alertLines: checked },
+                }))} />
+          <ColorInput label="Alert line colour" value={draft.alerts.alertLineColor} onChange={(value) =>
               setDraft((d) => ({
                 ...d,
-                alerts: { ...d.alerts, alertLineColor: e.target.value },
-              }))
-            }
-            className="size-6 cursor-pointer rounded border border-ev-line bg-transparent p-0"
-          />
+                alerts: { ...d.alerts, alertLineColor: value },
+              }))} />
         </div>
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={draft.alerts.playSound}
-            onChange={(e) =>
+        <Checkbox label="Play sound on alert trigger" checked={draft.alerts.playSound} onChange={(checked) =>
               setDraft((d) => ({
                 ...d,
-                alerts: { ...d.alerts, playSound: e.target.checked },
-              }))
-            }
-            className="accent-ev-accent"
-          />
-          <span>Play sound on alert trigger</span>
-        </label>
+                alerts: { ...d.alerts, playSound: checked },
+              }))} />
 
-        <div className="flex items-center justify-between">
-          <span>Sound volume</span>
-          <div className="flex items-center gap-2">
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={draft.alerts.soundVolume}
-              onChange={(e) =>
-                setDraft((d) => ({
-                  ...d,
-                  alerts: { ...d.alerts, soundVolume: Number(e.target.value) },
-                }))
-              }
-              className="w-28 accent-ev-accent"
-            />
-            <span className="w-8 text-right text-micro text-ev-muted">
-              {draft.alerts.soundVolume}%
-            </span>
-          </div>
-        </div>
+        <Slider
+          label="Sound volume"
+          min={0}
+          max={100}
+          value={draft.alerts.soundVolume}
+          format={(v) => `${v}%`}
+          onChange={(soundVolume) =>
+            setDraft((d) => ({
+              ...d,
+              alerts: { ...d.alerts, soundVolume },
+            }))
+          }
+        />
       </div>
     </div>
   );

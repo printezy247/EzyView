@@ -14,7 +14,7 @@ import { JournalPropFirmBar } from "./JournalPropFirmBar";
 import { JournalReviews } from "./JournalReviews";
 import { JournalStatsView } from "./JournalStatsView";
 import { VirtualList } from "./VirtualList";
-import { Button, IconButton, Tabs, chipClass } from "./ui";
+import { Button, Checkbox, IconButton, Input, Tabs, chipClass } from "./ui";
 
 interface Props {
   onClose: () => void;
@@ -251,104 +251,81 @@ export function JournalPanel({ onClose }: Props) {
               className="min-h-0 flex-1 resize-none rounded border border-ev-line bg-ev-panel p-2 text-base text-ev-text focus:border-ev-accent"
             />
             <div className="flex items-center gap-2">
-              <button
-                type="button"
+              <Button
+                size="sm"
+                variant="outline"
                 onClick={() => setShot(captureChart())}
-                className={`flex items-center gap-1 rounded border px-2 py-1 text-dense hover:text-ev-strong ${
-                  shot ? "border-ev-accent text-ev-strong" : "border-ev-line text-ev-muted"
-                }`}
+                aria-pressed={shot !== null}
+                title={shot ? "Chart attached — retake" : "Attach a chart screenshot"}
+                className={shot ? "border-ev-accent" : "text-ev-muted"}
               >
                 <Camera size={13} aria-hidden />
                 {shot ? "Chart attached" : "Chart"}
-              </button>
-              <button
-                type="button"
-                onClick={submit}
-                disabled={!text.trim() && !shot}
-                className="ml-auto rounded bg-ev-accent px-3 py-1 text-dense font-medium text-white hover:bg-ev-accent-hover disabled:opacity-40"
-              >
+              </Button>
+              <Button size="sm" variant="solid" onClick={submit} disabled={!text.trim() && !shot} className="ml-auto">
                 Add note
-              </button>
+              </Button>
             </div>
           </div>
 
           <div className="flex min-w-0 flex-1 flex-col">
             <nav className="flex h-7 shrink-0 items-center gap-2 border-b border-ev-raised px-3">
-              <input
+              <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Filter by symbol, tag or text"
                 aria-label="Filter journal"
-                className="w-64 rounded border border-ev-line bg-ev-panel px-2 py-0.5 text-dense text-ev-text focus:border-ev-accent"
+                className="w-64"
               />
               {/* Account-aware filter: chip per capture source, any = all. */}
               <div role="group" aria-label="Filter by account source" className="flex items-center gap-1">
                 {SOURCES.map((opt) => (
-                  <button
+                  <Button
                     key={opt}
-                    type="button"
+                    size="sm"
+                    variant={sourceFilter === opt ? "solid" : "ghost"}
                     aria-pressed={sourceFilter === opt}
+                    title={`Show ${opt} entries`}
                     onClick={() => setSourceFilter(opt)}
-                    className={`rounded px-1.5 py-0.5 text-dense ${
-                      sourceFilter === opt ? "bg-ev-accent text-white" : "text-ev-muted hover:text-ev-strong"
-                    }`}
                   >
                     {opt}
-                  </button>
+                  </Button>
                 ))}
               </div>
               <span className={`${chip} text-ev-muted`}>{rows.length} items</span>
-              <button
-                type="button"
+              <Button
+                size="sm"
+                variant="ghost"
                 aria-pressed={bulkMode}
+                title="Select multiple entries for bulk actions"
                 onClick={() => {
                   setBulkMode((b) => !b);
                   setBulkIds([]);
                 }}
-                className={`ml-auto rounded px-2 py-0.5 text-dense ${
-                  bulkMode ? "bg-ev-raised font-medium text-ev-strong" : "text-ev-muted hover:text-ev-strong"
-                }`}
+                className={`ml-auto ${bulkMode ? "bg-ev-raised font-medium text-ev-strong" : ""}`}
               >
                 Bulk edit
-              </button>
+              </Button>
             </nav>
 
             {bulkMode && (
               <div className="flex h-8 shrink-0 items-center gap-2 border-b border-ev-raised bg-ev-panel/40 px-3 text-dense">
-                <label className="flex items-center gap-1">
-                  <input
-                    type="checkbox"
-                    checked={allTradesChecked}
-                    onChange={toggleAllTrades}
-                    aria-label="Select all filtered trades"
-                  />
-                  All
-                </label>
+                <Checkbox label="All" checked={allTradesChecked} onChange={toggleAllTrades} />
                 <span className="num text-ev-muted">{bulkIds.length} selected</span>
-                <input
+                <Input
                   value={bulkTag}
                   onChange={(e) => setBulkTag(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && applyBulkTag()}
                   placeholder="Tag to add…"
                   aria-label="Bulk tag"
-                  className="w-40 rounded border border-ev-line bg-ev-bg px-2 py-0.5 text-dense text-ev-text focus:border-ev-accent"
+                  className="w-40"
                 />
-                <button
-                  type="button"
-                  onClick={applyBulkTag}
-                  disabled={bulkTag.trim() === "" || bulkIds.length === 0}
-                  className={`rounded border border-ev-line px-2 py-0.5 text-dense hover:text-ev-strong disabled:opacity-40`}
-                >
+                <Button size="sm" variant="outline" onClick={applyBulkTag} disabled={bulkTag.trim() === "" || bulkIds.length === 0}>
                   Add tag
-                </button>
-                <button
-                  type="button"
-                  onClick={deleteSelected}
-                  disabled={bulkIds.length === 0}
-                  className="rounded border border-ev-down/40 px-2 py-0.5 text-dense text-ev-down-text hover:bg-ev-down/10 disabled:opacity-40"
-                >
+                </Button>
+                <Button size="sm" variant="danger" onClick={deleteSelected} disabled={bulkIds.length === 0}>
                   Delete selected
-                </button>
+                </Button>
               </div>
             )}
 
@@ -445,14 +422,14 @@ function TradeRow({
       )}
       {entry.emotion && <span className="rounded bg-ev-raised px-1.5 py-0.5 text-dense text-ev-muted">{entry.emotion}</span>}
       {entry.source && <span className="rounded bg-ev-raised px-1.5 py-0.5 text-dense text-ev-muted">{entry.source}</span>}
-      <button
-        type="button"
-        aria-label={`Delete trade ${entry.symbol}`}
+      <IconButton
+        size="sm"
+        label={`Delete trade ${entry.symbol}`}
         onClick={onDelete}
-        className="ml-auto flex size-6 items-center justify-center rounded text-ev-faint hover:bg-ev-raised hover:text-ev-down-text"
+        className="ml-auto text-ev-faint"
       >
         <Trash2 size={12} aria-hidden />
-      </button>
+      </IconButton>
     </div>
   );
 }
@@ -483,14 +460,14 @@ function NoteRow({
           <img src={url} alt="Chart thumbnail" className="h-full w-full object-cover" />
         </button>
       ))}
-      <button
-        type="button"
-        aria-label="Delete note"
+      <IconButton
+        size="sm"
+        label="Delete note"
         onClick={onDelete}
-        className="ml-auto flex size-6 items-center justify-center rounded text-ev-faint hover:bg-ev-raised hover:text-ev-down-text"
+        className="ml-auto text-ev-faint"
       >
         <Trash2 size={12} aria-hidden />
-      </button>
+      </IconButton>
     </div>
   );
 }

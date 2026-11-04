@@ -1,6 +1,7 @@
 import type { BacktestResult } from "@ezyview/pine-transpiler";
 import type { BacktestParams } from "../PineEditor";
 import { EquityCurve, Metric } from "./EquityCurve";
+import { Button, Checkbox, NumberInput } from "../ui";
 
 /** Backtest readout: equity curve, headline metrics, the input snapshot, assumptions and recent fills. */
 export function StrategyTester({
@@ -34,60 +35,50 @@ export function StrategyTester({
         </div>
       </div>
       <div className="mb-2 flex flex-wrap items-center gap-3 text-xs">
-        <label className="flex items-center gap-1 text-ev-muted">
-          <span>Initial Cash:</span>
-          <input
-            type="number"
-            value={costs.initialCash}
-            onChange={(e) => onCostsChange({ initialCash: Number(e.target.value) || 0 })}
-            className="w-20 rounded border border-ev-line bg-ev-bg px-1.5 py-0.5 text-ev-strong num"
-          />
-        </label>
-        <label className="flex items-center gap-1 text-ev-muted">
-          <span>Commission:</span>
-          <input
-            type="number"
-            step="0.1"
-            value={costs.commission}
-            onChange={(e) => onCostsChange({ commission: Number(e.target.value) || 0 })}
-            className="w-16 rounded border border-ev-line bg-ev-bg px-1.5 py-0.5 text-ev-strong num"
-          />
-          <button
-            type="button"
-            onClick={() => onCostsChange({ commissionType: costs.commissionType === "cash" ? "percent" : "cash" })}
-            className="rounded bg-ev-line px-1.5 py-0.5 text-ev-faint hover:text-ev-strong"
-          >
-            {costs.commissionType === "cash" ? "$" : "%"}
-          </button>
-        </label>
-        <label className="flex items-center gap-1 text-ev-muted">
-          <span>Slippage:</span>
-          <input
-            type="number"
-            step="0.1"
-            value={costs.slippage}
-            onChange={(e) => onCostsChange({ slippage: Number(e.target.value) || 0 })}
-            className="w-16 rounded border border-ev-line bg-ev-bg px-1.5 py-0.5 text-ev-strong num"
-          />
-        </label>
-        <label className="flex items-center gap-1 text-ev-muted">
-          <span>Multiplier:</span>
-          <input
-            type="number"
-            value={costs.multiplier}
-            onChange={(e) => onCostsChange({ multiplier: Number(e.target.value) || 1 })}
-            className="w-16 rounded border border-ev-line bg-ev-bg px-1.5 py-0.5 text-ev-strong num"
-          />
-        </label>
-        <label className="flex items-center gap-1.5 text-ev-muted cursor-pointer">
-          <input
-            type="checkbox"
-            checked={costs.fillOnNextOpen}
-            onChange={(e) => onCostsChange({ fillOnNextOpen: e.target.checked })}
-            className="rounded border-ev-line"
-          />
-          <span>Fill on next open</span>
-        </label>
+        <NumberInput
+          inline
+          label="Initial Cash:"
+          value={costs.initialCash}
+          onValueChange={(v) => onCostsChange({ initialCash: v ?? 0 })}
+          className="w-20"
+        />
+        <NumberInput
+          inline
+          label="Commission:"
+          step={0.1}
+          value={costs.commission}
+          onValueChange={(v) => onCostsChange({ commission: v ?? 0 })}
+          className="w-16"
+        />
+        <Button
+          size="sm"
+          variant="ghost"
+          title="Toggle commission units"
+          aria-pressed={costs.commissionType === "percent"}
+          onClick={() => onCostsChange({ commissionType: costs.commissionType === "cash" ? "percent" : "cash" })}
+        >
+          {costs.commissionType === "cash" ? "$" : "%"}
+        </Button>
+        <NumberInput
+          inline
+          label="Slippage:"
+          step={0.1}
+          value={costs.slippage}
+          onValueChange={(v) => onCostsChange({ slippage: v ?? 0 })}
+          className="w-16"
+        />
+        <NumberInput
+          inline
+          label="Multiplier:"
+          value={costs.multiplier}
+          onValueChange={(v) => onCostsChange({ multiplier: v ?? 1 })}
+          className="w-16"
+        />
+        <Checkbox
+          label="Fill on next open"
+          checked={costs.fillOnNextOpen}
+          onChange={(fillOnNextOpen) => onCostsChange({ fillOnNextOpen })}
+        />
       </div>
       <div className="mb-1.5 flex items-center gap-4 text-ev-muted">
         <span className="font-semibold uppercase tracking-wider text-ev-faint">Strategy Tester</span>

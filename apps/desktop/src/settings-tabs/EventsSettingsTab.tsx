@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { ChartSettings } from "../layout";
+import { Checkbox } from "../ui";
 
 interface Props {
   draft: ChartSettings;
@@ -11,50 +12,23 @@ export function EventsSettingsTab({ draft, setDraft }: Props) {
     <div className="space-y-4">
       <div className="font-semibold text-ev-strong">Market Events & Breaks</div>
       <div className="space-y-2.5">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={draft.events.showSessionBreaks}
-            onChange={(e) =>
+        <Checkbox label="Session breaks (vertical line separating days)" checked={draft.events.showSessionBreaks} onChange={(checked) =>
               setDraft((d) => ({
                 ...d,
-                events: { ...d.events, showSessionBreaks: e.target.checked },
-              }))
-            }
-            className="accent-ev-accent"
-          />
-          <span>Session breaks (vertical line separating days)</span>
-        </label>
+                events: { ...d.events, showSessionBreaks: checked },
+              }))} />
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={draft.events.showEconomicEvents}
-            onChange={(e) =>
+        <Checkbox label="Economic events on chart" checked={draft.events.showEconomicEvents} onChange={(checked) =>
               setDraft((d) => ({
                 ...d,
-                events: { ...d.events, showEconomicEvents: e.target.checked },
-              }))
-            }
-            className="accent-ev-accent"
-          />
-          <span>Economic events on chart</span>
-        </label>
+                events: { ...d.events, showEconomicEvents: checked },
+              }))} />
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={draft.events.showNewsHeadlines}
-            onChange={(e) =>
+        <Checkbox label="News headlines & marks" checked={draft.events.showNewsHeadlines} onChange={(checked) =>
               setDraft((d) => ({
                 ...d,
-                events: { ...d.events, showNewsHeadlines: e.target.checked },
-              }))
-            }
-            className="accent-ev-accent"
-          />
-          <span>News headlines & marks</span>
-        </label>
+                events: { ...d.events, showNewsHeadlines: checked },
+              }))} />
       </div>
     </div>
   );

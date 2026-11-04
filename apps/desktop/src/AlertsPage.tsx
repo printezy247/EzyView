@@ -200,17 +200,17 @@ const FragmentRow = memo(function FragmentRow({ alert: a, closes, expanded, onTo
                 ["1h", 60 * 60],
                 ["1d", 24 * 60 * 60],
               ].map(([label, seconds]) => (
-                <button
+                <Button
                   key={label}
-                  type="button"
+                  size="sm"
+                  variant="ghost"
                   onClick={(e) => {
                     e.stopPropagation();
                     onSnooze(Number(seconds));
                   }}
-                  className="rounded border border-ev-line px-1 py-0.5 text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
                 >
                   {label}
-                </button>
+                </Button>
               ))}
             </span>
           </td>

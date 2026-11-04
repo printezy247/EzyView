@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useJournal } from "./journal";
 import { dayNetOn, isDailyLossBreached, isDrawdownBreached } from "./journalUi";
+import { Button, Input } from "./ui";
 
 const money = (value: number): string =>
   value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -47,14 +48,12 @@ export function JournalPropFirmBar({ drawdown }: { drawdown: number }) {
     setEditing(false);
   };
 
-  const input =
-    "w-36 rounded border border-ev-line bg-ev-bg px-2 py-0.5 text-dense text-ev-text focus:border-ev-accent";
 
   if (showForm) {
     return (
       <div className="flex shrink-0 items-center gap-2 border-b border-ev-raised px-3 py-1 text-dense">
         <span className="text-ev-faint">Set limits…</span>
-        <input
+        <Input
           type="number"
           min="0"
           step="any"
@@ -62,9 +61,9 @@ export function JournalPropFirmBar({ drawdown }: { drawdown: number }) {
           placeholder="Daily loss limit"
           value={dailyInput}
           onChange={(e) => setDailyInput(e.target.value)}
-          className={input}
+          className="w-36"
         />
-        <input
+        <Input
           type="number"
           min="0"
           step="any"
@@ -72,19 +71,15 @@ export function JournalPropFirmBar({ drawdown }: { drawdown: number }) {
           placeholder="Max drawdown limit"
           value={ddInput}
           onChange={(e) => setDdInput(e.target.value)}
-          className={input}
+          className="w-36"
         />
-        <button
-          type="button"
-          onClick={apply}
-          className="rounded bg-ev-accent px-2 py-0.5 font-medium text-white hover:bg-ev-accent-hover"
-        >
+        <Button size="sm" variant="solid" onClick={apply}>
           Apply
-        </button>
+        </Button>
         {hasLimits && (
-          <button type="button" onClick={() => setEditing(false)} className="text-ev-muted hover:text-ev-strong">
+          <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
             Cancel
-          </button>
+          </Button>
         )}
       </div>
     );
@@ -112,17 +107,18 @@ export function JournalPropFirmBar({ drawdown }: { drawdown: number }) {
           {ddBreached && " · BREACH"}
         </span>
       )}
-      <button
-        type="button"
+      <Button
+        size="sm"
+        variant="ghost"
         onClick={() => {
           setDailyInput(propFirm.dailyLossLimit === undefined ? "" : String(propFirm.dailyLossLimit));
           setDdInput(propFirm.maxDrawdownLimit === undefined ? "" : String(propFirm.maxDrawdownLimit));
           setEditing(true);
         }}
-        className="ml-auto text-ev-muted hover:text-ev-strong"
+        className="ml-auto"
       >
         Edit limits
-      </button>
+      </Button>
     </div>
   );
 }

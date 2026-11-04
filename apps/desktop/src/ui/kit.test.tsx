@@ -1,13 +1,13 @@
 // @vitest-environment happy-dom
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { installShortcutDispatcher } from "../shortcuts";
 import { Button } from "./Button";
 import { Combobox } from "./Combobox";
 import { Dialog } from "./Dialog";
-import { Checkbox, Field, NumberInput, RadioGroup, Slider, Toggle } from "./Field";
+import { Checkbox, ColorInput, Field, NumberInput, RadioGroup, Slider, Toggle } from "./Field";
 import { Popover, Tooltip } from "./Popover";
 import { HoverCard } from "./HoverCard";
 import { SHELL_BAR_HEIGHT, SHELL_RAIL_WIDTH, shellToolClass } from "./classNames";
@@ -134,6 +134,20 @@ describe("Tabs", () => {
     screen.getByRole("tab", { name: "General" }).focus();
     await user.keyboard("{ArrowRight}");
     expect(onChange).toHaveBeenLastCalledWith("two");
+  });
+
+  it("passes item hints through as tooltips", () => {
+    render(
+      <Tabs
+        label="Views"
+        value="one"
+        onChange={() => {}}
+        items={[{ id: "one", label: "Heatmap", title: "Performance at a glance" }]}
+      />,
+    );
+    expect(screen.getByRole("tab", { name: "Heatmap" }).getAttribute("title")).toBe(
+      "Performance at a glance",
+    );
   });
 });
 
@@ -310,6 +324,20 @@ describe("HoverCard", () => {
     const dialog = screen.getByRole("dialog", { name: "CPI" });
     expect(dialog.style.bottom).toBe("24px");
     expect(dialog.style.top).toBe("");
+  });
+});
+
+describe("ColorInput", () => {
+  it("reports the picked colour and carries its accessible name", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<ColorInput label="Background colour" value="#000000" onChange={onChange} />);
+    const input = screen.getByLabelText("Background colour") as HTMLInputElement;
+    expect(input.type).toBe("color");
+    await user.click(input);
+    // jsdom has no native picker; simulate the change the OS picker emits.
+    fireEvent.change(input, { target: { value: "#ff0000" } });
+    expect(onChange).toHaveBeenCalledWith("#ff0000");
   });
 });
 

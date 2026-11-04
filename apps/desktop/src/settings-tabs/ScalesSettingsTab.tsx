@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { ChartSettings, PriceScaleModeName } from "../layout";
-import { Select } from "../ui";
+import { Checkbox, ColorInput, Select } from "../ui";
 
 interface Props {
   draft: ChartSettings;
@@ -12,95 +12,41 @@ export function ScalesSettingsTab({ draft, setDraft }: Props) {
     <div className="space-y-4">
       <div className="font-semibold text-ev-strong">Price Scale Labels</div>
       <div className="space-y-2.5">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={draft.scales.symbolNameLabel}
-            onChange={(e) =>
+        <Checkbox label="Symbol name label" checked={draft.scales.symbolNameLabel} onChange={(checked) =>
               setDraft((d) => ({
                 ...d,
-                scales: { ...d.scales, symbolNameLabel: e.target.checked },
-              }))
-            }
-            className="accent-ev-accent"
-          />
-          <span>Symbol name label</span>
-        </label>
+                scales: { ...d.scales, symbolNameLabel: checked },
+              }))} />
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={draft.scales.symbolLastPriceLabel}
-            onChange={(e) =>
+        <Checkbox label="Symbol last value label" checked={draft.scales.symbolLastPriceLabel} onChange={(checked) =>
               setDraft((d) => ({
                 ...d,
-                scales: { ...d.scales, symbolLastPriceLabel: e.target.checked },
-              }))
-            }
-            className="accent-ev-accent"
-          />
-          <span>Symbol last value label</span>
-        </label>
+                scales: { ...d.scales, symbolLastPriceLabel: checked },
+              }))} />
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={draft.scales.highLowPriceLabels}
-            onChange={(e) =>
+        <Checkbox label="High and low price labels" checked={draft.scales.highLowPriceLabels} onChange={(checked) =>
               setDraft((d) => ({
                 ...d,
-                scales: { ...d.scales, highLowPriceLabels: e.target.checked },
-              }))
-            }
-            className="accent-ev-accent"
-          />
-          <span>High and low price labels</span>
-        </label>
+                scales: { ...d.scales, highLowPriceLabels: checked },
+              }))} />
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={draft.scales.averageClosePriceLabel}
-            onChange={(e) =>
+        <Checkbox label="Average close price label" checked={draft.scales.averageClosePriceLabel} onChange={(checked) =>
               setDraft((d) => ({
                 ...d,
-                scales: { ...d.scales, averageClosePriceLabel: e.target.checked },
-              }))
-            }
-            className="accent-ev-accent"
-          />
-          <span>Average close price label</span>
-        </label>
+                scales: { ...d.scales, averageClosePriceLabel: checked },
+              }))} />
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={draft.scales.countdownToBarClose}
-            onChange={(e) =>
+        <Checkbox label="Countdown to bar close" checked={draft.scales.countdownToBarClose} onChange={(checked) =>
               setDraft((d) => ({
                 ...d,
-                scales: { ...d.scales, countdownToBarClose: e.target.checked },
-              }))
-            }
-            className="accent-ev-accent"
-          />
-          <span>Countdown to bar close</span>
-        </label>
+                scales: { ...d.scales, countdownToBarClose: checked },
+              }))} />
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={draft.scales.plusButton}
-            onChange={(e) =>
+        <Checkbox label="Plus button on price axis" checked={draft.scales.plusButton} onChange={(checked) =>
               setDraft((d) => ({
                 ...d,
-                scales: { ...d.scales, plusButton: e.target.checked },
-              }))
-            }
-            className="accent-ev-accent"
-          />
-          <span>Plus button on price axis</span>
-        </label>
+                scales: { ...d.scales, plusButton: checked },
+              }))} />
       </div>
 
       <div className="my-3 border-t border-ev-raised" />
@@ -130,47 +76,23 @@ export function ScalesSettingsTab({ draft, setDraft }: Props) {
           />
         </div>
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={draft.scales.invertScale}
-            onChange={(e) =>
+        <Checkbox label="Invert scale" checked={draft.scales.invertScale} onChange={(checked) =>
               setDraft((d) => ({
                 ...d,
-                scales: { ...d.scales, invertScale: e.target.checked },
-              }))
-            }
-            className="accent-ev-accent"
-          />
-          <span>Invert scale</span>
-        </label>
+                scales: { ...d.scales, invertScale: checked },
+              }))} />
 
         <div className="flex items-center justify-between">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={draft.scales.scalesLines}
-              onChange={(e) =>
+          <Checkbox label="Scales border lines" checked={draft.scales.scalesLines} onChange={(checked) =>
                 setDraft((d) => ({
                   ...d,
-                  scales: { ...d.scales, scalesLines: e.target.checked },
-                }))
-              }
-              className="accent-ev-accent"
-            />
-            <span>Scales border lines</span>
-          </label>
-          <input
-            type="color"
-            value={draft.scales.scalesLinesColor}
-            onChange={(e) =>
+                  scales: { ...d.scales, scalesLines: checked },
+                }))} />
+          <ColorInput label="Scales line colour" value={draft.scales.scalesLinesColor} onChange={(value) =>
               setDraft((d) => ({
                 ...d,
-                scales: { ...d.scales, scalesLinesColor: e.target.value },
-              }))
-            }
-            className="size-6 cursor-pointer rounded border border-ev-line bg-transparent p-0"
-          />
+                scales: { ...d.scales, scalesLinesColor: value },
+              }))} />
         </div>
       </div>
     </div>

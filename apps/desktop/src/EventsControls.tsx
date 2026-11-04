@@ -1,5 +1,5 @@
 import { useWorkspace } from "./store";
-import { segmentClass } from "./ui";
+import { Button, Checkbox } from "./ui";
 import type { EventOptions } from "./eventOptions";
 
 type Key = "earnings" | "economic" | "high" | "medium" | "low";
@@ -40,19 +40,13 @@ export function EventsControls({ layout }: { layout: "bar" | "panel" }) {
       <ul className="space-y-1.5" aria-label="Chart events">
         {EVENT_SWITCHES.map(({ key, label, description }) => (
           <li key={key} className={key === "high" || key === "medium" || key === "low" ? "ml-5" : ""}>
-            <label className="flex items-start gap-2 text-base text-ev-text">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={eventSwitchOn(options, key)}
-                disabled={eventSwitchDisabled(options, key)}
-                onChange={() => toggleEventSwitch(options, key)}
-              />
-              <span>
-                <span className="text-ev-strong">{label}</span>
-                <span className="block text-dense text-ev-muted">{description}</span>
-              </span>
-            </label>
+            <Checkbox
+              label={label}
+              hint={description}
+              checked={eventSwitchOn(options, key)}
+              disabled={eventSwitchDisabled(options, key)}
+              onChange={() => toggleEventSwitch(options, key)}
+            />
           </li>
         ))}
       </ul>
@@ -66,17 +60,18 @@ export function EventsControls({ layout }: { layout: "bar" | "panel" }) {
         const on = eventSwitchOn(options, key);
         const disabled = eventSwitchDisabled(options, key);
         return (
-          <button
+          <Button
             key={key}
-            type="button"
+            size="sm"
+            variant="ghost"
             aria-pressed={on}
             disabled={disabled}
             title={`${description} (${on ? "on" : "off"})`}
             onClick={() => toggleEventSwitch(options, key)}
-            className={segmentClass({ active: on })}
+            className={on ? "bg-ev-accent/20 text-ev-accent-text" : undefined}
           >
             {label}
-          </button>
+          </Button>
         );
       })}
     </div>

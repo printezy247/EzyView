@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { dateKey } from "@ezyview/journal";
 import type { JournalEntry } from "@ezyview/journal";
 import { dayCounts, dayNets } from "./journalUi";
+import { Button, IconButton } from "./ui";
 
 interface Props {
   entries: readonly JournalEntry[];
@@ -60,30 +61,16 @@ export function JournalCalendar({ entries, selectedDay, onSelectDay }: Props) {
   return (
     <div className="flex min-h-0 flex-1 flex-col p-3">
       <div className="mb-2 flex items-center gap-2">
-        <button
-          type="button"
-          aria-label="Previous month"
-          onClick={() => step(-1)}
-          className="flex size-6 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-        >
+        <IconButton size="sm" label="Previous month" onClick={() => step(-1)}>
           <ChevronLeft size={14} aria-hidden />
-        </button>
+        </IconButton>
         <span className="min-w-40 text-center text-base font-medium text-ev-strong">{monthLabel}</span>
-        <button
-          type="button"
-          aria-label="Next month"
-          onClick={() => step(1)}
-          className="flex size-6 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-        >
+        <IconButton size="sm" label="Next month" onClick={() => step(1)}>
           <ChevronRight size={14} aria-hidden />
-        </button>
-        <button
-          type="button"
-          onClick={goToday}
-          className="ml-auto rounded border border-ev-line px-2 py-0.5 text-dense text-ev-muted hover:text-ev-strong"
-        >
+        </IconButton>
+        <Button size="sm" variant="outline" onClick={goToday} className="ml-auto">
           Today
-        </button>
+        </Button>
       </div>
 
       <div className="grid grid-cols-7 gap-1 pb-1 text-center text-micro uppercase tracking-wider text-ev-faint">

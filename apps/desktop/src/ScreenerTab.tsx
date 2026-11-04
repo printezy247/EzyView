@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { quoteOf } from "./data";
 import { useWorkspace } from "./store";
 import type { WatchEntry } from "./store";
-import { Input, rowClass } from "./ui";
+import { Button, Input, rowClass } from "./ui";
 import { VirtualTableBody } from "./VirtualList";
 
 type SortKey = "ticker" | "price" | "change";
@@ -95,8 +95,9 @@ export function ScreenerTab() {
 
   const header = (key: SortKey, label: string, align: "left" | "right" = "right") => (
     <th scope="col" className={align === "right" ? "text-right" : "text-left"}>
-      <button
-        type="button"
+      <Button
+        size="sm"
+        variant="ghost"
         onClick={() => {
           if (sort === key) setDesc((v) => !v);
           else {
@@ -104,12 +105,12 @@ export function ScreenerTab() {
             setDesc(true);
           }
         }}
-        className="text-micro font-semibold uppercase tracking-wider text-ev-faint hover:text-ev-strong"
+        className="text-micro font-semibold uppercase tracking-wider"
         aria-sort={sort === key ? (desc ? "descending" : "ascending") : "none"}
       >
         {label}
         {sort === key && <span aria-hidden>{desc ? " ↓" : " ↑"}</span>}
-      </button>
+      </Button>
     </th>
   );
 
@@ -119,18 +120,15 @@ export function ScreenerTab() {
         <span className="text-dense font-medium text-ev-muted">Preset:</span>
         <div className="flex flex-wrap gap-1">
           {PRESETS.map((p) => (
-            <button
+            <Button
               key={p.id}
-              type="button"
+              size="sm"
+              variant={preset === p.id ? "solid" : "ghost"}
+              aria-pressed={preset === p.id}
               onClick={() => setPreset(p.id)}
-              className={`rounded px-2 py-0.5 text-dense transition-colors ${
-                preset === p.id
-                  ? "bg-ev-accent text-white font-medium shadow-sm"
-                  : "bg-ev-raised text-ev-muted hover:text-ev-strong hover:bg-ev-panel"
-              }`}
             >
               {p.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>

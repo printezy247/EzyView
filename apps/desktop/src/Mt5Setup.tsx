@@ -4,7 +4,7 @@ import { RiskRequiredError, useMt5Accounts } from "./mt5Accounts";
 import type { Mt5Settings } from "./mt5";
 import { maskLogin } from "./tradingSafety";
 import type { TransportKind } from "@ezyview/mt5-adapter";
-import { inputClass } from "./ui";
+import { Button, Checkbox, Input, NumberInput, SegmentedControl } from "./ui";
 
 /**
  * Connection settings for the broker feed.
@@ -16,7 +16,6 @@ import { inputClass } from "./ui";
  * bridge audit log.
  */
 
-const field = inputClass("w-full");
 
 /** A readable message for anything thrown by the keyring, the bridge or the store. */
 function describe(err: unknown): string {
@@ -41,33 +40,28 @@ export function ConnectionTab({ settings, save, busy, setBusy }: { settings: Mt5
         Where MetaTrader 5 answers from. The app only connects to this computer (127.0.0.1 or ::1); reach a
         terminal on another machine through an SSH tunnel.
       </p>
-      <div className="mb-2 flex gap-1">
-        {(["bridge", "mcp"] as TransportKind[]).map((kind) => (
-          <button
-            key={kind}
-            type="button"
-            aria-pressed={draft.kind === kind}
-            onClick={() => setDraft({ ...draft, kind })}
-            className={
-              draft.kind === kind
-                ? "flex-1 rounded bg-ev-raised px-2 py-1 text-dense font-medium text-ev-strong"
-                : "flex-1 rounded px-2 py-1 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-            }
-          >
-            {kind === "bridge" ? "Local bridge" : "Built-in MCP"}
-          </button>
-        ))}
+      <div className="mb-2">
+        <SegmentedControl
+          label="Transport"
+          size="sm"
+          value={draft.kind}
+          onChange={(value) => setDraft({ ...draft, kind: value as TransportKind })}
+          options={[
+            { value: "bridge", label: "Local bridge" },
+            { value: "mcp", label: "Built-in MCP" },
+          ]}
+        />
       </div>
       {draft.kind === "bridge" ? (
         <>
           <label className="mb-2 block text-dense text-ev-muted">
             Bridge URL
-            <input className={field} value={draft.bridgeUrl} onChange={(e) => setDraft({ ...draft, bridgeUrl: e.target.value })} spellCheck={false} />
+            <Input block value={draft.bridgeUrl} onChange={(e) => setDraft({ ...draft, bridgeUrl: e.target.value })} spellCheck={false} />
           </label>
           <label className="mb-2 block text-dense text-ev-muted">
             Bridge token
-            <input
-              className={field}
+            <Input
+              block
               type="password"
               value={draft.bridgeToken}
               onChange={(e) => setDraft({ ...draft, bridgeToken: e.target.value })}
@@ -85,11 +79,11 @@ export function ConnectionTab({ settings, save, busy, setBusy }: { settings: Mt5
         <>
           <label className="mb-2 block text-dense text-ev-muted">
             MCP endpoint
-            <input className={field} value={draft.mcpUrl} onChange={(e) => setDraft({ ...draft, mcpUrl: e.target.value })} spellCheck={false} />
+            <Input block value={draft.mcpUrl} onChange={(e) => setDraft({ ...draft, mcpUrl: e.target.value })} spellCheck={false} />
           </label>
           <label className="mb-2 block text-dense text-ev-muted">
             API key
-            <input className={field} type="password" value={draft.mcpKey} onChange={(e) => setDraft({ ...draft, mcpKey: e.target.value })} placeholder="Tools → Options → MCP" spellCheck={false} />
+            <Input block type="password" value={draft.mcpKey} onChange={(e) => setDraft({ ...draft, mcpKey: e.target.value })} placeholder="Tools → Options → MCP" spellCheck={false} />
             <span className="mt-0.5 block text-dense text-ev-muted">
               {keyringAvailable() ? "Saved in your OS keyring." : "Kept for this session only (desktop app saves it to the keyring)."}
             </span>
@@ -97,14 +91,9 @@ export function ConnectionTab({ settings, save, busy, setBusy }: { settings: Mt5
         </>
       )}
       <div className="mt-3 flex justify-end">
-        <button
-          type="button"
-          onClick={() => void submit()}
-          disabled={busy}
-          className="rounded bg-ev-accent px-3 py-1 text-dense font-medium text-white hover:bg-ev-accent-hover disabled:opacity-50"
-        >
+        <Button size="sm" variant="solid" onClick={() => void submit()} disabled={busy}>
           {busy ? "Saving…" : "Save"}
-        </button>
+        </Button>
       </div>
     </>
   );
@@ -184,9 +173,9 @@ export function BrokerTab() {
           ))}
         </dl>
         <div className="flex justify-end gap-2">
-          <button type="button" onClick={() => void disconnect()} className="rounded border border-ev-line px-2 py-1 text-dense text-ev-muted hover:text-ev-strong">
+          <Button size="sm" variant="outline" onClick={() => void disconnect()}>
             Disconnect
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -239,15 +228,15 @@ export function BrokerTab() {
       )}
       <label className="block text-dense text-ev-muted">
         Server
-        <input className={field} value={server} onChange={(e) => setServer(e.target.value)} placeholder="MetaQuotes-Demo" spellCheck={false} />
+        <Input block value={server} onChange={(e) => setServer(e.target.value)} placeholder="MetaQuotes-Demo" spellCheck={false} />
       </label>
       <label className="block text-dense text-ev-muted">
         Login
-        <input className={field} value={login} onChange={(e) => setLogin(e.target.value)} inputMode="numeric" spellCheck={false} />
+        <Input block value={login} onChange={(e) => setLogin(e.target.value)} inputMode="numeric" spellCheck={false} />
       </label>
       <label className="block text-dense text-ev-muted">
         Password
-        <input className={field} type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={accounts.length ? "leave empty to use the saved one" : ""} spellCheck={false} />
+        <Input block type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={accounts.length ? "leave empty to use the saved one" : ""} spellCheck={false} />
       </label>
       {riskPending && (
         <label className="flex items-start gap-2 rounded border border-ev-warn/40 bg-ev-warn/10 p-2 text-dense text-ev-warn">
@@ -260,14 +249,14 @@ export function BrokerTab() {
       {error && <p className="rounded border border-ev-down/40 bg-ev-down/10 p-1.5 text-dense text-ev-down-text">{error}</p>}
       {localError && <p className="rounded border border-ev-down/40 bg-ev-down/10 p-1.5 text-dense text-ev-down-text">{localError}</p>}
       <div className="flex justify-end">
-        <button
-          type="button"
+        <Button
+          size="sm"
+          variant="solid"
           disabled={busy || !server.trim() || !login.trim() || (riskPending && !riskOk)}
           onClick={() => void runConnect(riskPending && riskOk)}
-          className="rounded bg-ev-accent px-3 py-1 text-dense font-medium text-white hover:bg-ev-accent-hover disabled:opacity-50"
         >
           {busy ? "Connecting…" : riskPending ? "Connect to real account" : "Connect"}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -278,62 +267,44 @@ export function SafetyTab() {
   const saveSafety = useMt5Accounts((s) => s.saveSafety);
   return (
     <div className="space-y-2">
-      <label className="block text-dense text-ev-muted">
-        Max order volume (lots)
-        <input
-          className={field}
-          type="number"
-          min={0.01}
-          step={0.01}
-          value={safety.maxOrderVolume}
-          onChange={(e) => {
-            const v = Number(e.target.value);
-            if (Number.isFinite(v) && v > 0) saveSafety({ maxOrderVolume: v });
-          }}
-        />
-      </label>
+      <NumberInput
+        label="Max order volume (lots)"
+        min={0.01}
+        step={0.01}
+        value={safety.maxOrderVolume}
+        onValueChange={(v) => {
+          if (v !== null && v > 0) saveSafety({ maxOrderVolume: v });
+        }}
+      />
       <label className="block text-dense text-ev-muted">
         Symbol allow-list (comma separated, empty = all)
-        <input
-          className={field}
+        <Input
+          block
           value={safety.symbolAllowList.join(", ")}
           onChange={(e) => saveSafety({ symbolAllowList: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
           placeholder="XAUUSD, EURUSD"
           spellCheck={false}
         />
       </label>
-      <label className="block text-dense text-ev-muted">
-        Daily loss limit (%, 0 = off)
-        <input
-          className={field}
-          type="number"
-          min={0}
-          step={0.5}
-          value={safety.maxDailyLossPct ?? 0}
-          onChange={(e) => {
-            const v = Number(e.target.value);
-            if (Number.isFinite(v) && v >= 0) saveSafety({ maxDailyLossPct: v });
-          }}
-        />
-      </label>
-      <label className="block text-dense text-ev-muted">
-        Loss cooldown (seconds, 0 = off)
-        <input
-          className={field}
-          type="number"
-          min={0}
-          step={15}
-          value={safety.lossCooldownSeconds ?? 0}
-          onChange={(e) => {
-            const v = Number(e.target.value);
-            if (Number.isFinite(v) && v >= 0) saveSafety({ lossCooldownSeconds: v });
-          }}
-        />
-      </label>
-      <label className="flex items-center gap-2 text-dense text-ev-text">
-        <input type="checkbox" checked={safety.dryRun} onChange={(e) => saveSafety({ dryRun: e.target.checked })} />
-        Dry-run: validate orders at the bridge, never send
-      </label>
+      <NumberInput
+        label="Daily loss limit (%, 0 = off)"
+        min={0}
+        step={0.5}
+        value={safety.maxDailyLossPct ?? 0}
+        onValueChange={(v) => saveSafety({ maxDailyLossPct: v ?? 0 })}
+      />
+      <NumberInput
+        label="Loss cooldown (seconds, 0 = off)"
+        min={0}
+        step={15}
+        value={safety.lossCooldownSeconds ?? 0}
+        onValueChange={(v) => saveSafety({ lossCooldownSeconds: v ?? 0 })}
+      />
+      <Checkbox
+        label="Dry-run: validate orders at the bridge, never send"
+        checked={safety.dryRun}
+        onChange={(checked) => saveSafety({ dryRun: checked })}
+      />
       <p className="text-dense text-ev-muted">
         Every MT5 action still asks for confirmation; these rails block what should never be sent. The paper account
         follows the volume cap and the allow-list too, so a habit built in demo carries over safely. The MCP transport

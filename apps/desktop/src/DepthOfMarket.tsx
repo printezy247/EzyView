@@ -204,7 +204,7 @@ function Row({
 
       <span className={`relative font-semibold flex items-center gap-1.5 ${side === "ask" ? "text-ev-down-text" : "text-ev-up-text"}`}>
         <span>{level.price.toFixed(precision)}</span>
-        <span className="hidden rounded border border-ev-line bg-ev-panel px-1 py-px text-[10px] font-medium text-ev-muted group-hover:inline-block group-focus-visible:inline-block">
+        <span className="hidden rounded border border-ev-line bg-ev-panel px-1 py-px text-micro font-medium text-ev-muted group-hover:inline-block group-focus-visible:inline-block">
           + {side === "ask" ? "Sell" : "Buy"}
         </span>
       </span>
