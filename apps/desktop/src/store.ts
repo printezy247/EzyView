@@ -71,6 +71,7 @@ export const useWorkspace = create<WorkspaceStore>()(
       drawingToolStyles: {},
       dirty: {},
       replayBar: null,
+      replaySymbol: null,
       magnet: "off",
       crosshairSync: false,
       eventOptions: DEFAULT_EVENT_OPTIONS,
@@ -200,6 +201,7 @@ export const useWorkspace = create<WorkspaceStore>()(
           return {
             layouts: s.layouts.map((l) => (l.id === layout.id ? next : l)),
             replayBar: null,
+            replaySymbol: null,
             drawingUndo: s.drawingUndoStacks[key] ?? [],
             drawingRedo: s.drawingRedoStacks[key] ?? [],
           };
@@ -688,7 +690,16 @@ export const useWorkspace = create<WorkspaceStore>()(
 
       setMagnet: (mode) => set({ magnet: mode }),
 
-      setReplay: (barIndex) => set({ replayBar: barIndex }),
+      setReplay: (barIndex) => {
+        if (barIndex === null) {
+          set({ replayBar: null, replaySymbol: null });
+          return;
+        }
+        // The cursor belongs to the focused chart: only its symbol pauses live
+        // ticks while every other panel keeps streaming.
+        const symbol = activeChartOf(get().activeLayout()).symbol;
+        set({ replayBar: barIndex, replaySymbol: symbol });
+      },
 
       setCrosshairSync: (on) => set({ crosshairSync: on }),
       copyDrawing: (id) => {

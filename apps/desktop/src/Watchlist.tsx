@@ -8,6 +8,7 @@ import { effectiveSource, sourceLabel } from "./chartSource";
 import { useMt5 } from "./mt5";
 import { useWorkspace } from "./store";
 import type { WatchEntry } from "./store";
+import { watchRowActive } from "./store/watchlist";
 import { VirtualList } from "./VirtualList";
 import { Button, IconButton, Input } from "./ui";
 import { sortWatch } from "./watchSort";
@@ -155,11 +156,18 @@ export function Watchlist({ onOpenAlerts }: Props) {
   const addToWatchlist = useWorkspace((s) => s.addToWatchlist);
   const removeFromWatchlist = useWorkspace((s) => s.removeFromWatchlist);
   const updateWatchPrice = useWorkspace((s) => s.updateWatchPrice);
+  const invalidateFollowGlobalPrices = useWorkspace((s) => s.invalidateFollowGlobalPrices);
   const setSymbol = useWorkspace((s) => s.setSymbol);
   const activeSymbol = useWorkspace((s) => activeChartOf(s.activeLayout()).symbol);
   const dataSourceChoice = useWorkspace((s) => activeChartOf(s.activeLayout()).dataSource);
   const globalFeed = useMt5((s) => s.source);
   const source = effectiveSource(dataSourceChoice, globalFeed);
+
+  // The global feed switch moves every follow-global row to a new price
+  // series: blank them so they never wear the old feed's numbers.
+  useEffect(() => {
+    invalidateFollowGlobalPrices();
+  }, [globalFeed, invalidateFollowGlobalPrices]);
 
   const [adding, setAdding] = useState(false);
   const [query, setQuery] = useState("");
@@ -192,7 +200,9 @@ export function Watchlist({ onOpenAlerts }: Props) {
       subscribeQuote(
         row.symbol,
         (quote) => {
-          if (quote) updateWatchPrice(quote.symbol, quote.last, quote.changePercent ?? null);
+          // Bind to the row we subscribed for: a live adapter may echo a
+          // normalised symbol (BTCUSDT) that matches no row.
+          if (quote) updateWatchPrice(row.symbol, quote.last, quote.changePercent ?? null);
         },
         { intervalMs: 3000, ...(row.source ? { source: row.source } : {}) },
       ),
@@ -250,8 +260,9 @@ export function Watchlist({ onOpenAlerts }: Props) {
   };
 
   const openSymbol = (row: WatchEntry) => {
-    if (row.source) setSymbol(row.symbol, row.source);
-    else setSymbol(row.symbol);
+    // A row with no saved feed follows the global switch, so release any feed
+    // the chart was pinned to instead of keeping a feed that may not know it.
+    setSymbol(row.symbol, row.source ?? "auto");
   };
 
   const handleQueryChange = (val: string) => {
@@ -327,10 +338,10 @@ export function Watchlist({ onOpenAlerts }: Props) {
             renderItem={(w) => (
               <WatchRow
                 item={w}
-                active={w.symbol === activeSymbol}
+                active={watchRowActive(w, activeSymbol, source, globalFeed)}
                 onSelect={() => openSymbol(w)}
                 onRemove={() => removeFromWatchlist(w.symbol)}
-                feedSource={w.source ?? source}
+                feedSource={effectiveSource(w.source, globalFeed)}
               />
             )}
           />
