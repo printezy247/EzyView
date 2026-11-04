@@ -1,6 +1,7 @@
 import type { Resolution } from "@ezyview/data-adapters";
 import type { ChartType } from "@ezyview/chart-engine";
 import { useSyncExternalStore, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useLocation, useNavigate } from "react-router";
 import {
   ArrowLeftRight,
@@ -26,7 +27,6 @@ import { buildNavCommands } from "./commandRegistry";
 import type { CommandGroup } from "./commandRegistry";
 import { PICKER_RESOLUTIONS, RESOLUTION_GROUPS, getLiveSources, resolutionName } from "./data";
 import { sourceLabel, sourceOptions } from "./chartSource";
-import type { DataSourceChoice } from "./chartSource";
 import { useApiKeys } from "./apiKeys";
 import type { DockTabId } from "./RightDock";
 import { Menu } from "./Menu";
@@ -38,8 +38,7 @@ import type { ExportSource } from "./exportBridge";
 import { copyChartEmbed, copyChartLink, pickTextFile, printChart, saveChartCsv, saveChartJson, saveChartPng, saveChartSvg, saveLayoutJson } from "./exportUi";
 import { parseLayoutJson } from "./layoutShare";
 import { getIndicator } from "@ezyview/indicators";
-import { GRID_MODES } from "./layout";
-import type { ChartThemeName, CrosshairModeName, GridMode, PriceScaleModeName } from "./layout";
+import { GRID_MODES, activeChartOf } from "./layout";
 import { defaultChartState, useWorkspace } from "./store";
 import { useZen } from "./zen";
 import { useShortcut } from "./shortcuts";
@@ -91,55 +90,16 @@ const MAGNET_MODES: { id: MagnetMode; label: string }[] = [
 ];
 
 interface Props {
-  symbol: string;
-  resolution: Resolution;
-  chartType: ChartType;
-  showVolume: boolean;
-  showVolumeProfile: boolean;
-  /** Renko/P&F box or Kagi reversal; null = automatic. */
-  boxSize: number | null;
-  showGrid: boolean;
-  theme: ChartThemeName;
-  /** Per-cell chart controls (focused cell). */
-  crosshairMode: CrosshairModeName;
-  priceScale: PriceScaleModeName;
-  invertScale: boolean;
-  timezone: string | undefined;
-  /** Price feed of the focused chart; "auto" follows the global switch. */
-  dataSource: DataSourceChoice;
-  onDataSource: (source: DataSourceChoice) => void;
-  watermark: boolean;
-  /** Shade bars outside the symbol's trading session. */
-  sessionBreaks: boolean;
-  indicatorCount: number;
-  replayActive: boolean;
   /** Which dock tab is visible, or null when the dock is closed. */
   dockTab: DockTabId | null;
   tradingOpen: boolean;
-  onSymbol: (s: string) => void;
-  onResolution: (r: Resolution) => void;
-  onChartType: (t: ChartType) => void;
-  onToggleVolume: () => void;
-  onToggleVolumeProfile: () => void;
-  onBoxSize: (size: number | null) => void;
-  onToggleGrid: () => void;
-  onSetTheme: (theme: ChartThemeName) => void;
-  onCrosshairMode: (mode: CrosshairModeName) => void;
-  onPriceScale: (mode: PriceScaleModeName) => void;
-  onInvertScale: () => void;
-  onTimezone: (tz: string | undefined) => void;
-  onWatermark: () => void;
-  onToggleSessionBreaks: () => void;
   onOpenIndicators: () => void;
-  onToggleReplay: () => void;
-  onSelectDockTab: (id: DockTabId) => void;
-  onToggleTrading: () => void;
-  onOpenSettings?: () => void;
-  onOpenWindow: () => void;
   onOpenAlerts: () => void;
   onOpenApiKeys: () => void;
-  grid: GridMode;
-  onGrid: (grid: GridMode) => void;
+  onOpenWindow: () => void;
+  onOpenSettings?: () => void;
+  onSelectDockTab: (id: DockTabId) => void;
+  onToggleTrading: () => void;
 }
 
 const PALETTE_KEY = "Ctrl+K";
@@ -236,19 +196,56 @@ export function Toolbar(props: Props) {
   const applyChartTemplate = useWorkspace((s) => s.applyChartTemplate);
   const saveChartTemplate = useWorkspace((s) => s.saveChartTemplate);
   const addIndicator = useWorkspace((s) => s.addIndicator);
+  // The bar reads the focused chart itself; App passes only shell callbacks,
+  // so a layout edit no longer threads 30 props through the shell.
+  const chart = useWorkspace(
+    useShallow((s) => {
+      const c = activeChartOf(s.activeLayout());
+      return {
+        symbol: c.symbol,
+        resolution: c.resolution,
+        chartType: c.chartType,
+        showVolume: c.showVolume,
+        showVolumeProfile: c.showVolumeProfile ?? false,
+        showGrid: c.showGrid,
+        boxSize: c.boxSize ?? null,
+        theme: c.theme,
+        crosshairMode: c.crosshairMode ?? "normal",
+        priceScale: c.priceScale ?? "normal",
+        invertScale: c.invertScale ?? false,
+        timezone: c.timezone,
+        dataSource: c.dataSource ?? "auto",
+        watermark: c.watermark ?? false,
+        sessionBreaks: c.showSessionBreaks !== false,
+        indicatorCount: c.indicators.length,
+        grid: s.activeLayout().grid,
+      };
+    }),
+  );
+  const actions = useWorkspace(
+    useShallow((s) => ({
+      updateActive: s.updateActive,
+      setSymbol: s.setSymbol,
+      setResolution: s.setResolution,
+      setReplay: s.setReplay,
+      setGrid: s.setGrid,
+    })),
+  );
+  const replayBar = useWorkspace((s) => s.replayBar);
+  const replayActive = replayBar !== null;
 
   const hasTwelveKey = useApiKeys((s) => Boolean(s.keys.twelvedata));
   const liveSources = getLiveSources();
-  const sourceOpts = sourceOptions(props.symbol, { supports: (id, sym) => liveSources[id].supports(sym), hasTwelveKey });
+  const sourceOpts = sourceOptions(chart.symbol, { supports: (id, sym) => liveSources[id].supports(sym), hasTwelveKey });
   const sourceEntries: MenuEntry[] = sourceOpts.map(
     (o): MenuEntry => ({
       kind: "radio",
       id: `source-${o.id}`,
       label: o.label,
-      selected: props.dataSource === o.id,
+      selected: chart.dataSource === o.id,
       ...(o.disabled ? { disabled: true } : {}),
       ...(o.hint ? { hint: o.hint } : {}),
-      onSelect: () => props.onDataSource(o.id),
+      onSelect: () => actions.updateActive({ dataSource: o.id }),
     }),
   );
   if (sourceOpts.some((o) => o.id === "twelvedata")) {
@@ -260,18 +257,18 @@ export function Toolbar(props: Props) {
 
   const quickSymbols: MenuEntry[] = [
     { kind: "label", id: "qs-metals", label: "Precious Metals & Forex" },
-    { kind: "radio", id: "sym-xau", label: "OANDA:XAUUSD — Gold / US Dollar", selected: props.symbol === "OANDA:XAUUSD", onSelect: () => props.onSymbol("OANDA:XAUUSD") },
-    { kind: "radio", id: "sym-eur", label: "FX:EURUSD — Euro / US Dollar", selected: props.symbol === "FX:EURUSD", onSelect: () => props.onSymbol("FX:EURUSD") },
-    { kind: "radio", id: "sym-gbp", label: "FX:GBPUSD — British Pound / US Dollar", selected: props.symbol === "FX:GBPUSD", onSelect: () => props.onSymbol("FX:GBPUSD") },
+    { kind: "radio", id: "sym-xau", label: "OANDA:XAUUSD — Gold / US Dollar", selected: chart.symbol === "OANDA:XAUUSD", onSelect: () => actions.setSymbol("OANDA:XAUUSD") },
+    { kind: "radio", id: "sym-eur", label: "FX:EURUSD — Euro / US Dollar", selected: chart.symbol === "FX:EURUSD", onSelect: () => actions.setSymbol("FX:EURUSD") },
+    { kind: "radio", id: "sym-gbp", label: "FX:GBPUSD — British Pound / US Dollar", selected: chart.symbol === "FX:GBPUSD", onSelect: () => actions.setSymbol("FX:GBPUSD") },
     { kind: "separator", id: "qs-s1" },
     { kind: "label", id: "qs-crypto", label: "Crypto Spot" },
-    { kind: "radio", id: "sym-btc", label: "BINANCE:BTCUSDT — Bitcoin / USDT", selected: props.symbol === "BINANCE:BTCUSDT", onSelect: () => props.onSymbol("BINANCE:BTCUSDT") },
-    { kind: "radio", id: "sym-eth", label: "BINANCE:ETHUSDT — Ethereum / USDT", selected: props.symbol === "BINANCE:ETHUSDT", onSelect: () => props.onSymbol("BINANCE:ETHUSDT") },
-    { kind: "radio", id: "sym-sol", label: "BINANCE:SOLUSDT — Solana / USDT", selected: props.symbol === "BINANCE:SOLUSDT", onSelect: () => props.onSymbol("BINANCE:SOLUSDT") },
+    { kind: "radio", id: "sym-btc", label: "BINANCE:BTCUSDT — Bitcoin / USDT", selected: chart.symbol === "BINANCE:BTCUSDT", onSelect: () => actions.setSymbol("BINANCE:BTCUSDT") },
+    { kind: "radio", id: "sym-eth", label: "BINANCE:ETHUSDT — Ethereum / USDT", selected: chart.symbol === "BINANCE:ETHUSDT", onSelect: () => actions.setSymbol("BINANCE:ETHUSDT") },
+    { kind: "radio", id: "sym-sol", label: "BINANCE:SOLUSDT — Solana / USDT", selected: chart.symbol === "BINANCE:SOLUSDT", onSelect: () => actions.setSymbol("BINANCE:SOLUSDT") },
     { kind: "separator", id: "qs-s2" },
     { kind: "label", id: "qs-eq", label: "Equities & Indices" },
-    { kind: "radio", id: "sym-spx", label: "SP:SPX — S&P 500 Index", selected: props.symbol === "SP:SPX", onSelect: () => props.onSymbol("SP:SPX") },
-    { kind: "radio", id: "sym-aapl", label: "NASDAQ:AAPL — Apple Inc.", selected: props.symbol === "NASDAQ:AAPL", onSelect: () => props.onSymbol("NASDAQ:AAPL") },
+    { kind: "radio", id: "sym-spx", label: "SP:SPX — S&P 500 Index", selected: chart.symbol === "SP:SPX", onSelect: () => actions.setSymbol("SP:SPX") },
+    { kind: "radio", id: "sym-aapl", label: "NASDAQ:AAPL — Apple Inc.", selected: chart.symbol === "NASDAQ:AAPL", onSelect: () => actions.setSymbol("NASDAQ:AAPL") },
   ];
 
   const templateEntries: MenuEntry[] = [
@@ -306,7 +303,7 @@ export function Toolbar(props: Props) {
       id: "tpl-save",
       label: "Save current chart as template",
       onSelect: () => {
-        const name = `${props.symbol.split(":").pop()} ${props.resolution} (${props.indicatorCount} studies)`;
+        const name = `${chart.symbol.split(":").pop()} ${chart.resolution} (${chart.indicatorCount} studies)`;
         saveChartTemplate(name);
         notice.alert("Template saved", `Saved "${name}" to Templates.`);
       },
@@ -326,8 +323,8 @@ export function Toolbar(props: Props) {
       kind: "radio",
       id: `qgrid-${g.id}`,
       label: `${g.label} (${g.id})`,
-      selected: props.grid === g.id,
-      onSelect: () => props.onGrid(g.id),
+      selected: chart.grid === g.id,
+      onSelect: () => actions.setGrid(g.id),
     }),
   );
 
@@ -343,8 +340,8 @@ export function Toolbar(props: Props) {
         kind: "radio",
         id: r,
         label: resolutionName(r),
-        selected: r === props.resolution,
-        onSelect: () => props.onResolution(r),
+        selected: r === chart.resolution,
+        onSelect: () => actions.setResolution(r),
       });
     }
   }
@@ -365,8 +362,8 @@ export function Toolbar(props: Props) {
       kind: "radio",
       id: t.id,
       label: t.label,
-      selected: t.id === props.chartType,
-      onSelect: () => props.onChartType(t.id),
+      selected: t.id === chart.chartType,
+      onSelect: () => actions.updateActive({ chartType: t.id }),
     }),
   );
 
@@ -381,7 +378,7 @@ export function Toolbar(props: Props) {
     { kind: "action", id: "options", label: "Options chain", onSelect: () => navigate("/research?tab=options") },
     { kind: "separator", id: "s-tools" },
     { kind: "label", id: "tools", label: "Tools" },
-    toggle("replay", "Bar replay", props.replayActive, props.onToggleReplay),
+    toggle("replay", "Bar replay", replayActive, () => actions.setReplay(replayBar === null ? -30 : null)),
     { kind: "action", id: "alerts", label: "Price alerts…", onSelect: props.onOpenAlerts },
     { kind: "separator", id: "s-data" },
     { kind: "label", id: "data", label: "Data" },
@@ -402,8 +399,8 @@ export function Toolbar(props: Props) {
         kind: "radio",
         id: `grid-${g.id}`,
         label: g.label,
-        selected: props.grid === g.id,
-        onSelect: () => props.onGrid(g.id),
+        selected: chart.grid === g.id,
+        onSelect: () => actions.setGrid(g.id),
       }),
     ),
     { kind: "separator", id: "s-panels" },
@@ -424,9 +421,9 @@ export function Toolbar(props: Props) {
     ),
     { kind: "separator", id: "s-chart" },
     { kind: "label", id: "chart", label: "Chart" },
-    toggle("volume", "Volume", props.showVolume, props.onToggleVolume),
-    toggle("volume-profile", "Volume profile", props.showVolumeProfile, props.onToggleVolumeProfile),
-    toggle("grid", "Grid", props.showGrid, props.onToggleGrid),
+    toggle("volume", "Volume", chart.showVolume, () => actions.updateActive({ showVolume: !chart.showVolume })),
+    toggle("volume-profile", "Volume profile", chart.showVolumeProfile, () => actions.updateActive({ showVolumeProfile: !chart.showVolumeProfile })),
+    toggle("grid", "Grid", chart.showGrid, () => actions.updateActive({ showGrid: !chart.showGrid })),
     { kind: "separator", id: "s-crosshair" },
     { kind: "label", id: "crosshair", label: "Crosshair" },
     ...(
@@ -440,8 +437,8 @@ export function Toolbar(props: Props) {
         kind: "radio",
         id: `crosshair-${m.id}`,
         label: m.label,
-        selected: props.crosshairMode === m.id,
-        onSelect: () => props.onCrosshairMode(m.id),
+        selected: chart.crosshairMode === m.id,
+        onSelect: () => actions.updateActive({ crosshairMode: m.id }),
       }),
     ),
     toggle("crosshair-sync", "Sync across charts", crosshairSync, () => setCrosshairSync(!crosshairSync)),
@@ -458,11 +455,11 @@ export function Toolbar(props: Props) {
         kind: "radio",
         id: `scale-${m.id}`,
         label: m.label,
-        selected: props.priceScale === m.id,
-        onSelect: () => props.onPriceScale(m.id),
+        selected: chart.priceScale === m.id,
+        onSelect: () => actions.updateActive({ priceScale: m.id }),
       }),
     ),
-    toggle("invert-scale", "Invert scale", props.invertScale, props.onInvertScale),
+    toggle("invert-scale", "Invert scale", chart.invertScale, () => actions.updateActive({ invertScale: !chart.invertScale })),
     { kind: "separator", id: "s-time" },
     { kind: "label", id: "time-axis", label: "Time axis" },
     ...TIMEZONES.map(
@@ -470,12 +467,12 @@ export function Toolbar(props: Props) {
         kind: "radio",
         id: `tz-${tz.id}`,
         label: tz.label,
-        selected: (props.timezone ?? "") === tz.id,
-        onSelect: () => props.onTimezone(tz.id === "" ? undefined : tz.id),
+        selected: (chart.timezone ?? "") === tz.id,
+        onSelect: () => actions.updateActive({ timezone: tz.id === "" ? undefined : tz.id }),
       }),
     ),
-    toggle("watermark", "Watermark", props.watermark, props.onWatermark),
-    toggle("session-breaks", "Session breaks", props.sessionBreaks, props.onToggleSessionBreaks),
+    toggle("watermark", "Watermark", chart.watermark, () => actions.updateActive({ watermark: !chart.watermark })),
+    toggle("session-breaks", "Session breaks", chart.sessionBreaks, () => actions.updateActive({ showSessionBreaks: chart.sessionBreaks === false })),
     { kind: "separator", id: "s-theme" },
     { kind: "label", id: "appearance", label: "Appearance" },
     ...(
@@ -489,8 +486,8 @@ export function Toolbar(props: Props) {
         kind: "radio",
         id: t.id,
         label: t.label,
-        selected: props.theme === t.id,
-        onSelect: () => props.onSetTheme(t.id),
+        selected: chart.theme === t.id,
+        onSelect: () => actions.updateActive({ theme: t.id }),
       }),
     ),
     { kind: "separator", id: "s-window" },
@@ -542,18 +539,18 @@ export function Toolbar(props: Props) {
   ];
 
   const tradeOpen = props.tradingOpen || props.dockTab === "depth";
-  const analysisOpen = props.replayActive;
+  const analysisOpen = replayActive;
 
   return (
     <div className="flex h-9 shrink-0 items-center gap-0.5 overflow-x-auto border-b border-ev-raised px-2">
-      <SymbolSearch symbol={props.symbol} onSelect={props.onSymbol} />
+      <SymbolSearch symbol={chart.symbol} onSelect={actions.setSymbol} />
       <Menu
         label=""
         caption="Quick symbol switcher & markets"
         icon={<PlusCircle size={13} aria-hidden />}
         entries={quickSymbols}
       />
-      <QuoteHeader symbol={props.symbol} dataSource={props.dataSource} />
+      <QuoteHeader symbol={chart.symbol} dataSource={chart.dataSource} />
 
       <div className="mx-1 h-4 w-px shrink-0 bg-ev-raised" />
 
@@ -562,38 +559,38 @@ export function Toolbar(props: Props) {
         label="Favorite intervals"
         size="sm"
         className="hidden lg:inline-flex"
-        value={props.resolution}
-        onChange={(r) => props.onResolution(r as Resolution)}
+        value={chart.resolution}
+        onChange={(r) => actions.setResolution(r as Resolution)}
         options={PICKER_RESOLUTIONS.map((r) => ({ value: r, label: r, title: resolutionName(r) }))}
       />
 
-      <Menu label={props.resolution} caption="Interval" icon={<Clock size={13} aria-hidden />} entries={intervalEntries} />
+      <Menu label={chart.resolution} caption="Interval" icon={<Clock size={13} aria-hidden />} entries={intervalEntries} />
       <Menu
-        label={CHART_TYPES.find((t) => t.id === props.chartType)?.label ?? "Candles"}
+        label={CHART_TYPES.find((t) => t.id === chart.chartType)?.label ?? "Candles"}
         caption="Chart type"
         icon={<CandlestickChart size={13} aria-hidden />}
         entries={typeEntries}
       />
       <Menu
-        label={sourceLabel(props.dataSource)}
+        label={sourceLabel(chart.dataSource)}
         caption="Data source"
         icon={<Database size={13} aria-hidden />}
         entries={sourceEntries}
       />
-      {(props.chartType === "renko" ||
-        props.chartType === "kagi" ||
-        props.chartType === "pnf" ||
-        props.chartType === "linebreak" ||
-        props.chartType === "rangebars") && (
+      {(chart.chartType === "renko" ||
+        chart.chartType === "kagi" ||
+        chart.chartType === "pnf" ||
+        chart.chartType === "linebreak" ||
+        chart.chartType === "rangebars") && (
         <NumberInput
           inline
           className="ml-1"
-          label={props.chartType === "kagi" ? "Reversal" : props.chartType === "linebreak" ? "Lines" : "Box"}
-          hint={`${props.chartType === "kagi" ? "Reversal amount" : props.chartType === "linebreak" ? "Lines per break" : "Box size"}; leave empty to size it from the average true range`}
+          label={chart.chartType === "kagi" ? "Reversal" : chart.chartType === "linebreak" ? "Lines" : "Box"}
+          hint={`${chart.chartType === "kagi" ? "Reversal amount" : chart.chartType === "linebreak" ? "Lines per break" : "Box size"}; leave empty to size it from the average true range`}
           min={0}
           step={0.01}
-          value={props.boxSize}
-          onValueChange={(v) => props.onBoxSize(v !== null && v > 0 ? v : null)}
+          value={chart.boxSize}
+          onValueChange={(v) => actions.updateActive({ boxSize: v !== null && v > 0 ? v : null })}
         />
       )}
 
@@ -603,7 +600,7 @@ export function Toolbar(props: Props) {
         <Menu
           label="Studies"
           icon={<FlaskConical size={13} aria-hidden />}
-          badge={props.indicatorCount}
+          badge={chart.indicatorCount}
           triggerActive={strategiesActive}
           entries={studyEntries}
         />
@@ -632,17 +629,17 @@ export function Toolbar(props: Props) {
       <Button
         size="sm"
         variant="ghost"
-        aria-pressed={props.replayActive}
+        aria-pressed={replayActive}
         aria-label="Toggle bar replay mode"
-        onClick={props.onToggleReplay}
-        className={props.replayActive ? "bg-ev-accent/20 text-ev-accent-text hover:bg-ev-accent/25" : ""}
+        onClick={() => actions.setReplay(replayBar === null ? -30 : null)}
+        className={replayActive ? "bg-ev-accent/20 text-ev-accent-text hover:bg-ev-accent/25" : ""}
       >
         <Rewind size={13} aria-hidden />
         <span className="hidden xl:inline">Replay</span>
       </Button>
 
       <Menu
-        label={props.grid}
+        label={chart.grid}
         caption="Chart grid layout"
         icon={<Grid2x2 size={13} aria-hidden />}
         entries={gridEntries}
@@ -687,7 +684,7 @@ export function Toolbar(props: Props) {
       </Button>
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} groups={groups} />
-      <IntervalDialog open={intervalOpen} onClose={() => setIntervalOpen(false)} onPick={props.onResolution} />
+      <IntervalDialog open={intervalOpen} onClose={() => setIntervalOpen(false)} onPick={actions.setResolution} />
     </div>
   );
 }

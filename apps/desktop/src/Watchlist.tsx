@@ -1,5 +1,5 @@
 import { Crosshair, Plus, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { searchSymbolsForSource } from "./data";
 import { subscribeQuote } from "./quotePoller";
 import { useFeedHealth } from "./useFeedHealth";
@@ -8,6 +8,7 @@ import { effectiveSource, sourceLabel } from "./chartSource";
 import { useMt5 } from "./mt5";
 import { useWorkspace } from "./store";
 import type { WatchEntry } from "./store";
+import { VirtualList } from "./VirtualList";
 import { sortWatch } from "./watchSort";
 import type { WatchSortField } from "./watchSort";
 
@@ -15,7 +16,7 @@ interface Props {
   onOpenAlerts: () => void;
 }
 
-function WatchRow({
+const WatchRow = memo(function WatchRow({
   item,
   active,
   onSelect,
@@ -53,7 +54,7 @@ function WatchRow({
   }, [flash]);
 
   return (
-    <li
+    <div
       className={`group flex items-center gap-2 border-b border-ev-panel px-3 py-1.5 ${
         active ? "bg-ev-raised/40" : ""
       }`}
@@ -109,9 +110,9 @@ function WatchRow({
       >
         <Trash2 size={12} aria-hidden />
       </button>
-    </li>
+    </div>
   );
-}
+});
 
 function SortHead({
   label,
@@ -335,18 +336,22 @@ export function Watchlist({ onOpenAlerts }: Props) {
             Watchlist is empty. Click <span className="text-ev-muted">+</span> and type a ticker to add one.
           </p>
         ) : (
-          <ul>
-            {sortedWatchlist.map((w) => (
+          <VirtualList
+            items={sortedWatchlist}
+            itemKey={(w) => w.symbol}
+            estimateSize={46}
+            className="min-h-0 flex-1 overflow-y-auto"
+            ariaLabel="Watchlist"
+            renderItem={(w) => (
               <WatchRow
-                key={w.symbol}
                 item={w}
                 active={w.symbol === activeSymbol}
                 onSelect={() => openSymbol(w)}
                 onRemove={() => removeFromWatchlist(w.symbol)}
                 feedSource={w.source ?? source}
               />
-            ))}
-          </ul>
+            )}
+          />
         )}
       </div>
     </aside>

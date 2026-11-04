@@ -13,6 +13,7 @@ import { JournalPlans } from "./JournalPlans";
 import { JournalPropFirmBar } from "./JournalPropFirmBar";
 import { JournalReviews } from "./JournalReviews";
 import { JournalStatsView } from "./JournalStatsView";
+import { VirtualList } from "./VirtualList";
 import { buttonClass, chipClass } from "./ui";
 
 interface Props {
@@ -372,21 +373,22 @@ export function JournalPanel({ onClose }: Props) {
               </div>
             )}
 
-            <div className="min-h-0 flex-1 overflow-auto">
-              {rows.length === 0 ? (
-                <p className="px-4 py-6 text-base text-ev-faint">
-                  Nothing here yet — take a note, import your closed trades, or add a manual entry.
-                </p>
-              ) : (
-                <ul>
-                  {rows.map((row) => (
-                    <li key={row.key} className="border-b border-ev-panel px-3 py-1.5 hover:bg-ev-panel/60">
-                      {row.node}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+            {rows.length === 0 ? (
+              <p className="px-4 py-6 text-base text-ev-faint">
+                Nothing here yet — take a note, import your closed trades, or add a manual entry.
+              </p>
+            ) : (
+              <VirtualList
+                items={rows}
+                itemKey={(row) => row.key}
+                estimateSize={64}
+                className="min-h-0 flex-1 overflow-auto"
+                ariaLabel="Journal entries"
+                renderItem={(row) => (
+                  <div className="border-b border-ev-panel px-3 py-1.5 hover:bg-ev-panel/60">{row.node}</div>
+                )}
+              />
+            )}
           </div>
         </div>
       )}

@@ -51,27 +51,19 @@ const SettingsPage = lazy(() => import("./SettingsPage").then((m) => ({ default:
 export default function App() {
   const {
     layout,
-    setGrid,
     updateActive,
     setSymbol,
-    setResolution,
     alerts,
     addAlert,
     removeAlert,
-    replayBar,
-    setReplay,
   } = useWorkspace(
     useShallow((s) => ({
       layout: s.activeLayout(),
-      setGrid: s.setGrid,
       updateActive: s.updateActive,
       setSymbol: s.setSymbol,
-      setResolution: s.setResolution,
       alerts: s.alerts,
       addAlert: s.addAlert,
       removeAlert: s.removeAlert,
-      replayBar: s.replayBar,
-      setReplay: s.setReplay,
     })),
   );
   const state = activeChartOf(layout);
@@ -236,50 +228,15 @@ export default function App() {
           {!zen && <TabBar />}
 
           <Toolbar
-            symbol={state.symbol}
-            resolution={state.resolution}
-            chartType={state.chartType}
-            showVolume={state.showVolume}
-            showVolumeProfile={state.showVolumeProfile ?? false}
-            showGrid={state.showGrid}
-            indicatorCount={state.indicators.length}
-            onSymbol={(symbol) => setSymbol(symbol)}
-            onResolution={(resolution) => setResolution(resolution)}
-            onChartType={(chartType) => updateActive({ chartType })}
-            onToggleVolume={() => updateActive({ showVolume: !state.showVolume })}
-            onToggleVolumeProfile={() => updateActive({ showVolumeProfile: !state.showVolumeProfile })}
-            boxSize={state.boxSize ?? null}
-            onBoxSize={(boxSize) => updateActive({ boxSize })}
-            onToggleGrid={() => updateActive({ showGrid: !state.showGrid })}
-            onSetTheme={(theme) => updateActive({ theme })}
-            theme={state.theme}
-            crosshairMode={state.crosshairMode ?? "normal"}
-            onCrosshairMode={(crosshairMode) => updateActive({ crosshairMode })}
-            priceScale={state.priceScale ?? "normal"}
-            onPriceScale={(priceScale) => updateActive({ priceScale })}
-            invertScale={state.invertScale ?? false}
-            onInvertScale={() => updateActive({ invertScale: !state.invertScale })}
-            timezone={state.timezone}
-            onTimezone={(timezone) => updateActive({ timezone })}
-            dataSource={state.dataSource ?? "auto"}
-            onDataSource={(dataSource) => updateActive({ dataSource })}
-            watermark={state.watermark ?? false}
-            onWatermark={() => updateActive({ watermark: !state.watermark })}
-            sessionBreaks={state.showSessionBreaks !== false}
-            onToggleSessionBreaks={() => updateActive({ showSessionBreaks: state.showSessionBreaks === false })}
-            onOpenIndicators={() => setDialogOpen(true)}
-            onToggleReplay={() => setReplay(replayBar === null ? -30 : null)}
-            replayActive={replayBar !== null}
             dockTab={dockTab}
             tradingOpen={tradingOpen}
-            onOpenWindow={() => void openChartWindow(state.symbol, state.resolution)}
+            onOpenIndicators={() => setDialogOpen(true)}
             onOpenAlerts={() => setAlertOpen(true)}
             onOpenApiKeys={openApiKeys}
+            onOpenWindow={() => void openChartWindow(state.symbol, state.resolution)}
             onOpenSettings={() => setChartSettingsOpen(true)}
             onSelectDockTab={selectDockTab}
             onToggleTrading={toggleTrading}
-            grid={layout.grid}
-            onGrid={setGrid}
           />
         </header>
 
