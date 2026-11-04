@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { ChartSettings } from "../layout";
-import { Select } from "../ui";
+import { Checkbox, Select } from "../ui";
 
 interface Props {
   draft: ChartSettings;
@@ -12,95 +12,41 @@ export function TradingSettingsTab({ draft, setDraft }: Props) {
     <div className="space-y-4">
       <div className="font-semibold text-ev-strong">General Trading Appearance</div>
       <div className="space-y-2.5">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={draft.trading.showPositions}
-            onChange={(e) =>
+        <Checkbox label="Positions on chart" checked={draft.trading.showPositions} onChange={(checked) =>
               setDraft((d) => ({
                 ...d,
-                trading: { ...d.trading, showPositions: e.target.checked },
-              }))
-            }
-            className="accent-ev-accent"
-          />
-          <span>Positions on chart</span>
-        </label>
+                trading: { ...d.trading, showPositions: checked },
+              }))} />
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={draft.trading.showOrders}
-            onChange={(e) =>
+        <Checkbox label="Orders on chart" checked={draft.trading.showOrders} onChange={(checked) =>
               setDraft((d) => ({
                 ...d,
-                trading: { ...d.trading, showOrders: e.target.checked },
-              }))
-            }
-            className="accent-ev-accent"
-          />
-          <span>Orders on chart</span>
-        </label>
+                trading: { ...d.trading, showOrders: checked },
+              }))} />
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={draft.trading.showExecutions}
-            onChange={(e) =>
+        <Checkbox label="Executions (historical fill markers)" checked={draft.trading.showExecutions} onChange={(checked) =>
               setDraft((d) => ({
                 ...d,
-                trading: { ...d.trading, showExecutions: e.target.checked },
-              }))
-            }
-            className="accent-ev-accent"
-          />
-          <span>Executions (historical fill markers)</span>
-        </label>
+                trading: { ...d.trading, showExecutions: checked },
+              }))} />
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={draft.trading.extendedPriceLine}
-            onChange={(e) =>
+        <Checkbox label="Extended price lines for positions & orders" checked={draft.trading.extendedPriceLine} onChange={(checked) =>
               setDraft((d) => ({
                 ...d,
-                trading: { ...d.trading, extendedPriceLine: e.target.checked },
-              }))
-            }
-            className="accent-ev-accent"
-          />
-          <span>Extended price lines for positions & orders</span>
-        </label>
+                trading: { ...d.trading, extendedPriceLine: checked },
+              }))} />
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={draft.trading.instantOrders}
-            onChange={(e) =>
+        <Checkbox label="Instant order placement (skip confirmation modal)" checked={draft.trading.instantOrders} onChange={(checked) =>
               setDraft((d) => ({
                 ...d,
-                trading: { ...d.trading, instantOrders: e.target.checked },
-              }))
-            }
-            className="accent-ev-accent"
-          />
-          <span>Instant order placement (skip confirmation modal)</span>
-        </label>
+                trading: { ...d.trading, instantOrders: checked },
+              }))} />
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={draft.trading.soundOnExecution}
-            onChange={(e) =>
+        <Checkbox label="Play sound on order execution" checked={draft.trading.soundOnExecution} onChange={(checked) =>
               setDraft((d) => ({
                 ...d,
-                trading: { ...d.trading, soundOnExecution: e.target.checked },
-              }))
-            }
-            className="accent-ev-accent"
-          />
-          <span>Play sound on order execution</span>
-        </label>
+                trading: { ...d.trading, soundOnExecution: checked },
+              }))} />
       </div>
 
       <div className="my-3 border-t border-ev-raised" />

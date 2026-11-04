@@ -21,9 +21,8 @@ import type { UpdateResult } from "./updateCheck";
 import { fetchMcpRuntimeStatus, mcpStatusLine } from "./mcpRuntime";
 import type { McpRuntimeStatus } from "./mcpRuntime";
 import { notice } from "./notice";
+import { Button, Checkbox, Input, Slider } from "./ui";
 
-const button =
-  "rounded bg-ev-line px-3 py-1.5 text-dense text-ev-strong hover:bg-ev-line-strong disabled:opacity-40";
 const heading = "mb-1 text-dense font-medium uppercase tracking-wider text-ev-faint";
 
 /** Settings → Desktop: notifications, shortcut, rendering, proxy, reset. */
@@ -72,9 +71,9 @@ export function DesktopTab() {
     <div className="space-y-5">
       <section aria-label="Updates">
         <h2 className={heading}>Updates</h2>
-        <button
-          type="button"
-          className={button}
+        <Button
+          size="sm"
+          variant="outline"
           disabled={update === "checking"}
           onClick={() => {
             setUpdate("checking");
@@ -82,7 +81,7 @@ export function DesktopTab() {
           }}
         >
           {update === "checking" ? "Checking…" : "Check for updates"}
-        </button>
+        </Button>
         {update && update !== "checking" && (
           <p role="status" className="mt-2 text-base text-ev-text">
             {update.kind === "current" && `You are on the latest version (${update.version}).`}
@@ -102,54 +101,47 @@ export function DesktopTab() {
 
       <section aria-label="Notifications">
         <h2 className={heading}>Notifications</h2>
-        <label className="flex items-center gap-2 text-base text-ev-text">
-          <input
-            type="checkbox"
-            checked={notify}
-            onChange={(e) => {
-              setNotify(e.target.checked);
-              setNativeNotifications(e.target.checked);
-            }}
-          />
-          System notification when a price alert fires
-        </label>
-        <label className="mt-2 flex items-center gap-2 text-base text-ev-text">
-          <input
-            type="checkbox"
+        <Checkbox
+          label="System notification when a price alert fires"
+          checked={notify}
+          onChange={(checked) => {
+            setNotify(checked);
+            setNativeNotifications(checked);
+          }}
+        />
+        <div className="mt-2">
+          <Checkbox
+            label="Play audio chime when an alert fires"
             checked={sound}
-            onChange={(e) => {
-              setSound(e.target.checked);
-              setAlertSoundEnabled(e.target.checked);
+            onChange={(checked) => {
+              setSound(checked);
+              setAlertSoundEnabled(checked);
             }}
           />
-          Play audio chime when an alert fires
-        </label>
-        <div className="mt-2 flex items-center gap-3 text-base text-ev-muted">
-          <label htmlFor="alert-vol" className="text-dense">
-            Chime volume
-          </label>
-          <input
-            id="alert-vol"
-            type="range"
-            min="0"
-            max="1"
-            step="0.05"
-            value={volume}
-            disabled={!sound}
-            onChange={(e) => {
-              const v = Number(e.target.value);
-              setVolume(v);
-              setAlertSoundVolume(v);
-            }}
-            className="w-32 accent-ev-accent"
-          />
-          <button type="button" className={button} disabled={!sound} onClick={() => playAlertChime()}>
-            Test chime
-          </button>
         </div>
-        <button type="button" className={`${button} mt-2`} onClick={() => void notifyNative("EzyView", "Notifications are working.")}>
+        <div className="mt-2 flex items-end gap-3">
+          <div className="w-32">
+            <Slider
+              label="Chime volume"
+              min={0}
+              max={1}
+              step={0.05}
+              value={volume}
+              disabled={!sound}
+              format={(v) => `${Math.round(v * 100)}%`}
+              onChange={(v) => {
+                setVolume(v);
+                setAlertSoundVolume(v);
+              }}
+            />
+          </div>
+          <Button size="sm" variant="outline" disabled={!sound} onClick={() => playAlertChime()}>
+            Test chime
+          </Button>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => void notifyNative("EzyView", "Notifications are working.")} className="mt-2">
           Send test notification
-        </button>
+        </Button>
       </section>
 
       <section aria-label="Shortcut">
@@ -165,39 +157,39 @@ export function DesktopTab() {
         <p role="status" className="text-base text-ev-text">
           {mcpStatusLine(mcp)}
         </p>
-        <button type="button" className={`${button} mt-2`} onClick={() => void fetchMcpRuntimeStatus().then(setMcp)}>
+        <Button size="sm" variant="outline" onClick={() => void fetchMcpRuntimeStatus().then(setMcp)} className="mt-2">
           Recheck
-        </button>
+        </Button>
       </section>
 
       <section aria-label="Rendering and network">
         <h2 className={heading}>Rendering and network</h2>
-        <label className="mb-2 flex items-center gap-2 text-base text-ev-text">
-          <input
-            type="checkbox"
+        <div className="mb-2">
+          <Checkbox
+            label="Hardware acceleration (turn off if the window is blank or flickers)"
             checked={settings.hardwareAcceleration !== false}
-            onChange={(e) => edit({ hardwareAcceleration: e.target.checked ? null : false })}
+            onChange={(checked) => edit({ hardwareAcceleration: checked ? null : false })}
           />
-          Hardware acceleration (turn off if the window is blank or flickers)
-        </label>
+        </div>
         <label htmlFor={proxyId} className="mb-1 block text-base text-ev-muted">
           Proxy (http://, https:// or socks5://host:port; empty = none)
         </label>
-        <input
+        <Input
           id={proxyId}
+          aria-label="Proxy"
           value={settings.proxy}
           onChange={(e) => edit({ proxy: e.target.value.trim() })}
           placeholder="http://127.0.0.1:8080"
           spellCheck={false}
-          className="w-full max-w-sm rounded border border-ev-line bg-ev-panel px-2 py-1 text-base text-ev-text placeholder:text-ev-faint"
+          className="max-w-sm"
         />
         <div className="mt-2 flex gap-2">
-          <button type="button" className={button} disabled={!dirty} onClick={() => void save()}>
+          <Button size="sm" variant="solid" disabled={!dirty} onClick={() => void save()}>
             Save
-          </button>
-          <button type="button" className={button} onClick={() => void relaunchApp()}>
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => void relaunchApp()}>
             Restart now
-          </button>
+          </Button>
         </div>
         {status && (
           <p role="status" className="mt-2 text-dense text-ev-muted">
@@ -210,12 +202,12 @@ export function DesktopTab() {
         <h2 className={heading}>Factory reset</h2>
         <p className="mb-2 text-dense text-ev-muted">Wipes local app data and restarts. API keys in the OS keyring are kept unless cleared separately.</p>
         <div className="flex flex-wrap gap-2">
-          <button type="button" className={`${button} text-ev-down-text`} onClick={() => void reset()}>
+          <Button size="sm" variant="danger" onClick={() => void reset()}>
             Factory reset…
-          </button>
-          <button
-            type="button"
-            className={button}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
             onClick={() => {
               void clearKeyringSecrets()
                 .then(() => setStatus("Cleared provider API keys from OS keyring."))
@@ -223,7 +215,7 @@ export function DesktopTab() {
             }}
           >
             Clear keyring API keys
-          </button>
+          </Button>
         </div>
       </section>
     </div>

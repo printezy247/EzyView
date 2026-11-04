@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { ChartSettings } from "../layout";
-import { Select } from "../ui";
+import { Checkbox, Select } from "../ui";
 
 interface Props {
   draft: ChartSettings;
@@ -12,31 +12,14 @@ export function StatusLineSettingsTab({ draft, setDraft }: Props) {
     <div className="space-y-4">
       <div className="font-semibold text-ev-strong">Instrument</div>
       <div className="space-y-2.5">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={draft.statusLine.showLogo}
-            onChange={(e) =>
+        <Checkbox label="Logo" checked={draft.statusLine.showLogo} onChange={(checked) =>
               setDraft((d) => ({
                 ...d,
-                statusLine: { ...d.statusLine, showLogo: e.target.checked },
-              }))
-            }
-            className="accent-ev-accent"
-          />
-          <span>Logo</span>
-        </label>
+                statusLine: { ...d.statusLine, showLogo: checked },
+              }))} />
 
         <div className="flex items-center justify-between">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={true}
-              readOnly
-              className="accent-ev-accent"
-            />
-            <span>Title</span>
-          </label>
+          <Checkbox label="Title" checked disabled onChange={() => {}} />
           <Select
             label="Title"
             size="sm"
@@ -58,148 +41,67 @@ export function StatusLineSettingsTab({ draft, setDraft }: Props) {
           />
         </div>
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={draft.statusLine.showOpenMarketStatus}
-            onChange={(e) =>
+        <Checkbox label="Open market status" checked={draft.statusLine.showOpenMarketStatus} onChange={(checked) =>
               setDraft((d) => ({
                 ...d,
-                statusLine: { ...d.statusLine, showOpenMarketStatus: e.target.checked },
-              }))
-            }
-            className="accent-ev-accent"
-          />
-          <span>Open market status</span>
-        </label>
+                statusLine: { ...d.statusLine, showOpenMarketStatus: checked },
+              }))} />
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={draft.statusLine.showOhlc}
-            onChange={(e) =>
+        <Checkbox label="OHLC values" checked={draft.statusLine.showOhlc} onChange={(checked) =>
               setDraft((d) => ({
                 ...d,
-                statusLine: { ...d.statusLine, showOhlc: e.target.checked },
-              }))
-            }
-            className="accent-ev-accent"
-          />
-          <span>OHLC values</span>
-        </label>
+                statusLine: { ...d.statusLine, showOhlc: checked },
+              }))} />
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={draft.statusLine.showBarChange}
-            onChange={(e) =>
+        <Checkbox label="Bar change values" checked={draft.statusLine.showBarChange} onChange={(checked) =>
               setDraft((d) => ({
                 ...d,
-                statusLine: { ...d.statusLine, showBarChange: e.target.checked },
-              }))
-            }
-            className="accent-ev-accent"
-          />
-          <span>Bar change values</span>
-        </label>
+                statusLine: { ...d.statusLine, showBarChange: checked },
+              }))} />
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={draft.statusLine.showVolume}
-            onChange={(e) =>
+        <Checkbox label="Volume" checked={draft.statusLine.showVolume} onChange={(checked) =>
               setDraft((d) => ({
                 ...d,
-                statusLine: { ...d.statusLine, showVolume: e.target.checked },
-              }))
-            }
-            className="accent-ev-accent"
-          />
-          <span>Volume</span>
-        </label>
+                statusLine: { ...d.statusLine, showVolume: checked },
+              }))} />
       </div>
 
       <div className="my-3 border-t border-ev-raised" />
 
       <div className="font-semibold text-ev-strong">Indicators</div>
       <div className="space-y-2.5">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={draft.statusLine.indicatorTitles}
-            onChange={(e) =>
+        <Checkbox label="Titles" checked={draft.statusLine.indicatorTitles} onChange={(checked) =>
               setDraft((d) => ({
                 ...d,
-                statusLine: { ...d.statusLine, indicatorTitles: e.target.checked },
-              }))
-            }
-            className="accent-ev-accent"
-          />
-          <span>Titles</span>
-        </label>
+                statusLine: { ...d.statusLine, indicatorTitles: checked },
+              }))} />
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={draft.statusLine.indicatorArguments}
-            onChange={(e) =>
+        <Checkbox label="Arguments / Inputs" checked={draft.statusLine.indicatorArguments} onChange={(checked) =>
               setDraft((d) => ({
                 ...d,
-                statusLine: { ...d.statusLine, indicatorArguments: e.target.checked },
-              }))
-            }
-            className="accent-ev-accent"
-          />
-          <span>Arguments / Inputs</span>
-        </label>
+                statusLine: { ...d.statusLine, indicatorArguments: checked },
+              }))} />
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={draft.statusLine.indicatorValues}
-            onChange={(e) =>
+        <Checkbox label="Values" checked={draft.statusLine.indicatorValues} onChange={(checked) =>
               setDraft((d) => ({
                 ...d,
-                statusLine: { ...d.statusLine, indicatorValues: e.target.checked },
-              }))
-            }
-            className="accent-ev-accent"
-          />
-          <span>Values</span>
-        </label>
+                statusLine: { ...d.statusLine, indicatorValues: checked },
+              }))} />
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={draft.statusLine.indicatorBackground}
-            onChange={(e) =>
+        <Checkbox label="Background" checked={draft.statusLine.indicatorBackground} onChange={(checked) =>
               setDraft((d) => ({
                 ...d,
-                statusLine: { ...d.statusLine, indicatorBackground: e.target.checked },
-              }))
-            }
-            className="accent-ev-accent"
-          />
-          <span>Background</span>
-        </label>
+                statusLine: { ...d.statusLine, indicatorBackground: checked },
+              }))} />
       </div>
 
       <div className="my-3 border-t border-ev-raised" />
 
-      <label className="flex items-center gap-2 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={draft.statusLine.showBuySellButtons}
-          onChange={(e) =>
+      <Checkbox label="Buy / Sell quick buttons" checked={draft.statusLine.showBuySellButtons} onChange={(checked) =>
             setDraft((d) => ({
               ...d,
-              statusLine: { ...d.statusLine, showBuySellButtons: e.target.checked },
-            }))
-          }
-          className="accent-ev-accent"
-        />
-        <span>Buy / Sell quick buttons</span>
-      </label>
+              statusLine: { ...d.statusLine, showBuySellButtons: checked },
+            }))} />
     </div>
   );
 }

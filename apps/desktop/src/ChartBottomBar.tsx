@@ -4,12 +4,10 @@ import { formatClock, parseGoToDate, RANGE_PRESETS } from "./chartView";
 import { EventsControls } from "./EventsControls";
 import { CompareDialog } from "./CompareDialog";
 import { useWorkspace } from "./store";
-import { buttonClass, cn, inputClass } from "./ui";
+import { Button, inputClass } from "./ui";
 
 /** Lit pill shared with the footer dock toggles. */
 const litPill = "bg-ev-raised font-medium text-ev-strong";
-
-const chip = buttonClass({ size: "sm", variant: "ghost" });
 
 /**
  * The strip under the chart, as in TradingView: range presets, go-to-date,
@@ -40,16 +38,9 @@ export function ChartBottomBar({ onOpenHotkeys }: { onOpenHotkeys: () => void })
       className="flex h-7 shrink-0 items-center gap-1 overflow-x-auto border-t border-ev-raised bg-ev-chrome px-2"
     >
       {RANGE_PRESETS.map(({ id, description }) => (
-        <button
-          key={id}
-          type="button"
-          disabled={!view}
-          title={description}
-          onClick={() => void view?.showRange(id)}
-          className={chip}
-        >
+        <Button key={id} size="sm" variant="ghost" disabled={!view} title={description} onClick={() => void view?.showRange(id)}>
           {id}
-        </button>
+        </Button>
       ))}
 
       <input
@@ -64,55 +55,46 @@ export function ChartBottomBar({ onOpenHotkeys }: { onOpenHotkeys: () => void })
         className={inputClass("h-5 w-28 px-1 text-dense")}
       />
 
-      <button
-        type="button"
-        onClick={() => setCompareOpen(true)}
-        title="Overlay another symbol on this chart"
-        className={cn(chip, "ml-1")}
-      >
+      <Button size="sm" variant="ghost" onClick={() => setCompareOpen(true)} title="Overlay another symbol on this chart" className="ml-1">
         Compare
-      </button>
+      </Button>
 
       <div className="mx-2 h-4 w-px shrink-0 bg-ev-raised" />
       <EventsControls layout="bar" />
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5">
-        <button type="button" disabled={!view} title="Reset zoom, scroll and price scale" onClick={() => view?.reset()} className={chip}>
+        <Button size="sm" variant="ghost" disabled={!view} title="Reset zoom, scroll and price scale" onClick={() => view?.reset()}>
           Reset
-        </button>
-        <button type="button" disabled={!view} title="Fit the price scale to the visible bars" onClick={() => view?.autoScale()} className={chip}>
+        </Button>
+        <Button size="sm" variant="ghost" disabled={!view} title="Fit the price scale to the visible bars" onClick={() => view?.autoScale()}>
           Auto
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
           aria-pressed={priceScale === "log"}
           title="Logarithmic price scale"
           onClick={() => updateActive({ priceScale: priceScale === "log" ? "normal" : "log" })}
-          className={cn(chip, priceScale === "log" && litPill)}
+          className={priceScale === "log" ? litPill : undefined}
         >
           Log
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
           aria-pressed={priceScale === "percentage"}
           title="Show price as percent change from the first visible bar"
           onClick={() => updateActive({ priceScale: priceScale === "percentage" ? "normal" : "percentage" })}
-          className={cn(chip, priceScale === "percentage" && litPill)}
+          className={priceScale === "percentage" ? litPill : undefined}
         >
           %
-        </button>
+        </Button>
         <span className="ml-2 text-dense num text-ev-muted" title="Current time in the chart's timezone" data-volatile="clock">
           {formatClock(now, timezone)}
         </span>
-        <button
-          type="button"
-          onClick={onOpenHotkeys}
-          title="Keyboard shortcuts (?)"
-          aria-keyshortcuts="?"
-          className={cn(chip, "ml-auto")}
-        >
+        <Button size="sm" variant="ghost" onClick={onOpenHotkeys} title="Keyboard shortcuts (?)" aria-keyshortcuts="?" className="ml-auto">
           Shortcuts
-        </button>
+        </Button>
       </div>
       <CompareDialog open={compareOpen} onClose={() => setCompareOpen(false)} />
     </div>

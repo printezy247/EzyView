@@ -3,7 +3,7 @@ import { Sparkles, Trash2 } from "lucide-react";
 import { composeReview, computeStats, reviewWindow } from "@ezyview/journal";
 import type { JournalEntry, JournalNote } from "@ezyview/journal";
 import { useJournal } from "./journal";
-import { Button, inputClass } from "./ui";
+import { Button, IconButton, inputClass } from "./ui";
 
 interface Props {
   entries: readonly JournalEntry[];
@@ -116,31 +116,27 @@ export function JournalReviews({ entries, notes, selectedDay, onSelectDay }: Pro
             className={`${textarea} min-h-40 flex-1`}
           />
           <div className="mt-1 flex items-center gap-2">
-            <button
-              type="button"
+            <Button
+              size="sm"
+              variant="outline"
               onClick={generateAiBrief}
-              className="flex items-center gap-1 rounded border border-ev-line px-2 py-0.5 text-dense text-ev-strong hover:bg-ev-raised"
               title="Generate structured AI review summary from your journal pack"
             >
               <Sparkles size={12} aria-hidden />
               Generate review
-            </button>
-            <button
-              type="button"
-              onClick={() => setDraftKey("")}
-              disabled={draftKey !== key}
-              className="rounded border border-ev-line px-2 py-0.5 text-dense text-ev-muted hover:text-ev-strong disabled:opacity-40"
-            >
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setDraftKey("")} disabled={draftKey !== key}>
               Reset to preview
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              size="sm"
+              variant="solid"
               onClick={() => saveReview({ key: selectedDay, period, text: editor })}
               disabled={editor.trim() === ""}
-              className="ml-auto rounded bg-ev-accent px-3 py-1 text-dense font-medium text-white hover:bg-ev-accent-hover disabled:opacity-40"
+              className="ml-auto"
             >
               Save review
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -164,21 +160,17 @@ export function JournalReviews({ entries, notes, selectedDay, onSelectDay }: Pro
                 <span className="ml-auto shrink-0 text-ev-faint">
                   saved {new Date(review.savedAt * 1000).toLocaleString()}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => load(review.text, review.key, review.period)}
-                  className="rounded border border-ev-line px-2 py-0.5 text-ev-muted hover:text-ev-strong"
-                >
+                <Button size="sm" variant="outline" onClick={() => load(review.text, review.key, review.period)}>
                   Load
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Remove review ${review.key}`}
+                </Button>
+                <IconButton
+                  size="sm"
+                  label={`Remove review ${review.key}`}
                   onClick={() => removeReview(review.id)}
-                  className="flex size-6 items-center justify-center rounded text-ev-faint hover:bg-ev-raised hover:text-ev-down-text"
+                  className="text-ev-faint"
                 >
                   <Trash2 size={12} aria-hidden />
-                </button>
+                </IconButton>
               </li>
             ))}
           </ul>

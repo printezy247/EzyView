@@ -31,7 +31,7 @@ import {
 } from "./drawingTemplates";
 import { drawingLabel } from "./ObjectTree";
 import type { DrawingBox } from "./ChartHost";
-import { Button, IconButton, Input, Select, Slider } from "./ui";
+import { Button, ColorInput, IconButton, Input, Select, Slider } from "./ui";
 
 /** TradingView's stroke palette, plus white for dark themes. */
 const PALETTE = ["#2962ff", "#089981", "#f23645", "#ff9800", "#e91e63", "#9c27b0", "#00bcd4", "#ffeb3b", "#ffffff", "#787b86"];
@@ -566,13 +566,7 @@ function HexInput({ value, onCommit }: { value: string; onCommit: (color: string
   useEffect(() => setDraft(value), [value]);
   return (
     <div className="flex items-center gap-1">
-      <input
-        type="color"
-        value={normaliseHex(value)}
-        aria-label="Custom colour picker"
-        onChange={(e) => onCommit(e.target.value)}
-        className="h-6 w-8 cursor-pointer rounded border border-ev-line bg-ev-bg"
-      />
+      <ColorInput label="Custom colour picker" value={normaliseHex(value)} onChange={(value) => onCommit(value)} className="h-6 w-8 cursor-pointer rounded border border-ev-line bg-ev-bg" />
       <Input
         value={draft}
         onChange={(e) => setDraft(e.target.value)}

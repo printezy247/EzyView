@@ -3,7 +3,7 @@ import { X } from "lucide-react";
 import { breakevens, buildChain, expiryPnl } from "@ezyview/options";
 import type { ChainRow, Leg } from "@ezyview/options";
 import { loadHistory, tickerOf } from "./data";
-import { Select } from "./ui";
+import { IconButton, Select, Slider, Tabs } from "./ui";
 
 interface Props {
   symbol: string;
@@ -66,20 +66,13 @@ export function OptionsPanel({ symbol, onClose }: Props) {
         <span className="font-medium text-ev-strong">
           {tickerOf(symbol)} options{spot !== null && <span className="ml-1 font-normal text-ev-muted">spot {f(spot)}</span>}
         </span>
-        <div role="tablist" aria-label="Options view" className="ml-2 flex gap-1">
-          {(["chain", "smile", "payoff"] as View[]).map((v) => (
-            <button
-              key={v}
-              role="tab"
-              type="button"
-              aria-selected={view === v}
-              onClick={() => setView(v)}
-              className={view === v ? "rounded bg-ev-raised px-2 py-1 font-medium capitalize text-ev-strong" : "rounded px-2 py-1 capitalize text-ev-muted hover:text-ev-strong"}
-            >
-              {v}
-            </button>
-          ))}
-        </div>
+        <Tabs
+          label="Options view"
+          items={(["chain", "smile", "payoff"] as View[]).map((v) => ({ id: v, label: v[0]!.toUpperCase() + v.slice(1) }))}
+          value={view}
+          onChange={(id) => setView(id as View)}
+          className="ml-2"
+        />
         <Select
           id="expiry"
           label="Expiry"
@@ -88,15 +81,21 @@ export function OptionsPanel({ symbol, onClose }: Props) {
           onChange={(v) => setDays(Number(v))}
           options={EXPIRIES.map((d) => ({ value: String(d), label: `${d}d` }))}
         />
-        <label htmlFor="basevol" className="text-ev-muted">
-          ATM vol
-        </label>
-        <input id="basevol" type="range" min={0.1} max={1.2} step={0.05} value={baseVol} onChange={(e) => setBaseVol(Number(e.target.value))} />
-        <span className="w-8">{Math.round(baseVol * 100)}%</span>
+        <div className="w-36">
+          <Slider
+            label="ATM vol"
+            min={0.1}
+            max={1.2}
+            step={0.05}
+            value={baseVol}
+            format={(v) => `${Math.round(v * 100)}%`}
+            onChange={setBaseVol}
+          />
+        </div>
         <span className="text-ev-muted">Model prices — no live options feed</span>
-        <button type="button" onClick={onClose} aria-label="Close options" className="ml-auto rounded p-1 text-ev-muted hover:bg-ev-raised hover:text-ev-strong">
+        <IconButton size="sm" label="Close options" onClick={onClose} className="ml-auto">
           <X size={13} aria-hidden />
-        </button>
+        </IconButton>
       </header>
       <div className="min-h-0 flex-1 overflow-auto">
         {expiry === null ? (

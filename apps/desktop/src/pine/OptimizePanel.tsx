@@ -3,6 +3,7 @@ import { DEFAULT_MAX_COMBOS } from "@ezyview/pine-transpiler";
 import type { OptimizationResult, ParamSpec } from "@ezyview/pine-transpiler";
 import { optimizePineWithBudget } from "../pineRunner";
 import { parseParamValues } from "../pineOptimize";
+import { Button, Input } from "../ui";
 
 /** One-line hint under the Run grid button: cap, failure count, first error. */
 function gridHint(next: OptimizationResult, specs: ParamSpec[]): string | null {
@@ -85,14 +86,9 @@ export function OptimizePanel({
     <div className="border-t border-ev-raised px-4 py-2 text-base">
       <div className="mb-1.5 flex items-center gap-3 text-ev-muted">
         <span className="font-semibold uppercase tracking-wider text-ev-faint">Optimize</span>
-        <button
-          type="button"
-          onClick={handleOptimize}
-          disabled={!canRun || gridBusy}
-          className="rounded bg-ev-line px-2.5 py-1 text-ev-strong hover:bg-ev-line-strong disabled:cursor-not-allowed disabled:opacity-40"
-        >
+        <Button size="sm" variant="outline" onClick={handleOptimize} disabled={!canRun || gridBusy}>
           Run grid
-        </button>
+        </Button>
         {appliedBest && (
           <span className="text-ev-muted">
             Next run uses: {Object.entries(appliedBest).map(([k, v]) => `${k}=${v}`).join(" ")}
@@ -105,12 +101,12 @@ export function OptimizePanel({
           <label htmlFor={`opt-values-${key}`} className="w-24 shrink-0 text-ev-faint">
             {key}
           </label>
-          <input
+          <Input
             id={`opt-values-${key}`}
             value={texts[key] ?? ""}
             onChange={(e) => setTexts((t) => ({ ...t, [key]: e.target.value }))}
             placeholder="10..50 step 10 or 1,2,3"
-            className="w-56 rounded bg-ev-bg px-2 py-1 text-ev-strong outline-none placeholder:text-ev-muted"
+            className="w-56"
           />
           <span className="text-ev-faint">now {baseInputs[key]}</span>
         </div>
@@ -134,13 +130,9 @@ export function OptimizePanel({
             <span>
               {outcome.runs.length} run{outcome.runs.length === 1 ? "" : "s"}
             </span>
-            <button
-              type="button"
-              onClick={() => onApplyBest(outcome.best!.inputs)}
-              className="rounded bg-ev-line px-2 py-0.5 text-ev-strong hover:bg-ev-line-strong"
-            >
+            <Button size="sm" variant="outline" onClick={() => onApplyBest(outcome.best!.inputs)}>
               Apply best
-            </button>
+            </Button>
           </div>
           <table className="w-full text-left num">
             <thead>

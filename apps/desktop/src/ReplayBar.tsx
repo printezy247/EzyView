@@ -5,7 +5,7 @@ import { loadHistory } from "./data";
 import { useWorkspace } from "./store";
 import type { ReplaySpeed } from "./layout";
 import { useShortcut } from "./shortcuts";
-import { Select, inputClass } from "./ui";
+import { Button, IconButton, Select, inputClass } from "./ui";
 
 interface Props {
   /** Total bars loaded for the active symbol. */
@@ -148,65 +148,62 @@ export function ReplayBar({ totalBars, symbol: symbolProp, resolution: resolutio
       <div className="h-4 w-px bg-ev-raised mx-1" />
 
       {/* Rewind to start */}
-      <button
-        type="button"
+      <IconButton
+        size="sm"
+        label="Rewind to start"
+        title="Rewind to beginning of history"
         onClick={() => {
           stop();
           setReplay(0);
         }}
-        className="rounded p-1 text-ev-muted hover:bg-ev-raised hover:text-ev-strong transition-colors"
-        title="Rewind to beginning of history"
-        aria-label="Rewind to start"
       >
         <Rewind size={14} aria-hidden />
-      </button>
+      </IconButton>
 
       {/* Step backward */}
-      <button
-        type="button"
-        onClick={() => step(-1)}
-        className="flex items-center justify-center rounded p-1 text-ev-muted hover:bg-ev-raised hover:text-ev-strong transition-colors"
+      <IconButton
+        size="sm"
+        label="Step back one bar"
         title="Step back one bar (Hotkeys: ← or [)"
-        aria-label="Step back one bar"
+        onClick={() => step(-1)}
       >
         <ChevronLeft size={16} aria-hidden />
-      </button>
+      </IconButton>
 
       {/* Play / Pause Toggle */}
-      <button
-        type="button"
-        onClick={toggle}
-        className="flex size-7 items-center justify-center rounded bg-ev-accent text-white shadow-sm hover:bg-ev-accent-hover transition-colors"
+      <IconButton
+        size="sm"
+        variant="solid"
+        label={playing ? "Pause replay" : "Play replay"}
         title={playing ? "Pause replay (Space)" : "Play replay (Space)"}
-        aria-label={playing ? "Pause replay" : "Play replay"}
+        onClick={toggle}
+        className="shadow-sm"
       >
         {playing ? <Pause size={14} aria-hidden /> : <Play size={14} className="ml-0.5" aria-hidden />}
-      </button>
+      </IconButton>
 
       {/* Step forward */}
-      <button
-        type="button"
-        onClick={() => step(1)}
-        className="flex items-center justify-center rounded p-1 text-ev-muted hover:bg-ev-raised hover:text-ev-strong transition-colors"
+      <IconButton
+        size="sm"
+        label="Step forward one bar"
         title="Step forward one bar (Hotkeys: → or ])"
-        aria-label="Step forward one bar"
+        onClick={() => step(1)}
       >
         <ChevronRight size={16} aria-hidden />
-      </button>
+      </IconButton>
 
       {/* Jump to end (realtime) */}
-      <button
-        type="button"
+      <IconButton
+        size="sm"
+        label="Jump to end"
+        title="Jump to latest candle"
         onClick={() => {
           stop();
           setReplay(maxBar);
         }}
-        className="rounded p-1 text-ev-muted hover:bg-ev-raised hover:text-ev-strong transition-colors"
-        title="Jump to latest candle"
-        aria-label="Jump to end"
       >
         <FastForward size={14} aria-hidden />
-      </button>
+      </IconButton>
 
       {/* Position Slider */}
       <input
@@ -265,19 +262,20 @@ export function ReplayBar({ totalBars, symbol: symbolProp, resolution: resolutio
       </div>
 
       {/* Exit Button */}
-      <button
-        type="button"
+      <Button
+        size="sm"
+        variant="outline"
         onClick={() => {
           stop();
           setReplay(null);
         }}
-        className="ml-1 flex items-center gap-1 rounded border border-ev-line px-2 py-0.5 text-dense text-ev-muted hover:border-ev-dim hover:text-ev-strong transition-colors"
+        className="ml-1"
         title="Exit bar replay mode (Escape)"
         aria-label="Exit bar replay"
       >
         <X size={12} aria-hidden />
         <span>Exit</span>
-      </button>
+      </Button>
     </div>
   );
 }

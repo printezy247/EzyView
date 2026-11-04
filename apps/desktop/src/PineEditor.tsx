@@ -10,7 +10,7 @@ import { useWorkspace, uid } from "./store";
 import type { PineScriptRecord } from "./store";
 import { exportScriptJson, parseScriptJson } from "./pineShare";
 import { sanitizeExportFilename } from "./exportUi";
-import { Select } from "./ui";
+import { Button, IconButton, Input, Select } from "./ui";
 import { StrategyTester } from "./pine/StrategyTester";
 import { OptimizePanel } from "./pine/OptimizePanel";
 import { registerPineLanguage } from "./pine/monacoPine";
@@ -347,34 +347,25 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
     >
       <div className="flex items-center justify-between border-b border-ev-raised px-4 py-2.5">
         <h2 id="pine-editor-title" className="text-body font-semibold text-ev-strong">Pine Editor — {symbol}</h2>
-        <button type="button" onClick={onClose} className="text-ev-muted hover:text-ev-strong" aria-label="Close">
+        <IconButton size="sm" label="Close" onClick={onClose}>
           <X size={16} aria-hidden />
-        </button>
+        </IconButton>
       </div>
 
       <div className="flex items-center gap-2 border-b border-ev-raised px-4 py-2">
-        <input
+        <Input
           aria-label="Script name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-48 rounded bg-ev-bg px-2.5 py-1.5 text-body text-ev-strong outline-none placeholder:text-ev-muted"
+          className="w-48"
           placeholder="Script name"
         />
-        <button
-          type="button"
-          onClick={() => savePineScript(scriptId, name, source)}
-          className="flex items-center gap-1 rounded bg-ev-line px-2.5 py-1.5 text-base text-ev-strong hover:bg-ev-line-strong"
-        >
+        <Button variant="outline" onClick={() => savePineScript(scriptId, name, source)}>
           <Save size={13} aria-hidden /> Save
-        </button>
-        <button
-          type="button"
-          onClick={run}
-          disabled={runBusy}
-          className="flex items-center gap-1 rounded bg-ev-accent px-2.5 py-1.5 text-base font-medium text-white hover:bg-ev-accent-hover disabled:opacity-40"
-        >
+        </Button>
+        <Button variant="solid" onClick={run} disabled={runBusy}>
           <Play size={13} aria-hidden /> Add to chart
-        </button>
+        </Button>
         {versions.length > 0 && (
           <Select
             label="Script versions"
@@ -404,20 +395,12 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
             }}
           />
         )}
-        <button
-          type="button"
-          onClick={exportScript}
-          className="flex items-center gap-1 rounded bg-ev-line px-2.5 py-1.5 text-base text-ev-strong hover:bg-ev-line-strong"
-        >
+        <Button variant="outline" onClick={exportScript}>
           <Download size={13} aria-hidden /> Export
-        </button>
-        <button
-          type="button"
-          onClick={() => importInput.current?.click()}
-          className="flex items-center gap-1 rounded bg-ev-line px-2.5 py-1.5 text-base text-ev-strong hover:bg-ev-line-strong"
-        >
+        </Button>
+        <Button variant="outline" onClick={() => importInput.current?.click()}>
           <Upload size={13} aria-hidden /> Import
-        </button>
+        </Button>
         <input
           ref={importInput}
           type="file"
@@ -454,8 +437,9 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
               {s.name}
             </button>
           ))}
-          <button
-            type="button"
+          <IconButton
+            size="sm"
+            label="Delete script"
             onClick={() => {
               deletePineScript(scriptId);
               setScriptId(uid());
@@ -469,11 +453,10 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
               setResult(null);
               refreshMarkers();
             }}
-            className="rounded bg-ev-line p-1.5 text-ev-muted hover:bg-ev-line-strong"
-            aria-label="Delete script"
+            className="text-ev-muted"
           >
             <Trash2 size={13} aria-hidden />
-          </button>
+          </IconButton>
         </div>
       </div>
 

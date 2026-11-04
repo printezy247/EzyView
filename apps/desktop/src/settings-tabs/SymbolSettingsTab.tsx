@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { ChartSettings } from "../layout";
-import { Select } from "../ui";
+import { Checkbox, ColorInput, Select } from "../ui";
 
 interface Props {
   draft: ChartSettings;
@@ -29,122 +29,62 @@ export function SymbolSettingsTab({ draft, setDraft }: Props) {
       <div className="font-semibold text-ev-strong">Candles</div>
 
       <div className="grid grid-cols-[140px_auto] items-center gap-y-3">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={true}
-            readOnly
-            className="accent-ev-accent"
-          />
-          <span>Body</span>
-        </label>
+        <Checkbox label="Body" checked disabled onChange={() => {}} />
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-1.5" title="Body Up Color">
-            <input
-              type="color"
-              value={draft.symbol.bodyUpColor}
-              onChange={(e) =>
+            <ColorInput label="Body up colour" value={draft.symbol.bodyUpColor} onChange={(value) =>
                 setDraft((d) => ({
                   ...d,
-                  symbol: { ...d.symbol, bodyUpColor: e.target.value },
-                }))
-              }
-              className="size-6 cursor-pointer rounded border border-ev-line bg-transparent p-0"
-            />
+                  symbol: { ...d.symbol, bodyUpColor: value },
+                }))} />
             <span className="text-micro text-ev-muted">Up</span>
           </label>
           <label className="flex items-center gap-1.5" title="Body Down Color">
-            <input
-              type="color"
-              value={draft.symbol.bodyDownColor}
-              onChange={(e) =>
+            <ColorInput label="Body down colour" value={draft.symbol.bodyDownColor} onChange={(value) =>
                 setDraft((d) => ({
                   ...d,
-                  symbol: { ...d.symbol, bodyDownColor: e.target.value },
-                }))
-              }
-              className="size-6 cursor-pointer rounded border border-ev-line bg-transparent p-0"
-            />
+                  symbol: { ...d.symbol, bodyDownColor: value },
+                }))} />
             <span className="text-micro text-ev-muted">Down</span>
           </label>
         </div>
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={true}
-            readOnly
-            className="accent-ev-accent"
-          />
-          <span>Borders</span>
-        </label>
+        <Checkbox label="Borders" checked disabled onChange={() => {}} />
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-1.5" title="Border Up Color">
-            <input
-              type="color"
-              value={draft.symbol.borderUpColor}
-              onChange={(e) =>
+            <ColorInput label="Border up colour" value={draft.symbol.borderUpColor} onChange={(value) =>
                 setDraft((d) => ({
                   ...d,
-                  symbol: { ...d.symbol, borderUpColor: e.target.value },
-                }))
-              }
-              className="size-6 cursor-pointer rounded border border-ev-line bg-transparent p-0"
-            />
+                  symbol: { ...d.symbol, borderUpColor: value },
+                }))} />
             <span className="text-micro text-ev-muted">Up</span>
           </label>
           <label className="flex items-center gap-1.5" title="Border Down Color">
-            <input
-              type="color"
-              value={draft.symbol.borderDownColor}
-              onChange={(e) =>
+            <ColorInput label="Border down colour" value={draft.symbol.borderDownColor} onChange={(value) =>
                 setDraft((d) => ({
                   ...d,
-                  symbol: { ...d.symbol, borderDownColor: e.target.value },
-                }))
-              }
-              className="size-6 cursor-pointer rounded border border-ev-line bg-transparent p-0"
-            />
+                  symbol: { ...d.symbol, borderDownColor: value },
+                }))} />
             <span className="text-micro text-ev-muted">Down</span>
           </label>
         </div>
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={true}
-            readOnly
-            className="accent-ev-accent"
-          />
-          <span>Wick</span>
-        </label>
+        <Checkbox label="Wick" checked disabled onChange={() => {}} />
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-1.5" title="Wick Up Color">
-            <input
-              type="color"
-              value={draft.symbol.wickUpColor}
-              onChange={(e) =>
+            <ColorInput label="Wick up colour" value={draft.symbol.wickUpColor} onChange={(value) =>
                 setDraft((d) => ({
                   ...d,
-                  symbol: { ...d.symbol, wickUpColor: e.target.value },
-                }))
-              }
-              className="size-6 cursor-pointer rounded border border-ev-line bg-transparent p-0"
-            />
+                  symbol: { ...d.symbol, wickUpColor: value },
+                }))} />
             <span className="text-micro text-ev-muted">Up</span>
           </label>
           <label className="flex items-center gap-1.5" title="Wick Down Color">
-            <input
-              type="color"
-              value={draft.symbol.wickDownColor}
-              onChange={(e) =>
+            <ColorInput label="Wick down colour" value={draft.symbol.wickDownColor} onChange={(value) =>
                 setDraft((d) => ({
                   ...d,
-                  symbol: { ...d.symbol, wickDownColor: e.target.value },
-                }))
-              }
-              className="size-6 cursor-pointer rounded border border-ev-line bg-transparent p-0"
-            />
+                  symbol: { ...d.symbol, wickDownColor: value },
+                }))} />
             <span className="text-micro text-ev-muted">Down</span>
           </label>
         </div>
@@ -152,20 +92,11 @@ export function SymbolSettingsTab({ draft, setDraft }: Props) {
 
       <div className="my-3 border-t border-ev-raised" />
 
-      <label className="flex items-center gap-2 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={draft.symbol.colorBarsBasedOnPrevClose}
-          onChange={(e) =>
+      <Checkbox label="Color bars based on previous close" checked={draft.symbol.colorBarsBasedOnPrevClose} onChange={(checked) =>
             setDraft((d) => ({
               ...d,
-              symbol: { ...d.symbol, colorBarsBasedOnPrevClose: e.target.checked },
-            }))
-          }
-          className="accent-ev-accent"
-        />
-        <span>Color bars based on previous close</span>
-      </label>
+              symbol: { ...d.symbol, colorBarsBasedOnPrevClose: checked },
+            }))} />
 
       <div className="my-3 border-t border-ev-raised" />
 

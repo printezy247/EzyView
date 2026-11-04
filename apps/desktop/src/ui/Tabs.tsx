@@ -9,6 +9,8 @@ export interface TabItem {
   disabled?: boolean;
   /** Optional count or status shown after the label. */
   badge?: string | number;
+  /** Tooltip / hover description (the `hint` page tab lists carry). */
+  title?: string;
 }
 
 export interface TabsProps {
@@ -104,6 +106,7 @@ export function Tabs({ items, value, onChange, label, className, tabClassName, i
             tabIndex={active || (currentIndex === -1 && index === 0) ? 0 : -1}
             disabled={item.disabled}
             onClick={() => select(index)}
+            title={item.title}
             className={cn(
               "inline-flex shrink-0 items-center gap-1 whitespace-nowrap border-b-2 px-2 py-1 text-dense font-medium transition",
               active

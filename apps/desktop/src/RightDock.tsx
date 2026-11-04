@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Activity, BookOpen, Columns, Layers, List, PanelRightClose } from "lucide-react";
-import { IconButton, SHELL_BAR_HEIGHT, SHELL_BAR_ICON, SHELL_RAIL_ICON, SHELL_RAIL_WIDTH, shellToolClass } from "./ui";
+import { Button, IconButton, SHELL_BAR_HEIGHT, SHELL_BAR_ICON, SHELL_RAIL_ICON, SHELL_RAIL_WIDTH } from "./ui";
 
 /**
  * The right-dock tabs. Declared here rather than in the toolbar so every
@@ -52,23 +52,23 @@ export function RightDock({ tabs, active, onSelect, width }: Props) {
       >
         <div role="tablist" aria-label="Panel" className="flex flex-col items-center gap-1">
           {tabs.map((tab) => (
-            <button
+            <IconButton
               key={tab.id}
-              type="button"
+              size="lg"
+              label={tab.label}
               role="tab"
               aria-selected={false}
               title={`${tab.label} — ${tab.hint ?? "Click to expand panel"}`}
               onClick={() => onSelect(tab.id)}
-              className={shellToolClass({ className: "relative" })}
+              className="relative"
             >
               {TAB_ICON[tab.id]}
-              <span className="sr-only">{tab.label}</span>
               {tab.badge !== undefined && tab.badge > 0 && (
                 <span className="num absolute -right-0.5 -top-0.5 rounded-full bg-ev-accent px-1 text-[9px] leading-tight text-white">
                   {tab.badge}
                 </span>
               )}
-            </button>
+            </IconButton>
           ))}
         </div>
       </aside>
@@ -109,17 +109,18 @@ export function RightDock({ tabs, active, onSelect, width }: Props) {
         {tabs.map((tab) => {
           const on = active === tab.id;
           return (
-            <button
+            <Button
               key={tab.id}
-              type="button"
+              size="sm"
+              variant="ghost"
               role="tab"
               aria-selected={on}
               title={tab.hint ?? tab.label}
               onClick={() => onSelect(on ? null : tab.id)}
               className={
                 on
-                  ? "flex items-center gap-1 rounded bg-ev-panel px-2 py-1 text-dense font-medium text-ev-strong shadow-xs"
-                  : "flex items-center gap-1 rounded px-2 py-1 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+                  ? "bg-ev-panel font-medium text-ev-strong shadow-xs"
+                  : "text-ev-muted"
               }
             >
               {TAB_ICON[tab.id]}
@@ -127,7 +128,7 @@ export function RightDock({ tabs, active, onSelect, width }: Props) {
               {tab.badge !== undefined && tab.badge > 0 && (
                 <span className="num rounded bg-ev-accent px-1 text-micro text-white">{tab.badge}</span>
               )}
-            </button>
+            </Button>
           );
         })}
         <div className="ml-auto flex items-center gap-0.5">

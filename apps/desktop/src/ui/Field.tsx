@@ -231,6 +231,34 @@ export function Slider({ label, value, min, max, step = 1, onChange, format, dis
   );
 }
 
+export interface ColorInputProps {
+  /** Accessible name; there is no visible text, like `IconButton`. */
+  label: string;
+  /** `#rrggbb`. */
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  className?: string;
+}
+
+/** A colour swatch that opens the OS picker. */
+export function ColorInput({ label, value, onChange, disabled, className }: ColorInputProps) {
+  return (
+    <input
+      type="color"
+      aria-label={label}
+      value={value}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value)}
+      className={cn(
+        "size-6 shrink-0 cursor-pointer rounded border border-ev-line bg-transparent p-0",
+        "disabled:cursor-not-allowed disabled:opacity-50",
+        className,
+      )}
+    />
+  );
+}
+
 export interface NumberInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "type" | "min" | "max" | "step"> {
   label: string;
   value: number | null;

@@ -7,6 +7,7 @@ import type { DrawingTemplate } from "./drawingTemplates";
 import { syncPositionDrawingToOrderTicket } from "./orderDraft";
 import { useDrawingUi } from "./drawingUi";
 import { newAssetId, putImageAsset, readImageSize } from "./imageAssets";
+import { Button, IconButton, Input } from "./ui";
 import { Select } from "./ui";
 
 const COLORS = ["#d91400", "#0ea600", "#f2a93b", "#4a90e2", "#9c27b0", "#00bcd4", "#ffd700", "#ffffff"];
@@ -46,9 +47,6 @@ export function DrawingProperties() {
   const isPositionTool = (d.tool === "long_position" || d.tool === "short_position") && d.points.length >= 3;
   const activeSymbol = useWorkspace.getState().activeChart().symbol;
 
-  const btn =
-    "rounded border border-ev-line px-2 py-1 text-dense text-ev-text hover:bg-ev-raised hover:text-ev-strong";
-
   const reorder = (to: "front" | "back") => {
     const chart = useWorkspace.getState().activeLayout();
     const idx = chart.activeChart;
@@ -67,36 +65,38 @@ export function DrawingProperties() {
         <h3 className="text-dense font-semibold uppercase tracking-wider text-ev-faint">Properties</h3>
         <div className="flex min-w-0 items-center gap-1">
           <span className="truncate text-dense text-ev-muted">{drawingLabel(d)}</span>
-          <button
-            type="button"
-            aria-label="Drawing settings"
+          <IconButton
+            size="sm"
+            label="Drawing settings"
             title="Open drawing settings"
             onClick={() => useDrawingUi.getState().openSettings(d.id, "style")}
-            className="flex size-6 shrink-0 items-center justify-center rounded text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
+            className="shrink-0"
           >
             <Settings size={12} aria-hidden />
-          </button>
+          </IconButton>
         </div>
       </div>
 
       {isPositionTool && (
-        <button
-          type="button"
+        <Button
+          size="sm"
+          variant="outline"
           onClick={applyToOrder}
-          className="mb-2.5 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded border border-ev-accent/60 bg-ev-accent/20 px-2 py-1.5 text-dense font-medium text-ev-accent transition-colors hover:bg-ev-accent hover:text-white"
+          className="mb-2.5 w-full border-ev-accent/60 bg-ev-accent/20 text-ev-accent-text hover:bg-ev-accent hover:text-white"
         >
           <ArrowRightLeft size={12} aria-hidden />
           <span>Apply to Order Ticket</span>
-        </button>
+        </Button>
       )}
 
       <label className="mb-2 block">
         <span className="mb-1 block text-dense text-ev-muted">Name</span>
-        <input
+        <Input
+          block
           value={d.name ?? ""}
           placeholder={drawingLabel(d)}
+          aria-label="Drawing name"
           onChange={(e) => update(d.id, { name: e.target.value || undefined })}
-          className="w-full rounded bg-ev-panel px-1.5 py-1 text-base text-ev-strong outline-none ring-1 ring-ev-line focus:ring-ev-accent"
         />
       </label>
 
@@ -122,16 +122,17 @@ export function DrawingProperties() {
           <span className="mb-1 block text-dense text-ev-muted">Width</span>
           <div className="flex gap-1">
             {WIDTHS.map((w) => (
-              <button
+              <Button
                 key={w}
-                type="button"
+                size="sm"
+                variant="outline"
                 aria-label={`Width ${w}`}
                 aria-pressed={style.width === w}
                 onClick={() => update(d.id, { style: { ...style, width: w } })}
-                className={`${btn} ${style.width === w ? "bg-ev-raised text-ev-strong" : ""}`}
+                className={style.width === w ? "bg-ev-raised text-ev-strong" : ""}
               >
                 {w}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -139,16 +140,17 @@ export function DrawingProperties() {
           <span className="mb-1 block text-dense text-ev-muted">Style</span>
           <div className="flex gap-1">
             {LINE_STYLES.map((ls) => (
-              <button
+              <Button
                 key={ls}
-                type="button"
+                size="sm"
+                variant="outline"
                 aria-label={`Line style ${ls}`}
                 aria-pressed={style.lineStyle === ls}
                 onClick={() => update(d.id, { style: { ...style, lineStyle: ls } })}
-                className={`${btn} ${style.lineStyle === ls ? "bg-ev-raised text-ev-strong" : ""}`}
+                className={style.lineStyle === ls ? "bg-ev-raised text-ev-strong" : ""}
               >
                 {ls.slice(0, 3)}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -169,25 +171,25 @@ export function DrawingProperties() {
             options={[{ value: "", label: "Apply…" }, ...templates.map((t) => ({ value: t.id, label: t.name }))]}
             className="shrink-0"
           />
-          <input
+          <Input
             value={templateName}
             placeholder="Name"
             onChange={(e) => setTemplateName(e.target.value)}
             aria-label="Template name"
-            className="min-w-0 flex-1 rounded bg-ev-panel px-1.5 py-1 text-base text-ev-strong outline-none ring-1 ring-ev-line focus:ring-ev-accent"
+            className="min-w-0 flex-1"
           />
-          <button
-            type="button"
+          <Button
+            size="sm"
+            variant="outline"
             onClick={() => {
               const name = templateName.trim() || drawingLabel(d);
               saveDrawingTemplate(name, style);
               setTemplateName("");
               setTemplates(listDrawingTemplates());
             }}
-            className={btn}
           >
             Save
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -195,9 +197,9 @@ export function DrawingProperties() {
         <div className="mb-2">
           <span className="mb-1 block text-dense text-ev-muted">Image</span>
           <div className="flex gap-1">
-            <button type="button" onClick={() => imageRef.current?.click()} className={btn}>
+            <Button size="sm" variant="outline" onClick={() => imageRef.current?.click()}>
               {d.image ? "Replace image" : "Choose image"}
-            </button>
+            </Button>
             <input
               ref={imageRef}
               type="file"
@@ -234,44 +236,47 @@ export function DrawingProperties() {
       {(d.tool === "text" || d.text !== undefined) && (
         <label className="mb-2 block">
           <span className="mb-1 block text-dense text-ev-muted">Text</span>
-          <input
+          <Input
             value={d.text ?? ""}
             onChange={(e) => update(d.id, { text: e.target.value })}
-            className="w-full rounded bg-ev-panel px-1.5 py-1 text-base text-ev-strong outline-none ring-1 ring-ev-line focus:ring-ev-accent"
+            aria-label="Drawing text"
+            block
           />
         </label>
       )}
 
       <div className="mb-2 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
+        <Button
+          size="sm"
+          variant="outline"
           aria-pressed={!!d.locked}
           onClick={() => update(d.id, { locked: !d.locked })}
-          className={`${btn} flex items-center gap-1 ${d.locked ? "text-ev-accent" : ""}`}
+          className={d.locked ? "text-ev-accent-text" : ""}
         >
           {d.locked ? <Lock size={12} aria-hidden /> : <LockOpen size={12} aria-hidden />}
           {d.locked ? "Locked" : "Lock"}
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
           aria-pressed={!!d.hidden}
           onClick={() => update(d.id, { hidden: !d.hidden })}
-          className={`${btn} flex items-center gap-1`}
         >
           {d.hidden ? <EyeOff size={12} aria-hidden /> : <Eye size={12} aria-hidden />}
           {d.hidden ? "Hidden" : "Visible"}
-        </button>
-        <button type="button" onClick={() => reorder("front")} className={btn}>
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => reorder("front")}>
           To front
-        </button>
-        <button type="button" onClick={() => reorder("back")} className={btn}>
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => reorder("back")}>
           To back
-        </button>
+        </Button>
       </div>
 
       <div className="mb-2 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
+        <Button
+          size="sm"
+          variant="outline"
           disabled={!canAlert || alertBound}
           title={canAlert ? undefined : "Only a horizontal line can hold a price alert"}
           onClick={() => {
@@ -284,19 +289,14 @@ export function DrawingProperties() {
               d.id,
             );
           }}
-          className={`${btn} flex items-center gap-1 disabled:cursor-not-allowed disabled:opacity-40`}
         >
           <Bell size={12} aria-hidden />
           {alertBound ? "Alert armed" : "Alert at level"}
-        </button>
-        <button
-          type="button"
-          onClick={() => remove(d.id)}
-          className={`${btn} flex items-center gap-1 text-ev-down-text hover:opacity-80`}
-        >
+        </Button>
+        <Button size="sm" variant="danger" onClick={() => remove(d.id)}>
           <Trash2 size={12} aria-hidden />
           Delete
-        </button>
+        </Button>
       </div>
     </div>
   );

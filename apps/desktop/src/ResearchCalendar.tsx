@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { buildSources } from "@ezyview/fundamentals";
 import { CalendarTab, DividendsTab, EarningsTab, type Src } from "./FundamentalsTabs";
+import { Tabs } from "./ui";
 import { useApiKeys } from "./apiKeys";
 
 type CalendarSection = "calendar" | "earnings" | "dividends" | "cot";
@@ -105,42 +106,17 @@ export function ResearchCalendar({ symbol }: { symbol: string }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-ev-bg">
       <div className="flex shrink-0 items-center gap-1 border-b border-ev-raised px-3 py-1.5">
-        <button
-          type="button"
-          onClick={() => setActiveTab("calendar")}
-          className={`rounded px-2.5 py-1 text-dense font-medium ${
-            activeTab === "calendar" ? "bg-ev-raised text-ev-strong" : "text-ev-muted hover:text-ev-strong"
-          }`}
-        >
-          Economic Calendar
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("cot")}
-          className={`rounded px-2.5 py-1 text-dense font-medium ${
-            activeTab === "cot" ? "bg-ev-raised text-ev-strong" : "text-ev-muted hover:text-ev-strong"
-          }`}
-        >
-          COT Positioning
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("earnings")}
-          className={`rounded px-2.5 py-1 text-dense font-medium ${
-            activeTab === "earnings" ? "bg-ev-raised text-ev-strong" : "text-ev-muted hover:text-ev-strong"
-          }`}
-        >
-          Earnings ({symbol})
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("dividends")}
-          className={`rounded px-2.5 py-1 text-dense font-medium ${
-            activeTab === "dividends" ? "bg-ev-raised text-ev-strong" : "text-ev-muted hover:text-ev-strong"
-          }`}
-        >
-          Dividends ({symbol})
-        </button>
+        <Tabs
+          label="Research"
+          value={activeTab}
+          onChange={(id) => setActiveTab(id as CalendarSection)}
+          items={[
+            { id: "calendar", label: "Economic Calendar" },
+            { id: "cot", label: "COT Positioning" },
+            { id: "earnings", label: `Earnings (${symbol})` },
+            { id: "dividends", label: "Dividends" },
+          ]}
+        />
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">

@@ -5,7 +5,7 @@ import type { FundamentalsSources } from "@ezyview/fundamentals";
 import { annualisedDividend, nextExDate, totalForYear } from "./dividends";
 import { tickerOf } from "./data";
 import { safeHref } from "./links";
-import { Select, inputClass } from "./ui";
+import { Input, Select, inputClass } from "./ui";
 
 /** Current providers plus a version string that changes when they do. */
 export interface Src {
@@ -147,13 +147,13 @@ export function CalendarTab({ src }: { src: Src }) {
             ...currencies.map((c) => ({ value: c, label: c })),
           ]}
         />
-        <input
+        <Input
           type="search"
           aria-label="Search events"
           placeholder="Search events"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className={`${input} w-36`}
+          className="w-36"
         />
         <input
           type="date"
@@ -222,17 +222,16 @@ export function NewsTab({ symbol, src }: { symbol: string; src: Src }) {
   if (items === null) return <Empty text="Loading…" />;
   const rows = filterNews(items, search);
   const searching = search.trim() !== "";
-  const input = inputClass("h-6 w-auto");
   return (
     <div>
       <div className="sticky top-0 flex items-center gap-2 bg-ev-bg px-3 py-1.5">
-        <input
+        <Input
           type="search"
           aria-label="Search news"
           placeholder="Search news"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className={`${input} w-40`}
+          className="w-40"
         />
         {searching && (
           <span className="text-ev-muted">

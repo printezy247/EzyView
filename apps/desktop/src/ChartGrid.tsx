@@ -15,7 +15,7 @@ import { useShortcut } from "./shortcuts";
 import { getActiveExportSource, setActiveExportSource } from "./exportBridge";
 import type { CrosshairMessage } from "./crosshairBus";
 import { useTrading } from "./trading";
-import { Select } from "./ui";
+import { Button, IconButton, Select } from "./ui";
 import { SourceWarning } from "./SourceWarning";
 
 const GRID_CLASS: Record<GridMode, string> = {
@@ -259,33 +259,31 @@ function Readout({
       <div className="pointer-events-none absolute left-2 top-2 z-10 flex flex-col gap-1.5 text-dense text-ev-muted">
         {/* Top Symbol + Live Price + Quick Controls Row */}
         <div className="pointer-events-auto flex flex-wrap items-center gap-1.5 rounded bg-ev-bg/85 px-2 py-1 backdrop-blur-xs">
-          <button
-            type="button"
+          <IconButton
+            size="sm"
+            label="Chart legend"
             title={collapsed ? "Expand chart legend" : "Collapse chart legend"}
-            aria-label="Chart legend"
             aria-expanded={!collapsed}
             onClick={(e) => {
               e.stopPropagation();
               setCollapsed((v) => !v);
             }}
-            className="min-h-6 min-w-6 rounded px-1 text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
           >
             <span aria-hidden>{collapsed ? "▸" : "▾"}</span>
-          </button>
+          </IconButton>
           {multi && onToggleMaximize && (
-            <button
-              type="button"
+            <IconButton
+              size="sm"
+              label="Maximize chart"
               title={isMaximized ? "Restore grid (Alt+Enter)" : "Maximize chart (Alt+Enter)"}
-              aria-label="Maximize chart"
               aria-pressed={isMaximized}
               onClick={(e) => {
                 e.stopPropagation();
                 onToggleMaximize();
               }}
-              className="min-h-6 min-w-6 rounded px-1 text-ev-muted hover:bg-ev-raised hover:text-ev-strong cursor-pointer"
             >
               <span aria-hidden>{isMaximized ? "⤡" : "⤢"}</span>
-            </button>
+            </IconButton>
           )}
           <span role="status" className="sr-only">
             {multi && onToggleMaximize ? (isMaximized ? "Chart maximized" : "Chart grid restored") : ""}
@@ -303,35 +301,32 @@ function Readout({
           )}
           {time !== null && <span className="text-micro text-ev-faint">{new Date(time * 1000).toLocaleString()}</span>}
 
-          <button
-            type="button"
+          <Button
+            size="sm"
+            variant="ghost"
             title={tradeBoxVisible ? "Hide 1-click Buy/Sell buttons" : "Show 1-click Buy/Sell buttons"}
             aria-pressed={tradeBoxVisible}
             onClick={(e) => {
               e.stopPropagation();
               setTradeBoxVisible((v) => !v);
             }}
-            className={`ml-1 rounded border px-1.5 py-px text-micro ${
-              tradeBoxVisible
-                ? "border-ev-accent/40 bg-ev-accent/15 text-ev-accent-text"
-                : "border-ev-line text-ev-muted hover:text-ev-strong"
-            }`}
+            className={tradeBoxVisible ? "bg-ev-accent/15 text-ev-accent-text" : undefined}
           >
             B/S
-          </button>
+          </Button>
 
           <div className="relative">
-            <button
-              type="button"
+            <Button
+              size="sm"
+              variant="outline"
               title="Quickly add popular indicator to chart"
               onClick={(e) => {
                 e.stopPropagation();
                 setStudyQuickOpen((v) => !v);
               }}
-              className="rounded border border-ev-line bg-ev-panel px-1.5 py-px text-micro text-ev-muted hover:border-ev-dim hover:text-ev-strong"
             >
               + Study ▾
-            </button>
+            </Button>
             {studyQuickOpen && (
               <div
                 onClick={(e) => e.stopPropagation()}
@@ -450,74 +445,80 @@ function Readout({
         <div className="pointer-events-auto absolute bottom-8 left-1/2 z-10 -translate-x-1/2">
           {floatHudVisible ? (
             <div className="flex items-center gap-1 rounded-full border border-ev-line bg-ev-panel/90 px-2.5 py-0.5 text-micro text-ev-muted shadow-lg backdrop-blur-xs">
-              <button
-                type="button"
+              <Button
+                size="sm"
+                variant="ghost"
                 title="Reset chart zoom & scroll"
                 onClick={(e) => {
                   e.stopPropagation();
                   getActiveExportSource()?.view?.reset();
                 }}
-                className="rounded px-1.5 py-0.5 hover:bg-ev-raised hover:text-ev-strong"
+                className="px-1.5 py-0.5 text-micro"
               >
                 Reset view
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
                 title="Fit price scale to visible bars"
                 onClick={(e) => {
                   e.stopPropagation();
                   getActiveExportSource()?.view?.autoScale();
                 }}
-                className="rounded px-1.5 py-0.5 hover:bg-ev-raised hover:text-ev-strong"
+                className="px-1.5 py-0.5 text-micro"
               >
                 Auto fit
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-pressed={showGrid}
                 title="Toggle chart grid lines"
                 onClick={(e) => {
                   e.stopPropagation();
                   updateChart(targetIndex, { showGrid: !showGrid });
                 }}
-                className={`rounded px-1.5 py-0.5 ${showGrid ? "text-ev-accent-text" : "hover:text-ev-strong"}`}
+                className={`px-1.5 py-0.5 text-micro ${showGrid ? "text-ev-accent-text" : ""}`}
               >
                 Grid
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-pressed={showVolume}
                 title="Toggle volume histogram"
                 onClick={(e) => {
                   e.stopPropagation();
                   updateChart(targetIndex, { showVolume: !showVolume });
                 }}
-                className={`rounded px-1.5 py-0.5 ${showVolume ? "text-ev-accent-text" : "hover:text-ev-strong"}`}
+                className={`px-1.5 py-0.5 text-micro ${showVolume ? "text-ev-accent-text" : ""}`}
               >
                 Vol
-              </button>
-              <button
-                type="button"
-                title="Hide floating chart controls"
+              </Button>
+              <IconButton
+                size="sm"
+                label="Hide floating chart controls"
                 onClick={(e) => {
                   e.stopPropagation();
                   setFloatHudVisible(false);
                 }}
-                className="ml-0.5 rounded px-1 text-ev-faint hover:text-ev-strong"
+                className="ml-0.5 text-ev-faint"
               >
-                ×
-              </button>
+                <span aria-hidden>×</span>
+              </IconButton>
             </div>
           ) : (
-            <button
-              type="button"
-              title="Show floating chart controls"
+            <IconButton
+              size="sm"
+              label="Show floating chart controls"
               onClick={(e) => {
                 e.stopPropagation();
                 setFloatHudVisible(true);
               }}
-              className="rounded-full border border-ev-line bg-ev-panel/75 px-2 py-0.5 text-micro text-ev-faint hover:bg-ev-panel hover:text-ev-strong"
+              className="rounded-full border border-ev-line bg-ev-panel/75 px-2 py-0.5 text-micro text-ev-faint"
             >
-              •••
-            </button>
+              <span aria-hidden>•••</span>
+            </IconButton>
           )}
         </div>
       )}

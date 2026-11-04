@@ -3,9 +3,7 @@ import { planRewardRisk } from "@ezyview/journal";
 import type { TradePlanStatus } from "@ezyview/journal";
 import { useJournal } from "./journal";
 import { precisionForSymbol } from "./pricePrecision";
-import { Select, inputClass } from "./ui";
-
-const field = inputClass("w-full");
+import { Button, Input, Select } from "./ui";
 const STATUSES: readonly TradePlanStatus[] = ["planned", "executed", "missed", "cancelled"];
 
 const STATUS_LABEL: Record<TradePlanStatus, string> = {
@@ -65,7 +63,7 @@ export function JournalPlans() {
       <div className="grid shrink-0 grid-cols-[9rem_7rem_repeat(3,7rem)_minmax(8rem,1fr)_5rem] items-end gap-2 border-b border-ev-raised px-3 py-2">
         <label className="text-dense text-ev-muted">
           Symbol
-          <input className={field} value={symbol} onChange={(e) => setSymbol(e.target.value)} placeholder="EURUSD" aria-label="Plan symbol" />
+          <Input value={symbol} onChange={(e) => setSymbol(e.target.value)} placeholder="EURUSD" aria-label="Plan symbol" />
         </label>
         <div className="flex flex-col gap-0.5 text-dense text-ev-muted">
           <span>Side</span>
@@ -82,28 +80,23 @@ export function JournalPlans() {
         </div>
         <label className="text-dense text-ev-muted">
           Entry
-          <input className={field} value={entry} onChange={(e) => setEntry(e.target.value)} inputMode="decimal" aria-label="Plan entry" />
+          <Input value={entry} onChange={(e) => setEntry(e.target.value)} inputMode="decimal" aria-label="Plan entry" />
         </label>
         <label className="text-dense text-ev-muted">
           Stop
-          <input className={field} value={stop} onChange={(e) => setStop(e.target.value)} inputMode="decimal" aria-label="Plan stop" />
+          <Input value={stop} onChange={(e) => setStop(e.target.value)} inputMode="decimal" aria-label="Plan stop" />
         </label>
         <label className="text-dense text-ev-muted">
           Target
-          <input className={field} value={target} onChange={(e) => setTarget(e.target.value)} inputMode="decimal" aria-label="Plan target" />
+          <Input value={target} onChange={(e) => setTarget(e.target.value)} inputMode="decimal" aria-label="Plan target" />
         </label>
         <label className="text-dense text-ev-muted">
           Thesis
-          <input className={field} value={thesis} onChange={(e) => setThesis(e.target.value)} placeholder="Why this trade?" aria-label="Plan thesis" />
+          <Input value={thesis} onChange={(e) => setThesis(e.target.value)} placeholder="Why this trade?" aria-label="Plan thesis" />
         </label>
-        <button
-          type="button"
-          onClick={submit}
-          disabled={!symbol.trim()}
-          className="h-7 rounded bg-ev-accent px-3 text-dense font-medium text-white hover:bg-ev-accent-hover disabled:opacity-40"
-        >
+        <Button variant="solid" onClick={submit} disabled={!symbol.trim()}>
           Add plan
-        </button>
+        </Button>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto">
@@ -153,14 +146,15 @@ export function JournalPlans() {
                     onChange={(v) => updatePlan(plan.id, { status: v as TradePlanStatus })}
                     options={STATUSES.map((status) => ({ value: status, label: STATUS_LABEL[status] }))}
                   />
-                  <button
-                    type="button"
+                  <Button
+                    size="sm"
+                    variant="ghost"
                     onClick={() => removePlan(plan.id)}
-                    className="rounded px-1 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-down-text"
+                    className="hover:text-ev-down-text"
                     aria-label={`Delete plan for ${plan.symbol}`}
                   >
                     Delete
-                  </button>
+                  </Button>
                 </li>
               );
             })}

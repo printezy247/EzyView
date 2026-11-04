@@ -5,7 +5,7 @@ import { useWorkspace } from "./store";
 import { Watchlist } from "./Watchlist";
 import { ScreenerTab } from "./ScreenerTab";
 import { HeatmapTab } from "./HeatmapTab";
-import { Button } from "./ui";
+import { Button, Tabs } from "./ui";
 
 type Tab = "watchlists" | "screener" | "heatmap";
 
@@ -28,24 +28,13 @@ export function MarketsPage() {
 
   return (
     <section aria-label="Markets" className="flex min-h-0 flex-1 flex-col text-base">
-      <div role="tablist" aria-label="Market views" className="flex shrink-0 items-center gap-1 border-b border-ev-raised px-3 py-1.5">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            title={t.hint}
-            onClick={() => setTab(t.id)}
-            className={
-              tab === t.id
-                ? "rounded bg-ev-raised px-2.5 py-1 text-dense font-medium text-ev-strong"
-                : "rounded px-2.5 py-1 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-            }
-          >
-            {t.label}
-          </button>
-        ))}
+      <div className="flex shrink-0 items-center gap-1 border-b border-ev-raised px-3 py-1.5">
+        <Tabs
+          label="Market views"
+          value={tab}
+          onChange={(id) => setTab(id as Tab)}
+          items={TABS.map((t) => ({ id: t.id, label: t.label, title: t.hint }))}
+        />
         <span className="ml-auto flex items-center gap-2">
           <span className="text-dense text-ev-faint">{state.symbol}</span>
           <Button variant="outline" size="sm" onClick={() => navigate("/chart")}>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { convert, formatAmount, type Rates } from "./currency";
-import { Input, Select } from "./ui";
+import { ArrowUpDown } from "lucide-react";
+import { IconButton, Input, Select } from "./ui";
 import { tickerOf } from "./data";
 import { useWorkspace } from "./store";
 
@@ -63,17 +64,16 @@ export function CurrencyConverter() {
           <span aria-hidden>From</span>
           <Select label="Convert from currency" value={from} onChange={setFrom} options={CURRENCY_OPTIONS} className="w-48" />
         </div>
-        <button
-          type="button"
+        <IconButton
+          label="Swap the two currencies"
+          size="sm"
           onClick={() => {
             setFrom(to);
             setTo(from);
           }}
-          title="Swap the two currencies"
-          className="h-7 rounded border border-ev-line px-2 text-dense text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
         >
-          swap
-        </button>
+          <ArrowUpDown size={14} aria-hidden />
+        </IconButton>
         <div className="flex flex-col gap-1 text-dense text-ev-muted">
           <span aria-hidden>To</span>
           <Select label="Convert to currency" value={to} onChange={setTo} options={CURRENCY_OPTIONS} className="w-48" />

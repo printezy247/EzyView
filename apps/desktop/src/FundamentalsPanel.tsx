@@ -13,7 +13,7 @@ import { useApiKeys } from "./apiKeys";
 import { market } from "./data";
 import { CalendarTab, DAY, day, DividendsTab, EarningsTab, Empty, Failed, NewsTab, pct, tone, useLoad } from "./FundamentalsTabs";
 import type { Src } from "./FundamentalsTabs";
-import { Select, inputClass } from "./ui";
+import { Button, IconButton, Input, Select, Tabs } from "./ui";
 
 interface Props {
   symbol: string;
@@ -49,41 +49,15 @@ export function FundamentalsPanel({ symbol, onClose, onPickSymbol }: Props) {
   return (
     <section aria-label="Fundamentals" className="flex min-h-0 flex-1 flex-col border-t border-ev-raised bg-ev-bg">
       <header className="flex h-8 shrink-0 items-center gap-1 border-b border-ev-raised px-3 text-dense">
-        <div role="tablist" aria-label="Fundamentals" className="flex gap-1">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              role="tab"
-              type="button"
-              aria-selected={tab === t.id}
-              onClick={() => setTab(t.id)}
-              className={
-                tab === t.id
-                  ? "rounded bg-ev-raised px-2 py-1 font-medium text-ev-strong"
-                  : "rounded px-2 py-1 text-ev-muted hover:text-ev-strong"
-              }
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <Tabs items={TABS} value={tab} onChange={(id) => setTab(id as Tab)} label="Fundamentals" className="gap-1" />
         <SourceBadge slots={active.slots} live={sources.live} keyError={keyError} />
-        <button
-          type="button"
-          onClick={openApiKeys}
-          className="ml-auto flex items-center gap-1 rounded px-2 py-1 text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-        >
+        <Button size="sm" variant="ghost" onClick={openApiKeys} className="ml-auto">
           <KeyRound size={12} aria-hidden />
           API keys
-        </button>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close fundamentals"
-          className="rounded p-1 text-ev-muted hover:bg-ev-raised hover:text-ev-strong"
-        >
+        </Button>
+        <IconButton size="sm" label="Close fundamentals" onClick={onClose}>
           <X size={13} aria-hidden />
-        </button>
+        </IconButton>
       </header>
       <div className="min-h-0 flex-1 overflow-auto">
         {tab === "calendar" && <CalendarTab src={src} />}
@@ -189,11 +163,10 @@ function ScreenerTab({ onPick }: { onPick: (symbol: string) => void }) {
     });
   }, [universe, text, assetClass, rsiMin, rsiMax, sortBy, descending]);
 
-  const input = inputClass("h-6 w-auto");
   return (
     <div className="text-dense">
       <div className="sticky top-0 flex flex-wrap items-center gap-2 bg-ev-bg px-3 py-1.5">
-        <input aria-label="Search symbols" placeholder="Search" value={text} onChange={(e) => setText(e.target.value)} className={`${input} w-24`} />
+        <Input aria-label="Search symbols" placeholder="Search" value={text} onChange={(e) => setText(e.target.value)} className="w-24" />
         <Select
           label="Asset class"
           value={assetClass}
@@ -204,8 +177,8 @@ function ScreenerTab({ onPick }: { onPick: (symbol: string) => void }) {
           ]}
         />
         <span className="text-ev-muted">RSI</span>
-        <input aria-label="RSI minimum" placeholder="min" inputMode="decimal" value={rsiMin} onChange={(e) => setRsiMin(e.target.value)} className={`${input} w-14`} />
-        <input aria-label="RSI maximum" placeholder="max" inputMode="decimal" value={rsiMax} onChange={(e) => setRsiMax(e.target.value)} className={`${input} w-14`} />
+        <Input aria-label="RSI minimum" placeholder="min" inputMode="decimal" value={rsiMin} onChange={(e) => setRsiMin(e.target.value)} className="w-14" />
+        <Input aria-label="RSI maximum" placeholder="max" inputMode="decimal" value={rsiMax} onChange={(e) => setRsiMax(e.target.value)} className="w-14" />
         <span className="text-ev-muted">Sort</span>
         <Select
           label="Sort by"
@@ -213,9 +186,9 @@ function ScreenerTab({ onPick }: { onPick: (symbol: string) => void }) {
           onChange={(v) => setSortBy(v as ScreenerField | "ticker")}
           options={SORTS.map((s) => ({ value: s.id, label: s.label }))}
         />
-        <button type="button" onClick={() => setDescending((d) => !d)} className={`${input} hover:text-ev-strong`}>
+        <Button size="sm" variant="ghost" aria-pressed={descending} title="Toggle sort direction" onClick={() => setDescending((d) => !d)}>
           {descending ? "↓ desc" : "↑ asc"}
-        </button>
+        </Button>
         <span className="ml-auto text-ev-muted">{rows.length} match</span>
       </div>
       {universe === null ? (

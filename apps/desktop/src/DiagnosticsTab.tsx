@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { clearCrashLog, readCrashLog, startPerfSampler } from "./diagnostics";
+import { Button } from "./ui";
 import type { PerfStats } from "./diagnostics";
 
 /** Settings → Diagnostics: live perf numbers and the local crash log. */
@@ -33,14 +34,9 @@ export function DiagnosticsTab() {
       <section aria-label="Crash log">
         <div className="mb-1 flex items-center gap-2">
           <h2 className="text-dense font-medium uppercase tracking-wider text-ev-faint">Crash log</h2>
-          <button
-            type="button"
-            onClick={clear}
-            disabled={!log}
-            className="rounded border border-ev-line px-2 py-0.5 text-dense text-ev-muted hover:text-ev-strong disabled:opacity-40"
-          >
+          <Button size="sm" variant="outline" onClick={clear} disabled={!log}>
             Clear
-          </button>
+          </Button>
         </div>
         <p className="mb-2 text-dense text-ev-muted">Stored on this machine only; nothing is sent anywhere.</p>
         <pre
