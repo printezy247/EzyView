@@ -18,8 +18,9 @@ type Level = ReturnType<typeof buildLadder>[number];
  */
 export function DepthOfMarket({ symbol, precision }: Props) {
   const [qty, setQty] = useState(1);
-  const isReplay = useWorkspace((s) => s.replayBar !== null);
-  const { quote, status, refresh } = useQuote(symbol, { intervalMs: 1500, enabled: !isReplay });
+  const replaySymbol = useWorkspace((s) => s.replaySymbol);
+  const paused = replaySymbol !== null && replaySymbol === symbol;
+  const { quote, status, refresh } = useQuote(symbol, { intervalMs: 1500, enabled: !paused });
   const submit = useTrading((s) => s.submit);
   const failed = status === "failed";
   // A second click on the same rung inside 500 ms is a double submit.

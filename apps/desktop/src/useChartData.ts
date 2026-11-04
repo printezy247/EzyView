@@ -3,7 +3,7 @@ import type { Candle, Quote } from "@ezyview/data-adapters";
 import type { CompareSeries } from "@ezyview/chart-engine";
 import { useWorkspace } from "./store";
 import { loadHistory, resolveSource, RESOLUTION_SECONDS, subscribeLive } from "./data";
-import { subscribeQuote } from "./quotePoller";
+import { pushQuote, setDemoAnchorBase, subscribeQuote } from "./quotePoller";
 import { isLiveSourceChoice } from "./chartSource";
 import { useMt5 } from "./mt5";
 import { mergeQuote } from "./liveBars";
@@ -29,6 +29,11 @@ export function useChartData(ctx: HostContext, props: Props): void {
         if (cancelled) return;
         historyRef.current = candles;
         historyKeyRef.current = `${props.symbol}|${props.resolution}|${feed}`;
+        // The synthetic demo history is a per-resolution random walk, so the
+        // poller anchors demo ticks to this close once for every consumer.
+        if (candles.length > 0 && feed === "demo") {
+          setDemoAnchorBase(props.symbol, candles[candles.length - 1]!.close, props.dataSource);
+        }
         // A stale replay cursor from another symbol would index past the end.
         const cursor = useWorkspace.getState().replayBar;
         const bars = sliceForReplay(candles, cursor);
@@ -62,15 +67,15 @@ export function useChartData(ctx: HostContext, props: Props): void {
 
   // Live last bar: fold the feed's price into the newest candle (a new candle
   // opens on a new period). Replay pauses it. Binance/Kraken/Twelve Data push
-  // quotes through `subscribeLive` (the adapter falls back to its own polling);
-  // if that cannot start, or for demo and MT5, `quoteOf` is polled. The demo
-  // feed's quotes are not tied to its synthetic history, so its first live
-  // price is anchored to the last close; real feeds need no anchor.
+  // quotes through `subscribeLive` (the adapter falls back to its own polling)
+  // and each pushed tick is fed into the shared poller, so the header,
+  // watchlist and ticket read the price the chart just folded in. If that
+  // cannot start, or for demo and MT5, `quoteOf` is polled; demo ticks arrive
+  // already anchored to the loaded history's last close (see above).
   useEffect(() => {
     if (props.replayBar != null) return;
     let cancelled = false;
     let busy = false;
-    let anchor: number | null = null;
     const step = RESOLUTION_SECONDS[props.resolution];
     const key = `${props.symbol}|${props.resolution}|${feed}`;
     let rafId: number | null = null;
@@ -81,8 +86,7 @@ export function useChartData(ctx: HostContext, props: Props): void {
       if (cancelled || history.length === 0) return;
       // The bars belong to another symbol/interval/source: do not mix prices in.
       if (historyKeyRef.current !== key) return;
-      if (feed === "demo" && anchor === null) anchor = history[history.length - 1]!.close - q.last;
-      const price = q.last + (feed === "demo" ? (anchor ?? 0) : 0);
+      const price = q.last;
       const merged = mergeQuote(history, price, q.time || Math.floor(Date.now() / 1000), step);
       if (merged === history) return;
       const openedNewBar = merged.length !== history.length;
@@ -123,7 +127,10 @@ export function useChartData(ctx: HostContext, props: Props): void {
     };
 
     if (isLiveSourceChoice(feed)) {
-      subscribeLive(props.symbol, feed, apply)
+      subscribeLive(props.symbol, feed, (q) => {
+        apply(q);
+        pushQuote(props.symbol, q, props.dataSource);
+      })
         .then((u) => {
           if (cancelled) u?.();
           else if (u) unsubscribe = u;

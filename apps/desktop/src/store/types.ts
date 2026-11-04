@@ -3,7 +3,7 @@ import type { AlertCondition, AlertFrequency, AlertHistory, PriceAlert } from "@
 import type { Drawing, DrawingStyle, DrawingToolId, MagnetMode } from "@ezyview/drawing-tools";
 import type { PineOrder, PinePlot, ScriptOptions } from "@ezyview/pine-transpiler";
 import type { CompareMode } from "@ezyview/chart-engine";
-import type { EffectiveSource } from "../chartSource";
+import type { DataSourceChoice, EffectiveSource } from "../chartSource";
 import type { ChartTemplate } from "../chartTemplates";
 import type { EventOptions } from "../eventOptions";
 import type {
@@ -119,6 +119,8 @@ export interface WorkspaceStore {
   pineScripts: Record<string, PineScriptRecord>;
   /** Replay cursor into the loaded history, or null when off. */
   replayBar: number | null;
+  /** Symbol the replay cursor belongs to; only its panels pause live ticks. */
+  replaySymbol: string | null;
   /** Drawing magnet: snaps placed anchors to the nearest candle's OHLC. */
   magnet: MagnetMode;
   /** Mirror the crosshair time across every cell of the active layout. */
@@ -149,7 +151,7 @@ export interface WorkspaceStore {
    * symbol belongs to a specific feed (an MT5 ticker, say), pass it so linked
    * cells switch with the symbol instead of asking the old feed for it.
    */
-  setSymbol(symbol: string, source?: EffectiveSource): void;
+  setSymbol(symbol: string, source?: DataSourceChoice): void;
   /** Set the focused cell's interval, and every cell in its link group. */
   setResolution(resolution: ChartState["resolution"]): void;
   /** Put the focused cell into a link group, or clear it with an empty name. */
@@ -261,6 +263,8 @@ export interface WorkspaceStore {
   addToWatchlist(entry: WatchEntry): void;
   removeFromWatchlist(symbol: string): void;
   updateWatchPrice(symbol: string, price: number, changePct: number | null): void;
+  /** Null out quotes of rows that follow the global feed (it just switched). */
+  invalidateFollowGlobalPrices(): void;
 
   /** Save a Pine script's source under its name; a changed source archives the old head. */
   savePineScript(id: string, name: string, source: string): void;

@@ -1,4 +1,4 @@
-import { stopTicking } from "../data";
+import { effectiveSource, type EffectiveSource } from "../chartSource";
 import type { WatchEntry, WorkspaceStore } from "./types";
 
 export const DEFAULT_WATCHLIST: WatchEntry[] = [
@@ -15,6 +15,20 @@ export const DEFAULT_WATCHLIST: WatchEntry[] = [
 /** One key that changes when a row's feed or symbol changes, not on a tick. */
 export function watchlistQuoteKeys(list: readonly WatchEntry[]): string {
   return list.map((w) => (w.source ? `${w.source}|${w.symbol}` : w.symbol)).join(",");
+}
+
+/**
+ * A row is the one on the chart only when symbol AND feed agree: the same
+ * ticker on another feed is a different price series. A row with no saved feed
+ * follows the global feed switch, like a chart set to "auto".
+ */
+export function watchRowActive(
+  row: WatchEntry,
+  activeSymbol: string,
+  activeFeed: EffectiveSource,
+  globalFeed: "mt5" | "ezyview",
+): boolean {
+  return row.symbol === activeSymbol && effectiveSource(row.source, globalFeed) === activeFeed;
 }
 
 type SliceSet = (
@@ -41,11 +55,10 @@ export function createWatchlistSlice(set: SliceSet, _get: () => WorkspaceStore) 
 
     removeFromWatchlist: (symbol: string) =>
       set((s) => {
+        // The quote poller holds the demo-ticker lease and releases it with its
+        // last subscriber, so removing a row must not force-stop a ticker that a
+        // chart or the header may still be reading.
         const next = s.watchlist.filter((w) => w.symbol !== symbol);
-        // Release the demo ticker when no chart needs the symbol any more.
-        if (!next.some((w) => w.symbol === symbol) && !s.layouts.some((l) => l.charts.some((c) => c.symbol === symbol))) {
-          stopTicking(symbol);
-        }
         return {
           watchlist: next,
           watchlistSymbolKey: next.map((w) => w.symbol).join(","),
@@ -56,9 +69,21 @@ export function createWatchlistSlice(set: SliceSet, _get: () => WorkspaceStore) 
     updateWatchPrice: (symbol: string, price: number, changePct: number | null) =>
       set((s) => {
         const current = s.watchlist.find((w) => w.symbol === symbol);
-        if (!current || (current.price === price && current.changePct === changePct)) return s;
+        // A quote without a change% must not wipe the last good one.
+        const nextPct = changePct ?? current?.changePct ?? null;
+        if (!current || (current.price === price && current.changePct === nextPct)) return s;
         return {
-          watchlist: s.watchlist.map((w) => (w.symbol === symbol ? { ...w, price, changePct } : w)),
+          watchlist: s.watchlist.map((w) => (w.symbol === symbol ? { ...w, price, changePct: nextPct } : w)),
+        };
+      }),
+
+    invalidateFollowGlobalPrices: () =>
+      set((s) => {
+        // Rows pinned to a feed keep their quotes; rows that follow the global
+        // switch would show the old feed's numbers until the next poll.
+        if (!s.watchlist.some((w) => !w.source && (w.price !== null || w.changePct !== null))) return s;
+        return {
+          watchlist: s.watchlist.map((w) => (!w.source ? { ...w, price: null, changePct: null } : w)),
         };
       }),
   };

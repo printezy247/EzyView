@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { Star } from "lucide-react";
 
-import { Chip } from "./ui";
-import { isLiveSourceChoice } from "./chartSource";
+import { Chip, IconButton } from "./ui";
+import { effectiveSource, isLiveSourceChoice } from "./chartSource";
 import type { DataSourceChoice } from "./chartSource";
 import { isLivePublicSymbol } from "./data";
 import { precisionForSymbol } from "./pricePrecision";
@@ -25,10 +26,33 @@ import { provenanceLabel, provenanceOf, provenanceTitle, provenanceTone } from "
 export function QuoteHeader({ symbol, dataSource }: { symbol: string; dataSource?: DataSourceChoice }) {
   const source = useMt5((s) => s.source);
   const status = useMt5((s) => s.status);
-  const isReplay = useWorkspace((s) => s.replayBar !== null);
-  const { quote } = useQuote(symbol, { source: dataSource, intervalMs: 1000, enabled: !isReplay });
+  // Replay pauses only the replaying symbol; every other header keeps ticking.
+  const replaySymbol = useWorkspace((s) => s.replaySymbol);
+  const paused = replaySymbol !== null && replaySymbol === symbol;
+  const { quote } = useQuote(symbol, { source: dataSource, intervalMs: 1000, enabled: !paused });
   // A provider that is failing must not leave the last price looking live.
-  const effective = dataSource ?? (source === "mt5" ? "mt5" : "demo");
+  const effective = effectiveSource(dataSource, source);
+  const watched = useWorkspace((s) => s.watchlist.some((w) => w.symbol === symbol));
+  const addToWatchlist = useWorkspace((s) => s.addToWatchlist);
+  const removeFromWatchlist = useWorkspace((s) => s.removeFromWatchlist);
+
+  const toggleWatched = () => {
+    if (watched) {
+      removeFromWatchlist(symbol);
+      return;
+    }
+    // Instant: pin what the header shows, including the feed it is reading.
+    addToWatchlist({
+      symbol,
+      ticker: symbol.split(":").pop() ?? symbol,
+      description: symbol,
+      assetClass: "",
+      precision: precisionForSymbol(symbol, quote?.last ?? null),
+      price: quote?.last ?? null,
+      changePct: quote?.changePercent ?? null,
+      source: effective,
+    });
+  };
   const { status: feedStatus, message: feedMessage } = useFeedHealth(effective);
   const feedFailed = feedStatus === "failed";
   const [flash, setFlash] = useState<"up" | "down" | null>(null);
@@ -69,6 +93,13 @@ export function QuoteHeader({ symbol, dataSource }: { symbol: string; dataSource
 
   return (
     <div className="flex items-center gap-2">
+      <IconButton
+        label={watched ? `Remove ${symbol} from watchlist` : `Add ${symbol} to watchlist`}
+        size="sm"
+        onClick={toggleWatched}
+      >
+        <Star size={13} aria-hidden fill={watched ? "currentColor" : "none"} />
+      </IconButton>
       <div className={`flex items-baseline gap-1.5 rounded px-1 transition-colors ${flash === "up" ? "flash-up" : flash === "down" ? "flash-down" : ""}`}>
         <span className="num text-body font-semibold text-ev-strong" data-volatile="price">
           {quote ? quote.last.toFixed(digits) : "—"}
