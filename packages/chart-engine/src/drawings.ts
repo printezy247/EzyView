@@ -42,6 +42,8 @@ export class DrawingsPrimitive implements IPanePrimitive<Time> {
   constructor(
     private readonly priceToY: (price: number) => number | null,
     private readonly bars: () => readonly DrawingBar[] = () => [],
+    /** Time→pixel that also works past the last bar; falls back to the chart's own. */
+    private readonly timeToX: ((time: number) => number | null) | null = null,
   ) {}
 
   setDrawings(drawings: Drawing[]): void {
@@ -106,7 +108,7 @@ export class DrawingsPrimitive implements IPanePrimitive<Time> {
       if (drawing.tool === "horizontal_line") {
         return y === null ? null : { x: 0, y };
       }
-      const x = scale.timeToCoordinate(p.time as Time);
+      const x = this.timeToX ? this.timeToX(p.time) : scale.timeToCoordinate(p.time as Time);
       return x === null || y === null ? null : { x, y };
     });
   }

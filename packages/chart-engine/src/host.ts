@@ -18,6 +18,7 @@ import {
   type ISeriesApi,
   type ISeriesMarkersPluginApi,
   type ITextWatermarkPluginApi,
+  type Logical,
   type SeriesMarker,
   type SeriesType,
   type Time,
@@ -29,6 +30,7 @@ import type { Drawing, ScreenPoint } from "@ezyview/drawing-tools";
 import { BgBandsPrimitive } from "./bands.js";
 import { FundamentalLinesPrimitive, type FundamentalLine } from "./fundamentalLines.js";
 import { DrawingsPrimitive } from "./drawings.js";
+import { timeToX, xToTime } from "./timeAxis.js";
 import { DARK_THEME, colorAt, type ChartTheme } from "./theme.js";
 import {
   crosshairLineStyleOf,
@@ -256,6 +258,7 @@ export class EzyChart {
   private readonly drawings = new DrawingsPrimitive(
     (price) => this.priceToCoordinate(price),
     () => this.data,
+    (time) => this.timeToCoordinate(time),
   );
   private mainSeries: ISeriesApi<never> | null = null;
   private volumeSeries: ISeriesApi<"Histogram"> | null = null;
@@ -280,7 +283,7 @@ export class EzyChart {
   /** Earnings dots + event squares from `setFundamentalEvents`, kept apart from script markers. */
   private fundamentalMarkerLayer: SeriesMarker<Time>[] = [];
   /** Full-pane dashed lines for macro events; a primitive, never a drawing. */
-  private readonly fundamentalLines = new FundamentalLinesPrimitive();
+  private readonly fundamentalLines = new FundamentalLinesPrimitive((time) => this.timeToCoordinate(time));
   /** v5 exposes markers as a series plugin, so it is bound to the main series. */
   private markerApi: ISeriesMarkersPluginApi<Time> | null = null;
   /** Entry/stop/target levels for the open position, drawn as price lines. */
@@ -1163,6 +1166,9 @@ export class EzyChart {
       return { ok: false, time: null, price: null, reason: "non-finite" };
     }
 
+    if (this.inPlotArea?.(x, y) === false) {
+      return { ok: false, time: null, price: null, reason: "outside chart" };
+    }
     const time = this.coordinateToTime(x);
     const price = this.coordinateToPrice(y);
     if (time === null || price === null) {
@@ -1174,9 +1180,41 @@ export class EzyChart {
     return { ok: true, time, price, reason: null };
   }
 
+  /**
+   * Pixel → time. Unlike the library's own mapping this keeps working to the
+   * right of the last bar and left of the first, so drawings can be placed
+   * anywhere on the canvas (see timeAxis.ts).
+   */
+  /** False when the point is on a price/time axis rather than the plot itself. */
+  private inPlotArea(x: number, y: number): boolean {
+    const width = this.chart.timeScale().width();
+    const height = this.chart.paneSize(0).height;
+    return x >= 0 && y >= 0 && x <= width && y <= height;
+  }
+
   coordinateToTime(x: number): number | null {
+    const axis = this.timeAxis?.() ?? null;
+    if (axis) {
+      const t = xToTime(axis.times, axis.l0, axis.spacing, x);
+      if (t !== null) return t;
+    }
     const time = this.chart.timeScale().coordinateToTime(x);
     return time === null ? null : Number(time);
+  }
+
+  private axisTimes: { source: Candle[]; times: number[] } | null = null;
+
+  /** Bar times plus the pixel position/spacing of the bar grid, or null for non-time charts. */
+  private timeAxis(): { times: number[]; l0: number; spacing: number } | null {
+    if (!isTimeBased(this.type) || this.data.length < 2) return null;
+    const scale = this.chart.timeScale();
+    const c0 = scale.logicalToCoordinate(0 as Logical);
+    const c1 = scale.logicalToCoordinate(1 as Logical);
+    if (c0 === null || c1 === null) return null;
+    if (this.axisTimes?.source !== this.data) {
+      this.axisTimes = { source: this.data, times: this.data.map((c) => c.time) };
+    }
+    return { times: this.axisTimes.times, l0: Number(c0), spacing: Number(c1) - Number(c0) };
   }
 
   coordinateToPrice(y: number): number | null {
@@ -1190,6 +1228,11 @@ export class EzyChart {
   }
 
   timeToCoordinate(time: number): number | null {
+    const axis = this.timeAxis?.() ?? null;
+    if (axis) {
+      const x = timeToX(axis.times, axis.l0, axis.spacing, time);
+      if (x !== null) return x;
+    }
     const c = this.chart.timeScale().timeToCoordinate(time as UTCTimestamp);
     return c === null ? null : Number(c);
   }

@@ -148,13 +148,17 @@ export function createChartHostKit(ctx: HostContext) {
     if (tool === "brush" && strokePoints.length > 2) {
       const chart = chartRef.current;
       if (chart) {
-        const screenPts = strokePoints.map((p) => {
-          const x = chart.timeToCoordinate(p.time);
-          const y = chart.priceToCoordinate(p.price);
-          return { x: x ?? p.time, y: y ?? p.price, orig: p };
-        });
-        const simplified = simplifyRdp(screenPts, 1.75);
-        strokePoints = simplified.map((s) => s.orig);
+        const screenPts = strokePoints.map((p) => ({
+          x: chart.timeToCoordinate(p.time),
+          y: chart.priceToCoordinate(p.price),
+          orig: p,
+        }));
+        // Simplify in pixel space only; if any point cannot be projected (empty
+        // chart) keep the raw stroke rather than mixing pixels with epoch/price.
+        if (screenPts.every((p) => p.x !== null && p.y !== null)) {
+          const simplified = simplifyRdp(screenPts as { x: number; y: number; orig: (typeof points)[number] }[], 1.75);
+          strokePoints = simplified.map((s) => s.orig);
+        }
       } else {
         const mapped = strokePoints.map((p) => ({ x: p.time, y: p.price, orig: p }));
         strokePoints = simplifyRdp(mapped, 1.75).map((s) => s.orig);

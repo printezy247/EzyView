@@ -42,6 +42,12 @@ export function snapToOhlc(point: Point, bars: readonly MagnetBar[], mode: Magne
   if (mode === "off") return point;
   const index = nearestBarIndex(bars, point.time);
   if (index < 0) return point;
+  // A point placed in the future or the deep past is deliberate: leave it
+  // where it is instead of pulling it back onto the edge candle.
+  if (bars.length > 1) {
+    const reach = Math.abs(bars[bars.length - 1]!.time - bars[bars.length - 2]!.time) / 2;
+    if (point.time > bars[bars.length - 1]!.time + reach || point.time < bars[0]!.time - reach) return point;
+  }
   const bar = bars[index]!;
 
   let best = bar.open;

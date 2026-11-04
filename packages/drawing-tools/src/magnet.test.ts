@@ -27,6 +27,17 @@ describe("nearestBarIndex", () => {
 });
 
 describe("snapToOhlc", () => {
+  it("does not drag a point placed beyond the loaded bars onto the edge candle", () => {
+    const future = { time: 1000, price: 25 };
+    expect(snapToOhlc(future, bars, "strong")).toBe(future);
+    const past = { time: -500, price: 5 };
+    expect(snapToOhlc(past, bars, "strong")).toBe(past);
+  });
+
+  it("still snaps a click within half a bar of the last candle", () => {
+    expect(snapToOhlc({ time: 340, price: 16.4 }, bars, "strong")).toEqual({ time: 300, price: 16 });
+  });
+
   it("leaves the point alone when the magnet is off", () => {
     const p = { time: 190, price: 19.4 };
     expect(snapToOhlc(p, bars, "off")).toBe(p);

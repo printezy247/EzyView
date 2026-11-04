@@ -27,6 +27,9 @@ export class FundamentalLinesPrimitive implements IPanePrimitive<Time> {
   private chart: IChartApiBase<Time> | null = null;
   private requestUpdate: () => void = () => {};
 
+  /** `timeToX` reaches past the last bar, so upcoming events still get a line. */
+  constructor(private readonly timeToX: ((time: number) => number | null) | null = null) {}
+
   setLines(lines: readonly FundamentalLine[]): void {
     this.lines = lines;
     this.requestUpdate();
@@ -60,7 +63,7 @@ export class FundamentalLinesPrimitive implements IPanePrimitive<Time> {
       ctx.setLineDash([4, 4]);
       for (const line of this.lines) {
         // Out-of-range times have no coordinate; skip rather than crash.
-        const x = scale.timeToCoordinate(line.time as Time);
+        const x = this.timeToX ? this.timeToX(line.time) : scale.timeToCoordinate(line.time as Time);
         if (x === null) continue;
         ctx.strokeStyle = line.color;
         ctx.beginPath();
