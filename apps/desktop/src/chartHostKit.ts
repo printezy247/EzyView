@@ -46,6 +46,8 @@ export interface HostContext {
   suppressClickRef: RefObject<boolean>;
   historyRef: RefObject<Candle[]>;
   historyKeyRef: RefObject<string | null>;
+  /** Set by the data hook: load older bars when the view reaches the left edge. */
+  needOlderRef: RefObject<() => void>;
   shownRef: RefObject<Candle[]>;
   onDrawingBoxRef: RefObject<((box: import("./ChartHost").DrawingBox | null) => void) | undefined>;
   setShown: Dispatch<SetStateAction<Candle[]>>;

@@ -164,6 +164,7 @@ export function ChartHost(props: Props) {
   const [eventPinned, setEventPinned] = useState<{ hit: EventStripHit; x: number; y: number } | null>(null);
   /** Last viewport pointer position, so the engine's hit-only callback can place the card. */
   const mouseRef = useRef({ x: 0, y: 0 });
+  const needOlderRef = useRef<() => void>(() => {});
   const eventHoverRef = useRef<(hit: EventStripHit | null) => void>(() => {});
   eventHoverRef.current = (hit) => {
     setEventHover(hit ? { hit, x: mouseRef.current.x, y: mouseRef.current.y } : null);
@@ -186,6 +187,7 @@ export function ChartHost(props: Props) {
     propsRef,
     crosshairRef,
     crosshairMoveRef,
+    needOlderRef,
     chartIndexRef,
     levelDragRef,
     sessionRef,
@@ -223,6 +225,7 @@ export function ChartHost(props: Props) {
       theme: THEME_OF[props.theme],
       onCrosshairTime: (t) => crosshairRef.current?.(t),
       onCrosshairMove: (t, p) => crosshairMoveRef.current?.(t, p),
+      onNeedOlder: () => needOlderRef.current(),
       onEventHover: (hit) => eventHoverRef.current(hit),
       onClick: (info) => {
         const now = Date.now();

@@ -242,7 +242,12 @@ async function fetchPublicQuote(symbol: string): Promise<Quote | null> {
   }
 }
 
-async function fetchPublicHistory(symbol: string, resolution: Resolution, limit: number): Promise<Candle[] | null> {
+async function fetchPublicHistory(
+  symbol: string,
+  resolution: Resolution,
+  limit: number,
+  endTimeSec?: number,
+): Promise<Candle[] | null> {
   if (isTestEnv() || typeof fetch !== "function") return null;
   try {
     publicBreaker.before();
@@ -262,7 +267,7 @@ async function fetchPublicHistory(symbol: string, resolution: Resolution, limit:
     const res = await withRetry(
       async () => {
         const r = await fetch(
-          `https://data-api.binance.vision/api/v3/klines?symbol=${pair}&interval=${interval}&limit=${clamped}`,
+          `https://data-api.binance.vision/api/v3/klines?symbol=${pair}&interval=${interval}&limit=${clamped}${endTimeSec !== undefined ? `&endTime=${Math.floor(endTimeSec * 1000)}` : ""}`,
           { signal: ctrl.signal },
         );
         if (r.status >= 400 && r.status < 500) throw new NonRetryableError(r.status);
@@ -300,7 +305,7 @@ async function fetchPublicHistory(symbol: string, resolution: Resolution, limit:
     livePublicTickers.add(ticker);
     const newest = candles[candles.length - 1]!;
     const first = candles[0]!;
-    if (!liveQuoteCache.has(ticker)) {
+    if (endTimeSec === undefined && !liveQuoteCache.has(ticker)) {
       liveQuoteCache.set(ticker, {
         fetchedAt: Date.now(),
         quote: {
@@ -486,9 +491,11 @@ export async function loadHistory(
   resolution: Resolution,
   limit = 500,
   source?: DataSourceChoice,
+  /** Epoch seconds: load the page of bars that ends before this time (scroll-back). */
+  before?: number,
 ): Promise<Candle[]> {
   const feed = resolveSource(source);
-  const key = `${feed}:${symbol}:${resolution}:${limit}`;
+  const key = `${feed}:${symbol}:${resolution}:${limit}:${before ?? ""}`;
   const existing = inFlightHistory.get(key);
   if (existing) return existing;
   const cached = historyCache.get(key);
@@ -497,7 +504,7 @@ export async function loadHistory(
   const promise = (async () => {
     try {
       const step = RESOLUTION_SECONDS[resolution];
-      const now = Math.floor(Date.now() / 1000);
+      const now = before !== undefined ? before - step : Math.floor(Date.now() / 1000);
       // Snap the window to the bar grid so the newest candle is always complete.
       const to = Math.floor(now / step) * step;
       const request = { symbol, resolution, from: to - step * limit, to, limit };
@@ -512,7 +519,7 @@ export async function loadHistory(
         return candles;
       }
       if (feed === "mt5") return await getMt5().data.getHistory(request);
-      const live = await fetchPublicHistory(symbol, resolution, limit);
+      const live = await fetchPublicHistory(symbol, resolution, limit, before !== undefined ? to : undefined);
       if (live && live.length > 0) {
         historyCache.set(key, { at: Date.now(), candles: live });
         return live;

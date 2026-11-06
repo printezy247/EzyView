@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { MAX_DEMO_TICKERS, demoTickerCount, releaseTicker, retainTicker, stopTicking, safeQuote } from "./data";
+import { MAX_DEMO_TICKERS, demoTickerCount, loadHistory, releaseTicker, retainTicker, stopTicking, safeQuote } from "./data";
 
 /** Wait two macrotasks so the microtasks around `market.subscribe(...)` have settled. */
 const flushSubscribes = async (): Promise<void> => {
@@ -64,5 +64,15 @@ describe("safeQuote", () => {
   it("resolves a demo quote and resolves null instead of rejecting on failure", async () => {
     expect(await safeQuote("DEMO:BTCUSDT")).toMatchObject({ last: expect.any(Number) });
     expect(await safeQuote("DEMO:NOPE_NOPE")).toBe(null);
+  });
+});
+
+describe("older history pages", () => {
+  it("loads a page that ends before the given time", async () => {
+    const latest = await loadHistory("OANDA:XAUUSD", "1h", 50, "demo");
+    const first = latest[0]!.time;
+    const older = await loadHistory("OANDA:XAUUSD", "1h", 50, "demo", first);
+    expect(older.length).toBeGreaterThan(0);
+    expect(older.at(-1)!.time).toBeLessThan(first);
   });
 });
