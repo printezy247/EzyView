@@ -593,3 +593,28 @@ describe("time mapping beyond the loaded bars", () => {
   });
 });
 
+
+describe("prependCandles (older history)", () => {
+  function hostWithScale(range: { from: number; to: number } | null) {
+    const scale = { getVisibleLogicalRange: vi.fn(() => range), setVisibleLogicalRange: vi.fn() };
+    const host = stubHost({ chart: { timeScale: () => scale }, data: candles(5, 1_000_000), setData: vi.fn() });
+    return { host, scale };
+  }
+
+  it("adds only bars older than the first one and keeps the view in place", () => {
+    const { host, scale } = hostWithScale({ from: -3, to: 40 });
+    const older = [...candles(3, 1_000_000 - 3 * 86400), candle(1_000_000, 1)]; // last one duplicates the first loaded bar
+    const added = proto.prependCandles.call(host, older) as number;
+    expect(added).toBe(3);
+    const merged = (host.setData as ReturnType<typeof vi.fn>).mock.calls[0]![0] as Candle[];
+    expect(merged).toHaveLength(8);
+    expect(merged[0]!.time).toBe(1_000_000 - 3 * 86400);
+    expect(scale.setVisibleLogicalRange).toHaveBeenCalledWith({ from: 0, to: 43 });
+  });
+
+  it("does nothing when the provider has nothing older", () => {
+    const { host } = hostWithScale({ from: 0, to: 10 });
+    expect(proto.prependCandles.call(host, [candle(1_000_000, 1)])).toBe(0);
+    expect(host.setData).not.toHaveBeenCalled();
+  });
+});

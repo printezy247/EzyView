@@ -102,6 +102,9 @@ export interface ScriptPlotSpec {
   overlay: boolean;
 }
 
+/** Ask for older bars when the view is this close to the oldest loaded bar. */
+const OLDER_TRIGGER_BARS = 10;
+
 export interface ClickInfo {
   time: number | null;
   price: number | null;
@@ -132,6 +135,8 @@ export interface EzyChartOptions {
   /** Crosshair move with both coordinates — feeds crosshair sync across cells. */
   onCrosshairMove?: (time: number | null, price: number | null) => void;
   onClick?: (info: ClickInfo) => void;
+  /** The user scrolled to within a few bars of the oldest loaded bar: load older history. */
+  onNeedOlder?: () => void;
   /** Strip hover: the hit (or null when the pointer left it) plus pane pixels. */
   onEventHover?: (hit: EventStripHit | null, point: { x: number; y: number } | null) => void;
 }
@@ -459,6 +464,14 @@ export class EzyChart {
       }
     });
 
+    // Scrolling to the left edge asks the app for older bars (once per request:
+    // the app answers with `prependCandles`, or the edge simply stays).
+    this.chart.timeScale().subscribeVisibleLogicalRangeChange?.((range) => {
+      if (range && range.from < OLDER_TRIGGER_BARS && this.data.length > 0 && isTimeBased(this.type)) {
+        this.opts.onNeedOlder?.();
+      }
+    });
+
     this.chart.subscribeClick((param) => {
       const point = param.point;
       if (!point) {
@@ -480,6 +493,24 @@ export class EzyChart {
   }
 
   // --- data -----------------------------------------------------------------
+
+  /**
+   * Add older bars to the left of the loaded series without moving the view:
+   * the visible range is shifted by the number of bars added. Returns how many
+   * bars were really new (0 = the provider has nothing older).
+   */
+  prependCandles(older: readonly Candle[]): number {
+    if (this.data.length === 0) return 0;
+    const first = this.data[0]!.time;
+    const fresh = older.filter((c) => c.time < first);
+    if (fresh.length === 0) return 0;
+    const range = this.chart.timeScale().getVisibleLogicalRange();
+    this.setData([...fresh, ...this.data]);
+    if (range) {
+      this.chart.timeScale().setVisibleLogicalRange({ from: range.from + fresh.length, to: range.to + fresh.length });
+    }
+    return fresh.length;
+  }
 
   setData(candles: Candle[]): void {
     const firstLoad = this.data.length === 0;

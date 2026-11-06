@@ -54,6 +54,50 @@ export function useChartData(ctx: HostContext, props: Props): void {
   }, [props.symbol, props.resolution, props.dataSource, globalFeed]);
 
 
+  // Scrolling to the left edge loads one older page (500 bars) at a time, once
+  // per request. A page that adds nothing means the provider has no more, and
+  // the edge is left alone until the symbol, interval or feed changes.
+  useEffect(() => {
+    const { needOlderRef } = ctx;
+    const key = `${props.symbol}|${props.resolution}|${feed}`;
+    let loading = false;
+    let exhausted = false;
+    let cancelled = false;
+    needOlderRef.current = () => {
+      if (loading || exhausted || cancelled || props.replayBar != null) return;
+      if (historyKeyRef.current !== key) return;
+      const first = historyRef.current[0];
+      if (!first) return;
+      loading = true;
+      void loadHistory(props.symbol, props.resolution, undefined, props.dataSource, first.time)
+        .then((older) => {
+          if (cancelled || historyKeyRef.current !== key) return;
+          const added = chartRef.current?.prependCandles(older) ?? 0;
+          if (added === 0) {
+            exhausted = true;
+            return;
+          }
+          const merged = chartRef.current?.candles();
+          if (merged) {
+            historyRef.current = [...merged];
+            shownRef.current = historyRef.current;
+            setShown(historyRef.current);
+            applySessionShading(ctx);
+          }
+        })
+        .catch(() => {
+          exhausted = true; // a failing provider is not hammered on every scroll
+        })
+        .finally(() => {
+          loading = false;
+        });
+    };
+    return () => {
+      cancelled = true;
+      needOlderRef.current = () => {};
+    };
+  }, [props.symbol, props.resolution, props.dataSource, props.replayBar, globalFeed]);
+
   // Revealing bars one at a time re-slices the cached history; no refetch.
   useEffect(() => {
     if (historyRef.current.length === 0) return;
