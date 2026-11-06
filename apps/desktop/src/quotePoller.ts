@@ -32,6 +32,8 @@ interface Poller {
   timerMs: number;
   inFlight: boolean;
   lastQuote: Quote | null;
+  /** When `lastQuote` last arrived (ms), for stale-price checks. */
+  lastAt: number;
 }
 
 const pollers = new Map<string, Poller>();
@@ -87,6 +89,7 @@ function schedule(poller: Poller): void {
 function deliver(poller: Poller, quote: Quote | null, force: boolean): void {
   poller.lastQuote = quote;
   const now = Date.now();
+  if (quote) poller.lastAt = now;
   for (const subscriber of poller.subscribers) {
     // Each panel keeps its own cadence even though one request served them all.
     // A pushed live tick jumps the queue: it is the price the chart just
@@ -146,6 +149,7 @@ export function subscribeQuote(
       timerMs: 0,
       inFlight: false,
       lastQuote: null,
+      lastAt: 0,
     };
     pollers.set(key, poller);
     // Keep the demo feed moving while any panel polls this symbol, and stop it
@@ -184,6 +188,17 @@ export function subscribeQuote(
     tickerReleases.get(key)?.();
     pollers.delete(key);
   };
+}
+
+/**
+ * Seconds since a price last arrived for this symbol, or null when nobody is
+ * watching it (so there is no evidence either way). Order checks use it to
+ * refuse a trade on a frozen price.
+ */
+export function quoteAgeSec(symbol: string, source?: DataSourceChoice): number | null {
+  const poller = pollers.get(keyOf(symbol, source));
+  if (!poller || poller.lastAt === 0) return null;
+  return (Date.now() - poller.lastAt) / 1000;
 }
 
 /** Ask every subscriber of a symbol to refresh now (the retry button). */

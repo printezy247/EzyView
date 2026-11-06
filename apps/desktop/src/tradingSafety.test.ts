@@ -212,6 +212,48 @@ describe("parseSafety", () => {
       // A blob saved before the breakers existed picks up today's defaults.
       maxDailyLossPct: DEFAULT_SAFETY.maxDailyLossPct,
       lossCooldownSeconds: DEFAULT_SAFETY.lossCooldownSeconds,
+      maxOrdersPerMinute: DEFAULT_SAFETY.maxOrdersPerMinute,
+      maxQuoteAgeSec: DEFAULT_SAFETY.maxQuoteAgeSec,
     });
+  });
+});
+
+describe("order rate and price freshness", () => {
+  it("blocks a new order when the rate limit for the last minute is used up", async () => {
+    const { OrderRateLimiter } = await import("./tradingSafety");
+    const limiter = new OrderRateLimiter();
+    limiter.record(1_000);
+    limiter.record(2_000);
+    expect(limiter.countLastMinute(30_000)).toBe(2);
+    expect(limiter.countLastMinute(61_500)).toBe(1); // first one aged out
+    const config = rails({ maxOrdersPerMinute: 2 });
+    const blocked = gateAction({ action: "place", symbol: "X", volume: 1, accountKind: "demo", ordersLastMinute: 2 }, config);
+    expect(blocked.decision).toBe("block");
+    expect(blocked.reasons.join(" ")).toMatch(/orders in the last minute/);
+    const ok = gateAction({ action: "place", symbol: "X", volume: 1, accountKind: "demo", ordersLastMinute: 1 }, config);
+    expect(ok.decision).not.toBe("block");
+  });
+
+  it("0 turns the order rate limit off", () => {
+    const r = gateAction({ action: "place", volume: 1, accountKind: "demo", ordersLastMinute: 99 }, rails({ maxOrdersPerMinute: 0 }));
+    expect(r.decision).not.toBe("block");
+  });
+
+  it("blocks a new order on a stale or down price feed, not a close", () => {
+    const config = rails({ maxQuoteAgeSec: 15 });
+    const stale = gateAction({ action: "place", volume: 1, accountKind: "demo", quoteAgeSec: 40 }, config);
+    expect(stale.decision).toBe("block");
+    expect(stale.reasons.join(" ")).toMatch(/price is 40s old/);
+    expect(gateAction({ action: "place", volume: 1, accountKind: "demo", feedDown: true }, config).decision).toBe("block");
+    expect(gateAction({ action: "place", volume: 1, accountKind: "demo", quoteAgeSec: 3 }, config).decision).not.toBe("block");
+    // Getting out of a position must stay possible when the feed is bad.
+    expect(gateAction({ action: "close", symbol: "X", accountKind: "demo", quoteAgeSec: 99, feedDown: true }, config).decision).not.toBe("block");
+  });
+
+  it("parses and defaults the new limits", () => {
+    expect(parseSafety({}).maxOrdersPerMinute).toBe(10);
+    expect(parseSafety({}).maxQuoteAgeSec).toBe(15);
+    expect(parseSafety({ maxOrdersPerMinute: 0, maxQuoteAgeSec: 0 })).toMatchObject({ maxOrdersPerMinute: 0, maxQuoteAgeSec: 0 });
+    expect(parseSafety({ maxOrdersPerMinute: -3 }).maxOrdersPerMinute).toBe(10);
   });
 });
