@@ -97,6 +97,8 @@ export interface Quote {
   bid?: number;
   ask?: number;
   volume24h?: number;
+  /** Size of the trade that produced this quote (streaming feeds only). */
+  tickVolume?: number;
   time: EpochSeconds;
 }
 

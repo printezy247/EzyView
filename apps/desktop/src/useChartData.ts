@@ -6,7 +6,7 @@ import { loadHistory, resolveSource, RESOLUTION_SECONDS, subscribeLive } from ".
 import { pushQuote, setDemoAnchorBase, subscribeQuote } from "./quotePoller";
 import { isLiveSourceChoice } from "./chartSource";
 import { useMt5 } from "./mt5";
-import { mergeQuote } from "./liveBars";
+import { hasBarGap, mergeQuote } from "./liveBars";
 import { applySessionShading, sliceForReplay } from "./chartHostKit";
 import type { HostContext } from "./chartHostKit";
 import type { Props } from "./ChartHost";
@@ -81,13 +81,36 @@ export function useChartData(ctx: HostContext, props: Props): void {
     let rafId: number | null = null;
     let unsubscribe: (() => void) | null = null;
 
+    let backfilling = false;
+    /** Bars were missed (dropped socket, sleep): refetch instead of drawing a hole. */
+    const backfill = () => {
+      if (backfilling) return;
+      backfilling = true;
+      void loadHistory(props.symbol, props.resolution, undefined, props.dataSource)
+        .then((candles) => {
+          if (cancelled || historyKeyRef.current !== key || candles.length === 0) return;
+          historyRef.current = candles;
+          shownRef.current = candles;
+          chartRef.current?.setData(candles);
+          setShown(candles);
+        })
+        .catch(() => {
+          /* the next tick will try again */
+        })
+        .finally(() => {
+          backfilling = false;
+        });
+    };
+
     const apply = (q: Quote) => {
       const history = historyRef.current;
       if (cancelled || history.length === 0) return;
       // The bars belong to another symbol/interval/source: do not mix prices in.
       if (historyKeyRef.current !== key) return;
       const price = q.last;
-      const merged = mergeQuote(history, price, q.time || Math.floor(Date.now() / 1000), step);
+      const tickTime = q.time || Math.floor(Date.now() / 1000);
+      if (hasBarGap(history, tickTime, step)) backfill();
+      const merged = mergeQuote(history, price, tickTime, step, q.tickVolume);
       if (merged === history) return;
       const openedNewBar = merged.length !== history.length;
       historyRef.current = merged;

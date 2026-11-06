@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Candle } from "@ezyview/data-adapters";
-import { mergeQuote } from "./liveBars";
+import { hasBarGap, mergeQuote } from "./liveBars";
 
 const STEP = 60;
 const bar = (time: number, o: number, h: number, l: number, c: number, v = 10): Candle => ({ time, open: o, high: h, low: l, close: c, volume: v });
@@ -43,5 +43,25 @@ describe("mergeQuote", () => {
     const copy = JSON.parse(JSON.stringify(BARS)) as Candle[];
     mergeQuote(BARS, 9, 90, STEP);
     expect(BARS).toEqual(copy);
+  });
+});
+
+describe("live volume and gaps", () => {
+  it("adds trade size to the forming bar and starts new bars with it", () => {
+    expect(mergeQuote(BARS, 2, 90, STEP, 0.5)[1]!.volume).toBe(10.5);
+    expect(mergeQuote(BARS, 2, 125, STEP, 0.5)[2]!.volume).toBe(0.5);
+  });
+
+  it("still updates when only the volume changed", () => {
+    const out = mergeQuote(BARS, 2, 90, STEP, 1);
+    expect(out).not.toBe(BARS);
+    expect(out[1]!.volume).toBe(11);
+  });
+
+  it("flags a tick that skips at least one whole bar", () => {
+    expect(hasBarGap(BARS, 119, STEP)).toBe(false); // same bar
+    expect(hasBarGap(BARS, 125, STEP)).toBe(false); // next bar: normal
+    expect(hasBarGap(BARS, 180, STEP)).toBe(true); // bar at 120 was missed
+    expect(hasBarGap([], 180, STEP)).toBe(false);
   });
 });
