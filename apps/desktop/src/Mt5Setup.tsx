@@ -300,6 +300,20 @@ export function SafetyTab() {
         value={safety.lossCooldownSeconds ?? 0}
         onValueChange={(v) => saveSafety({ lossCooldownSeconds: v ?? 0 })}
       />
+      <NumberInput
+        label="Max orders per minute (0 = off)"
+        min={0}
+        step={1}
+        value={safety.maxOrdersPerMinute ?? 0}
+        onValueChange={(v) => saveSafety({ maxOrdersPerMinute: v ?? 0 })}
+      />
+      <NumberInput
+        label="Block new orders on a price older than (seconds, 0 = off)"
+        min={0}
+        step={5}
+        value={safety.maxQuoteAgeSec ?? 0}
+        onValueChange={(v) => saveSafety({ maxQuoteAgeSec: v ?? 0 })}
+      />
       <Checkbox
         label="Dry-run: validate orders at the bridge, never send"
         checked={safety.dryRun}

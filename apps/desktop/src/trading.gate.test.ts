@@ -261,3 +261,12 @@ describe("paper venue enforces the blocking rails too", () => {
     await paperEngine.reset();
   });
 });
+
+describe("unknown outcome after a timeout", () => {
+  it("recognises a dropped or timed-out request", async () => {
+    const { outcomeUnknown } = await import("./trading");
+    expect(outcomeUnknown(new Error("The operation was aborted"))).toBe(true);
+    expect(outcomeUnknown(new Error("Failed to fetch"))).toBe(true);
+    expect(outcomeUnknown(new Error("MT5 bridge POST /order → HTTP 400 bad volume"))).toBe(false);
+  });
+});

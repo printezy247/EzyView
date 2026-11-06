@@ -22,6 +22,10 @@ export interface SafetyConfig {
   maxDailyLossPct?: number;
   /** Cooldown window in seconds after a closed loss before allowing a new entry on that symbol. 0 disables it. */
   lossCooldownSeconds?: number;
+  /** Max new orders in any 60 s window (a runaway click or script cannot flood the broker). 0 disables it. */
+  maxOrdersPerMinute?: number;
+  /** A new order is refused when the price on screen is older than this many seconds. 0 disables it. */
+  maxQuoteAgeSec?: number;
 }
 
 /**
@@ -37,6 +41,8 @@ export const DEFAULT_SAFETY: SafetyConfig = {
   dryRun: false,
   maxDailyLossPct: 5,
   lossCooldownSeconds: 60,
+  maxOrdersPerMinute: 10,
+  maxQuoteAgeSec: 15,
 };
 
 export interface GateInput {
@@ -45,6 +51,12 @@ export interface GateInput {
   volume?: number;
   accountKind: AccountKind;
   currentEquity?: number;
+  /** New orders sent in the last 60 s (see `orderRateLimiter`). */
+  ordersLastMinute?: number;
+  /** Seconds since the price on screen last updated. */
+  quoteAgeSec?: number;
+  /** The price feed is failing right now. */
+  feedDown?: boolean;
 }
 
 export interface GateResult {
@@ -68,6 +80,31 @@ export interface LossEvent {
   lossAmount: number;
   timestamp: number;
 }
+
+/** Counts orders sent in a sliding 60 s window. */
+export class OrderRateLimiter {
+  private sent: number[] = [];
+
+  record(at: number = Date.now()): void {
+    this.sent.push(at);
+    this.prune(at);
+  }
+
+  countLastMinute(now: number = Date.now()): number {
+    this.prune(now);
+    return this.sent.length;
+  }
+
+  reset(): void {
+    this.sent = [];
+  }
+
+  private prune(now: number): void {
+    this.sent = this.sent.filter((t) => now - t < 60_000);
+  }
+}
+
+export const orderRateLimiter = new OrderRateLimiter();
 
 export class DailyRiskTracker {
   private startingBalance: number | null = null;
@@ -213,6 +250,21 @@ export function gateAction(input: GateInput, config: SafetyConfig): GateResult {
   }
 
   if (input.action === "place") {
+    // Only new risk is gated on price quality; closing a position must always be possible.
+    if (config.maxQuoteAgeSec && config.maxQuoteAgeSec > 0) {
+      if (input.feedDown) {
+        reasons.push("the price feed is down, so the price on screen is not trustworthy. Wait for it to recover.");
+        return { decision: "block", reasons, secondConfirm: false, dryRun: config.dryRun };
+      }
+      if (input.quoteAgeSec !== undefined && input.quoteAgeSec > config.maxQuoteAgeSec) {
+        reasons.push(`the price is ${Math.round(input.quoteAgeSec)}s old (max ${config.maxQuoteAgeSec}s). Wait for a fresh quote.`);
+        return { decision: "block", reasons, secondConfirm: false, dryRun: config.dryRun };
+      }
+    }
+    if (config.maxOrdersPerMinute && config.maxOrdersPerMinute > 0 && (input.ordersLastMinute ?? 0) >= config.maxOrdersPerMinute) {
+      reasons.push(`${input.ordersLastMinute} orders in the last minute reached the limit of ${config.maxOrdersPerMinute}. Wait a moment.`);
+      return { decision: "block", reasons, secondConfirm: false, dryRun: config.dryRun };
+    }
     if (config.maxDailyLossPct && config.maxDailyLossPct > 0 && input.currentEquity !== undefined) {
       const dd = dailyRiskTracker.checkDailyDrawdown(input.currentEquity, config.maxDailyLossPct);
       if (dd.tripped) {
@@ -347,11 +399,16 @@ export function parseSafety(raw: unknown): SafetyConfig {
       ? candidate.lossCooldownSeconds
       : DEFAULT_SAFETY.lossCooldownSeconds;
 
+  const nonNegative = (v: unknown, fallback: number | undefined): number | undefined =>
+    typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : fallback;
+
   return {
     maxOrderVolume,
     symbolAllowList,
     dryRun: candidate.dryRun === true,
     maxDailyLossPct,
     lossCooldownSeconds,
+    maxOrdersPerMinute: nonNegative(candidate.maxOrdersPerMinute, DEFAULT_SAFETY.maxOrdersPerMinute),
+    maxQuoteAgeSec: nonNegative(candidate.maxQuoteAgeSec, DEFAULT_SAFETY.maxQuoteAgeSec),
   };
 }

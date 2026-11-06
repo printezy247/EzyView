@@ -3,10 +3,12 @@ import { create } from "zustand";
 import type { AccountInfo, Deal, Order, OrderRequest, Position } from "@ezyview/data-adapters";
 import { PaperTradingEngine, PaperTradingError } from "@ezyview/paper-trading";
 import type { PaperSnapshot } from "@ezyview/paper-trading";
-import { quoteOf } from "./data";
+import { quoteOf, resolveSource } from "./data";
+import { quoteAgeSec } from "./quotePoller";
+import { feedHealth } from "./feedHealth";
 import { accountKindOf, useMt5Accounts } from "./mt5Accounts";
 import { getMt5, useMt5 } from "./mt5";
-import { approvalTokens, gateAction, riskSessionSync } from "./tradingSafety";
+import { approvalTokens, gateAction, orderRateLimiter, riskSessionSync } from "./tradingSafety";
 import type { GateInput, GateResult } from "./tradingSafety";
 
 const STORAGE_KEY = "ezyview.paper-account.v1";
@@ -123,9 +125,22 @@ export interface TradingActions {
   clearError(): void;
 }
 
+/** Facts about the price on screen and the recent order rate, added to every gate check. */
+function marketFacts(symbol: string | undefined): Pick<GateInput, "quoteAgeSec" | "feedDown" | "ordersLastMinute"> {
+  const facts: Pick<GateInput, "quoteAgeSec" | "feedDown" | "ordersLastMinute"> = {
+    ordersLastMinute: orderRateLimiter.countLastMinute(),
+  };
+  if (symbol) {
+    const age = quoteAgeSec(symbol);
+    if (age !== null) facts.quoteAgeSec = age;
+  }
+  if (feedHealth.isDown(resolveSource())) facts.feedDown = true;
+  return facts;
+}
+
 function mt5Gate(action: Omit<GateInput, "accountKind">): GateResult {
   return gateAction(
-    { ...action, accountKind: accountKindOf(useMt5Accounts.getState().session) },
+    { ...marketFacts(action.symbol), ...action, accountKind: accountKindOf(useMt5Accounts.getState().session) },
     useMt5Accounts.getState().safety,
   );
 }
@@ -137,7 +152,13 @@ function mt5Gate(action: Omit<GateInput, "accountKind">): GateResult {
  * confirmation and never shows a dialog — only the hard blocks apply.
  */
 function paperGate(action: Omit<GateInput, "accountKind">): GateResult {
-  return gateAction({ ...action, accountKind: "demo" }, useMt5Accounts.getState().safety);
+  return gateAction({ ...marketFacts(action.symbol), ...action, accountKind: "demo" }, useMt5Accounts.getState().safety);
+}
+
+/** A timeout or dropped connection: the write might still have happened. */
+export function outcomeUnknown(err: unknown): boolean {
+  const text = err instanceof Error ? `${err.name} ${err.message}` : String(err);
+  return /abort|timed? ?out|failed to fetch|networkerror|network error|socket|ECONN|fetch failed/i.test(text);
 }
 
 function park(set: (patch: Partial<TradingState>) => void, gate: GateResult, pending: PendingAction): boolean {
@@ -214,6 +235,7 @@ export const useTrading = create<TradingState & TradingActions>((set, get) => ({
       }
       try {
         await paperEngine.placeOrder(request);
+        orderRateLimiter.record();
         set({ error: null, note: null });
         await refreshInto(set);
         return true;
@@ -323,12 +345,22 @@ export const useTrading = create<TradingState & TradingActions>((set, get) => ({
       return false;
     }
     set({ pending: null });
+    if (pending.kind === "place") orderRateLimiter.record();
     try {
       const note = await sendMt5(pending);
       set({ error: null, note });
       await refreshInto(set);
       return true;
     } catch (err) {
+      if (outcomeUnknown(err)) {
+        // The request may have reached the broker before the connection gave up.
+        // Re-read the account so the user sees the truth before sending again.
+        await refreshInto(set).catch(() => undefined);
+        set({
+          error: `No answer from the bridge (${message(err)}). The ${pending.kind} may or may not have gone through. Check Positions and Orders before sending it again.`,
+        });
+        return false;
+      }
       set({ error: message(err) });
       return false;
     }
