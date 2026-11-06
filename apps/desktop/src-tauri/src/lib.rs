@@ -416,6 +416,20 @@ fn append_log(app: AppHandle, text: String) -> Result<(), String> {
     // it reaches the disk.
     let text: String = text.chars().take(64 * 1024).collect();
     let path = log_path(&app)?;
+    let size = std::fs::metadata(&path).map(|m| m.len() as usize).unwrap_or(0);
+    if size + text.len() <= LOG_CAP {
+        // Common case: just append, no read-modify-write of the whole log.
+        use std::io::Write;
+        use std::os::unix::fs::OpenOptionsExt;
+        let mut f = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .mode(0o600)
+            .open(&path)
+            .map_err(|e| e.to_string())?;
+        return f.write_all(text.as_bytes()).map_err(|e| e.to_string());
+    }
+    // Over the cap: keep the newest lines and rewrite once.
     let existing = String::from_utf8_lossy(&std::fs::read(&path).unwrap_or_default()).into_owned();
     let next = trim_log(&format!("{existing}{text}"));
     atomic_write(&path, next.as_bytes(), 0o600).map_err(|e| e.to_string())
@@ -470,9 +484,9 @@ async fn save_file(
         return Ok(false);
     };
     let path = path.into_path().map_err(|e| e.to_string())?;
-    tauri::async_runtime::spawn_blocking(move || {
-        std::fs::write(path, bytes).map_err(|e| e.to_string())
-    })
+    // Temp file + rename: a crash or full disk mid-write must not leave the
+    // user's export half written (or an existing file destroyed).
+    tauri::async_runtime::spawn_blocking(move || atomic_write(&path, &bytes, 0o644).map_err(|e| e.to_string()))
     .await
     .map_err(|e| e.to_string())??;
     Ok(true)
