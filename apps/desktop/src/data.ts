@@ -89,6 +89,7 @@ let liveSources: Record<LiveSourceId, LiveSource> | null = null;
  */
 export function getLiveSources(): Record<LiveSourceId, LiveSource> {
   liveSources ??= createLiveSources({
+    onRateLimit: (id, ms) => recordFeedFailure(id, `rate limited, retrying in ${Math.ceil(ms / 1000)}s`),
     getKey: async (name) => {
       if (name !== "twelvedata") return null;
       return useApiKeys.getState().keys.twelvedata || (await readApiKey(name));
@@ -111,14 +112,16 @@ export async function subscribeLive(
   return getLiveSources()[source].subscribe([symbol], onQuote);
 }
 
-/** Map common EzyView tickers to Binance public market data symbols (PAXGUSDT = 1 troy oz spot Gold). */
+/**
+ * Map common EzyView tickers to Binance public market data symbols (PAXGUSDT = 1 troy oz spot Gold).
+ * Spot FX is deliberately absent: EURUSDT is a stablecoin pair, not EURUSD, and showing
+ * it under that name would be a wrong price. FX goes through Twelve Data or MT5.
+ */
 const PUBLIC_PAIR_MAP: Record<string, string> = {
   XAUUSD: "PAXGUSDT",
   BTCUSDT: "BTCUSDT",
   ETHUSDT: "ETHUSDT",
   SOLUSDT: "SOLUSDT",
-  EURUSD: "EURUSDT",
-  GBPUSD: "GBPUSDT",
 };
 
 const BINANCE_INTERVAL_MAP: Partial<Record<Resolution, string>> = {
@@ -137,6 +140,13 @@ const BINANCE_INTERVAL_MAP: Partial<Record<Resolution, string>> = {
   "1D": "1d",
   "1W": "1w",
   "1M": "1M",
+};
+
+/** Intervals each live provider can serve (mirrors the adapters' interval maps). */
+const LIVE_RESOLUTIONS: Record<LiveSourceId, ReadonlySet<Resolution>> = {
+  binance: new Set(Object.keys(BINANCE_INTERVAL_MAP) as Resolution[]),
+  kraken: new Set<Resolution>(["1m", "5m", "15m", "30m", "1h", "4h", "1D", "1W"]),
+  twelvedata: new Set<Resolution>(["1m", "5m", "15m", "30m", "1h", "2h", "4h", "1D", "1W", "1M"]),
 };
 
 const isTestEnv = (): boolean =>
@@ -491,7 +501,16 @@ export async function loadHistory(
       // Snap the window to the bar grid so the newest candle is always complete.
       const to = Math.floor(now / step) * step;
       const request = { symbol, resolution, from: to - step * limit, to, limit };
-      if (isLiveSourceChoice(feed)) return await getLiveSources()[feed].getHistory(request);
+      if (isLiveSourceChoice(feed)) {
+        const source = getLiveSources()[feed];
+        const candles = await source.getHistory(request);
+        // An empty answer for an interval the provider never serves is a clear
+        // error, not a blank chart with no explanation.
+        if (candles.length === 0 && !LIVE_RESOLUTIONS[feed].has(resolution)) {
+          throw new Error(`${source.label} has no ${resolutionName(resolution)} bars. Pick another interval or feed.`);
+        }
+        return candles;
+      }
       if (feed === "mt5") return await getMt5().data.getHistory(request);
       const live = await fetchPublicHistory(symbol, resolution, limit);
       if (live && live.length > 0) {

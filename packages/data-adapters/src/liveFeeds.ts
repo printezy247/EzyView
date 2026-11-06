@@ -35,6 +35,8 @@ export interface LiveSourceDeps {
   WebSocket?: typeof WebSocket;
   getKey?: (name: string) => Promise<string | null>;
   now?: () => number;
+  /** Called when a provider answers 429/418 so the app can show "rate limited". */
+  onRateLimit?: (source: LiveSourceId, retryAfterMs: number) => void;
 }
 
 export const LIVE_SOURCE_IDS: readonly LiveSourceId[] = ["binance", "kraken", "twelvedata"];
@@ -44,6 +46,12 @@ const MAX_BACKOFF_MS = 30_000;
 const POLL_MS = 1000;
 const TWELVE_POLL_MS = 8000;
 const TWELVE_HEARTBEAT_MS = 10_000;
+/** A socket with no frame at all for this long is treated as dead. */
+const STALE_SOCKET_MS = 45_000;
+/** After falling back to polling, try the WebSocket again this often. */
+const REPROBE_MS = 60_000;
+const DEFAULT_RETRY_AFTER_MS = 30_000;
+const MAX_RETRY_AFTER_MS = 5 * 60_000;
 
 // ---------------------------------------------------------------------------
 // helpers
@@ -90,17 +98,39 @@ interface Ctx {
   deps: LiveSourceDeps;
 }
 
-function makeCtx(deps: LiveSourceDeps): Ctx {
+/** Seconds (or an HTTP date) from a Retry-After header, as milliseconds, bounded. */
+function retryAfterMs(res: Response, nowMs: number): number {
+  const raw = res.headers?.get?.("retry-after");
+  if (!raw) return DEFAULT_RETRY_AFTER_MS;
+  const secs = Number(raw);
+  const ms = Number.isFinite(secs) ? secs * 1000 : Date.parse(raw) - nowMs;
+  return Number.isFinite(ms) && ms > 0 ? Math.min(ms, MAX_RETRY_AFTER_MS) : DEFAULT_RETRY_AFTER_MS;
+}
+
+function makeCtx(deps: LiveSourceDeps, id: LiveSourceId): Ctx {
   const f: typeof fetch = deps.fetch ?? ((...a) => globalThis.fetch(...a));
   const now = deps.now ?? (() => Date.now());
+  /** While set in the future, requests are skipped: the provider asked us to back off. */
+  let blockedUntil = 0;
   return {
     deps,
     nowSec: () => Math.floor(now() / 1000),
     async getJson(url) {
+      if (now() < blockedUntil) return null;
       const ac = new AbortController();
       const timer = setTimeout(() => ac.abort(), FETCH_TIMEOUT_MS);
       try {
         const res = await f(url, { signal: ac.signal });
+        if (res.status === 429 || res.status === 418) {
+          const wait = retryAfterMs(res, now());
+          blockedUntil = now() + wait;
+          try {
+            deps.onRateLimit?.(id, wait);
+          } catch {
+            /* a listener must not break the feed */
+          }
+          return null;
+        }
         if (!res.ok) return null;
         return (await res.json()) as unknown;
       } catch {
@@ -116,13 +146,27 @@ function makeCtx(deps: LiveSourceDeps): Ctx {
 // streaming with reconnect + polling fallback
 // ---------------------------------------------------------------------------
 
+interface Tick {
+  price: number;
+  /** Exchange trade time, epoch seconds. */
+  time?: number;
+  /** Size of this trade. */
+  volume?: number;
+}
+
 interface StreamPlan {
   url: string;
   /** Send subscribe frames etc. */
   onOpen?: (ws: WebSocket) => void;
-  /** Price from a raw frame; null = ignore frame; "fail" = give up this socket. */
-  parse: (raw: string) => number | null | "fail";
+  /**
+   * Price from a raw frame; null = ignore frame; "fail" = give up this socket.
+   * A tick object carries the exchange's own trade time (epoch seconds) and
+   * trade size when the frame has them.
+   */
+  parse: (raw: string) => number | Tick | null | "fail";
   heartbeat?: { ms: number; msg: string };
+  /** Close and reconnect when no frame at all arrives for this long (default 45 s); 0 = never. */
+  staleMs?: number;
   /** Consecutive failed sockets before switching to polling. */
   maxFails: number;
   pollMs: number;
@@ -143,6 +187,14 @@ function startStream(
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
   let hbTimer: ReturnType<typeof setInterval> | null = null;
   let pollTimer: ReturnType<typeof setInterval> | null = null;
+  let reprobeTimer: ReturnType<typeof setTimeout> | null = null;
+  let watchTimer: ReturnType<typeof setTimeout> | null = null;
+  const staleMs = plan.staleMs ?? STALE_SOCKET_MS;
+
+  const stopWatch = () => {
+    if (watchTimer) clearTimeout(watchTimer);
+    watchTimer = null;
+  };
 
   const stopHb = () => {
     if (hbTimer) clearInterval(hbTimer);
@@ -166,6 +218,17 @@ function startStream(
     };
     void tick();
     pollTimer = setInterval(() => void tick(), plan.pollMs);
+    // Polling is the safety net, not the destination: look for the socket again later.
+    if (WS && !reprobeTimer) {
+      reprobeTimer = setTimeout(() => {
+        reprobeTimer = null;
+        if (closed) return;
+        if (pollTimer) clearInterval(pollTimer);
+        pollTimer = null;
+        fails = Math.max(0, plan.maxFails - 1); // one attempt; failing again returns to polling
+        connect();
+      }, REPROBE_MS);
+    }
   };
 
   /** Count a failure, then retry with backoff (1s, 2s, 4s ... max 30s) or poll. */
@@ -196,10 +259,16 @@ function startStream(
     }
     sock = ws;
     let dead = false;
+    const arm = () => {
+      if (staleMs <= 0) return;
+      stopWatch();
+      watchTimer = setTimeout(die, staleMs);
+    };
     const die = () => {
       if (dead) return;
       dead = true;
       stopHb();
+      stopWatch();
       try {
         ws.close();
       } catch {
@@ -219,6 +288,7 @@ function startStream(
           die();
           return;
         }
+        arm();
         if (plan.heartbeat) {
           const { ms, msg } = plan.heartbeat;
           hbTimer = setInterval(() => {
@@ -236,12 +306,18 @@ function startStream(
       "message",
       (ev) => {
         if (dead) return;
+        arm(); // any frame (even a heartbeat) proves the socket is alive
         const data = (ev as MessageEvent).data;
         const r = plan.parse(typeof data === "string" ? data : String(data));
         if (r === "fail") return die();
         if (r === null) return;
         fails = 0;
-        emit({ symbol, last: r, time: ctx.nowSec() });
+        const tick: Tick = typeof r === "number" ? { price: r } : r;
+        // Prefer the exchange's trade time: the local clock can be seconds off and put a tick in the wrong bar.
+        const t = tick.time !== undefined && Number.isFinite(tick.time) && tick.time > 0 ? Math.floor(tick.time) : ctx.nowSec();
+        const quote: Quote = { symbol, last: tick.price, time: t };
+        if (tick.volume !== undefined && Number.isFinite(tick.volume) && tick.volume > 0) quote.tickVolume = tick.volume;
+        emit(quote);
       },
       { signal: listeners.signal },
     );
@@ -256,7 +332,9 @@ function startStream(
     closed = true;
     if (retryTimer) clearTimeout(retryTimer);
     if (pollTimer) clearInterval(pollTimer);
+    if (reprobeTimer) clearTimeout(reprobeTimer);
     stopHb();
+    stopWatch();
     if (sock) {
       const s = sock;
       sock = null;
@@ -295,7 +373,7 @@ interface SourceConfig {
 }
 
 function buildSource(cfg: SourceConfig, deps: LiveSourceDeps): LiveSource {
-  const ctx = makeCtx(deps);
+  const ctx = makeCtx(deps, cfg.id);
 
   const info = (ticker: string, symbol: string, description: string): SymbolInfo => {
     const precision = cfg.precision(ticker);
@@ -483,7 +561,15 @@ const binanceConfig: SourceConfig = {
         try {
           const m: unknown = JSON.parse(raw);
           if (!isRecord(m)) return null;
-          return m.e === "trade" ? toPrice(m.p) : null;
+          if (m.e !== "trade") return null;
+          const price = toPrice(m.p);
+          if (price === null) return null;
+          const tradeMs = toNum(m.T);
+          const tick: Tick = { price };
+          if (tradeMs !== null && tradeMs > 0) tick.time = tradeMs / 1000;
+          const qty = toNum(m.q);
+          if (qty !== null && qty > 0) tick.volume = qty;
+          return tick;
         } catch {
           return null;
         }
@@ -611,7 +697,11 @@ const krakenConfig: SourceConfig = {
           if (m.method === "subscribe" && m.success === false) return "fail";
           if (m.channel !== "ticker" || !Array.isArray(m.data)) return null;
           const d: unknown = m.data[0];
-          return isRecord(d) ? toPrice(d.last) : null;
+          if (!isRecord(d)) return null;
+          const price = toPrice(d.last);
+          if (price === null) return null;
+          const at = typeof d.timestamp === "string" ? Date.parse(d.timestamp) : NaN;
+          return Number.isFinite(at) ? { price, time: at / 1000 } : price;
         } catch {
           return null;
         }
@@ -721,6 +811,7 @@ function makeTwelveConfig(deps: LiveSourceDeps): SourceConfig {
       const pair = tdPair(ticker);
       return {
         url: `${TD_WS}?apikey=${encodeURIComponent(apikey)}`,
+        staleMs: 0, // forex is silent all weekend; the heartbeat already keeps the socket honest
         maxFails: 1, // any socket/plan problem -> straight to throttled REST polling
         pollMs: TWELVE_POLL_MS,
         heartbeat: { ms: TWELVE_HEARTBEAT_MS, msg: JSON.stringify({ action: "heartbeat" }) },
@@ -733,7 +824,11 @@ function makeTwelveConfig(deps: LiveSourceDeps): SourceConfig {
             if (m.event === "subscribe-status") {
               return m.status === "error" || (Array.isArray(m.fails) && m.fails.length > 0) ? "fail" : null;
             }
-            return m.event === "price" ? toPrice(m.price) : null;
+            if (m.event !== "price") return null;
+            const price = toPrice(m.price);
+            if (price === null) return null;
+            const at = toNum(m.timestamp);
+            return at !== null && at > 0 ? { price, time: at } : price;
           } catch {
             return null;
           }

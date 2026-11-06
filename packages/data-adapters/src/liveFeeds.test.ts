@@ -376,3 +376,85 @@ describe("search / symbol info", () => {
     expect(await sources.twelvedata.getSymbol("BTCUSDT")).toBeNull();
   });
 });
+
+describe("live feed resilience", () => {
+  it("uses the exchange trade time and size, not the local clock", async () => {
+    const { sources } = setup(() => undefined);
+    const got: Quote[] = [];
+    await sources.binance.subscribe(["BTCUSDT"], (q) => got.push(q));
+    FakeWS.all[0]!.open();
+    FakeWS.all[0]!.msg({ e: "trade", p: "10", T: 1_700_000_123_456, q: "0.25" });
+    expect(got[0]).toMatchObject({ last: 10, time: 1_700_000_123, tickVolume: 0.25 });
+  });
+
+  it("reads kraken's ISO timestamp and twelve data's epoch timestamp", async () => {
+    const { sources } = setup(() => undefined);
+    const k: Quote[] = [];
+    await sources.kraken.subscribe(["BTCUSD"], (q) => k.push(q));
+    FakeWS.all[0]!.open();
+    FakeWS.all[0]!.msg({ channel: "ticker", data: [{ last: 5, timestamp: "2023-11-14T22:13:20.000000Z" }] });
+    expect(k[0]!.time).toBe(1_700_000_000);
+    const t: Quote[] = [];
+    await sources.twelvedata.subscribe(["XAUUSD"], (q) => t.push(q));
+    FakeWS.all[1]!.open();
+    FakeWS.all[1]!.msg({ event: "price", price: 2000, timestamp: 1_700_000_050 });
+    expect(t[0]!.time).toBe(1_700_000_050);
+  });
+
+  it("reconnects a socket that goes silent", async () => {
+    const { sources } = setup(() => undefined);
+    await sources.binance.subscribe(["BTCUSDT"], () => undefined);
+    FakeWS.all[0]!.open();
+    await vi.advanceTimersByTimeAsync(44_000);
+    expect(FakeWS.all[0]!.closed).toBe(false);
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(FakeWS.all[0]!.closed).toBe(true);
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(FakeWS.all).toHaveLength(2);
+  });
+
+  it("a heartbeat frame keeps the socket alive", async () => {
+    const { sources } = setup(() => undefined);
+    await sources.kraken.subscribe(["BTCUSD"], () => undefined);
+    FakeWS.all[0]!.open();
+    for (let i = 0; i < 4; i += 1) {
+      await vi.advanceTimersByTimeAsync(30_000);
+      FakeWS.all[0]!.msg({ channel: "heartbeat" });
+    }
+    expect(FakeWS.all[0]!.closed).toBe(false);
+  });
+
+  it("tries the websocket again after falling back to polling", async () => {
+    const { sources } = setup(() => ({ lastPrice: "50" }));
+    await sources.binance.subscribe(["BTCUSDT"], () => undefined);
+    FakeWS.all[0]!.drop();
+    await vi.advanceTimersByTimeAsync(1000);
+    FakeWS.all[1]!.drop();
+    await vi.advanceTimersByTimeAsync(2000);
+    FakeWS.all[2]!.drop(); // now polling
+    expect(FakeWS.all).toHaveLength(3);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(FakeWS.all).toHaveLength(4);
+    FakeWS.all[3]!.msg({ e: "trade", p: "9" }); // healthy again: no more polling downgrade
+  });
+
+  it("backs off after a 429 and reports it", async () => {
+    let clock = 1_700_000_000_000;
+    const seen: Array<[string, number]> = [];
+    const fetchFn = vi.fn(() =>
+      Promise.resolve({ ok: false, status: 429, headers: new Headers({ "retry-after": "10" }), json: () => Promise.resolve({}) } as Response),
+    );
+    const { sources } = setup(() => undefined, {
+      fetch: fetchFn as unknown as typeof fetch,
+      now: () => clock,
+      onRateLimit: (id, ms) => seen.push([id, ms]),
+    });
+    expect(await sources.binance.getQuote("BTCUSDT")).toBeNull();
+    expect(seen).toEqual([["binance", 10_000]]);
+    expect(await sources.binance.getQuote("BTCUSDT")).toBeNull();
+    expect(fetchFn).toHaveBeenCalledTimes(1); // second call skipped while blocked
+    clock += 11_000;
+    await sources.binance.getQuote("BTCUSDT");
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+});
