@@ -1,7 +1,7 @@
 import type { Resolution } from "@ezyview/data-adapters";
 import type { ChartType } from "@ezyview/chart-engine";
 import type { DockTabId } from "./RightDock";
-import { buildNavCommands } from "./commandRegistry";
+import { buildNavCommands, buildSubViewCommands } from "./commandRegistry";
 import type { CommandGroup } from "./commandRegistry";
 import { RESOLUTION_GROUPS, resolutionName } from "./data";
 import type { SourceOption } from "./chartSource";
@@ -469,7 +469,7 @@ export function buildToolbarMenus(input: ToolbarMenuInput): ToolbarMenuEntries {
 
   const exportEntries: MenuEntry[] = buildExportEntries(exportApi);
 
-  const navCommands = buildNavCommands((to) => navigate(to));
+  const navCommands = [...buildNavCommands((to) => navigate(to)), ...buildSubViewCommands((to) => navigate(to))];
   const navGroup: CommandGroup = {
     title: "Go to",
     entries: navCommands.map((c) => ({ kind: "action" as const, id: c.id, label: c.label, hint: c.hint, onSelect: c.run })),

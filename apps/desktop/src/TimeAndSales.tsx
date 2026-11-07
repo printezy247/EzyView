@@ -1,11 +1,11 @@
 import { memo, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { tapeDelta } from "./depthLadder";
-import { activeChartOf } from "./layout";
 import { precisionForSymbol } from "./pricePrecision";
 import { useQuote } from "./quotePoller";
 import { useTape, EMPTY_TAPE } from "./tapeStore";
 import { useWorkspace } from "./store";
+import { selectActiveSymbol } from "./store/selectors";
 import { Button, IconButton, Select } from "./ui";
 import { Pause, Play, Trash2 } from "lucide-react";
 
@@ -54,9 +54,7 @@ const TapeRow = memo(function TapeRow({
  */
 export function TimeAndSales() {
   const navigate = useNavigate();
-  const layout = useWorkspace((s) => s.activeLayout());
-  const state = activeChartOf(layout);
-  const symbol = state.symbol;
+  const symbol = useWorkspace(selectActiveSymbol);
   const isReplay = useWorkspace((s) => s.replayBar !== null);
   const entries = useTape((s) => s.tapes[symbol] ?? EMPTY_TAPE);
   const push = useTape((s) => s.push);

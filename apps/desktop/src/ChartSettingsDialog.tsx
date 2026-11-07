@@ -9,6 +9,7 @@ import { TradingSettingsTab } from "./settings-tabs/TradingSettingsTab";
 import { AlertsSettingsTab } from "./settings-tabs/AlertsSettingsTab";
 import { EventsSettingsTab } from "./settings-tabs/EventsSettingsTab";
 import { useWorkspace } from "./store";
+import { useActiveChart } from "./store/selectors";
 import { DEFAULT_CHART_SETTINGS } from "./layout";
 import type { ChartSettings } from "./layout";
 
@@ -31,7 +32,29 @@ const TABS: { id: TabId; label: string }[] = [
 
 
 export function ChartSettingsDialog({ open, onClose }: Props) {
-  const chart = useWorkspace((s) => s.activeChart());
+  // Only the settings fields the draft is built from. A whole-chart
+  // subscription re-rendered the dialog on every drawing drag.
+  const {
+    chartSettings,
+    timezone,
+    priceScale,
+    invertScale,
+    watermark,
+    showVertGrid,
+    showHorzGrid,
+    showGrid,
+    showSessionBreaks,
+  } = useActiveChart((c) => ({
+    chartSettings: c.chartSettings,
+    timezone: c.timezone,
+    priceScale: c.priceScale,
+    invertScale: c.invertScale,
+    watermark: c.watermark,
+    showVertGrid: c.showVertGrid,
+    showHorzGrid: c.showHorzGrid,
+    showGrid: c.showGrid,
+    showSessionBreaks: c.showSessionBreaks,
+  }));
   const updateActive = useWorkspace((s) => s.updateActive);
 
   // Active tab selection
@@ -41,29 +64,29 @@ export function ChartSettingsDialog({ open, onClose }: Props) {
   // Local draft of settings; initialized from chart state or defaults
   const [draft, setDraft] = useState<ChartSettings>(() => ({
     ...DEFAULT_CHART_SETTINGS,
-    ...chart.chartSettings,
+    ...chartSettings,
     symbol: {
       ...DEFAULT_CHART_SETTINGS.symbol,
-      ...chart.chartSettings?.symbol,
-      timezone: chart.timezone ?? DEFAULT_CHART_SETTINGS.symbol.timezone,
+      ...chartSettings?.symbol,
+      timezone: timezone ?? DEFAULT_CHART_SETTINGS.symbol.timezone,
     },
     scales: {
       ...DEFAULT_CHART_SETTINGS.scales,
-      ...chart.chartSettings?.scales,
-      priceScaleMode: chart.priceScale ?? DEFAULT_CHART_SETTINGS.scales.priceScaleMode,
-      invertScale: chart.invertScale ?? DEFAULT_CHART_SETTINGS.scales.invertScale,
+      ...chartSettings?.scales,
+      priceScaleMode: priceScale ?? DEFAULT_CHART_SETTINGS.scales.priceScaleMode,
+      invertScale: invertScale ?? DEFAULT_CHART_SETTINGS.scales.invertScale,
     },
     canvas: {
       ...DEFAULT_CHART_SETTINGS.canvas,
-      ...chart.chartSettings?.canvas,
-      watermark: chart.watermark ?? DEFAULT_CHART_SETTINGS.canvas.watermark,
-      vertGridLines: chart.showVertGrid ?? chart.chartSettings?.canvas.vertGridLines ?? chart.showGrid,
-      horzGridLines: chart.showHorzGrid ?? chart.chartSettings?.canvas.horzGridLines ?? chart.showGrid,
+      ...chartSettings?.canvas,
+      watermark: watermark ?? DEFAULT_CHART_SETTINGS.canvas.watermark,
+      vertGridLines: showVertGrid ?? chartSettings?.canvas.vertGridLines ?? showGrid,
+      horzGridLines: showHorzGrid ?? chartSettings?.canvas.horzGridLines ?? showGrid,
     },
     events: {
       ...DEFAULT_CHART_SETTINGS.events,
-      ...chart.chartSettings?.events,
-      showSessionBreaks: chart.showSessionBreaks ?? DEFAULT_CHART_SETTINGS.events.showSessionBreaks,
+      ...chartSettings?.events,
+      showSessionBreaks: showSessionBreaks ?? DEFAULT_CHART_SETTINGS.events.showSessionBreaks,
     },
   }));
 

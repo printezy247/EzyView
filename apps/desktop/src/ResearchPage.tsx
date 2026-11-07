@@ -3,18 +3,15 @@ import { useNavigate, useSearchParams } from "react-router";
 import { activeChartOf } from "./layout";
 import { useWorkspace } from "./store";
 import { Button, Tabs } from "./ui";
+import { SECTION_TABS } from "./sectionTabs";
+import { resolveTabParam } from "./tabUrl";
 
 const FundamentalsPanel = lazy(() => import("./FundamentalsPanel").then((m) => ({ default: m.FundamentalsPanel })));
 const OptionsPanel = lazy(() => import("./OptionsPanel").then((m) => ({ default: m.OptionsPanel })));
 
 type Tab = "fundamentals" | "options" | "calendar" | "news";
 
-const TABS: { id: Tab; label: string; hint: string }[] = [
-  { id: "fundamentals", label: "Fundamentals", hint: "Financials, screener and company profile" },
-  { id: "options", label: "Options", hint: "Chain, greeks and expiry payoff" },
-  { id: "calendar", label: "Calendar", hint: "Economic events and earnings dates" },
-  { id: "news", label: "News", hint: "Headlines for the active symbol" },
-];
+const { defaultTab, tabs: TABS } = SECTION_TABS.research!;
 
 /**
  * Research destination: the panels that used to be separate routes
@@ -28,8 +25,7 @@ export function ResearchPage() {
   const state = activeChartOf(layout);
   const setSymbol = useWorkspace((s) => s.setSymbol);
   const [params, setParams] = useSearchParams();
-  const requested = TABS.find((t) => t.id === params.get("tab"))?.id;
-  const tab: Tab = requested ?? "fundamentals";
+  const tab = resolveTabParam(params.get("tab"), TABS.map((t) => t.id), defaultTab) as Tab;
 
   return (
     <section aria-label="Research" className="flex min-h-0 flex-1 flex-col text-base">
@@ -37,7 +33,7 @@ export function ResearchPage() {
         <Tabs
           label="Research views"
           value={tab}
-          onChange={(id) => setParams(id === "fundamentals" ? {} : { tab: id as Tab }, { replace: true })}
+          onChange={(id) => setParams(id === defaultTab ? {} : { tab: id }, { replace: true })}
           items={TABS.map((t) => ({ id: t.id, label: t.label, title: t.hint }))}
         />
         <span className="ml-auto flex items-center gap-2">

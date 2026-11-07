@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useWorkspace } from "./store";
+import { selectActiveDrawingCount, selectActiveSymbol } from "./store/selectors";
 import { RightDock } from "./RightDock";
 import type { DockTab, DockTabId } from "./RightDock";
 import { Watchlist } from "./Watchlist";
@@ -20,8 +21,8 @@ interface Props {
  * page so the page itself only composes regions, not panel wiring.
  */
 export function ChartDock({ active, onSelect, onOpenAlerts }: Props) {
-  const symbol = useWorkspace((s) => s.activeChart().symbol);
-  const drawingCount = useWorkspace((s) => s.activeChart().drawings.length);
+  const symbol = useWorkspace(selectActiveSymbol);
+  const drawingCount = useWorkspace(selectActiveDrawingCount);
 
   const tabs = useMemo<DockTab[]>(
     () => [

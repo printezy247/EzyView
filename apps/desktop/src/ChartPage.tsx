@@ -11,11 +11,12 @@ import { ReplayBar } from "./ReplayBar";
 import type { DockTabId } from "./RightDock";
 import { ChartDock } from "./ChartDock";
 import { TradingPanel } from "./TradingPanel";
-import { activeChartOf } from "./layout";
 import { groupsInUse, linkGroupOf } from "./linkGroups";
 import { LinkGroupDialog } from "./LinkGroupDialog";
 import { RESOLUTION_SECONDS, safeHistory } from "./data";
+import { useShallow } from "zustand/react/shallow";
 import { useWorkspace } from "./store";
+import { selectActiveChartIndex, useActiveChart } from "./store/selectors";
 import { themeColors } from "@ezyview/brand";
 import { useTrading, useTradingTicks } from "./trading";
 import { useApiKeys } from "./apiKeys";
@@ -62,8 +63,21 @@ export function ChartPage({
   onOpenHotkeys,
   onOpenSettings,
 }: ChartPageProps) {
-  const layout = useWorkspace((s) => s.activeLayout());
-  const state = activeChartOf(layout);
+  // The chart page reads the focused cell's fields, not the whole layout: a
+  // drawing drag replaces the layout object on every pointer move, and a page
+  // subscribed to it would re-render its entire tree on every frame.
+  const state = useActiveChart((c) => ({
+    symbol: c.symbol,
+    resolution: c.resolution,
+    theme: c.theme,
+    dataSource: c.dataSource,
+    linkGroup: c.linkGroup,
+  }));
+  const activeChartIndex = useWorkspace(selectActiveChartIndex);
+  const selectedDrawingId = useWorkspace((s) => s.selectedDrawingId);
+  // The link-group names change only when a cell's group changes, so the
+  // list is compared element by element rather than by reference.
+  const linkGroupsInUse = useWorkspace(useShallow((s) => groupsInUse(s.activeLayout().charts)));
   const setLinkGroup = useWorkspace((s) => s.setLinkGroup);
   const setActiveChart = useWorkspace((s) => s.setActiveChart);
   const setSymbol = useWorkspace((s) => s.setSymbol);
@@ -145,14 +159,17 @@ export function ChartPage({
   // must not leave the floating bar editing a drawing that is off-screen.
   useEffect(() => {
     setDrawingBox(null);
-  }, [layout.activeChart]);
+  }, [activeChartIndex]);
 
   useEffect(() => {
-    const st = useWorkspace.getState();
-    if (st.selectedDrawingId && !state.drawings.some((d) => d.id === st.selectedDrawingId)) {
-      st.selectDrawing(null);
+    if (!selectedDrawingId) return;
+    // The drawings are read imperatively: the page must not subscribe to
+    // them, or a drawing drag would re-render the whole page every frame.
+    const drawings = useWorkspace.getState().activeChart().drawings;
+    if (!drawings.some((d) => d.id === selectedDrawingId)) {
+      useWorkspace.getState().selectDrawing(null);
     }
-  }, [layout.activeChart, state.drawings]);
+  }, [activeChartIndex, selectedDrawingId]);
 
   // Where the pointer last was on the focused chart; Ctrl+V pastes there.
   const lastCursorRef = useRef<{ time: number; price: number } | null>(null);
@@ -431,7 +448,6 @@ export function ChartPage({
 
         <main aria-label="Charts" className="relative min-w-0 flex-1">
           <ChartGrid
-            layout={layout}
             replayBar={replayBar}
             linesFor={linesFor}
             draggableLevelsFor={draggableLevelsFor}
@@ -498,8 +514,8 @@ export function ChartPage({
       {linkGroupOpen && (
         <LinkGroupDialog
           open
-          current={linkGroupOf(state)}
-          available={groupsInUse(layout.charts)}
+          current={linkGroupOf({ linkGroup: state.linkGroup })}
+          available={linkGroupsInUse}
           onPick={setLinkGroup}
           onClose={() => setLinkGroupOpen(false)}
         />

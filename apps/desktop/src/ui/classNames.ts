@@ -159,7 +159,7 @@ export function shellToolClass(options: { active?: boolean; className?: ClassVal
     "relative flex size-8 shrink-0 items-center justify-center rounded text-ev-muted transition",
     "hover:bg-ev-raised hover:text-ev-strong",
     "focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
-    options.active ? "bg-ev-raised text-ev-strong" : "",
+    options.active ? "ev-active-tool" : "",
     options.className,
   );
 }

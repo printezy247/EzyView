@@ -1,8 +1,8 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import type { Candle } from "@ezyview/data-adapters";
-import { activeChartOf } from "./layout";
 import { useWorkspace } from "./store";
+import { useActiveChart } from "./store/selectors";
 import { loadHistory } from "./data";
 
 const PineEditor = lazy(() => import("./PineEditor").then((m) => ({ default: m.PineEditor })));
@@ -14,15 +14,18 @@ const PineEditor = lazy(() => import("./PineEditor").then((m) => ({ default: m.P
  */
 export function StrategiesPage() {
   const navigate = useNavigate();
-  const layout = useWorkspace((s) => s.activeLayout());
-  const state = activeChartOf(layout);
+  const { symbol, resolution, theme: chartTheme } = useActiveChart((c) => ({
+    symbol: c.symbol,
+    resolution: c.resolution,
+    theme: c.theme,
+  }));
   const appTheme = useWorkspace((s) => s.appTheme);
-  const uiTheme: "dark" | "light" | "tokyo" = appTheme === "auto" ? state.theme : appTheme;
+  const uiTheme: "dark" | "light" | "tokyo" = appTheme === "auto" ? chartTheme : appTheme;
   const [bars, setBars] = useState<Candle[]>([]);
 
   useEffect(() => {
     let cancelled = false;
-    void loadHistory(state.symbol, state.resolution)
+    void loadHistory(symbol, resolution)
       .then((candles) => {
         if (!cancelled) setBars(candles);
       })
@@ -32,11 +35,11 @@ export function StrategiesPage() {
     return () => {
       cancelled = true;
     };
-  }, [state.symbol, state.resolution]);
+  }, [symbol, resolution]);
 
   return (
     <Suspense fallback={<div className="flex flex-1 items-center justify-center text-dense text-ev-muted">Loading Pine Editor…</div>}>
-      <PineEditor onClose={() => navigate("/chart")} bars={bars} symbol={state.symbol} uiTheme={uiTheme} />
+      <PineEditor onClose={() => navigate("/chart")} bars={bars} symbol={symbol} uiTheme={uiTheme} />
     </Suspense>
   );
 }

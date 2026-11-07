@@ -10,6 +10,7 @@ import { getActiveExportSource } from "./exportBridge";
 import { draftSideForPrice, useOrderDraft } from "./orderDraft";
 import { DEFAULT_DRAWING_STYLE, getDrawingLevels, priceAt } from "@ezyview/drawing-tools";
 import { uid, useWorkspace } from "./store";
+import { activeChartOf } from "./layout";
 import { linkGroupOf } from "./linkGroups";
 import { applyDrawingTemplate, listDrawingTemplates, saveDrawingTemplate } from "./drawingTemplates";
 import { useDrawingUi } from "./drawingUi";
@@ -66,7 +67,10 @@ export function ChartMenuHost({
   // Only the focused chart and the actions the menu calls: a whole-store
   // subscription re-rendered the menu on every quote tick and drawing drag.
   const {
-    chart,
+    symbol,
+    drawings,
+    indicators,
+    linkGroup,
     alerts,
     drawingClipboard,
     chartTemplates,
@@ -84,7 +88,10 @@ export function ChartMenuHost({
     moveDrawing,
   } = useWorkspace(
     useShallow((s) => ({
-      chart: s.activeChart(),
+      symbol: activeChartOf(s.activeLayout()).symbol,
+      drawings: activeChartOf(s.activeLayout()).drawings,
+      indicators: activeChartOf(s.activeLayout()).indicators,
+      linkGroup: activeChartOf(s.activeLayout()).linkGroup,
       alerts: s.alerts,
       drawingClipboard: s.drawingClipboard,
       chartTemplates: s.chartTemplates,
@@ -107,7 +114,7 @@ export function ChartMenuHost({
 
   const prefill = (side: "buy" | "sell", type: "limit" | "stop") => {
     if (!tradingOpen) onToggleTrading();
-    useOrderDraft.getState().setDraft({ symbol: chart.symbol, side, type, price: price.toFixed(precision) });
+    useOrderDraft.getState().setDraft({ symbol: symbol, side, type, price: price.toFixed(precision) });
   };
 
   const actions: ChartMenuActions = {
@@ -117,16 +124,16 @@ export function ChartMenuHost({
     },
     paste: () => pasteDrawing({ time, price }),
     addAlert: () =>
-      addAlert(chart.symbol, { kind: "crossing", value: Number(price.toFixed(precision)) }, "once", `${chart.symbol} crossing ${price.toFixed(precision)}`),
+      addAlert(symbol, { kind: "crossing", value: Number(price.toFixed(precision)) }, "once", `${symbol} crossing ${price.toFixed(precision)}`),
     sellLimit: () => prefill("sell", "limit"),
     buyStop: () => prefill("buy", "stop"),
     addOrder: () => prefill(draftSideForPrice(price, getActiveExportSource()?.getCandles().at(-1)?.close ?? null), "limit"),
     toggleCursorLock: () => {
-      const existing = chart.drawings.find((d) => d.name === LOCK_NAME);
+      const existing = drawings.find((d) => d.name === LOCK_NAME);
       if (existing) deleteDrawing(existing.id);
       else
         setDrawings([
-          ...chart.drawings,
+          ...drawings,
           { id: uid(), tool: "vertical_line", points: [{ time, price }], style: { ...DEFAULT_DRAWING_STYLE }, name: LOCK_NAME },
         ]);
     },
@@ -143,7 +150,7 @@ export function ChartMenuHost({
 
   // A right-click on a drawing gets its own section; the rest of the chart
   // menu still follows, so nothing is lost when the target is a shape.
-  const target = request.drawingId ? chart.drawings.find((d) => d.id === request.drawingId) : undefined;
+  const target = request.drawingId ? drawings.find((d) => d.id === request.drawingId) : undefined;
   const levels = target ? getDrawingLevels(target, request.time) : [];
   const targetLevel = levels[0];
   const levelPrice = targetLevel?.price ?? (target ? (priceAt(target, request.time) ?? target.points[0]?.price) : undefined);
@@ -162,7 +169,7 @@ export function ChartMenuHost({
           addAlert: () => {
             if (levelPrice === undefined) return;
             addAlert(
-              chart.symbol,
+              symbol,
               { kind: "crossing", value: levelPrice },
               "once_per_bar_close",
               `${drawingLabel(target)} @ ${levelPrice.toFixed(precision)}`,
@@ -183,17 +190,17 @@ export function ChartMenuHost({
     : undefined;
 
   const entries = buildChartMenu({
-    symbol: chart.symbol,
+    symbol: symbol,
     price,
     precision,
     mt5: brokerFeed(),
     hasClipboard: drawingClipboard !== null,
-    cursorLocked: chart.drawings.some((d) => d.name === LOCK_NAME),
+    cursorLocked: drawings.some((d) => d.name === LOCK_NAME),
     objectTreeOpen: dockTab === "objects",
-    indicators: chart.indicators.map((i) => ({ uid: i.uid, name: i.name ?? i.def.name })),
+    indicators: indicators.map((i) => ({ uid: i.uid, name: i.name ?? i.def.name })),
     templates: chartTemplates.map((t) => ({ id: t.id, name: t.name })),
     eventOptions: eventOptions,
-    linkGroup: linkGroupOf(chart),
+    linkGroup: linkGroupOf({ linkGroup }),
     ...(drawing ? { drawing } : {}),
     actions,
   });

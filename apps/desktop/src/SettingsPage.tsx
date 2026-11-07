@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
-import { activeChartOf } from "./layout";
 import { useWorkspace } from "./store";
+import { selectActiveChartTheme } from "./store/selectors";
 import { useMt5 } from "./mt5";
 import { useApiKeys } from "./apiKeys";
 import { EventsControls } from "./EventsControls";
@@ -10,6 +10,8 @@ import { DiagnosticsTab } from "./DiagnosticsTab";
 import { AuditTab, BrokerTab, ConnectionTab, SafetyTab } from "./Mt5Setup";
 import { downloadBlob } from "./exportUi";
 import { Button, RadioGroup, Tabs } from "./ui";
+import { SECTION_TABS } from "./sectionTabs";
+import { resolveTabParam } from "./tabUrl";
 import {
   applyWorkspaceBackup,
   dismissParkedCorrupt,
@@ -22,16 +24,7 @@ import {
 
 type Tab = "connection" | "broker" | "safety" | "audit" | "data" | "appearance" | "desktop" | "diagnostics";
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: "connection", label: "Connection" },
-  { id: "broker", label: "Broker" },
-  { id: "safety", label: "Safety" },
-  { id: "audit", label: "Audit" },
-  { id: "data", label: "Data" },
-  { id: "appearance", label: "Appearance" },
-  { id: "desktop", label: "Desktop" },
-  { id: "diagnostics", label: "Diagnostics" },
-];
+const { defaultTab, tabs: TABS } = SECTION_TABS.settings!;
 
 /**
  * Backup / restore card for the Data tab.
@@ -164,18 +157,17 @@ export function BackupsSection() {
 export function SettingsPage() {
   const settings = useMt5((s) => s.settings);
   const save = useMt5((s) => s.save);
-  const layout = useWorkspace((s) => s.activeLayout());
   const updateActive = useWorkspace((s) => s.updateActive);
-  const theme = activeChartOf(layout).theme;
+  const theme = useWorkspace(selectActiveChartTheme);
   const appTheme = useWorkspace((s) => s.appTheme);
   const setAppTheme = useWorkspace((s) => s.setAppTheme);
   const density = useWorkspace((s) => s.density);
   const setDensity = useWorkspace((s) => s.setDensity);
   const openDialog = useApiKeys((s) => s.openDialog);
   // `?tab=appearance` deep-links a section (the chart's right-click "Settings…").
-  const [params] = useSearchParams();
-  const requested = TABS.find((t) => t.id === params.get("tab"))?.id;
-  const [tab, setTab] = useState<Tab>(requested ?? "connection");
+  const [params, setParams] = useSearchParams();
+  const tab = resolveTabParam(params.get("tab"), TABS.map((t) => t.id), defaultTab) as Tab;
+  const setTab = (next: string) => setParams(next === defaultTab ? {} : { tab: next }, { replace: true });
   const [busy, setBusy] = useState(false);
 
   return (
@@ -185,7 +177,7 @@ export function SettingsPage() {
       </div>
 
       <div className="border-b border-ev-raised px-4 py-2">
-        <Tabs label="Settings sections" items={TABS} value={tab} onChange={(v) => setTab(v as Tab)} />
+        <Tabs label="Settings sections" items={TABS} value={tab} onChange={setTab} />
       </div>
 
       <div className="max-w-2xl p-4">

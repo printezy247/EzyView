@@ -17,6 +17,7 @@ import { useNavigate } from "react-router";
 import { Menu } from "./Menu";
 import type { MenuEntry } from "./Menu";
 import { useWorkspace } from "./store";
+import { useActiveChart } from "./store/selectors";
 import { notice } from "./notice";
 import { linkGroupOf } from "./linkGroups";
 import { openChartWindow } from "./windows";
@@ -52,7 +53,12 @@ export function TabBar() {
   const deleteLayout = useWorkspace((s) => s.deleteLayout);
   const renameLayout = useWorkspace((s) => s.renameLayout);
   const sortLayouts = useWorkspace((s) => s.sortLayouts);
-  const activeChart = useWorkspace((s) => s.activeChart());
+  const activeChart = useActiveChart((c) => ({
+    theme: c.theme,
+    symbol: c.symbol,
+    resolution: c.resolution,
+    linkGroup: c.linkGroup,
+  }));
   const setLinkGroup = useWorkspace((s) => s.setLinkGroup);
   const crosshairSync = useWorkspace((s) => s.crosshairSync);
   const setCrosshairSync = useWorkspace((s) => s.setCrosshairSync);
@@ -62,7 +68,7 @@ export function TabBar() {
   const [draftName, setDraftName] = useState("");
   const [tipIndex, setTipIndex] = useState(0);
 
-  const currentLink = linkGroupOf(activeChart);
+  const currentLink = linkGroupOf({ linkGroup: activeChart.linkGroup });
   const linkColorHex = LINK_COLORS.find((c) => c.id === currentLink)?.hex ?? "#2962ff";
 
   const startRename = (id: string, current: string) => {
@@ -83,7 +89,7 @@ export function TabBar() {
   };
 
   return (
-    <div className={`flex ${SHELL_BAR_HEIGHT} shrink-0 items-center gap-1 border-b border-ev-raised bg-ev-chrome px-2`}>
+    <div className={`flex ${SHELL_BAR_HEIGHT} shrink-0 items-center gap-1 ev-bar border-b border-ev-raised bg-ev-chrome px-2`}>
       {/* Browser/Desktop history navigation controls */}
       <div className="mr-1 flex items-center gap-0.5">
         <IconButton label="Go back" size="sm" onClick={() => window.history.back()}>
