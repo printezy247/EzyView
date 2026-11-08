@@ -1,10 +1,12 @@
 // @vitest-environment happy-dom
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 
 import { NavRail } from "./NavRail";
 import { NAV_SECTIONS } from "./nav";
+import { useNavRail } from "./navRail";
 
 /**
  * Render test for the navigation rail.
@@ -24,6 +26,15 @@ const linkFor = (to: string): HTMLAnchorElement => {
   if (!link) throw new Error(`no link to ${to}`);
   return link;
 };
+
+const toggle = (): HTMLButtonElement => screen.getByRole("button", { name: /expand|collapse/i });
+
+beforeEach(() => {
+  localStorage.clear();
+  // The expanded state lives in a store, so it outlives the component and has
+  // to be reset explicitly between cases.
+  useNavRail.setState({ expanded: false });
+});
 
 describe("NavRail", () => {
   it("renders every section of the table", () => {
@@ -69,6 +80,65 @@ describe("NavRail", () => {
     );
     for (const section of NAV_SECTIONS) {
       expect(linkFor(section.to).getAttribute("title")).toContain(section.description);
+    }
+  });
+});
+
+describe("NavRail expanded state", () => {
+  it("starts collapsed, with the toggle saying so", () => {
+    render(
+      <MemoryRouter>
+        <NavRail />
+      </MemoryRouter>,
+    );
+    expect(toggle().getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("expands on toggle and shows each section's label next to its icon", async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <NavRail />
+      </MemoryRouter>,
+    );
+    await user.click(toggle());
+    expect(toggle().getAttribute("aria-expanded")).toBe("true");
+    // In the expanded rail the label is a visible text node, not just the
+    // screen-reader copy, so there is exactly one of each.
+    for (const section of NAV_SECTIONS) {
+      expect(screen.getAllByText(section.label).length, section.key).toBeGreaterThan(0);
+    }
+  });
+
+  it("remembers the expanded state across a remount", async () => {
+    const user = userEvent.setup();
+    const first = render(
+      <MemoryRouter>
+        <NavRail />
+      </MemoryRouter>,
+    );
+    await user.click(toggle());
+    expect(toggle().getAttribute("aria-expanded")).toBe("true");
+    first.unmount();
+
+    render(
+      <MemoryRouter>
+        <NavRail />
+      </MemoryRouter>,
+    );
+    expect(toggle().getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("keeps the same links when expanded, so nothing becomes unreachable", async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <NavRail />
+      </MemoryRouter>,
+    );
+    await user.click(toggle());
+    for (const section of NAV_SECTIONS) {
+      expect(linkFor(section.to), section.key).toBeTruthy();
     }
   });
 });

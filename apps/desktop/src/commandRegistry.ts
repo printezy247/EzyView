@@ -1,5 +1,7 @@
 import type { MenuEntry } from "./Menu";
 import { NAV_SECTIONS } from "./nav";
+import { sectionTabsFor } from "./sectionTabs";
+import { tabHref } from "./tabUrl";
 
 /**
  * The command registry: one declaration per feature, rendered by every surface
@@ -74,4 +76,33 @@ export function buildNavCommands(navigate: (to: string) => void = () => {}): Com
     on: false,
     run: () => navigate(section.to),
   }));
+}
+
+/**
+ * "Go to <section> → <view>" commands.
+ *
+ * The section commands above only reach a page's first view, so "Markets"
+ * always meant the watchlists. These reach the second level of the
+ * navigation too, which is what makes a shared deep link findable from
+ * inside the app and not only from outside it.
+ */
+export function buildSubViewCommands(navigate: (to: string) => void = () => {}): Command[] {
+  const out: Command[] = [];
+  for (const section of NAV_SECTIONS) {
+    const tables = sectionTabsFor(section.to);
+    if (!tables) continue;
+    for (const tab of tables.tabs) {
+      const href = tabHref(tables.path, tab.id, tables.defaultTab);
+      out.push({
+        key: `Go to:${href}`,
+        group: "Go to",
+        id: href,
+        label: `${section.label} → ${tab.label}`,
+        hint: tab.hint,
+        on: false,
+        run: () => navigate(href),
+      });
+    }
+  }
+  return out;
 }

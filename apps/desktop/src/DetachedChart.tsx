@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import type { Resolution } from "@ezyview/data-adapters";
 import { ChartHost } from "./ChartHost";
 import { publishCrosshair, subscribeCrosshair } from "./crosshairBus";
@@ -14,10 +15,25 @@ interface Props {
 /** A single chart for a secondary window. Syncs theme and matching chart layers from the workspace. */
 export function DetachedChart({ symbol, resolution: initial }: Props) {
   const [resolution, setResolution] = useState<Resolution>(initial);
-  const layout = useWorkspace((s) => s.activeLayout());
   const appTheme = useWorkspace((s) => s.appTheme);
-  const matchingChart = layout.charts.find((c) => c.symbol === symbol) ?? layout.charts[0];
-  const chartTheme = appTheme === "auto" ? (matchingChart?.theme ?? "dark") : appTheme;
+  // Only the layers of the chart that matches this window's symbol. A
+  // whole-layout subscription re-rendered the detached window on every edit
+  // to any other cell.
+  const layers = useWorkspace(
+    useShallow((s) => {
+      const charts = s.activeLayout().charts;
+      const c = charts.find((x) => x.symbol === symbol) ?? charts[0];
+      return {
+        chartType: c?.chartType ?? "candles",
+        showVolume: c?.showVolume ?? true,
+        showGrid: c?.showGrid ?? true,
+        theme: c?.theme ?? "dark",
+        indicators: c?.indicators ?? [],
+        drawings: c?.symbol === symbol ? c.drawings : [],
+      };
+    }),
+  );
+  const chartTheme = appTheme === "auto" ? layers.theme : appTheme;
   // Mirror the main window's pointer when it is on this symbol; publish ours back.
   // Publish only while the pointer is really on this chart (a mirrored crosshair
   // fires move events too, and echoing them would loop between windows), and
@@ -71,12 +87,12 @@ export function DetachedChart({ symbol, resolution: initial }: Props) {
         <ChartHost
           symbol={symbol}
           resolution={resolution}
-          chartType={matchingChart?.chartType ?? "candles"}
-          showVolume={matchingChart?.showVolume ?? true}
-          showGrid={matchingChart?.showGrid ?? true}
+          chartType={layers.chartType}
+          showVolume={layers.showVolume}
+          showGrid={layers.showGrid}
           theme={chartTheme}
-          indicators={matchingChart?.indicators ?? []}
-          drawings={matchingChart?.symbol === symbol ? matchingChart.drawings : []}
+          indicators={layers.indicators}
+          drawings={layers.drawings}
           syncCrosshair={hovering ? null : remote}
           onCrosshairMove={(t, p) => {
             if (hovering) publishCrosshair(symbol, t, p);

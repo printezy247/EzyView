@@ -14,10 +14,13 @@ import { JournalPropFirmBar } from "./JournalPropFirmBar";
 import { JournalReviews } from "./JournalReviews";
 import { JournalStatsView } from "./JournalStatsView";
 import { VirtualList } from "./VirtualList";
-import { Button, Checkbox, IconButton, Input, Tabs, chipClass } from "./ui";
+import { Button, Checkbox, EmptyState, IconButton, Input, Tabs, chipClass } from "./ui";
 
 interface Props {
   onClose: () => void;
+  /** The view to show. Owned by the page, so it lives in the URL. */
+  tab: JournalTabId;
+  onTabChange: (tab: JournalTabId) => void;
 }
 
 interface Row {
@@ -26,12 +29,12 @@ interface Row {
   node: ReactNode;
 }
 
-type Tab = "feed" | "plans" | "calendar" | "stats" | "reviews";
+export type JournalTabId = "feed" | "plans" | "calendar" | "stats" | "reviews";
 
 /** Account-aware filter options: every capture source plus "any". */
 const SOURCES: readonly (JournalEntry["source"] | "any")[] = ["any", "manual", "mt5", "ccxt", "alpaca", "paper"];
 
-const TABS: readonly { id: Tab; label: string }[] = [
+const TABS: readonly { id: JournalTabId; label: string }[] = [
   { id: "feed", label: "Feed" },
   { id: "plans", label: "Plans" },
   { id: "calendar", label: "Calendar" },
@@ -66,7 +69,7 @@ function exportCsv(): void {
  * Feed rows mix deal history and notes; the other tabs (calendar heatmap,
  * stats, review composer) read the same entries so every number agrees.
  */
-export function JournalPanel({ onClose }: Props) {
+export function JournalPanel({ onClose, tab, onTabChange }: Props) {
   const entries = useJournal((s) => s.entries);
   const notes = useJournal((s) => s.notes);
   const query = useJournal((s) => s.query);
@@ -84,7 +87,6 @@ export function JournalPanel({ onClose }: Props) {
   const deals = useTrading((s) => s.deals);
   const source = useMt5((s) => s.source);
 
-  const [tab, setTab] = useState<Tab>("feed");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState(() => dateKey(Math.floor(Date.now() / 1000)));
 
@@ -189,7 +191,7 @@ export function JournalPanel({ onClose }: Props) {
       <header className="flex h-8 shrink-0 items-center gap-3 border-b border-ev-raised px-3 text-dense">
         <span className="font-semibold uppercase tracking-wider text-ev-muted">Journal</span>
 
-        <Tabs label="Journal views" items={TABS} value={tab} onChange={(v) => setTab(v as typeof tab)} />
+        <Tabs label="Journal views" items={TABS} value={tab} onChange={(v) => onTabChange(v as JournalTabId)} />
 
         <dl className="flex items-center gap-3 num">
           <Fact label="Net" value={money(stats.netPnl)} tone={stats.netPnl >= 0 ? "text-ev-up-text" : "text-ev-down-text"} />
@@ -330,9 +332,11 @@ export function JournalPanel({ onClose }: Props) {
             )}
 
             {rows.length === 0 ? (
-              <p className="px-4 py-6 text-base text-ev-faint">
-                Nothing here yet — take a note, import your closed trades, or add a manual entry.
-              </p>
+              <EmptyState
+                title="Nothing here yet"
+                body="Take a note on a trade, import closed trades from a broker export, or add a manual entry — the journal only learns from what you put in it."
+                hint="The AI coach reads these entries; an empty journal gives it nothing to work with."
+              />
             ) : (
               <VirtualList
                 items={rows}

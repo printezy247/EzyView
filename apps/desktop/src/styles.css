@@ -360,3 +360,74 @@ button[aria-disabled="true"] {
 .flash-down {
   animation: price-flash-down 900ms ease-out;
 }
+
+/*
+ * Route-change fade. Keyed on the section in RouteShell; the reduced-motion
+ * rule above removes the animation too, so this is a state of intent.
+ */
+@keyframes ev-route-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/*
+ * Premium chrome.
+ *
+ * The shell chrome (tab bar, toolbar, breadcrumb bar, rail, footer) is the
+ * darkest surface in the app, and below each bar sits a page one step
+ * lighter. A hard edge between the two reads as a cut; a hairline highlight
+ * on the light side plus a few pixels of soft shadow reads as a raised
+ * strip, which is how a premium app separates a toolbar from its content
+ * without spending colour on it.
+ */
+
+/* Raised strip over the page below it. */
+.ev-bar {
+  box-shadow:
+    inset 0 1px 0 0 color-mix(in srgb, var(--ev-strong) 6%, transparent),
+    0 2px 6px -2px color-mix(in srgb, var(--ev-bg) 70%, transparent);
+}
+
+/* Raised strip under the page above it (the footer). */
+.ev-bar-below {
+  box-shadow:
+    inset 0 -1px 0 0 color-mix(in srgb, var(--ev-strong) 6%, transparent),
+    0 -2px 6px -2px color-mix(in srgb, var(--ev-bg) 70%, transparent);
+}
+
+/*
+ * The active rail item. A flat fill and a leading bar compete for the eye;
+ * a tinted surface with the bar is how the current destination is marked
+ * without either one having to be loud.
+ */
+.ev-active-tool {
+  background: color-mix(in srgb, var(--ev-accent) 14%, var(--ev-raised));
+  color: var(--ev-strong);
+}
+
+.ev-active-tool:hover {
+  background: color-mix(in srgb, var(--ev-accent) 20%, var(--ev-raised));
+}
+
+/*
+ * Panel edge for the left and right rails: a hairline highlight on the inner
+ * edge plus a short shadow, the same raised-strip language as the top bars
+ * but running vertically.
+ */
+.ev-panel-edge {
+  box-shadow:
+    inset -1px 0 0 0 color-mix(in srgb, var(--ev-strong) 6%, transparent),
+    2px 0 6px -2px color-mix(in srgb, var(--ev-bg) 70%, transparent);
+}
+
+.ev-panel-edge-right {
+  box-shadow:
+    inset 1px 0 0 0 color-mix(in srgb, var(--ev-strong) 6%, transparent),
+    -2px 0 6px -2px color-mix(in srgb, var(--ev-bg) 70%, transparent);
+}

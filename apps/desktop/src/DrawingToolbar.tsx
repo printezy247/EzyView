@@ -20,6 +20,7 @@ import {
 import { ALL_TOOLS, TOOL_CATEGORIES, toolSpec } from "@ezyview/drawing-tools";
 import type { DrawingToolCategory, DrawingToolId, MagnetMode } from "@ezyview/drawing-tools";
 import { useWorkspace } from "./store";
+import { selectActiveDrawingCount, selectActiveIndicatorCount } from "./store/selectors";
 import { useDrawingUi } from "./drawingUi";
 import { notice } from "./notice";
 import { TOOL_ICONS } from "./drawingToolIcons";
@@ -61,8 +62,8 @@ export function DrawingToolbar() {
   const redoDrawing = useWorkspace((s) => s.redoDrawing);
   const setDrawings = useWorkspace((s) => s.setDrawings);
   const clearIndicators = useWorkspace((s) => s.clearIndicators);
-  const drawingCount = useWorkspace((s) => s.activeChart().drawings.length);
-  const indicatorCount = useWorkspace((s) => s.activeChart().indicators.length);
+  const drawingCount = useWorkspace(selectActiveDrawingCount);
+  const indicatorCount = useWorkspace(selectActiveIndicatorCount);
   const canUndo = useWorkspace((s) => s.drawingUndo.length > 0);
   const canRedo = useWorkspace((s) => s.drawingRedo.length > 0);
   const magnet = useWorkspace((s) => s.magnet);

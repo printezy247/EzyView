@@ -1,5 +1,5 @@
 import type { Resolution } from "@ezyview/data-adapters";
-import { useSyncExternalStore, useState } from "react";
+import { useMemo, useSyncExternalStore, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useLocation, useNavigate } from "react-router";
 import {
@@ -166,20 +166,11 @@ export function Toolbar(props: Props) {
     },
   };
 
-  const {
-    intervalEntries,
-    typeEntries,
-    sourceEntries,
-    quickSymbols,
-    templateEntries,
-    gridEntries,
-    studyEntries,
-    analysisEntries,
-    tradeEntries,
-    viewEntries,
-    exportEntries,
-    groups,
-  } = buildToolbarMenus({
+  // The menu rows are rebuilt only when something they depend on changes.
+  // The toolbar re-renders whenever the chart store moves — a quote tick, a
+  // drawing drag — and rebuilding ~150 rows each time was the quiet tax on
+  // every frame. The input is a single object, so the memo keys on it.
+  const menuInput = {
     chart,
     actions,
     magnet,
@@ -204,13 +195,27 @@ export function Toolbar(props: Props) {
     navigate,
     setPaletteOpen,
     setIntervalOpen,
-  });
+  };
+  const {
+    intervalEntries,
+    typeEntries,
+    sourceEntries,
+    quickSymbols,
+    templateEntries,
+    gridEntries,
+    studyEntries,
+    analysisEntries,
+    tradeEntries,
+    viewEntries,
+    exportEntries,
+    groups,
+  } = useMemo(() => buildToolbarMenus(menuInput), [menuInput]);
 
   const tradeOpen = props.tradingOpen || props.dockTab === "depth";
   const analysisOpen = replayActive;
 
   return (
-    <div className={`flex ${SHELL_BAR_HEIGHT} shrink-0 items-center gap-0.5 overflow-x-auto border-b border-ev-raised px-2`}>
+    <div className={`ev-bar flex ${SHELL_BAR_HEIGHT} shrink-0 items-center gap-0.5 overflow-x-auto border-b border-ev-raised bg-ev-chrome px-2`}>
       <SymbolSearch symbol={chart.symbol} onSelect={actions.setSymbol} />
       <Menu
         label=""

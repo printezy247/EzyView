@@ -1,4 +1,4 @@
-import { Crosshair, Plus, Trash2 } from "lucide-react";
+import { Crosshair, ListPlus, Plus, Trash2 } from "lucide-react";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { searchSymbolsForSource } from "./data";
 import { subscribeQuote } from "./quotePoller";
@@ -7,10 +7,11 @@ import { activeChartOf } from "./layout";
 import { effectiveSource, sourceLabel } from "./chartSource";
 import { useMt5 } from "./mt5";
 import { useWorkspace } from "./store";
+import { selectActiveSymbol } from "./store/selectors";
 import type { WatchEntry } from "./store";
 import { watchRowActive } from "./store/watchlist";
 import { VirtualList } from "./VirtualList";
-import { Button, IconButton, Input } from "./ui";
+import { Button, EmptyState, IconButton, Input } from "./ui";
 import { sortWatch } from "./watchSort";
 import type { WatchSortField } from "./watchSort";
 
@@ -158,7 +159,7 @@ export function Watchlist({ onOpenAlerts }: Props) {
   const updateWatchPrice = useWorkspace((s) => s.updateWatchPrice);
   const invalidateFollowGlobalPrices = useWorkspace((s) => s.invalidateFollowGlobalPrices);
   const setSymbol = useWorkspace((s) => s.setSymbol);
-  const activeSymbol = useWorkspace((s) => activeChartOf(s.activeLayout()).symbol);
+  const activeSymbol = useWorkspace(selectActiveSymbol);
   const dataSourceChoice = useWorkspace((s) => activeChartOf(s.activeLayout()).dataSource);
   const globalFeed = useMt5((s) => s.source);
   const source = effectiveSource(dataSourceChoice, globalFeed);
@@ -325,9 +326,13 @@ export function Watchlist({ onOpenAlerts }: Props) {
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {watchlist.length === 0 ? (
-          <p className="px-3 py-6 text-base leading-relaxed text-ev-faint">
-            Watchlist is empty. Click <span className="text-ev-muted">+</span> and type a ticker to add one.
-          </p>
+          <EmptyState
+            title="Watchlist is empty"
+            body="Add the tickers you trade so the chart can jump to any of them in one click, and this list stays live."
+            hint="Nothing is tracked until you add it — the chart itself works without a watchlist."
+            icon={<ListPlus size={20} aria-hidden />}
+            action={{ label: "Add a ticker", onSelect: () => setAdding(true) }}
+          />
         ) : (
           <VirtualList
             items={sortedWatchlist}

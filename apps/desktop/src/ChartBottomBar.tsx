@@ -35,7 +35,7 @@ export function ChartBottomBar({ onOpenHotkeys }: { onOpenHotkeys: () => void })
     <div
       role="toolbar"
       aria-label="Chart range and events"
-      className="flex h-7 shrink-0 items-center gap-1 overflow-x-auto border-t border-ev-raised bg-ev-chrome px-2"
+      className="flex h-7 shrink-0 items-center gap-1 overflow-x-auto ev-bar-below border-t border-ev-raised bg-ev-chrome px-2"
     >
       {RANGE_PRESETS.map(({ id, description }) => (
         <Button key={id} size="sm" variant="ghost" disabled={!view} title={description} onClick={() => void view?.showRange(id)}>

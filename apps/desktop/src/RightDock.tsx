@@ -48,7 +48,7 @@ export function RightDock({ tabs, active, onSelect, width }: Props) {
       <aside
         key="rail"
         aria-label="Chart panels"
-        className={`flex ${SHELL_RAIL_WIDTH} shrink-0 flex-col items-center gap-1 border-l border-ev-raised bg-ev-chrome py-2`}
+        className={`flex ${SHELL_RAIL_WIDTH} shrink-0 flex-col items-center gap-1 ev-panel-edge-right border-l border-ev-raised bg-ev-chrome py-2`}
       >
         <div role="tablist" aria-label="Panel" className="flex flex-col items-center gap-1">
           {tabs.map((tab) => (

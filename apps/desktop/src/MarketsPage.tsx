@@ -1,30 +1,34 @@
-import { useState } from "react";
-import { useNavigate } from "react-router";
-import { activeChartOf } from "./layout";
+import { useNavigate, useSearchParams } from "react-router";
 import { useWorkspace } from "./store";
+import { selectActiveSymbol } from "./store/selectors";
 import { Watchlist } from "./Watchlist";
 import { ScreenerTab } from "./ScreenerTab";
 import { HeatmapTab } from "./HeatmapTab";
 import { Button, Tabs } from "./ui";
+import { SECTION_TABS } from "./sectionTabs";
+import { resolveTabParam, writeTabParam } from "./tabUrl";
 
-type Tab = "watchlists" | "screener" | "heatmap";
-
-const TABS: { id: Tab; label: string; hint: string }[] = [
-  { id: "watchlists", label: "Watchlists", hint: "Quotes for the symbols you track" },
-  { id: "screener", label: "Screener", hint: "Filter the market on price and change" },
-  { id: "heatmap", label: "Heatmap", hint: "Performance at a glance, sized by move" },
-];
+const { defaultTab, tabs: TABS } = SECTION_TABS.markets!;
 
 /**
  * Markets destination: the watchlist manager (the chart's right-rail panel,
  * promoted to a page), plus a screener and a heatmap. Picking a row loads it
  * on the chart, like the panel does.
+ *
+ * The selected view lives in the URL, so a reload keeps it and the link can
+ * be shared — the same contract the Research and Settings pages already use.
  */
 export function MarketsPage() {
   const navigate = useNavigate();
-  const layout = useWorkspace((s) => s.activeLayout());
-  const state = activeChartOf(layout);
-  const [tab, setTab] = useState<Tab>("watchlists");
+  const symbol = useWorkspace(selectActiveSymbol);
+  const [params, setParams] = useSearchParams();
+
+  const tab = resolveTabParam(params.get("tab"), TABS.map((t) => t.id), defaultTab);
+
+  const selectTab = (id: string) => {
+    const query = writeTabParam(id, defaultTab);
+    setParams(query === "" ? {} : { tab: id }, { replace: true });
+  };
 
   return (
     <section aria-label="Markets" className="flex min-h-0 flex-1 flex-col text-base">
@@ -32,11 +36,11 @@ export function MarketsPage() {
         <Tabs
           label="Market views"
           value={tab}
-          onChange={(id) => setTab(id as Tab)}
+          onChange={selectTab}
           items={TABS.map((t) => ({ id: t.id, label: t.label, title: t.hint }))}
         />
         <span className="ml-auto flex items-center gap-2">
-          <span className="text-dense text-ev-faint">{state.symbol}</span>
+          <span className="text-dense text-ev-faint">{symbol}</span>
           <Button variant="outline" size="sm" onClick={() => navigate("/chart")}>
             Back to chart
           </Button>

@@ -1,9 +1,9 @@
 import { memo, useRef, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { BellRing, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router";
-import { activeChartOf } from "./layout";
 import { useWorkspace } from "./store";
-import { Button, IconButton, rowClass } from "./ui";
+import { selectActiveSymbol } from "./store/selectors";
+import { Button, EmptyState, IconButton, rowClass } from "./ui";
 import { VirtualTableBody } from "./VirtualList";
 
 const CONDITION_TEXT: Record<string, string> = {
@@ -52,8 +52,7 @@ export function AlertsPage() {
   const alertHistory = useWorkspace((s) => s.alertHistory);
   const removeAlert = useWorkspace((s) => s.removeAlert);
   const snoozeAlert = useWorkspace((s) => s.snoozeAlert);
-  const layout = useWorkspace((s) => s.activeLayout());
-  const state = activeChartOf(layout);
+  const symbol = useWorkspace(selectActiveSymbol);
   const setSymbol = useWorkspace((s) => s.setSymbol);
   const [expanded, setExpanded] = useState<string | null>(null);
   const scrollRef = useRef<HTMLElement>(null);
@@ -74,9 +73,13 @@ export function AlertsPage() {
 
       <div className="p-3">
         {alerts.length === 0 ? (
-          <p className="text-base text-ev-faint">
-            No alerts yet. Open the chart and use the bell button to arm one on {state.symbol}.
-          </p>
+          <EmptyState
+            title="No alerts yet"
+            body={`An alert fires when the price of ${symbol} crosses the level you set.`}
+            hint="Alerts only evaluate while the app is open; a closed app cannot fire one."
+            icon={<BellRing size={20} aria-hidden />}
+            action={{ label: "Open the chart to arm one", onSelect: () => navigate("/chart") }}
+          />
         ) : (
           <table className="w-full border-collapse text-left">
             <thead>

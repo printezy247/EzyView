@@ -3,6 +3,7 @@ import type { MouseEvent, ReactNode } from "react";
 import { ChevronDown, ChevronRight, Eye, EyeOff, Lock, LockOpen, Pencil, Search, Trash2, Upload, Download, X } from "lucide-react";
 import type { Drawing } from "@ezyview/drawing-tools";
 import { useWorkspace } from "./store";
+import { useActiveChart } from "./store/selectors";
 import type { ActiveIndicator } from "./store";
 import { DrawingProperties } from "./DrawingProperties";
 import { parseDrawings, serializeDrawings } from "./drawingsIO";
@@ -32,7 +33,12 @@ export const indicatorLabel = (i: ActiveIndicator): string => i.name ?? i.def.na
  * import/export in the footer.
  */
 export function ObjectTree({ onClose }: Props) {
-  const chart = useWorkspace((s) => s.activeChart());
+  const { symbol, resolution, drawings, indicators } = useActiveChart((c) => ({
+    symbol: c.symbol,
+    resolution: c.resolution,
+    drawings: c.drawings,
+    indicators: c.indicators,
+  }));
   const updateDrawing = useWorkspace((s) => s.updateDrawing);
   const removeDrawing = useWorkspace((s) => s.deleteDrawing);
   const selectDrawing = useWorkspace((s) => s.selectDrawing);
@@ -53,11 +59,11 @@ export function ObjectTree({ onClose }: Props) {
   const [query, setQuery] = useState("");
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
-  const empty = chart.indicators.length === 0 && chart.drawings.length === 0;
+  const empty = indicators.length === 0 && drawings.length === 0;
   const needle = query.trim().toLowerCase();
   const filteredDrawings = needle
-    ? chart.drawings.filter((d) => `${drawingLabel(d)} ${d.tool}`.toLowerCase().includes(needle))
-    : chart.drawings;
+    ? drawings.filter((d) => `${drawingLabel(d)} ${d.tool}`.toLowerCase().includes(needle))
+    : drawings;
   const grouped = new Map<string, Drawing[]>();
   const loose: Drawing[] = [];
   for (const drawing of filteredDrawings) {
@@ -71,8 +77,8 @@ export function ObjectTree({ onClose }: Props) {
   }
 
   const exportDrawings = () => {
-    const blob = new Blob([serializeDrawings(chart.drawings)], { type: "application/json" });
-    void saveBlob(blob, `drawings-${chart.symbol.replace(/[^A-Za-z0-9._-]/g, "-")}.json`);
+    const blob = new Blob([serializeDrawings(drawings)], { type: "application/json" });
+    void saveBlob(blob, `drawings-${symbol.replace(/[^A-Za-z0-9._-]/g, "-")}.json`);
     setIoError(null);
   };
 
@@ -101,7 +107,7 @@ export function ObjectTree({ onClose }: Props) {
 
       <div className="min-h-0 flex-1 overflow-y-auto py-1 text-base" role="tree" aria-label="Chart objects">
         <p className="truncate px-3 pb-1 text-dense text-ev-muted">
-          {chart.symbol} · {chart.resolution}
+          {symbol} · {resolution}
         </p>
         {empty && (
           <p className="px-3 py-4 text-dense leading-relaxed text-ev-muted">
@@ -109,9 +115,9 @@ export function ObjectTree({ onClose }: Props) {
           </p>
         )}
 
-        {chart.indicators.length > 0 && (
+        {indicators.length > 0 && (
           <Section title="Indicators">
-            {chart.indicators.map((i) => (
+            {indicators.map((i) => (
               <div key={i.uid}>
                 <Row
                   label={indicatorLabel(i)}
@@ -166,7 +172,7 @@ export function ObjectTree({ onClose }: Props) {
           </Section>
         )}
 
-        {chart.drawings.length > 0 && (
+        {drawings.length > 0 && (
           <Section title="Drawings">
             <div className="flex items-center gap-1 px-3 pb-1.5">
               <Search size={12} aria-hidden className="shrink-0 text-ev-faint" />
@@ -193,10 +199,10 @@ export function ObjectTree({ onClose }: Props) {
                 <Button variant="ghost" size="sm" onClick={() => updateDrawings(selectedIds, { locked: true })}>
                   Lock
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => updateDrawings(selectedIds, { zIndex: Math.max(0, ...chart.drawings.map((d) => d.zIndex ?? 0)) + 1 })}>
+                <Button variant="ghost" size="sm" onClick={() => updateDrawings(selectedIds, { zIndex: Math.max(0, ...drawings.map((d) => d.zIndex ?? 0)) + 1 })}>
                   Front
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => updateDrawings(selectedIds, { zIndex: Math.min(0, ...chart.drawings.map((d) => d.zIndex ?? 0)) - 1 })}>
+                <Button variant="ghost" size="sm" onClick={() => updateDrawings(selectedIds, { zIndex: Math.min(0, ...drawings.map((d) => d.zIndex ?? 0)) - 1 })}>
                   Back
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => deleteDrawings(selectedIds)} className="text-ev-down-text">
@@ -277,7 +283,7 @@ export function ObjectTree({ onClose }: Props) {
 
       <div className="border-t border-ev-raised px-3 py-2 text-dense">
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" disabled={chart.drawings.length === 0} onClick={exportDrawings} className="flex-1">
+          <Button variant="outline" size="sm" disabled={drawings.length === 0} onClick={exportDrawings} className="flex-1">
             <Download size={12} aria-hidden />
             Export
           </Button>

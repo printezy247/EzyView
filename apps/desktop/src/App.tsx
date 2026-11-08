@@ -2,10 +2,11 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router";
 import { useShallow } from "zustand/react/shallow";
 import { ChartPage } from "./ChartPage";
-import { ErrorBoundary } from "./ErrorBoundary";
 import { IndicatorDialog } from "./IndicatorDialog";
 import { ChartSettingsDialog } from "./ChartSettingsDialog";
 import { TabBar } from "./TabBar";
+import { Breadcrumbs } from "./Breadcrumbs";
+import { RouteShell } from "./RouteShell";
 import { Toolbar } from "./Toolbar";
 import type { DockTabId } from "./Toolbar";
 import { AlertDialog } from "./AlertDialog";
@@ -18,7 +19,7 @@ import { TradeConfirmDialog } from "./TradeConfirmDialog";
 import { HotkeySheet } from "./HotkeySheet";
 import { MarketClock } from "./MarketClockBar";
 import { useWorkspace } from "./store";
-import { activeChartOf } from "./layout";
+import { useActiveChart } from "./store/selectors";
 import { themeWindowColor } from "@ezyview/brand";
 import { normalizePath, rememberRoute } from "./nav";
 import { bootstrapMt5, getMt5, useMt5 } from "./mt5";
@@ -26,6 +27,7 @@ import { useMt5Accounts } from "./mt5Accounts";
 import { NoticeHost } from "./NoticeHost";
 import { Button, Toaster, buttonClass } from "./ui";
 import { useShortcut, useShortcutDispatcher } from "./shortcuts";
+import { useSectionNavigation } from "./useSectionNavigation";
 import { quoteOf } from "./data";
 import { SourceToggle } from "./SourceToggle";
 import { FeedStatus } from "./FeedStatus";
@@ -48,8 +50,16 @@ const SettingsPage = lazy(() => import("./SettingsPage").then((m) => ({ default:
 const footerLink = buttonClass({ size: "sm", variant: "ghost" });
 
 export default function App() {
+  // The shell reads four fields of the focused chart, not the whole layout:
+  // a drawing drag replaces the layout object on every pointer move, and a
+  // shell that subscribed to it would re-render on every frame of a drag.
+  const { symbol, resolution, theme, drawingCount } = useActiveChart((c) => ({
+    symbol: c.symbol,
+    resolution: c.resolution,
+    theme: c.theme,
+    drawingCount: c.drawings.length,
+  }));
   const {
-    layout,
     updateActive,
     setSymbol,
     alerts,
@@ -57,7 +67,6 @@ export default function App() {
     removeAlert,
   } = useWorkspace(
     useShallow((s) => ({
-      layout: s.activeLayout(),
       updateActive: s.updateActive,
       setSymbol: s.setSymbol,
       alerts: s.alerts,
@@ -65,13 +74,14 @@ export default function App() {
       removeAlert: s.removeAlert,
     })),
   );
-  const state = activeChartOf(layout);
 
   // F11 toggles fullscreen "zen" mode (nav rail and tabs hidden); Esc leaves it.
   // Every binding registers with the one dispatcher; layers (modal, menu) own
   // the keyboard until they close, so Esc closes them before it exits zen.
   const zen = useZen((s) => s.on);
   useShortcutDispatcher();
+  // Alt+1-8 jumps a section, Ctrl+Tab cycles, `g` then a letter goes there.
+  useSectionNavigation();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const apiKeysOpen = useApiKeys((s) => s.dialogOpen);
@@ -148,9 +158,9 @@ export default function App() {
   useEffect(() => {
     if (!alertOpen) return;
     let cancelled = false;
-    const watched = useWorkspace.getState().watchlist.find((w) => w.symbol === state.symbol)?.price ?? null;
+    const watched = useWorkspace.getState().watchlist.find((w) => w.symbol === symbol)?.price ?? null;
     if (watched !== null) setAlertSeedPrice(watched);
-    void quoteOf(state.symbol)
+    void quoteOf(symbol)
       .then((q) => {
         if (!cancelled && q) setAlertSeedPrice(q.last);
       })
@@ -158,7 +168,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [alertOpen, state.symbol]);
+  }, [alertOpen, symbol]);
 
   // Remember the last visited route so reloads land where the user left off.
   const location = useLocation();
@@ -176,7 +186,7 @@ export default function App() {
   // Appearance); `auto` follows the focused chart, which is how the app
   // behaved before the brand pass.
   const appTheme = useWorkspace((s) => s.appTheme);
-  const shellTheme = appTheme === "auto" ? state.theme : appTheme;
+  const shellTheme = appTheme === "auto" ? theme : appTheme;
   const density = useWorkspace((s) => s.density);
   useEffect(() => {
     document.documentElement.dataset.theme = shellTheme;
@@ -200,7 +210,7 @@ export default function App() {
   // to a symbol the terminal actually knows rather than leaving a blank chart.
   const source = useMt5((s) => s.source);
   useEffect(() => {
-    if (source !== "mt5" || !state.symbol.includes(":")) return;
+    if (source !== "mt5" || !symbol.includes(":")) return;
     let cancelled = false;
     void getMt5()
       .data.searchSymbols("")
@@ -210,7 +220,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [source, state.symbol, updateActive]);
+  }, [source, symbol, updateActive]);
 
   // The dock holds the three side panels as tabs; trading is the bottom strip.
   // Journal, research and strategies are routes, not panels.
@@ -226,13 +236,15 @@ export default function App() {
         <header className="contents">
           {!zen && <TabBar />}
 
+          {!zen && <Breadcrumbs />}
+
           <Toolbar
             dockTab={dockTab}
             tradingOpen={tradingOpen}
             onOpenIndicators={() => setDialogOpen(true)}
             onOpenAlerts={() => setAlertOpen(true)}
             onOpenApiKeys={openApiKeys}
-            onOpenWindow={() => void openChartWindow(state.symbol, state.resolution)}
+            onOpenWindow={() => void openChartWindow(symbol, resolution)}
             onOpenSettings={() => setChartSettingsOpen(true)}
             onSelectDockTab={selectDockTab}
             onToggleTrading={toggleTrading}
@@ -247,48 +259,24 @@ export default function App() {
               </div>
             }
           >
+            <RouteShell
+              onResetChart={() => useWorkspace.getState().updateActive({ indicators: [], drawings: [] })}
+            >
             <Routes>
               <Route index element={<Navigate to={normalizePath("/")} replace />} />
               <Route
                 path="/chart"
                 element={
-                  <ErrorBoundary
-                    fallback={(reset) => (
-                      <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-ev-bg p-6 text-center">
-                        <p className="text-body font-semibold text-ev-strong">Chart render encountered an error.</p>
-                        <p className="max-w-md text-base text-ev-muted">
-                          A chart error was caught and isolated so the rest of the application remains functional.
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <Button size="lg" onClick={reset}>
-                            Retry Chart
-                          </Button>
-                          <Button
-                            size="lg"
-                            variant="ghost"
-                            onClick={() => {
-                              useWorkspace.getState().updateActive({ indicators: [], drawings: [] });
-                              reset();
-                            }}
-                            className="bg-ev-raised text-ev-strong hover:bg-ev-line"
-                          >
-                            Reset Chart to Clean State
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  >
-                    <ChartPage
-                      dockTab={dockTab}
-                      onSelectDockTab={selectDockTab}
-                      onSetDockTab={setDockTabDirect}
-                      tradingOpen={tradingOpen}
-                      onToggleTrading={toggleTrading}
-                      onOpenAlerts={() => setAlertOpen(true)}
-                      onOpenHotkeys={() => setHotkeysOpen(true)}
-                      onOpenSettings={() => setChartSettingsOpen(true)}
-                    />
-                  </ErrorBoundary>
+                  <ChartPage
+                    dockTab={dockTab}
+                    onSelectDockTab={selectDockTab}
+                    onSetDockTab={setDockTabDirect}
+                    tradingOpen={tradingOpen}
+                    onToggleTrading={toggleTrading}
+                    onOpenAlerts={() => setAlertOpen(true)}
+                    onOpenHotkeys={() => setHotkeysOpen(true)}
+                    onOpenSettings={() => setChartSettingsOpen(true)}
+                  />
                 }
               />
               <Route path="/markets" element={<MarketsPage />} />
@@ -304,6 +292,7 @@ export default function App() {
               <Route path="/pine" element={<Navigate to="/strategies" replace />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            </RouteShell>
           </Suspense>
         </div>
 
@@ -323,16 +312,16 @@ export default function App() {
         <AlertDialog
           open={alertOpen}
           onClose={() => setAlertOpen(false)}
-          alerts={alerts.filter((a) => a.symbol === state.symbol)}
+          alerts={alerts.filter((a) => a.symbol === symbol)}
           onAdd={addAlert}
           onRemove={removeAlert}
-          symbol={state.symbol}
+          symbol={symbol}
           lastPrice={alertSeedPrice}
         />
 
-        <footer className="flex h-7 shrink-0 items-center gap-3 overflow-x-auto border-t border-ev-raised bg-ev-chrome px-3 text-dense text-ev-muted">
+        <footer className="ev-bar-below flex h-7 shrink-0 items-center gap-3 overflow-x-auto border-t border-ev-raised bg-ev-chrome px-3 text-dense text-ev-muted">
           <SourceToggle />
-          <FeedStatus symbol={state.symbol} />
+          <FeedStatus symbol={symbol} />
 
           <div className="h-3.5 w-px shrink-0 bg-ev-raised" />
 
@@ -383,7 +372,7 @@ export default function App() {
           </div>
 
           <span className="hidden lg:inline">
-            {state.drawings.length} drawing{state.drawings.length === 1 ? "" : "s"}
+            {drawingCount} drawing{drawingCount === 1 ? "" : "s"}
           </span>
           <span className="ml-auto flex shrink-0 items-center gap-3">
             <MarketClock />
@@ -395,7 +384,7 @@ export default function App() {
               Settings
               {mt5Badge && <span className={`ml-1 inline-block size-1.5 rounded-full ${mt5Badge}`} aria-hidden />}
             </Link>
-            <span className="uppercase">{state.theme}</span>
+            <span className="uppercase">{theme}</span>
           </span>
         </footer>
       </div>

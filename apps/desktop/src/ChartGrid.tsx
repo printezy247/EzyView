@@ -5,7 +5,7 @@ import type { DrawingBox } from "./ChartHost";
 import { FloatingDrawingBar } from "./FloatingDrawingBar";
 import { cellCount } from "./layout";
 import type { GridMode } from "./layout";
-import type { Layout, ChartState } from "./store";
+import type { ChartState } from "./store";
 import { useWorkspace } from "./store";
 import { linkGroupOf } from "./linkGroups";
 import { sessionForSymbol } from "./sessionFor";
@@ -29,7 +29,6 @@ const GRID_CLASS: Record<GridMode, string> = {
 };
 
 interface ChartGridProps {
-  layout: Layout;
   replayBar: number | null;
   linesFor: (symbol: string) => TradingLine[];
   /** Which levels on a symbol a pointer may drag, or undefined = none. */
@@ -62,7 +61,6 @@ interface ChartGridProps {
  * focused one (blue outline) is what the toolbar, studies and drawings act on.
  */
 export function ChartGrid({
-  layout,
   replayBar,
   linesFor,
   draggableLevelsFor,
@@ -84,6 +82,10 @@ export function ChartGrid({
   onDrawingBox,
 }: ChartGridProps) {
   const [maximizedCell, setMaximizedCell] = useState<number | null>(null);
+  // The grid owns the layout subscription, not the page that renders it: the
+  // grid has to redraw a cell whose drawings changed, but the page around it
+  // does not, and one subscription for the pair would drag the page along.
+  const layout = useWorkspace((s) => s.activeLayout());
   const cells: ChartState[] = layout.charts.slice(0, cellCount(layout.grid));
   const multi = cells.length > 1;
 
