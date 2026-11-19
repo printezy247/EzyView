@@ -193,19 +193,19 @@ const ScreenerRow = memo(function ScreenerRow({ row: w, onOpen }: { row: WatchEn
   let signalBadge = null;
   if (change >= 2.0) {
     signalBadge = (
-      <span className="rounded bg-ev-up/20 px-1.5 py-0.5 text-[11px] font-semibold text-ev-up-text">
+      <span className="rounded bg-ev-up/20 px-1.5 py-0.5 text-dense font-semibold text-ev-up-text">
         Breakout ▲
       </span>
     );
   } else if (change <= -2.0) {
     signalBadge = (
-      <span className="rounded bg-ev-down/20 px-1.5 py-0.5 text-[11px] font-semibold text-ev-down-text">
+      <span className="rounded bg-ev-down/20 px-1.5 py-0.5 text-dense font-semibold text-ev-down-text">
         Breakdown ▼
       </span>
     );
   } else if (Math.abs(change) <= 0.4) {
     signalBadge = (
-      <span className="rounded bg-ev-raised px-1.5 py-0.5 text-[11px] font-medium text-ev-muted">
+      <span className="rounded bg-ev-raised px-1.5 py-0.5 text-dense font-medium text-ev-muted">
         Contraction ⬍
       </span>
     );

@@ -53,7 +53,7 @@ export function FavoriteDrawingsBar() {
       ref={barRef}
       role="toolbar"
       aria-label="Favourite drawing tools"
-      className="absolute z-20 flex items-center gap-0.5 rounded-md border border-ev-line bg-ev-panel/95 px-1 py-0.5 shadow-lg"
+      className="absolute z-20 flex items-center gap-0.5 rounded border border-ev-line bg-ev-panel/95 px-1 py-0.5 shadow-lg"
       style={pos ? { left: pos.x, top: pos.y } : { right: 12, top: 12 }}
     >
       <button

@@ -23,7 +23,7 @@ export function StrategyTester({
         <div className="flex-1">
           <EquityCurve equity={result.equity} />
         </div>
-        <div className="flex flex-col gap-1 rounded border border-ev-line/60 bg-ev-panel/50 p-2 text-xs text-ev-muted min-w-[200px]">
+        <div className="flex flex-col gap-1 rounded border border-ev-line/60 bg-ev-panel/50 p-2 text-dense text-ev-muted min-w-[200px]">
           <span className="font-semibold uppercase tracking-wider text-ev-faint">Assumptions</span>
           <span className="num">Cash: ${costs.initialCash.toLocaleString()}</span>
           <span className="num">
@@ -34,7 +34,7 @@ export function StrategyTester({
           <span>{costs.fillOnNextOpen ? "Next Open" : "Close"}</span>
         </div>
       </div>
-      <div className="mb-2 flex flex-wrap items-center gap-3 text-xs">
+      <div className="mb-2 flex flex-wrap items-center gap-3 text-dense">
         <NumberInput
           inline
           label="Initial Cash:"

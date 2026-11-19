@@ -102,7 +102,7 @@ export function CommandPalette({ open, onClose, groups }: Props) {
         aria-label="Command palette"
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={onKey}
-        className="w-[min(560px,92vw)] overflow-hidden rounded-lg border border-ev-line bg-ev-panel shadow-2xl"
+        className="w-[min(560px,92vw)] overflow-hidden rounded border border-ev-line bg-ev-panel shadow-2xl"
       >
         <div className="flex items-center gap-2 border-b border-ev-raised px-3">
           <Search size={14} aria-hidden className="text-ev-muted" />
