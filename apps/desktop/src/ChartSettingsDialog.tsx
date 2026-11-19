@@ -237,7 +237,7 @@ export function ChartSettingsDialog({ open, onClose }: Props) {
               role="menu"
               aria-label="Chart template"
               onClick={(e) => e.stopPropagation()}
-              className="absolute bottom-full left-0 mb-1 w-44 rounded-md border border-ev-line bg-ev-panel py-1 shadow-xl z-20"
+              className="absolute bottom-full left-0 mb-1 w-44 rounded border border-ev-line bg-ev-panel py-1 shadow-xl z-20"
             >
               <Button
                 variant="ghost"

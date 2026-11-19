@@ -5,7 +5,7 @@ import { isTypingTarget } from "./hotkeys";
 import { NAV_SECTIONS, type RoutePath } from "./nav";
 import { shortcuts } from "./shortcuts";
 import { resolveNavIntent, type NavKeyState } from "./sectionNavigation";
-import { useNavRail } from "./navRail";
+import { useNavRail } from "./navRailStore";
 
 /**
  * The shell's keyboard navigation.

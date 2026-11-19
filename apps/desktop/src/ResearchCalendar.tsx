@@ -51,7 +51,7 @@ function CotTab() {
               <tr key={row.contract} className="hover:bg-ev-raised/30 transition-colors">
                 <td className="px-3 py-2 font-medium text-ev-strong">
                   <div>{row.contract}</div>
-                  <div className="text-[11px] text-ev-faint">{row.name}</div>
+                  <div className="text-dense text-ev-faint">{row.name}</div>
                 </td>
                 <td className={`px-3 py-2 font-medium ${row.speculatorsNet >= 0 ? "text-ev-up-text" : "text-ev-down-text"}`}>
                   {row.speculatorsNet > 0 ? "+" : ""}{row.speculatorsNet.toLocaleString()}
@@ -72,7 +72,7 @@ function CotTab() {
                 </td>
                 <td className="px-3 py-2">
                   <span
-                    className={`inline-block rounded px-2 py-0.5 text-[11px] font-semibold ${
+                    className={`inline-block rounded px-2 py-0.5 text-dense font-semibold ${
                       row.bias.includes("Long") || row.bias === "Bullish"
                         ? "bg-ev-up/20 text-ev-up-text"
                         : row.bias.includes("Short") || row.bias === "Bearish"

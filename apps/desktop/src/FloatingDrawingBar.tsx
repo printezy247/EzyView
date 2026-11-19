@@ -181,7 +181,7 @@ export function FloatingDrawingBar({ anchor }: Props) {
         ref={barRef}
         role="toolbar"
         aria-label={`${drawingLabel(drawing)} settings`}
-        className={`pointer-events-auto absolute flex items-center gap-0.5 rounded-md border border-ev-line bg-ev-panel/95 px-1 py-0.5 shadow-xl ${
+        className={`pointer-events-auto absolute flex items-center gap-0.5 rounded border border-ev-line bg-ev-panel/95 px-1 py-0.5 shadow-xl ${
           dragging ? "cursor-grabbing" : ""
         }`}
         style={{ left: pos.x, top: pos.y }}
@@ -203,13 +203,13 @@ export function FloatingDrawingBar({ anchor }: Props) {
         </BarButton>
 
         <BarButton label="Line colour" active={menu === "color"} onClick={() => toggle("color")}>
-          <span className="size-3.5 rounded-sm ring-1 ring-ev-line" style={{ background: style.color }} aria-hidden />
+          <span className="size-3.5 rounded ring-1 ring-ev-line" style={{ background: style.color }} aria-hidden />
         </BarButton>
 
         {toolHasFill(drawing.tool) && (
           <BarButton label="Fill colour" active={menu === "fill"} onClick={() => toggle("fill")}>
             <span
-              className="size-3.5 rounded-sm ring-1 ring-ev-line"
+              className="size-3.5 rounded ring-1 ring-ev-line"
               style={{ background: style.fill ?? style.color, opacity: Math.max(0.25, (style.fillOpacity ?? 20) / 100) }}
               aria-hidden
             />

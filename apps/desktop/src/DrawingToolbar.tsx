@@ -207,7 +207,7 @@ export function DrawingToolbar() {
                     e.stopPropagation();
                     openPopover(category.id, e.currentTarget.parentElement ?? e.currentTarget);
                   }}
-                  className="absolute bottom-0 right-0 size-3 rounded-sm"
+                  className="absolute bottom-0 right-0 size-3 rounded"
                 >
                   <ChevronDown size={9} aria-hidden />
                 </IconButton>

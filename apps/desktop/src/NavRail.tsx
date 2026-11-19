@@ -17,7 +17,7 @@ import {
 import { NAV_SECTIONS } from "./nav";
 import { SHELL_RAIL_ICON, SHELL_RAIL_WIDTH, shellToolClass } from "./ui";
 import { useWorkspace } from "./store";
-import { useNavRail } from "./navRail";
+import { useNavRail } from "./navRailStore";
 import { useTrading } from "./trading";
 
 /** Left-edge section rail: one lit icon per destination, in redesign order. */
@@ -107,7 +107,7 @@ export function NavRail() {
                       {/* In the collapsed rail the count rides the icon, so the
                           badge does not need the extra width. */}
                       {!expanded && badge !== undefined && (
-                        <span className="num absolute -right-1.5 -top-1.5 min-w-3.5 rounded-full bg-ev-accent px-1 text-[9px] leading-3.5 text-white">
+                        <span className="num absolute -right-1.5 -top-1.5 min-w-3.5 rounded-full bg-ev-accent px-1 text-micro leading-3.5 text-white">
                           {badge}
                         </span>
                       )}

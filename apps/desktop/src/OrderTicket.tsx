@@ -201,7 +201,7 @@ export function OrderTicket({ symbol }: Props) {
       <div>
         <div className="flex items-center justify-between">
           <span className="block text-dense uppercase tracking-wider text-ev-muted">Quantity</span>
-          <div className="flex items-center gap-1 text-[11px] text-ev-muted">
+          <div className="flex items-center gap-1 text-dense text-ev-muted">
             <span>Risk:</span>
             {[1, 2, 5].map((pct) => (
               <Button key={pct} variant="outline" size="sm" onClick={() => calcRiskQty(pct)} aria-label={`Size by ${pct} percent risk`}>
@@ -250,11 +250,11 @@ export function OrderTicket({ symbol }: Props) {
             <dd className="flex items-center gap-1 font-medium">
               <span className="text-ev-strong">1 : {rr.ratio.toFixed(2)}</span>
               {rr.ratio < 1.5 ? (
-                <span className="rounded bg-ev-down/20 px-1 py-0.5 text-[10px] text-ev-down-text font-semibold">
+                <span className="rounded bg-ev-down/20 px-1 py-0.5 text-micro text-ev-down-text font-semibold">
                   &lt; 1:1.5
                 </span>
               ) : (
-                <span className="rounded bg-ev-up/20 px-1 py-0.5 text-[10px] text-ev-up-text font-semibold">
+                <span className="rounded bg-ev-up/20 px-1 py-0.5 text-micro text-ev-up-text font-semibold">
                   Good
                 </span>
               )}

@@ -6,7 +6,7 @@ import { MemoryRouter } from "react-router";
 
 import { NavRail } from "./NavRail";
 import { NAV_SECTIONS } from "./nav";
-import { useNavRail } from "./navRail";
+import { useNavRail } from "./navRailStore";
 
 /**
  * Render test for the navigation rail.

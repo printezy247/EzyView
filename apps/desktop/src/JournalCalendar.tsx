@@ -129,7 +129,7 @@ export function JournalCalendar({ entries, selectedDay, onSelectDay }: Props) {
           <span>Loss</span>
           <span
             aria-hidden
-            className="h-2 w-24 rounded-sm"
+            className="h-2 w-24 rounded"
             style={{
               // The brand's profit and loss colours, so the calendar matches
               // every other P&L surface in the app.
