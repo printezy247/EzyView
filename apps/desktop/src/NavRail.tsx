@@ -17,7 +17,7 @@ import {
 import { NAV_SECTIONS } from "./nav";
 import { SHELL_RAIL_ICON, SHELL_RAIL_WIDTH, shellToolClass } from "./ui";
 import { useWorkspace } from "./store";
-import { useNavRail } from "./navRail";
+import { useNavRail } from "./navRailStore";
 import { useTrading } from "./trading";
 
 /** Left-edge section rail: one lit icon per destination, in redesign order. */
