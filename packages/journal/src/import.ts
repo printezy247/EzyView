@@ -79,7 +79,16 @@ function fromGroup(group: Group, source?: JournalEntry["source"]): JournalEntry 
     ? (head.side === "sell" ? "long" : "short")
     : (head.side === "buy" ? "long" : "short");
 
-  const openingDeals = rest.length > 0 ? group.deals.filter((d) => d.side === head.side) : [head];
+  // Opening legs are the deals before the first opposite-side deal. With
+  // partial closes every exit deal shares the opener's side *and* carries
+  // P&L, so matching on side alone treated exits as extra opening legs.
+  const firstExitIdx = group.deals.findIndex((d) => d.side !== head.side && d.pnl !== 0);
+  const openingDeals =
+    rest.length > 0
+      ? firstExitIdx > 0
+        ? group.deals.slice(0, firstExitIdx)
+        : group.deals.filter((d) => d.side === head.side)
+      : [head];
   const totalQty = openingDeals.reduce((sum, d) => sum + d.qty, 0);
   const totalNotional = openingDeals.reduce((sum, d) => sum + d.qty * d.price, 0);
   const entryPrice = totalQty > 0 ? totalNotional / totalQty : head.price;

@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { create } from "zustand";
 import type { AccountInfo, Deal, Order, OrderRequest, Position } from "@ezyview/data-adapters";
 import { PaperTradingEngine, PaperTradingError } from "@ezyview/paper-trading";
-import type { PaperSnapshot } from "@ezyview/paper-trading";
+import type { PaperOrder, PaperSnapshot } from "@ezyview/paper-trading";
 import { quoteOf, resolveSource } from "./data";
 import { quoteAgeSec } from "./quotePoller";
 import { feedHealth } from "./feedHealth";
@@ -333,7 +333,9 @@ export const useTrading = create<TradingState & TradingActions>((set, get) => ({
       return;
     }
     const maxRowVol = Math.max(...rows.map((r) => r.qty));
-    const gate = mt5Gate({ action: "close", symbol: rows[0]?.symbol, volume: maxRowVol });
+    // Closing must always be possible: gate the batch without a symbol so one
+    // off-list or stale-quoted row cannot block closing the others.
+    const gate = mt5Gate({ action: "close", volume: maxRowVol });
     park(set, gate, { kind: "close-all", rows, gate, token: approvalTokens.mint() });
   },
 
@@ -431,12 +433,15 @@ async function refreshInto(set: SetState): Promise<void> {
   ]);
   if (stale()) return;
   const current = useTrading.getState();
+  const ordersFingerprint = orders.map((o) => `${o.id}:${o.status}:${o.price ?? ""}:${(o as PaperOrder).stopLoss ?? ""}:${(o as PaperOrder).takeProfit ?? ""}`).join("|");
+  const currentOrdersFingerprint = current.orders.map((o) => `${o.id}:${o.status}:${o.price ?? ""}:${(o as PaperOrder).stopLoss ?? ""}:${(o as PaperOrder).takeProfit ?? ""}`).join("|");
   if (
     current.account?.equity === account?.equity &&
     current.account?.balance === account?.balance &&
     current.positions.length === positions.length &&
     current.orders.length === orders.length &&
     current.deals.length === deals.length &&
+    currentOrdersFingerprint === ordersFingerprint &&
     current.positions.every((p, i) => p.symbol === positions[i]?.symbol && p.unrealizedPnl === positions[i]?.unrealizedPnl)
   ) {
     return;
@@ -472,19 +477,24 @@ export function useTradingTicks(symbolsKey: string): void {
   useEffect(() => {
     const symbols = symbolsKey ? symbolsKey.split("|") : [];
     let cancelled = false;
+    // Serialize quotes per symbol so a slow older fetch can never overwrite a
+    // newer price (out-of-order resolutions would trip trailing stops).
+    const chains = new Map<string, Promise<void>>();
 
     const tick = () => {
       for (const symbol of symbols) {
         // Mark against the feed that is actually on: the demo adapter shows
         // prices the broker does not have, and the paper account then drifts
         // from the chart.
-        void quoteOf(symbol)
+        const chain = (chains.get(symbol) ?? Promise.resolve())
+          .then(() => quoteOf(symbol))
           .then((quote) => {
             if (!cancelled && quote) paperEngine.updateQuote(symbol, quote.last);
           })
           .catch(() => {
             // A missing quote just leaves the mark where it was.
           });
+        chains.set(symbol, chain);
       }
     };
 

@@ -147,6 +147,9 @@ class Emitter {
     this.line("const { open, high, low, close, volume, hl2, hlc3, ohlc4, inputs } = ctx;");
     this.line("let barIndexUsed = 0;");
     this.line("let bar_index = 0;");
+    // Hoisted `var` lines must land after this point: their initializers may
+    // read series like `close`, which only exists once ctx is destructured.
+    this.globalsEnd = this.lines.length;
   }
 
   emitBody(body: Node[]): void {
@@ -229,7 +232,15 @@ class Emitter {
         const v = this.safeName(node.variable, node.line, node.col);
         this.line("{");
         this.indent(() => {
-          this.line(`for (let ${v} = num(${this.expr(node.from)}); ${v} <= num(${this.expr(node.to)}); ${v} += ${node.step ? `num(${this.expr(node.step)})` : "1"}) {`);
+          // Pine evaluates the bounds once and steps down when `from` sits
+          // above `to`; the loop body reads them via precomputed consts so a
+          // `for i = 10 to 0` runs instead of never starting.
+          this.line(`const __from = num(${this.expr(node.from)});`);
+          this.line(`const __to = num(${this.expr(node.to)});`);
+          this.line(
+            `const __step = ${node.step ? `num(${this.expr(node.step)})` : "(__from <= __to ? 1 : -1)"};`,
+          );
+          this.line(`for (let ${v} = __from; __step > 0 ? ${v} <= __to : ${v} >= __to; ${v} += __step) {`);
           this.indent(() => {
             this.line("if (++__iters > 100000) throw new Error(\"pine: too many iterations\");");
             this.emitBody(node.body.body);
@@ -253,8 +264,10 @@ class Emitter {
         return;
       }
       case "ReturnStmt": {
-        this.line(node.argument ? `return ${this.expr(node.argument)};` : "return NA;");
-        return;
+        // The whole body runs inside one per-bar loop, so a `return` here
+        // exits the run function and silently truncates every bar after the
+        // first one that hits it — reject it instead of compiling it.
+        throw new PineUnsupportedError("return is not supported in a script body", node.line, node.col);
       }
       default:
         throw new PineUnsupportedError(`statement \`${node.kind}\` is not supported`, node.line, node.col);
@@ -267,6 +280,9 @@ class Emitter {
   }
 
   private hoisted: string[] = [];
+
+  /** Index in {@link lines} just past the context declaration. */
+  private globalsEnd = 0;
 
   private expr(node: Node): string {
     switch (node.kind) {
@@ -291,13 +307,19 @@ class Emitter {
       case "CallExpr":
         return this.call(node);
       case "UnaryExpr":
+        // Word negation gets Pine's semantics (`na`/series collapse at the
+        // current bar); the other unary operators pass through as JS.
+        if (node.operator === "not") return `not(${this.expr(node.argument)}, barIndex)`;
         return `(${node.operator}(${this.expr(node.argument)}))`;
       case "BinaryExpr":
         return this.binary(node);
       case "TernaryExpr":
         return `(truthy(${this.expr(node.test)}, barIndex) ? (${this.expr(node.consequent)}) : (${this.expr(node.alternate)}))`;
       case "AssignExpr":
-        return `(${this.expr(node.target)} ${node.operator} ${this.expr(node.value)})`;
+        // `:=` only makes sense as a statement; compiled verbatim in
+        // expression position it is invalid JS and would smuggle an
+        // assignment past the sandbox's reassign path.
+        throw new PineUnsupportedError("assignment is not allowed inside an expression", node.line, node.col);
       case "ArrayLit":
         return `[${node.elements.map((e) => this.expr(e)).join(", ")}]`;
       default:
@@ -308,7 +330,9 @@ class Emitter {
   /**
    * Pine's `and`/`or` are word operators in source but emit as `&&`/`||`.
    * Every other binary operator maps straight through, with `==`/`!=` becoming
-   * Pine's `eq`/`ne` so `na` compares correctly.
+   * Pine's `eq`/`ne` so `na` compares correctly. Comparisons broadcast
+   * element-wise so `cond[1]` keeps its history; truthiness collapses at the
+   * current bar.
    */
   private binary(node: { operator: string; left: Node; right: Node; line: number; col: number }): string {
     const l = this.expr(node.left);
@@ -317,7 +341,7 @@ class Emitter {
       case "==":
         return `eq(${l}, ${r})`;
       case "!=":
-        return `!eq(${l}, ${r})`;
+        return `ne(${l}, ${r})`;
       case "+":
         return `add(${l}, ${r})`;
       case "-":
@@ -328,16 +352,16 @@ class Emitter {
         return `div(${l}, ${r})`;
       case "%":
         return `mod(${l}, ${r})`;
-      // Comparisons and boolean ops collapse a series to a scalar, so they need
-      // the current bar index to read the right element.
+      // Comparisons broadcast to per-bar arrays; `truthy` collapses at the
+      // current bar when the result feeds an `if`/ternary.
       case "<":
-        return `lt(${l}, ${r}, barIndex)`;
+        return `lt(${l}, ${r})`;
       case "<=":
-        return `le(${l}, ${r}, barIndex)`;
+        return `le(${l}, ${r})`;
       case ">":
-        return `gt(${l}, ${r}, barIndex)`;
+        return `gt(${l}, ${r})`;
       case ">=":
-        return `ge(${l}, ${r}, barIndex)`;
+        return `ge(${l}, ${r})`;
       case "&&":
       case "and":
         return `and(${l}, ${r}, barIndex)`;
@@ -361,10 +385,13 @@ class Emitter {
     // right after their plumbing — otherwise a kwargs-only call slides the
     // object into whatever positional parameter happens to come first.
     const posArgs = positional.map((a) => this.expr(a));
-    const opts = kwargs.length
-      ? `{ ${kwargs.map((k) => `${(k.target as Identifier).name}: ${this.expr(k.value)}`).join(", ")} }`
+    // `{ __proto__: … }` (or `constructor`/`prototype`) would pollute the
+    // emitted object literal, so those names are dropped at emit time.
+    const safeKwargs = kwargs.filter((k) => !DANGEROUS_KWARGS.has((k.target as Identifier).name));
+    const opts = safeKwargs.length
+      ? `{ ${safeKwargs.map((k) => `${(k.target as Identifier).name}: ${this.expr(k.value)}`).join(", ")} }`
       : "{}";
-    const args = kwargs.length ? [...posArgs, opts] : posArgs;
+    const args = safeKwargs.length ? [...posArgs, opts] : posArgs;
     const sinkCall = (fn: string): string =>
       `${fn}(${this.nextPlotSite()}, barIndex, plots, ${opts}${posArgs.length ? `, ${posArgs.join(", ")}` : ""})`;
     const orderCall = (fn: string): string =>
@@ -383,6 +410,11 @@ class Emitter {
       if (DENIED_MEMBERS.has(callee.property)) {
         throw new PineUnsupportedError(`member \`${callee.property}\` is not allowed`, callee.line, callee.col);
       }
+      // `request.security()`/`security()` would compile to a runtime
+      // ReferenceError — other symbols are not modeled, so say so up front.
+      if (ns === "request" || ns === "security") {
+        throw new PineUnsupportedError("request.security is not supported", callee.line, callee.col);
+      }
 
       // Plotting and order functions are script-level sinks, so they bypass the
       // `ta`/`math` namespaces and call the runtime helpers directly. The bar
@@ -396,7 +428,13 @@ class Emitter {
       // `ta.tr`/`ta.atr` take the context rather than a series, so they are
       // special-cased instead of going through the namespace table.
       if (ns === "ta" && callee.property === "tr") return `ta.tr(ctx)`;
-      if (ns === "ta" && callee.property === "atr") return `ta.atr(ctx, ${args[0] ?? "14"})`;
+      if (ns === "ta" && callee.property === "atr") {
+        // `ta.atr(length=14)` passes no positional series, so the length comes
+        // from the kwargs object instead of sliding in as the first argument.
+        const lenArg = posArgs[0]
+          ?? (kwargs.some((k) => k.target.kind === "Identifier" && k.target.name === "length") ? `${opts}.length` : "14");
+        return `ta.atr(ctx, ${lenArg})`;
+      }
       if (ns === "input" && ["int", "float", "bool", "string"].includes(callee.property)) {
         return inputEmit("inputCall");
       }
@@ -419,6 +457,10 @@ class Emitter {
 
     if (callee.kind === "Identifier") {
       // Bare `input(…)` is the v4 name for `input.int`.
+      // Bare `security(…)` is the v4 name for `request.security`.
+      if (callee.name === "security") {
+        throw new PineUnsupportedError("request.security is not supported", callee.line, callee.col);
+      }
       if (callee.name === "input") return inputEmit("inputCall");
       if (callee.name === "nz") return `nz(${args[0] ?? "NA"}${args[1] ? `, ${args[1]}` : ""})`;
       if (callee.name === "na") return `isNa(${args[0] ?? "NA"})`;
@@ -443,9 +485,13 @@ class Emitter {
   }
 
   toString(): string {
-    // Hoisted `var` lines land before the loop so their value persists.
-    const hoisted = this.hoisted.length ? `${this.hoisted.join("\n")}\n` : "";
-    return hoisted + this.lines.join("\n");
+    if (this.hoisted.length === 0) return this.lines.join("\n");
+    // Hoisted `var` lines sit after the context declaration (their
+    // initializers may read `close` etc.) but before the bar loop so their
+    // value persists across bars.
+    const lines = [...this.lines];
+    lines.splice(this.globalsEnd, 0, ...this.hoisted);
+    return lines.join("\n");
   }
 }
 
@@ -488,6 +534,7 @@ const BUILTIN_NAMES = new Set([
   "mod",
   "eq",
   "ne",
+  "not",
   "lt",
   "le",
   "gt",
@@ -528,6 +575,9 @@ const DENIED_MEMBERS = new Set([
   "toString",
   "valueOf",
 ]);
+
+/** Kwarg names that would pollute the emitted options object literal. */
+const DANGEROUS_KWARGS = new Set(["__proto__", "constructor", "prototype"]);
 
 /**
  * Host globals a script must never reach.

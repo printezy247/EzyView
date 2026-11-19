@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import type { ScreenPoint } from "@ezyview/drawing-tools";
 import type { Drawing } from "@ezyview/drawing-tools";
 import { THEME_OF, useWorkspace } from "./store";
@@ -26,6 +26,12 @@ export interface ChartSyncOptions {
 export function useChartSync(ctx: HostContext, props: Props, opts: ChartSyncOptions): void {
   const { chartRef, containerRef, pendingRef, onDrawingBoxRef, setGhost } = ctx;
   const { visibleDrawings, selectedIds, scripts, hideAllDrawings } = opts;
+  // Mirror for range-change subscribers that must not re-subscribe on every
+  // drawings update.
+  const visibleDrawingsRef = useRef(visibleDrawings);
+  useEffect(() => {
+    visibleDrawingsRef.current = visibleDrawings;
+  }, [visibleDrawings]);
   const activeTool = useWorkspace((s) => s.activeTool);
   const eraserMode = useWorkspace((s) => s.eraserMode);
   const crosshairCursor = useDrawingUi((s) => s.crosshairCursor);
@@ -158,6 +164,24 @@ export function useChartSync(ctx: HostContext, props: Props, opts: ChartSyncOpti
     const y1 = Math.max(...pts.map((p) => p.y));
     onDrawingBoxRef.current?.({ x: x0 - 6, y: y0 - 6, w: x1 - x0 + 12, h: y1 - y0 + 12 });
   }, [selectedId, visibleDrawings]);
+
+  // The anchor above goes stale after a pan or zoom: recompute the box when
+  // the visible range moves (subscription on the host, cleaned up on unmount).
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart?.subscribeRangeChange) return;
+    return chart.subscribeRangeChange(() => {
+      const drawing = selectedId ? visibleDrawingsRef.current.find((d) => d.id === selectedId) : null;
+      if (!drawing) return;
+      const pts = chart.projectDrawing(drawing).filter((p): p is ScreenPoint => p !== null);
+      if (pts.length === 0) return;
+      const x0 = Math.min(...pts.map((p) => p.x));
+      const x1 = Math.max(...pts.map((p) => p.x));
+      const y0 = Math.min(...pts.map((p) => p.y));
+      const y1 = Math.max(...pts.map((p) => p.y));
+      onDrawingBoxRef.current?.({ x: x0 - 6, y: y0 - 6, w: x1 - x0 + 12, h: y1 - y0 + 12 });
+    });
+  }, [selectedId]);
 
 
   // Navigate cursor: crosshair for an armed tool, the eraser, or the cursor

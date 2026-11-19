@@ -1,3 +1,38 @@
+ezy-view (0.5.1) unstable; urgency=medium
+
+  * Trading safety: the volume cap no longer blocks closing positions, and
+    close-all no longer gates the whole batch on the first row's quote age.
+  * MT5 bridge: partial close now decrements the remaining volume across
+    positions (it could close more than requested), validates side and order
+    type up front, edits pending-order brackets with TRADE_ACTION_MODIFY,
+    and mints the session under lock; ticket errors answer 400, not 500.
+  * MT5 adapter: stop-limit orders are refused instead of silently executed
+    as plain stops; trade history reads closed positions (deals showed
+    qty/pnl 0); partial fills map to a new partially_filled status.
+  * Paper engine: stop-out compares margin level to the maintenance rate
+    (was off by 100x), limit fills use the gapped market price, SL/TP edits
+    are validated, rejections are no longer persisted forever, and the
+    daily-loss breaker re-arms after midnight.
+  * Pine transpiler: hoisted var declarations compile, != works on series,
+    and/or/not and compound assignment parse, trailing stops are enforced
+    in backtests, comparisons keep per-bar history, loops step downward
+    when from > to, and unsupported features now fail with clear errors.
+  * Indicators: MACD/PPO/PVO signal warmup, SuperTrend flip bar and ATR
+    warmup, KST scaling, RSI/RMA seed and flat-window value, StochRSI/TSI
+    warmup masks, PSAR reversal step, EOM scale, VWMA zero-volume and
+    linregSlope sign all match reference implementations.
+  * Charts: the newest live tick is never dropped, column/high-low recolor
+    on theme change, near-miss clicks grab drawings again, text/callout hit
+    boxes match the renderer, the floating bar follows pan/zoom, and shared
+    OHLCV/step caches no longer serve stale data.
+  * UI: heatmap load errors surface instead of hanging, event source links
+    are scheme-validated, template saves survive quota errors, and order
+    refresh keeps modified orders in sync.
+  * Dependencies: lightweight-charts 5.3, vite 8.3.8, zustand 5.1,
+    lucide-react 1.76, oxlint 1.94, vitest 5.1.1, Tauri 2.12.5/2.12.6.
+
+ -- Jack <printezy247@users.noreply.github.com>  Thu, 19 Nov 2026 16:00:00 +0000
+
 ezy-view (0.4.0) unstable; urgency=medium
 
   * UI kit: one primitive set for the whole app — Select, Combobox, Tabs,

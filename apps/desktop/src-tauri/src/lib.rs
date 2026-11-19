@@ -358,7 +358,14 @@ async fn factory_reset(app: AppHandle, window: tauri::WebviewWindow) -> Result<(
     if let Err(e) = window.clear_all_browsing_data() {
         errors.push(e.to_string());
     }
-    let dir = app_data(&app)?;
+    let dir = match app_data(&app) {
+        Ok(dir) => dir,
+        // Keep collecting: an earlier failure still matters to the report.
+        Err(e) => {
+            errors.push(e.to_string());
+            return Err(errors.join("; "));
+        }
+    };
     {
         let _guard = LOG_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         for name in ["crash.log", "workspace-snapshot.json", WINDOWS_FILE, SHELL_SETTINGS_FILE] {

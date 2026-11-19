@@ -137,7 +137,7 @@ export interface MarketDataAdapter {
 export type OrderSide = "buy" | "sell";
 export type OrderType = "market" | "limit" | "stop" | "stop_limit";
 export type TimeInForce = "gtc" | "ioc" | "fok" | "day" | "gtd";
-export type OrderStatus = "pending" | "filled" | "canceled" | "rejected" | "expired";
+export type OrderStatus = "pending" | "partially_filled" | "filled" | "canceled" | "rejected" | "expired";
 export type PositionSide = "long" | "short" | "flat";
 
 export interface OrderRequest {
@@ -168,6 +168,8 @@ export interface Order {
   avgFillPrice?: number;
   stopPrice?: number;
   status: OrderStatus;
+  /** Stop-loss bracket attached to a pending order (the trigger is `price`/`price_open`). */
+  bracketStopLoss?: number;
   timeInForce?: TimeInForce;
   time: EpochSeconds;
   updateTime?: EpochSeconds;

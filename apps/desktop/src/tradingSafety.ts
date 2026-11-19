@@ -136,6 +136,11 @@ export class DailyRiskTracker {
     }
   }
 
+  /** True when the local calendar day rolled over since the last init. */
+  sessionRolledOver(): boolean {
+    return this.startingBalance === null && this.sessionDate === this.todayDate();
+  }
+
   recordClosedTrade(symbol: string, pnl: number, timestamp: number = Date.now()): void {
     this.ensureSession();
     if (pnl < 0) {
@@ -204,7 +209,7 @@ export class RiskSessionSync {
   sync(account: { balance: number } | null, deals: readonly { id: string; symbol: string; pnl: number; time: number }[]): void {
     if (!account) return;
     if (!Number.isFinite(account.balance) || account.balance <= 0) return;
-    if (this.lastBalance === null) {
+    if (this.lastBalance === null || dailyRiskTracker.sessionRolledOver()) {
       this.lastBalance = account.balance;
       dailyRiskTracker.initSession(account.balance);
     }
@@ -235,7 +240,8 @@ export function gateAction(input: GateInput, config: SafetyConfig): GateResult {
   if (input.volume !== undefined && !(input.volume > 0)) {
     return { decision: "block", reasons: ["volume must be positive"], secondConfirm: false, dryRun: config.dryRun };
   }
-  if (input.volume !== undefined && input.volume > config.maxOrderVolume) {
+  if (input.volume !== undefined && input.action === "place" && input.volume > config.maxOrderVolume) {
+    // Closing a position must always be possible: the cap only limits new risk.
     reasons.push(
       `volume ${input.volume} exceeds the max order size (${config.maxOrderVolume}) — raise it in Settings → MT5 safety or send from the terminal`,
     );
@@ -380,6 +386,11 @@ export function scrub<T>(value: T): T {
 }
 
 /** Persisted rails shape: guarded read so a corrupt blob falls back to defaults. */
+/** A non-negative finite number, or the fallback. Module-level: recreated per call otherwise. */
+function nonNegative(v: unknown, fallback: number | undefined): number | undefined {
+  return typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : fallback;
+}
+
 export function parseSafety(raw: unknown): SafetyConfig {
   if (typeof raw !== "object" || raw === null) return DEFAULT_SAFETY;
   const candidate = raw as Partial<SafetyConfig>;
@@ -398,9 +409,6 @@ export function parseSafety(raw: unknown): SafetyConfig {
     typeof candidate.lossCooldownSeconds === "number" && Number.isFinite(candidate.lossCooldownSeconds) && candidate.lossCooldownSeconds >= 0
       ? candidate.lossCooldownSeconds
       : DEFAULT_SAFETY.lossCooldownSeconds;
-
-  const nonNegative = (v: unknown, fallback: number | undefined): number | undefined =>
-    typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : fallback;
 
   return {
     maxOrderVolume,

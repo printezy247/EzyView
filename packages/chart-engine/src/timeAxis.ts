@@ -13,12 +13,20 @@
  */
 
 /** Median gap between consecutive bars, robust to weekend and session gaps. */
+const barStepCache = new WeakMap<readonly number[], number>();
+
 export function barStep(times: readonly number[]): number {
   if (times.length < 2) return 0;
+  // timeToX/xToTime run per anchor per drawing per frame; cache the median
+  // gap per times array identity instead of re-sorting every call.
+  const cached = barStepCache.get(times);
+  if (cached !== undefined) return cached;
   const gaps: number[] = [];
   for (let i = 1; i < times.length; i += 1) gaps.push(times[i]! - times[i - 1]!);
   gaps.sort((a, b) => a - b);
-  return gaps[Math.floor(gaps.length / 2)]!;
+  const median = gaps[Math.floor(gaps.length / 2)]!;
+  barStepCache.set(times, median);
+  return median;
 }
 
 /** Float bar index → time. Linear inside the data, extrapolated outside. */

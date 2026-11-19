@@ -63,11 +63,28 @@ export class SpatialIndex {
 
   /** Ids whose bounding box contains the point, padded by `pad` pixels. */
   query(x: number, y: number, pad = 8): string[] {
-    const bucket = this.cells.get(`${Math.floor(x / this.size)}:${Math.floor(y / this.size)}`);
-    if (!bucket) return [];
-    return bucket
-      .filter((entry) => x >= entry.box.x0 - pad && x <= entry.box.x1 + pad && y >= entry.box.y0 - pad && y <= entry.box.y1 + pad)
-      .map((entry) => entry.id);
+    // Scan every cell the padded point can touch: a click just outside a
+    // box often lands in a neighbouring cell the box never registered in.
+    const x0 = Math.floor((x - pad) / this.size);
+    const x1 = Math.floor((x + pad) / this.size);
+    const y0 = Math.floor((y - pad) / this.size);
+    const y1 = Math.floor((y + pad) / this.size);
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (let cx = x0; cx <= x1; cx++) {
+      for (let cy = y0; cy <= y1; cy++) {
+        const bucket = this.cells.get(`${cx}:${cy}`);
+        if (!bucket) continue;
+        for (const entry of bucket) {
+          if (seen.has(entry.id)) continue;
+          seen.add(entry.id);
+          if (x >= entry.box.x0 - pad && x <= entry.box.x1 + pad && y >= entry.box.y0 - pad && y <= entry.box.y1 + pad) {
+            out.push(entry.id);
+          }
+        }
+      }
+    }
+    return out;
   }
 
   /** Ids whose bounds intersect the viewport, for culling. */

@@ -31,7 +31,12 @@ function read(): DrawingTemplate[] {
 }
 
 function write(list: DrawingTemplate[]): void {
-  localStorage.setItem(KEY, JSON.stringify(list));
+  try {
+    localStorage.setItem(KEY, JSON.stringify(list));
+  } catch (err) {
+    // Quota exceeded must not throw inside unguarded click handlers.
+    console.error("saving drawing templates failed", err);
+  }
 }
 
 /** Save `style` under `name`; an existing template with that name is replaced. */

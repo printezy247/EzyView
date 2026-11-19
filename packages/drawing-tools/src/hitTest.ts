@@ -173,16 +173,25 @@ export function hitTest(
       if (!a) return null;
       const fontSize = drawing.style.fontSize ?? 13;
       const lines = (drawing.text ?? "Text").split("\n");
+      // Match the renderer's block geometry (drawings.ts drawTextBlock):
+      // lineHeight 1.35, width measured per line with a 0.6 em average.
       const width = Math.max(fontSize * 2, Math.max(...lines.map((l) => l.length)) * fontSize * 0.6);
-      return insideRect(click, a, { x: a.x + width, y: a.y + lines.length * fontSize * 1.25 }, tol)
+      return insideRect(click, a, { x: a.x + width, y: a.y + lines.length * fontSize * 1.35 }, tol)
         ? bodyHit(drawing)
         : null;
     }
     case "callout": {
       if (!a || !b) return null;
-      // The leader line or the text box (rendered 140×26 at the second anchor).
+      // The leader line or the text box. The box matches the renderer's
+      // formula (drawings.ts callout): max(120, textWidth + 18) ×
+      // lines × 1.35em + 12, rather than a fixed 140×26.
       if (distToSegment(click, a, b) <= tol) return bodyHit(drawing);
-      return insideRect(click, b, { x: b.x + 140, y: b.y + 26 }, tol) ? bodyHit(drawing) : null;
+      const fontSize = drawing.style.fontSize ?? 13;
+      const lines = (drawing.text || "Callout").split("\n");
+      const textWidth = Math.max(...lines.map((l) => l.length)) * fontSize * 0.6;
+      const boxWidth = Math.max(120, textWidth + 18);
+      const boxHeight = lines.length * fontSize * 1.35 + 12;
+      return insideRect(click, b, { x: b.x + boxWidth, y: b.y + boxHeight }, tol) ? bodyHit(drawing) : null;
     }
     case "long_position":
     case "short_position": {

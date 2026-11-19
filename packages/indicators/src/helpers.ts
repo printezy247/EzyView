@@ -160,8 +160,8 @@ export function trueRange(data: OHLCV): number[] {
   return out;
 }
 
-/** Per-element arithmetic over two aligned series; null if either side is null. */
-export function map2(a: SeriesValue[], b: SeriesValue[], fn: (x: number, y: number) => number): SeriesValue[] {
+/** Per-element arithmetic over two aligned series; null if either side is null (or the callback returns null). */
+export function map2(a: SeriesValue[], b: SeriesValue[], fn: (x: number, y: number) => number | null): SeriesValue[] {
   const out: SeriesValue[] = Array.from({ length: a.length }, () => null);
   for (let i = 0; i < a.length; i++) {
     const x = a[i] ?? null;
@@ -280,12 +280,15 @@ export function linregSlope(values: number[], period: number): SeriesValue[] {
       // Warm-up: v_i will end up with coefficient p-1-i once the window fills.
       Q += v * (p - 1 - i);
       S += v;
-      if (i === p - 1) out[i] = (p * Q - sumX * S) / denom;
+      if (i === p - 1) out[i] = -((p * Q - sumX * S) / denom);
       continue;
     }
     Q = Q - p * values[i - p]! + S;
     S = S + v - values[i - p]!;
-    out[i] = (p * Q - sumX * S) / denom;
+    // The window is walked newest-first (x = 0 is the current bar), so the raw
+    // slope is negated relative to convention: negate so a rising series
+    // yields a positive slope.
+    out[i] = -((p * Q - sumX * S) / denom);
   }
   return out;
 }

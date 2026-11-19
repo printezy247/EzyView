@@ -82,6 +82,39 @@ describe("oscillators", () => {
     expect(out.values[24]).toBeNull(); // slow EMA (26) warms at index 25
     expect(out.values[25]).not.toBeNull();
     expect(out.plots?.hist).toBeDefined();
+    // Regression: the signal line is seeded from the first macd value, not from
+    // zero-padded warmup, and stays null wherever the macd line is null.
+    expect(out.plots?.signal?.[32]).toBeNull();
+    expect(out.plots?.signal?.[33]).not.toBeNull(); // 25 + 9 signal bars - 1
+    const macdLine = out.values;
+    for (let i = 0; i < macdLine.length; i++) {
+      if (macdLine[i] === null || i < 33) expect(out.plots?.signal?.[i], `signal@${i}`).toBeNull();
+      else expect(out.plots?.signal?.[i], `signal@${i}`).not.toBeNull();
+    }
+    // Signal must be a 9-period EMA over the macd values themselves.
+    const macdVals = macdLine.slice(25) as number[];
+    const alpha = 2 / 10;
+    let prev = macdVals.slice(0, 9).reduce((a, b) => a + b, 0) / 9;
+    expect(out.plots?.signal![33]).toBeCloseTo(prev, 6);
+    for (let j = 9; j < macdVals.length; j++) {
+      prev = (macdVals[j]! - prev) * alpha + prev;
+      expect(out.plots?.signal![25 + j]).toBeCloseTo(prev, 5);
+    }
+  });
+
+  it("rsi is neutral 50 when gains and losses are both zero", () => {
+    const d = make({ close: Array.from({ length: 30 }, () => 100) });
+    const out = getIndicator("rsi")!.compute(d, { length: 14, source: "close" }).values;
+    expect(out.at(-1)).toBe(50);
+  });
+
+  it("rsi seed excludes the null delta at bar 0", () => {
+    // With close[i] = i, every delta is 1: avgGain seeds as mean(1..14) = 1,
+    // avgLoss = 0, so the first value (at bar 14) is exactly 100.
+    const d = make({ close: Array.from({ length: 40 }, (_, i) => i + 1) });
+    const out = getIndicator("rsi")!.compute(d, { length: 14, source: "close" }).values;
+    for (let i = 0; i < 14; i++) expect(out[i], `rsi@${i}`).toBeNull();
+    expect(out[14]).toBeCloseTo(100, 6);
   });
 });
 

@@ -71,6 +71,8 @@ export function backtest(orders: PineOrder[], opts: BacktestOptions): BacktestRe
     price: number;
     qty: number;
     bar: number;
+    /** Running favorable extreme since entry — highest high (long) / lowest low (short). */
+    trailExtreme?: number;
     bracket?: {
       stop?: number;
       limit?: number;
@@ -110,19 +112,21 @@ export function backtest(orders: PineOrder[], opts: BacktestOptions): BacktestRe
       if (!pos.bracket) continue;
 
       const { stop, limit } = pos.bracket;
-      let exitPrice: number | null = null;
+      let exitPrice: number | null = trailExitPrice(pos, highBar, lowBar, slippage);
 
-      if (pos.side === "long") {
-        if (stop !== undefined && lowBar <= stop) {
-          exitPrice = stop - slippage;
-        } else if (limit !== undefined && highBar >= limit) {
-          exitPrice = limit - slippage;
-        }
-      } else {
-        if (stop !== undefined && highBar >= stop) {
-          exitPrice = stop + slippage;
-        } else if (limit !== undefined && lowBar <= limit) {
-          exitPrice = limit + slippage;
+      if (exitPrice === null) {
+        if (pos.side === "long") {
+          if (stop !== undefined && lowBar <= stop) {
+            exitPrice = stop - slippage;
+          } else if (limit !== undefined && highBar >= limit) {
+            exitPrice = limit - slippage;
+          }
+        } else {
+          if (stop !== undefined && highBar >= stop) {
+            exitPrice = stop + slippage;
+          } else if (limit !== undefined && lowBar <= limit) {
+            exitPrice = limit + slippage;
+          }
         }
       }
 
@@ -190,13 +194,15 @@ export function backtest(orders: PineOrder[], opts: BacktestOptions): BacktestRe
           // Check if this newly attached bracket triggers on bar b if entered at open
           if (!fillOnClose && pos.bar === b) {
             const { stop, limit } = pos.bracket;
-            let exitPrice: number | null = null;
-            if (pos.side === "long") {
-              if (stop !== undefined && lowBar <= stop) exitPrice = stop - slippage;
-              else if (limit !== undefined && highBar >= limit) exitPrice = limit - slippage;
-            } else {
-              if (stop !== undefined && highBar >= stop) exitPrice = stop + slippage;
-              else if (limit !== undefined && lowBar <= limit) exitPrice = limit + slippage;
+            let exitPrice: number | null = trailExitPrice(pos, highBar, lowBar, slippage);
+            if (exitPrice === null) {
+              if (pos.side === "long") {
+                if (stop !== undefined && lowBar <= stop) exitPrice = stop - slippage;
+                else if (limit !== undefined && highBar >= limit) exitPrice = limit - slippage;
+              } else {
+                if (stop !== undefined && highBar >= stop) exitPrice = stop + slippage;
+                else if (limit !== undefined && lowBar <= limit) exitPrice = limit + slippage;
+              }
             }
             if (exitPrice !== null) {
               closePosition(pos, exitPrice, b, trades, multiplier, commission);
@@ -292,6 +298,42 @@ export function backtest(orders: PineOrder[], opts: BacktestOptions): BacktestRe
     maxConsecutiveLosses,
     avgWinLossRatio,
   };
+}
+
+/**
+ * Trailing-stop check at bar granularity.
+ *
+ * The trail follows the running favorable extreme: `trail.points` below the
+ * highest high for a long (above the lowest low for a short), activating once
+ * the excursion covers `trail.offset` points from entry (0 = active at once).
+ * Updates the position's extreme as a side effect so the trail ratchets.
+ */
+function trailExitPrice(
+  pos: { side: "long" | "short"; price: number; trailExtreme?: number; bracket?: { trail?: { points?: number; offset?: number } } },
+  highBar: number,
+  lowBar: number,
+  slippage: number,
+): number | null {
+  const trail = pos.bracket?.trail;
+  if (!trail || trail.points === undefined) return null;
+
+  const favorable = pos.side === "long" ? highBar : lowBar;
+  const extreme =
+    pos.trailExtreme === undefined
+      ? favorable
+      : pos.side === "long"
+        ? Math.max(pos.trailExtreme, favorable)
+        : Math.min(pos.trailExtreme, favorable);
+  pos.trailExtreme = extreme;
+
+  const offset = trail.offset ?? 0;
+  const activated = pos.side === "long" ? extreme - pos.price >= offset : pos.price - extreme >= offset;
+  if (!activated) return null;
+
+  const level = pos.side === "long" ? extreme - trail.points : extreme + trail.points;
+  if (pos.side === "long" && lowBar <= level) return level - slippage;
+  if (pos.side === "short" && highBar >= level) return level + slippage;
+  return null;
 }
 
 function closePosition(

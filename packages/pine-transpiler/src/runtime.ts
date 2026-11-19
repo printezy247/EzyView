@@ -100,6 +100,23 @@ const series1 = (src: PineValue[], fn: (v: number) => number): PineValue[] =>
   src.map((v) => (isNa(v) ? NA : fn(toNumber(v))));
 
 /** Every `ta.*` function the transpiler exposes. */
+
+/**
+ * True range per ctx, cached on the context object's identity. The script body
+ * runs once per bar, so an uncached `trueRange` rebuilds the full series every
+ * bar (O(n²) across a run); the ctx object is fresh per run, which is exactly
+ * the cache lifetime Pine's series semantics want.
+ */
+const trCache = new WeakMap<object, number[]>();
+function rawTrueRange(ctx: Context): number[] {
+  const cached = trCache.get(ctx);
+  if (cached) return cached;
+  const data = { open: ctx.open, high: ctx.high, low: ctx.low, close: ctx.close, volume: ctx.volume };
+  const out = trueRange(data);
+  trCache.set(ctx, out);
+  return out;
+}
+
 export const ta = {
   sma: wrap("sma", sma),
   ema: wrap("ema", ema),
@@ -112,11 +129,17 @@ export const ta = {
       const values = src.map((v) => (isNa(v) ? Number.NaN : toNumber(v)));
       const half = Math.max(1, Math.floor(period / 2));
       const sqrtLen = Math.max(1, Math.round(Math.sqrt(period)));
-      const a = wma(values, half) as number[];
-      const b = wma(values, period) as number[];
-      const diff = a.map((x, i) => 2 * x - (b[i] ?? Number.NaN));
-      const smoothed = wma(fillForward(diff.map((v) => (Number.isNaN(v) ? null : v))), sqrtLen) as number[];
-      return smoothed.map((v) => (Number.isNaN(v) ? NA : v));
+      const a = wma(values, half);
+      const b = wma(values, period);
+      // `wma` returns null during warm-up; casting those to numbers would make
+      // `2*x - b[i]` emit 0-based garbage, so nulls stay null (masked NA below)
+      // exactly like the indicators package's own hma.
+      const raw: (number | null)[] = a.map((x, i) => {
+        const y = b[i] ?? null;
+        return x === null || y === null ? null : 2 * x - y;
+      });
+      const smoothed = wma(fillForward(raw), sqrtLen);
+      return smoothed.map((v, i) => (v === null || i < period - 1 + sqrtLen - 1 ? NA : v));
     });
   },
   highest: (src: PineValue[], length: number): PineValue[] => {
@@ -140,13 +163,11 @@ export const ta = {
       return change(values, period) as PineValue[];
     });
   },
-  tr: (_ctx: Context): PineValue[] => {
-    const data = { open: _ctx.open, high: _ctx.high, low: _ctx.low, close: _ctx.close, volume: _ctx.volume };
-    return trueRange(data).map((v) => (Number.isNaN(v) ? NA : v));
-  },
+  tr: (ctx: Context): PineValue[] => rawTrueRange(ctx).map((v) => (Number.isNaN(v) ? NA : v)),
   atr: (ctx: Context, length: number): PineValue[] => {
-    const data = { open: ctx.open, high: ctx.high, low: ctx.low, close: ctx.close, volume: ctx.volume };
-    return wrap("rma", rma)(trueRange(data), length);
+    // Feed the cached true-range series (stable identity) to the memoized rma
+    // wrapper, so the ATR is computed once per run instead of once per bar.
+    return wrap("rma", rma)(rawTrueRange(ctx), length);
   },
   rsi: (src: PineValue[], length: number): PineValue[] => {
     const period = Math.max(1, Math.floor(length));

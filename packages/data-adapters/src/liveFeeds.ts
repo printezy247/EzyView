@@ -515,8 +515,11 @@ const binanceConfig: SourceConfig = {
     const interval = BINANCE_INTERVAL[req.resolution];
     if (!interval) return [];
     const limit = Math.max(1, Math.min(req.limit ?? 1000, 1000));
-    // endTime + limit returns the latest `limit` bars up to `to` (what a chart wants).
-    const url = `${BINANCE_REST}/api/v3/klines?symbol=${ticker}&interval=${interval}&endTime=${Math.floor(req.to * 1000)}&limit=${limit}`;
+    // endTime + limit returns the latest `limit` bars up to `to` (what a chart
+    // wants); startTime pins the older end so scroll-back windows resolve to
+    // the requested range instead of the most recent bars.
+    const startTime = Math.floor(req.from * 1000);
+    const url = `${BINANCE_REST}/api/v3/klines?symbol=${ticker}&interval=${interval}&startTime=${startTime}&endTime=${Math.floor(req.to * 1000)}&limit=${limit}`;
     const rows = await ctx.getJson(url);
     if (!Array.isArray(rows)) return [];
     const out: Candle[] = [];
@@ -782,9 +785,13 @@ function makeTwelveConfig(deps: LiveSourceDeps): SourceConfig {
       const apikey = await key();
       if (!interval || !apikey) return [];
       const size = Math.max(1, Math.min(req.limit ?? 500, 500));
+      // `end`/`start` pin the window: without them Twelve Data always returns
+      // the most recent bars, so older chart ranges come back empty.
       const url =
         `${TD_REST}/time_series?symbol=${tdPair(ticker)}&interval=${interval}&outputsize=${size}` +
-        `&order=asc&timezone=UTC&apikey=${encodeURIComponent(apikey)}`;
+        `&order=asc&timezone=UTC&apikey=${encodeURIComponent(apikey)}` +
+        (req.to ? `&end=${new Date(req.to * 1000).toISOString().slice(0, 19)}` : "") +
+        (req.from ? `&start=${new Date(req.from * 1000).toISOString().slice(0, 19)}` : "");
       const j = await ctx.getJson(url);
       if (!isRecord(j) || tdIsError(j) || !Array.isArray(j.values)) return [];
       const out: Candle[] = [];

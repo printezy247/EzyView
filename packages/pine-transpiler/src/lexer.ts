@@ -120,6 +120,7 @@ export function lex(source: string): Token[] {
     if (ch === '"' || ch === "'") {
       const quote = ch;
       const start = i;
+      const startCol = col;
       i++;
       col++;
       let text = "";
@@ -135,6 +136,9 @@ export function lex(source: string): Token[] {
         i++;
         col++;
       }
+      // A quote that runs to EOF never closed — that is a syntax error, not a
+      // string that happens to be empty.
+      if (i >= source.length) throw new PineSyntaxError("unterminated string", line, startCol);
       i++;
       col++;
       push("string", source.slice(start, i), text);

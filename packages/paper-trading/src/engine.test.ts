@@ -2,13 +2,14 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { PaperTradingEngine, PaperTradingError } from "./engine.js";
 
 /** Deterministic ids and clock so the assertions below are stable. */
-function makeEngine(startingBalance = 100_000): PaperTradingEngine {
+function makeEngine(startingBalance = 100_000, extra: Partial<ConstructorParameters<typeof PaperTradingEngine>[0]> = {}): PaperTradingEngine {
   let seq = 0;
   let clock = 1_700_000_000;
   return new PaperTradingEngine({
     startingBalance,
     idGenerator: () => `id-${seq++}`,
     now: () => (clock += 1),
+    ...extra,
   });
 }
 
@@ -154,7 +155,8 @@ describe("PaperTradingEngine", () => {
 
     engine.updateQuote("DEMO:BTCUSDT", 89);
     const [position] = await engine.getPositions();
-    expect(position?.entryPrice).toBe(90);
+    // Gapped through the limit: a real venue fills at the market price, not the limit.
+    expect(position?.entryPrice).toBe(89);
     // The resting order is gone once it has filled.
     await expect(engine.getOrders()).resolves.toEqual([]);
   });
@@ -199,8 +201,9 @@ describe("PaperTradingEngine", () => {
   });
 
   it("liquidates everything when the margin level falls under the stop-out level", async () => {
-    // $50k posted against $5m of notional, so a 1.6% drop takes the equity
-    // below the 50% stop-out level and the venue liquidates to save the rest.
+    // 50% maintenance margin: $50k posted against $5m of notional, so a 1.6%
+    // drop takes equity/margin under 0.5 and the venue liquidates.
+    engine = makeEngine(100_000, { maintenanceMarginRate: 0.5 });
     engine.updateQuote("DEMO:BTCUSDT", 100);
     await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "market", qty: 50_000 });
 
@@ -211,6 +214,16 @@ describe("PaperTradingEngine", () => {
     await expect(engine.getPositions()).resolves.toEqual([]);
     // Equity survives the liquidation rather than going to zero.
     expect((await engine.getAccount()).equity).toBeGreaterThan(0);
+  });
+
+  it("does not liquidate while the margin level stays above the maintenance rate", async () => {
+    // Regression: the stop-out check once compared a ratio against a percent,
+    // liquidating at equity/margin < 50 instead of < 0.005.
+    engine.updateQuote("DEMO:BTCUSDT", 100);
+    await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "market", qty: 50_000 });
+
+    engine.updateQuote("DEMO:BTCUSDT", 98.4);
+    await expect(engine.getPositions()).resolves.toHaveLength(1);
   });
 
   it("resets the account back to its starting balance", async () => {

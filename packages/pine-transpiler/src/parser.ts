@@ -90,6 +90,28 @@ class Parser {
           ...loc,
         };
       }
+      // Compound assignments (`x += y`) lex but Pine has no other reading for
+      // them, so they desugar to `x := x op y` — the shape the emitter already
+      // understands.
+      if (next?.type === "op" && COMPOUND_OPS[next.value]) {
+        this.advance();
+        this.advance();
+        const value = this.parseExpr();
+        this.expectStatementEnd();
+        return {
+          kind: "AssignExpr",
+          operator: ":=",
+          target: { kind: "Identifier", name: start.value, ...loc },
+          value: {
+            kind: "BinaryExpr",
+            operator: COMPOUND_OPS[next.value]!,
+            left: { kind: "Identifier", name: start.value, ...loc },
+            right: value,
+            ...loc,
+          },
+          ...loc,
+        };
+      }
     }
 
     const expression = this.parseExpr();
@@ -239,15 +261,24 @@ class Parser {
 
     for (;;) {
       const t = this.peek();
-      if (t.type !== "op") break;
-      const prec = BINARY_PRECEDENCE[t.value];
+      // Pine spells its boolean operators as words: `and`/`or` lex as
+      // identifiers but bind like `&&`/`||`, so they are accepted here and
+      // emitted as BinaryExpr nodes whose op the transpiler already maps.
+      const opValue =
+        t.type === "op"
+          ? t.value
+          : t.type === "ident" && (t.value === "and" || t.value === "or")
+            ? t.value
+            : undefined;
+      if (opValue === undefined) break;
+      const prec = opValue === "and" ? BINARY_PRECEDENCE["&&"] : opValue === "or" ? BINARY_PRECEDENCE["||"] : BINARY_PRECEDENCE[opValue];
       if (prec === undefined || prec < minPrec) break;
 
       const loc = this.loc();
       this.advance();
       // All Pine binary operators are left-associative.
       const right = this.parseBinary(prec + 1);
-      left = { kind: "BinaryExpr", operator: t.value, left, right, ...loc };
+      left = { kind: "BinaryExpr", operator: opValue, left, right, ...loc };
     }
 
     // `:=` binds loosest, so it is checked after the loop.
@@ -272,6 +303,14 @@ class Parser {
       this.advance();
       const argument = this.parseUnary();
       return { kind: "UnaryExpr", operator: t.value as "-" | "!" | "~", argument, ...loc };
+    }
+    // Pine's word negation: `not cond`. Emitted as a `not` unary the
+    // transpiler maps onto the runtime's `not` helper.
+    if (t.type === "ident" && t.value === "not") {
+      const loc = this.loc();
+      this.advance();
+      const argument = this.parseUnary();
+      return { kind: "UnaryExpr", operator: "not", argument, ...loc };
     }
     return this.parsePostfix();
   }
@@ -471,6 +510,15 @@ class Parser {
 }
 
 const TYPE_KEYWORDS = new Set(["int", "float", "bool", "string", "color", "series", "simple"]);
+
+/** Compound assignment to binary operator: `x += y` reads as `x := x + y`. */
+const COMPOUND_OPS: Record<string, "+" | "-" | "*" | "/" | "%"> = {
+  "+=": "+",
+  "-=": "-",
+  "*=": "*",
+  "/=": "/",
+  "%=": "%",
+};
 
 /** Words that can never start a bare declaration. */
 const RESERVED = new Set([

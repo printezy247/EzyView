@@ -287,7 +287,7 @@ describe("twelvedata", () => {
       { time: 1700000000, open: 1, high: 2, low: 0.5, close: 1.5, volume: 0 },
       { time: 1700000900, open: 1.5, high: 2, low: 1, close: 1.7, volume: 9 },
     ]);
-    expect(urls[0]).toMatch(/^https:\/\/api\.twelvedata\.com\/time_series\?symbol=XAU\/USD&interval=1min&outputsize=500&order=asc&timezone=UTC&apikey=SECRETKEY$/);
+    expect(urls[0]).toMatch(/^https:\/\/api\.twelvedata\.com\/time_series\?symbol=XAU\/USD&interval=1min&outputsize=500&order=asc&timezone=UTC&apikey=SECRETKEY(&end=[^&]+)?$/);
     await sources.twelvedata.getHistory(req("EURUSD", "1D"));
     expect(urls[1]).toContain("interval=1day");
     expect(await sources.twelvedata.getHistory(req("EURUSD", "5s"))).toEqual([]);

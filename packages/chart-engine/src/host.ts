@@ -357,8 +357,13 @@ export class EzyChart {
   }
 
   private getSharedOhlcv(): { open: number[]; high: number[]; low: number[]; close: number[]; volume: number[] } {
+    const first = this.data[0];
     const last = this.data.at(-1);
-    const key = this.lastBarKey(last);
+    // The key also covers the first bar and total volume: a backfill that
+    // corrects mid-history bars with the same length and last bar must not
+    // reuse the stale arrays.
+    const volumeSum = this.data.reduce((s, c) => s + c.volume, 0);
+    const key = `${this.data.length}|${first?.time ?? 0}|${this.lastBarKey(last)}|${volumeSum}`;
     if (this.sharedOhlcv && this.sharedOhlcvKey === key) return this.sharedOhlcv;
     const n = this.data.length;
     const open: number[] = [];
@@ -710,8 +715,9 @@ export class EzyChart {
         lines: [{ text: this.watermarkText, color: translucent(theme.textColor, 0.12) }],
       });
     }
-    // Kagi colors its line per point, so the data carries the theme.
-    if (this.type === "kagi") this.mainSeries?.setData(this.seriesData());
+    // Kagi colors its line per point, so the data carries the theme. Column
+    // and high-low bake theme colors into points/options the same way.
+    if (this.type === "kagi" || this.type === "column" || this.type === "highlow") this.mainSeries?.setData(this.seriesData());
     for (const line of this.levelLines) line.applyOptions({ color: theme.paneSeparator });
   }
 
@@ -1239,6 +1245,17 @@ export class EzyChart {
   /** Project a drawing's anchors into pixels for hit-testing. */
   projectDrawing(drawing: Drawing): (ScreenPoint | null)[] {
     return this.drawings.project(drawing);
+  }
+
+  /**
+   * Fire `cb` whenever the visible range changes (pan/zoom). Returns an
+   * unsubscribe function; screen-space consumers (e.g. the floating drawing
+   * bar) use it to re-anchor after the view moves.
+   */
+  subscribeRangeChange(cb: () => void): () => void {
+    const handler = (): void => cb();
+    this.chart.timeScale().subscribeVisibleLogicalRangeChange?.(handler);
+    return () => this.chart.timeScale().unsubscribeVisibleLogicalRangeChange?.(handler);
   }
 
   /**

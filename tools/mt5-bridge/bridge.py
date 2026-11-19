@@ -392,8 +392,7 @@ class Handler(BaseHTTPRequestHandler):
         if not BRIDGE_TOKEN:
             # A bridge with no token must not be able to place orders: any
             # program on this machine could otherwise drive the broker.
-            return self.command != "POST" or ALLOW_INSECURE_WRITES
-        # The token may arrive as a header or as a query parameter: a custom
+            return self.command != "POST" or ALLOW_INSECURE_WRITES        # The token may arrive as a header or as a query parameter: a custom
         # header would make the browser send a preflight, which this local
         # server answers unreliably.
         provided = (self.headers.get("X-Bridge-Token") or "").strip()
@@ -524,6 +523,11 @@ class Handler(BaseHTTPRequestHandler):
             ok = bool(mt5.initialize(**kwargs))
             account = mt5.account_info() if ok else None
             err = redact(mt5.last_error(), password) if not ok else None
+            if ok and account is not None and str(account.login) == login:
+                # Mint the session while holding LOCK: two concurrent /connect
+                # calls must not race and silently invalidate one client.
+                SESSION = uuid.uuid4().hex
+                SESSION_ACCOUNT = {"login": login, "server": account.server or server, "demo": account.trade_mode == 0}
         if not ok or account is None:
             audit("connect", login=login, server=server, result="rejected", error=err)
             return self._fail(err or "login failed", 401)
@@ -532,8 +536,6 @@ class Handler(BaseHTTPRequestHandler):
                 mt5.shutdown()
             audit("connect", login=login, server=server, result="rejected", error="account mismatch")
             return self._fail("terminal ended up on a different account", 409)
-        SESSION = uuid.uuid4().hex
-        SESSION_ACCOUNT = {"login": login, "server": account.server or server, "demo": account.trade_mode == 0}
         audit("connect", login=login, server=server, result="ok")
         self._send({
             "ok": True,
@@ -687,6 +689,12 @@ class Handler(BaseHTTPRequestHandler):
             volume = 0.0
         if not symbol or not math.isfinite(volume) or volume <= 0:
             return self._fail("symbol and a finite positive volume are required", 400)
+        if str(side).lower() not in ("buy", "sell"):
+            return self._fail(f"side must be 'buy' or 'sell', got: {side}", 400)
+        side = str(side).lower()
+        if str(kind).lower() not in ("market", "limit", "stop"):
+            return self._fail(f"order type must be 'market', 'limit' or 'stop', got: {kind}", 400)
+        kind = str(kind).lower()
         if volume > MAX_ORDER_VOLUME:
             return self._fail(f"volume {volume} exceeds server max limit ({MAX_ORDER_VOLUME})", 400)
         if SYMBOL_ALLOW_LIST and str(symbol).upper() not in SYMBOL_ALLOW_LIST:
@@ -783,7 +791,11 @@ class Handler(BaseHTTPRequestHandler):
                     volume = 0
                 else:
                     part = pos.volume
-                if part <= 0:
+                    if volume:
+                        # Closing across multiple positions: track what is left
+                        # so we never close more than requested.
+                        volume = float(volume) - part
+                if part <= 0 or (volume is not None and volume < 0):
                     continue
                 tick = mt5.symbol_info_tick(symbol)
                 if tick is None:
@@ -811,9 +823,9 @@ class Handler(BaseHTTPRequestHandler):
                 audit("close", login=login, server=server, symbol=symbol, volume=part,
                       price=request["price"], result=f"done:{result.order}")
                 closed.append(ser(result._asdict()))
-                if volume:
-                    continue
-                break
+                if volume is not None and volume <= 0:
+                    break
+                continue
         if not closed:
             audit("close", login=login, server=server, symbol=symbol, result="rejected",
                   error="no open position")
@@ -824,12 +836,16 @@ class Handler(BaseHTTPRequestHandler):
         ticket = body.get("ticket")
         if ticket in (None, ""):
             return self._fail("ticket required", 400)
+        try:
+            ticket = int(ticket)
+        except (TypeError, ValueError):
+            return self._fail("ticket must be numeric", 400)
         login, server = _account_ref()
         if body.get("dry_run"):
             audit("cancel", login=login, server=server, result="dry_run", detail=f"ticket {ticket}")
             return self._send({"ok": True, "dry_run": True, "ticket": str(ticket)})
         with LOCK:
-            result = mt5.order_send({"action": mt5.TRADE_ACTION_REMOVE, "order": int(ticket)})
+            result = mt5.order_send({"action": mt5.TRADE_ACTION_REMOVE, "order": ticket})
         if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
             reason = result.comment if result else str(mt5.last_error())
             audit("cancel", login=login, server=server, result="rejected", error=reason, detail=f"ticket {ticket}")
@@ -860,16 +876,24 @@ class Handler(BaseHTTPRequestHandler):
             if position is None and order is None:
                 return self._fail("unknown ticket", 404)
             source = position if position is not None else order
-            request = {
-                "action": mt5.TRADE_ACTION_SLTP,
-                "symbol": source.symbol,
-                "sl": float(source.sl or 0.0),
-                "tp": float(source.tp or 0.0),
-            }
             if position is not None:
-                request["position"] = position.ticket
+                request = {
+                    "action": mt5.TRADE_ACTION_SLTP,
+                    "symbol": source.symbol,
+                    "sl": float(source.sl or 0.0),
+                    "tp": float(source.tp or 0.0),
+                    "position": position.ticket,
+                }
             else:
-                request["order"] = order.ticket
+                # Pending orders need TRADE_ACTION_MODIFY (SLTP only applies to
+                # open positions) and must repeat the trigger price.
+                request = {
+                    "action": mt5.TRADE_ACTION_MODIFY,
+                    "order": order.ticket,
+                    "price": float(order.price_open),
+                    "sl": float(order.sl or 0.0),
+                    "tp": float(order.tp or 0.0),
+                }
             for key in ("sl", "tp"):
                 if key in body and body[key] is not None:
                     request[key] = float(body[key])

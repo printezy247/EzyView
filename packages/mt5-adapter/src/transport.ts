@@ -155,10 +155,15 @@ class BridgeTransport implements Mt5Transport {
   }
 
   placeOrder(request: OrderRequest, options?: Mt5WriteOptions): Promise<unknown> {
+    // The bridge has no stop-limit support: executing one as a plain stop
+    // would silently change the order's semantics, so refuse instead.
+    if (request.type === "stop_limit") {
+      return Promise.reject(new Error("MT5 bridge does not support stop_limit orders"));
+    }
     const body = {
       symbol: request.symbol,
       side: request.side,
-      type: isPending(request) ? (request.type === "stop" || request.type === "stop_limit" ? "stop" : "limit") : "market",
+      type: isPending(request) ? (request.type === "stop" ? "stop" : "limit") : "market",
       volume: request.qty,
       price: request.price ?? request.stopPrice,
       sl: request.stopLoss,
@@ -225,7 +230,9 @@ class BridgeTransport implements Mt5Transport {
       throw new Error("Refusing to send MT5 token to a non-local host.");
     }
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 12_000);
+    // /connect can legitimately spend up to 15 s inside mt5.initialize, so a
+    // 12 s client abort there throws while the bridge still completes.
+    const timer = setTimeout(() => controller.abort(), 20_000);
     const init: RequestInit = { method, signal: controller.signal, redirect: "error" };
     const redact = (text: string): string => {
       let out = text;
@@ -293,7 +300,9 @@ class McpTransport implements Mt5Transport {
     const args: Record<string, unknown> = {};
     if (from !== undefined) args.from = from;
     if (to !== undefined) args.to = to;
-    return this.client.call(MT5_TOOLS.historyOrders, args);
+    // History *orders* carry no profit/volume-filled, so they map to empty
+    // deals — closed positions do, and are what the journal shows.
+    return this.client.call(MT5_TOOLS.historyPositions, args);
   }
 
   marketWatch(): Promise<unknown> {

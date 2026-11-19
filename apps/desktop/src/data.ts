@@ -43,7 +43,7 @@ export const RESOLUTION_GROUPS: { label: string; items: Resolution[] }[] = [
   { label: "Days", items: ["1D", "1W", "1M"] },
 ];
 
-const UNIT_NAME: Record<string, string> = { m: "minute", h: "hour", D: "day", W: "week", M: "month" };
+const UNIT_NAME: Record<string, string> = { t: "tick", s: "second", m: "minute", h: "hour", D: "day", W: "week", M: "month" };
 
 /** Long name for an interval, e.g. "15m" → "15 minutes", "1D" → "1 day". */
 export function resolutionName(r: Resolution): string {
@@ -234,8 +234,10 @@ async function fetchPublicQuote(symbol: string): Promise<Quote | null> {
     liveQuoteCache.set(ticker, { quote, fetchedAt: nowMs });
     livePublicTickers.add(ticker);
     return quote;
-  } catch {
-    publicBreaker.recordFailure();
+  } catch (err) {
+    // A 4xx (bad symbol) is the caller's fault: it must not trip the
+    // provider-outage breaker that gates every other public request.
+    if (!(err instanceof NonRetryableError)) publicBreaker.recordFailure();
     return null;
   } finally {
     clearTimeout(timer);
@@ -509,12 +511,12 @@ export async function loadHistory(
       const to = Math.floor(now / step) * step;
       const request = { symbol, resolution, from: to - step * limit, to, limit };
       if (isLiveSourceChoice(feed)) {
-        const source = getLiveSources()[feed];
-        const candles = await source.getHistory(request);
+        const feedSource = getLiveSources()[feed];
+        const candles = await feedSource.getHistory(request);
         // An empty answer for an interval the provider never serves is a clear
         // error, not a blank chart with no explanation.
         if (candles.length === 0 && !LIVE_RESOLUTIONS[feed].has(resolution)) {
-          throw new Error(`${source.label} has no ${resolutionName(resolution)} bars. Pick another interval or feed.`);
+          throw new Error(`${getLiveSources()[feed].label} has no ${resolutionName(resolution)} bars. Pick another interval or feed.`);
         }
         return candles;
       }

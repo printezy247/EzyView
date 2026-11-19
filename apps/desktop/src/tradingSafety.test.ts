@@ -8,6 +8,7 @@ import {
   maskLogin,
   mt5KeyringName,
   parseSafety,
+  RiskSessionSync,
   scrub,
 } from "./tradingSafety";
 import type { SafetyConfig } from "./tradingSafety";
@@ -19,6 +20,13 @@ describe("gateAction", () => {
     const result = gateAction({ action: "place", symbol: "XAUUSD", volume: 2, accountKind: "demo" }, rails({ maxOrderVolume: 1 }));
     expect(result.decision).toBe("block");
     expect(result.reasons.join(" ")).toMatch(/exceeds the max order size/);
+  });
+
+  it("never blocks closes with the volume cap — exiting must always be possible", () => {
+    for (const action of ["close", "cancel", "modify"] as const) {
+      const result = gateAction({ action, symbol: "XAUUSD", volume: 2, accountKind: "demo" }, rails({ maxOrderVolume: 1 }));
+      expect(result.decision).not.toBe("block");
+    }
   });
 
   it("blocks non-positive volume", () => {
@@ -152,6 +160,33 @@ describe("DailyRiskTracker day boundary", () => {
       expect(tracker.isSymbolInCooldown("EURUSD", 3600).inCooldown).toBe(false);
     } finally {
       vi.useRealTimers();
+    }
+  });
+});
+
+describe("RiskSessionSync day rollover", () => {
+  it("re-arms the daily drawdown base after midnight", () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(2026, 0, 15, 10, 0));
+      const sync = new RiskSessionSync();
+      const tracker = dailyRiskTracker;
+      tracker.reset();
+      sync.sync({ balance: 10_000 }, []);
+
+      // A big loss trips the breaker on day one.
+      tracker.recordClosedTrade("EURUSD", -5_000, Date.now());
+      const day1 = tracker.checkDailyDrawdown(4_500, 20);
+      expect(day1.tripped).toBe(true);
+
+      // Past midnight the breaker re-arms with the day-two base.
+      vi.setSystemTime(new Date(2026, 0, 16, 0, 10));
+      sync.sync({ balance: 10_000 }, []);
+      const day2 = tracker.checkDailyDrawdown(9_000, 20);
+      expect(day2.tripped).toBe(false);
+    } finally {
+      vi.useRealTimers();
+      dailyRiskTracker.reset();
     }
   });
 });

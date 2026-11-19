@@ -74,7 +74,7 @@ export interface CallExpr extends Loc {
 
 export interface UnaryExpr extends Loc {
   kind: "UnaryExpr";
-  operator: "-" | "!" | "~";
+  operator: "-" | "!" | "~" | "not";
   argument: Node;
 }
 

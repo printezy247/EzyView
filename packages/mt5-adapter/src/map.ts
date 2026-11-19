@@ -301,8 +301,11 @@ export function toOrders(payload: unknown): Order[] {
         status: mapOrderState(num(rec, "state", "status")),
         time: normaliseTime(num(rec, "time_setup", "timeSetup", "time")),
       };
+      // `sl` on a pending order is the stop-loss bracket, not the trigger
+      // (the trigger price is `price_open`). Mapping it onto stopPrice used
+      // to conflate the two and break downstream edit/compare logic.
       const sl = num(rec, "sl");
-      if (sl !== null) order.stopPrice = sl;
+      if (sl !== null && sl > 0) order.bracketStopLoss = sl;
       return order;
     })
     .filter((o): o is Order => o !== null);
@@ -320,7 +323,7 @@ function mapOrderState(state: number | null): Order["status"] {
     case 3:
       return "filled";
     case 4:
-      return "filled";
+      return "partially_filled";
     case 6:
       return "expired";
     default:
@@ -329,7 +332,7 @@ function mapOrderState(state: number | null): Order["status"] {
 }
 
 export function toDeals(payload: unknown): Deal[] {
-  return listOf(payload, "deals", "history", "data")
+  return listOf(payload, "deals", "history", "positions", "data")
     .map((row) => {
       const rec = asRecord(row);
       if (!rec) return null;
@@ -341,7 +344,7 @@ export function toDeals(payload: unknown): Deal[] {
         symbol,
         side: type === 1 ? "sell" : "buy",
         qty: num(rec, "volume") ?? 0,
-        price: num(rec, "price") ?? 0,
+        price: num(rec, "price", "price_close", "price_close_price", "price_open") ?? 0,
         pnl: num(rec, "profit", "pnl") ?? 0,
         time: normaliseTime(num(rec, "time", "time_msc")),
       };
@@ -388,11 +391,16 @@ export function marketOrderArgs(request: OrderRequest): Record<string, unknown> 
 
 /** Arguments for `trade_send_pending_order`. */
 export function pendingOrderArgs(request: OrderRequest): Record<string, unknown> {
+  if (request.type === "stop_limit") {
+    // The bridge has no stop-limit support: refuse rather than silently
+    // degrading the order to a plain stop.
+    throw new Error("MT5 bridge does not support stop_limit orders");
+  }
   const args: Record<string, unknown> = {
     symbol: request.symbol,
     side: request.side,
     volume: request.qty,
-    type: request.type === "stop" || request.type === "stop_limit" ? "stop" : "limit",
+    type: request.type === "stop" ? "stop" : "limit",
     price: request.price ?? request.stopPrice ?? 0,
   };
   if (request.stopLoss !== undefined) args.sl = request.stopLoss;

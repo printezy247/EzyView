@@ -566,7 +566,7 @@ function HexInput({ value, onCommit }: { value: string; onCommit: (color: string
   useEffect(() => setDraft(value), [value]);
   return (
     <div className="flex items-center gap-1">
-      <ColorInput label="Custom colour picker" value={normaliseHex(value)} onChange={(value) => onCommit(value)} className="h-6 w-8 cursor-pointer rounded border border-ev-line bg-ev-bg" />
+      <ColorInput label="Custom colour picker" value={normaliseHex(value)} onChange={(picked) => onCommit(picked)} className="h-6 w-8 cursor-pointer rounded border border-ev-line bg-ev-bg" />
       <Input
         value={draft}
         onChange={(e) => setDraft(e.target.value)}

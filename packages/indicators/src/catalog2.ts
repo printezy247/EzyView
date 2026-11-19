@@ -1,5 +1,6 @@
 import type { IndicatorDef, SeriesValue } from "./types.js";
 import type { OHLCV } from "./helpers.js";
+import { shiftLeadingNull } from "./catalog.js";
 import {
   alma,
   change,
@@ -17,7 +18,7 @@ import {
   trueRange,
   zlema,
 } from "./helpers.js";
-import { num, res, source, srcParam } from "./catalog.js";
+import { emaSignal, num, res, source, srcParam } from "./catalog.js";
 
 const lengthParam = (def: number, label = "Length", id = "length") => ({
   id,
@@ -215,15 +216,18 @@ const supertrendDef: IndicatorDef = {
   compute: (d, p) => {
     const n = num(p, "length", 10);
     const f = num(p, "factor", 3);
-    const atr = fillForward(rma(trueRange(d), n), d.close[0] ?? 0);
+    // No backfill: bars during ATR warmup stay null instead of seeding the
+    // bands with `close[0]`.
+    const atr = rma(trueRange(d), n);
     const mid = hl2(d);
     const out: SeriesValue[] = Array.from({ length: d.close.length }, () => null);
     let dir = 1;
     let upper = 0;
     let lower = 0;
     for (let i = 0; i < d.close.length; i++) {
+      const a = atr[i];
+      if (a === null || a === undefined) continue; // ATR warmup: no bands yet.
       const m = mid[i]!;
-      const a = atr[i]!;
       let bu = m + f * a;
       let bl = m - f * a;
       const prevClose = d.close[i - 1];
@@ -231,12 +235,9 @@ const supertrendDef: IndicatorDef = {
         bu = prevClose > upper ? bu : Math.min(bu, upper);
         bl = prevClose < lower ? bl : Math.max(bl, lower);
       }
-      if (i === 0) {
-        upper = bu;
-        lower = bl;
-      }
-      if (prevClose !== undefined && prevClose > upper) dir = 1;
-      else if (prevClose !== undefined && prevClose < lower) dir = -1;
+      // Flip is judged on the CURRENT close against the previous final bands.
+      if (prevClose !== undefined && d.close[i]! > upper) dir = 1;
+      else if (prevClose !== undefined && d.close[i]! < lower) dir = -1;
       // Otherwise the trend persists: `dir` keeps its previous value.
       upper = bu;
       lower = bl;
@@ -298,10 +299,22 @@ const stochRsiDef: IndicatorDef = {
     const stochLen = num(p, "length1", 14);
     const smooth = num(p, "length2", 3);
     const s = d.close;
-    const deltas = change(s, 1).map((v) => v ?? 0);
-    const gains = deltas.map((v) => (v > 0 ? v : 0));
-    const losses = deltas.map((v) => (v < 0 ? -v : 0));
-    const rsi = map2(rma(gains, rsiLen), rma(losses, rsiLen), (g, l) => (l === 0 ? 100 : 100 - 100 / (1 + g / l)));
+    const deltas = change(s, 1);
+    // Wilder seed over the first `rsiLen` real deltas; bar 0's null delta is
+    // excluded rather than entering as a synthetic zero.
+    const gains: number[] = [];
+    const losses: number[] = [];
+    for (let i = 1; i < s.length; i++) {
+      const v = deltas[i]!;
+      gains.push(v > 0 ? v : 0);
+      losses.push(v < 0 ? -v : 0);
+    }
+        const rsi = map2(
+      shiftLeadingNull(rma(gains, rsiLen)),
+      shiftLeadingNull(rma(losses, rsiLen)),
+      // Both averages zero (flat window) is neutral 50, not 100.
+      (g, l) => (l === 0 ? (g === 0 ? 50 : 100) : 100 - 100 / (1 + g / l)),
+    );
     const hh = highest(fillForward(rsi), stochLen);
     const ll = lowest(fillForward(rsi), stochLen);
     const rawK = hh.map((h, i) => {
@@ -310,7 +323,7 @@ const stochRsiDef: IndicatorDef = {
       if (h === null || l === null || r === null || h === l) return null;
       return (100 * (r - l)) / (h - l);
     });
-    const smoothed = sma(fillForward(rawK), smooth).map((v, i) => (rawK[i] === null && i < smooth ? null : v));
+    const smoothed = sma(fillForward(rawK), smooth).map((v, i) => (rawK[i] === null ? null : v));
     return res("stoch_rsi", "Stochastic RSI", smoothed);
   },
 };
@@ -371,7 +384,7 @@ const mfiDef: IndicatorDef = {
     return res(
       "mfi",
       "MFI",
-      map2(up, down, (u, dl) => (dl === 0 ? 100 : 100 - 100 / (1 + u / dl))),
+      map2(up, down, (u, dl) => (dl === 0 ? (u === 0 ? 50 : 100) : 100 - 100 / (1 + u / dl))),
     );
   },
 };
@@ -404,13 +417,15 @@ const tsiDef: IndicatorDef = {
     const longLen = num(p, "length", 25);
     const shortLen = num(p, "length1", 13);
     const sigLen = num(p, "length2", 7);
-    const momentum = change(d.close, 1).map((v) => v ?? 0);
-    const smooth1 = ema(momentum, longLen);
+    const momentum = change(d.close, 1).slice(1) as number[];
+    // The momentum EMA starts one bar later than the close series: shift the
+    // output back to bar alignment instead of seeding with a synthetic zero.
+        const smooth1 = shiftLeadingNull(ema(momentum, longLen));
     const smooth2 = ema(fillForward(smooth1), shortLen);
-    const abs1 = ema(momentum.map((v) => Math.abs(v)), longLen);
+    const abs1 = shiftLeadingNull(ema(momentum.map((v) => Math.abs(v)), longLen));
     const abs2 = ema(fillForward(abs1), shortLen);
     const tsi = map2(smooth2, abs2, (a, b) => (b === 0 ? 0 : (100 * a) / b));
-    const signal = sma(fillForward(tsi), sigLen).map((v, i) => (tsi[i] === null && i < sigLen ? null : v));
+    const signal = sma(fillForward(tsi), sigLen).map((v, i) => (tsi[i] === null ? null : v));
     return res("tsi", "TSI", tsi, { signal });
   },
 };
@@ -521,7 +536,7 @@ const kstDef: IndicatorDef = {
       });
     const term = (n: number, smooth: number): SeriesValue[] => {
       const r = rocOf(n);
-      return sma(fillForward(r), smooth).map((v, i) => (r[i] === null && i < smooth ? null : v));
+      return sma(fillForward(r), smooth).map((v, i) => (r[i] === null ? null : v));
     };
     const a = term(10, 10);
     const b = term(15, 10);
@@ -530,9 +545,10 @@ const kstDef: IndicatorDef = {
     const kst = a.map((v, i) => {
       const parts = [v, b[i], c[i], e[i]];
       if (parts.some((x) => x === null || x === undefined)) return null;
-      return (parts[0]! + 2 * parts[1]! + 3 * parts[2]! + 4 * parts[3]!) / 10;
+      // Standard KST: weighted sum with no normalization divisor.
+      return parts[0]! + 2 * parts[1]! + 3 * parts[2]! + 4 * parts[3]!;
     });
-    const signal = sma(fillForward(kst), 9).map((v, i) => (kst[i] === null && i < 9 ? null : v));
+    const signal = sma(fillForward(kst), 9).map((v, i) => (kst[i] === null ? null : v));
     return res("kst", "KST", kst, { signal });
   },
 };
@@ -552,7 +568,7 @@ const ppoDef: IndicatorDef = {
     const fast = ema(d.close, num(p, "fast", 12));
     const slow = ema(d.close, num(p, "slow", 26));
     const ppo = map2(fast, slow, (a, b) => (b === 0 ? 0 : ((a - b) / b) * 100));
-    const signal = ema(ppo.map((v) => v ?? 0), num(p, "signal", 9)).map((v, i) => (ppo[i] === null ? null : v));
+    const signal = emaSignal(ppo, num(p, "signal", 9));
     const hist = map2(ppo, signal, (a, b) => a - b);
     return res("ppo", "PPO", ppo, { signal, hist });
   },
@@ -573,7 +589,7 @@ const pvoDef: IndicatorDef = {
     const fast = ema(d.volume, num(p, "fast", 12));
     const slow = ema(d.volume, num(p, "slow", 26));
     const pvo = map2(fast, slow, (a, b) => (b === 0 ? 0 : ((a - b) / b) * 100));
-    const signal = ema(pvo.map((v) => v ?? 0), num(p, "signal", 9)).map((v, i) => (pvo[i] === null ? null : v));
+    const signal = emaSignal(pvo, num(p, "signal", 9));
     const hist = map2(pvo, signal, (a, b) => a - b);
     return res("pvo", "PVO", pvo, { signal, hist });
   },
@@ -727,6 +743,7 @@ const psarDef: IndicatorDef = {
       sar = sar + af * (ep - sar);
       const prevLow = d.low[i - 1]!;
       const prevHigh = d.high[i - 1]!;
+      let reversed = false;
       if (bull) {
         sar = Math.min(sar, prevLow, i > 1 ? d.low[i - 2]! : prevLow);
         if (d.low[i]! < sar) {
@@ -734,6 +751,7 @@ const psarDef: IndicatorDef = {
           sar = ep;
           ep = d.low[i]!;
           af = start;
+          reversed = true;
         }
       } else {
         sar = Math.max(sar, prevHigh, i > 1 ? d.high[i - 2]! : prevHigh);
@@ -742,14 +760,19 @@ const psarDef: IndicatorDef = {
           sar = ep;
           ep = d.high[i]!;
           af = start;
+          reversed = true;
         }
       }
-      if (bull && d.high[i]! > ep) {
-        ep = d.high[i]!;
-        af = Math.min(af + inc, maxAf);
-      } else if (!bull && d.low[i]! < ep) {
-        ep = d.low[i]!;
-        af = Math.min(af + inc, maxAf);
+      // On the reversal bar AF restarts at `start`; no EP/AF update until the
+      // new trend makes a fresh extreme.
+      if (!reversed) {
+        if (bull && d.high[i]! > ep) {
+          ep = d.high[i]!;
+          af = Math.min(af + inc, maxAf);
+        } else if (!bull && d.low[i]! < ep) {
+          ep = d.low[i]!;
+          af = Math.min(af + inc, maxAf);
+        }
       }
       out[i] = sar;
     }
@@ -852,7 +875,7 @@ const eomDef: IndicatorDef = {
     const boxRatio = d.high.map((h, i) => {
       const l = d.low[i]!;
       const range = h - l;
-      return range === 0 || d.volume[i] === 0 ? 0 : d.volume[i]! / 1e6 / range;
+      return range === 0 || d.volume[i] === 0 ? 0 : d.volume[i]! / 1e4 / range;
     });
     const raw = midMove.map((m, i) => (boxRatio[i] === 0 ? 0 : m / boxRatio[i]!));
     return res("eom", "EOM", sma(raw, n));

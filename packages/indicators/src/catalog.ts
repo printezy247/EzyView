@@ -42,6 +42,22 @@ export const srcParam = (def: string) => ({
   default: def,
 });
 
+/**
+ * EMA over a nullable base series (MACD/PPO signal line), seeded from its first
+ * non-null value so warmup nulls never enter as zeros, re-aligned to full length.
+ */
+export function emaSignal(base: SeriesValue[], period: number): SeriesValue[] {
+  const first = base.findIndex((v) => v !== null);
+  if (first < 0) return base.map(() => null);
+  const raw = ema(base.slice(first) as number[], period);
+  return base.map((v, i) => (i < first || v === null ? null : (raw[i - first] ?? null)));
+}
+
+/** Prepend a leading null so per-bar averages align back to the base series. */
+export function shiftLeadingNull(arr: SeriesValue[]): SeriesValue[] {
+  return arr.length ? [null, ...arr] : arr;
+}
+
 // --- trend -----------------------------------------------------------------
 
 const smaDef: IndicatorDef = {
@@ -82,7 +98,7 @@ const vwmaDef: IndicatorDef = {
     const pv = d.close.map((c, i) => c * d.volume[i]!);
     const pvSum = sma(pv, n);
     const vSum = sma(d.volume, n);
-    return res("vwma", "VWMA", map2(pvSum, vSum, (a, b) => (b === 0 ? a : a / b)));
+    return res("vwma", "VWMA", map2(pvSum, vSum, (a, b) => (b === 0 ? null : a / b)));
   },
 };
 
@@ -169,12 +185,22 @@ const rsiDef: IndicatorDef = {
   compute: (d, p) => {
     const len = num(p, "length", 14);
     const s = source(d, String(p.source ?? "close"));
-    const deltas = change(s, 1).map((v) => v ?? 0);
-    const gains = deltas.map((v) => (v > 0 ? v : 0));
-    const losses = deltas.map((v) => (v < 0 ? -v : 0));
-    const avgGain = rma(gains, len);
-    const avgLoss = rma(losses, len);
-    const out = map2(avgGain, avgLoss, (g, l) => (l === 0 ? 100 : 100 - 100 / (1 + g / l)));
+    const deltas = change(s, 1);
+    // Wilder seed: average the first `len` real deltas. The null delta at bar 0
+    // must not enter the seed as a synthetic zero.
+    const gains: number[] = [];
+    const losses: number[] = [];
+    for (let i = 1; i < s.length; i++) {
+      const v = deltas[i]!;
+      gains.push(v > 0 ? v : 0);
+      losses.push(v < 0 ? -v : 0);
+    }
+    const avgGain = shiftLeadingNull(rma(gains, len));
+    const avgLoss = shiftLeadingNull(rma(losses, len));
+    // Both averages zero (flat window) is neutral, not a full buy signal.
+    const out = map2(avgGain, avgLoss, (g, l) =>
+      l === 0 ? (g === 0 ? 50 : 100) : 100 - 100 / (1 + g / l),
+    );
     return res("rsi", "RSI", out);
   },
 };
@@ -196,9 +222,7 @@ const macdDef: IndicatorDef = {
     const fast = ema(s, num(p, "fast", 12));
     const slow = ema(s, num(p, "slow", 26));
     const macd = map2(fast, slow, (a, b) => a - b);
-    const signal = ema(macd.map((v) => v ?? 0), num(p, "signal", 9));
-    // Signal needs the macd line to be non-null to be meaningful.
-    const signalAligned = signal.map((v, i) => (macd[i] === null ? null : v));
+    const signalAligned = emaSignal(macd, num(p, "signal", 9));
     const hist = map2(macd, signalAligned, (a, b) => a - b);
     return res("macd", "MACD", macd, { signal: signalAligned, hist });
   },

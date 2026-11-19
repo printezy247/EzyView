@@ -99,7 +99,13 @@ export function HeatmapTab() {
           setLoading(false);
           setLoadError(err instanceof Error ? err.message : String(err));
         });
-    });
+    })
+      .catch((err: unknown) => {
+        // A failed universe load must end the "Loading…" state, not hang it.
+        if (cancelled) return;
+        setLoading(false);
+        setLoadError(err instanceof Error ? err.message : String(err));
+      });
 
     return () => {
       cancelled = true;

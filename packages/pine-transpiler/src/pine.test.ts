@@ -524,4 +524,108 @@ describe("lexer finite numbers", () => {
   it("rejects non-finite number literals", () => {
     expect(() => lex("1e10000")).toThrow(PineSyntaxError);
   });
+
+  it("rejects an unterminated string literal", () => {
+    expect(() => lex('plot("never closed')).toThrow(PineSyntaxError);
+    expect(() => lex("plot('never closed")).toThrow(PineSyntaxError);
+  });
+});
+
+describe("regressions", () => {
+  it("initializes a hoisted var after the context declaration", () => {
+    // The hoisted initializer reads `close`, which only exists once ctx is
+    // destructured — it used to land before that line and throw.
+    const out = runPine("var float x = close\nplot(x)", makeContext(3));
+    expect(values(out.plots[0]!.values)).toEqual([100.5, 101.5, 102.5]);
+  });
+
+  it("compares series with != element-wise", () => {
+    // `!eq` on a series used to be `!array`, always false.
+    const out = runPine("plot(close != open)", makeContext(3));
+    expect(values(out.plots[0]!.values)).toEqual([1, 1, 1]);
+  });
+
+  it("parses and evaluates the word operators and/or/not", () => {
+    const ctx = makeContext(3);
+    const out = runPine("plot(close > open and close > 0 ? 1 : 0)\nplot(close < open or close > 0 ? 1 : 0)\nplot(not close < open ? 1 : 0)", ctx);
+    expect(values(out.plots[0]!.values)).toEqual([1, 1, 1]);
+    expect(values(out.plots[1]!.values)).toEqual([1, 1, 1]);
+    expect(values(out.plots[2]!.values)).toEqual([1, 1, 1]);
+  });
+
+  it("desugars compound assignments", () => {
+    const out = runPine("float x = 1\nx += 2\nx *= 2\nplot(x)", makeContext(2));
+    expect(values(out.plots[0]!.values)).toEqual([6, 6]);
+  });
+
+  it("keeps the series shape when a series write follows scalar writes on one plot site", () => {
+    // Bar 0 writes a scalar, bars 1+ write a full series to the same call
+    // site — the series used to be silently dropped.
+    const ctx = makeContext(4);
+    const out = runPine('plot(bar_index < 1 ? 42 : close, "Mix")', ctx);
+    expect(values(out.plots[0]!.values)).toEqual([100.5, 101.5, 102.5, 103.5]);
+  });
+
+  it("makes comparisons element-wise so cond[1] keeps history", () => {
+    const out = runPine("c = close > open\nplot(c[1])", makeContext(3));
+    // close > open is true on every bar, so the previous bar's verdict is 1
+    // (na on the first bar, where there is no previous verdict).
+    const vals = values(out.plots[0]!.values);
+    expect(vals[0]).toBeUndefined();
+    expect(vals[1]).toBe(1);
+    expect(vals[2]).toBe(1);
+  });
+
+  it("runs a descending for loop with the step sign inferred", () => {
+    const out = runPine("float total = 0\nfor i = 3 to 0\n  total := total + i\nplot(total)", makeContext(1));
+    expect(values(out.plots[0]!.values)).toEqual([6]);
+  });
+
+  it("rejects return in the script body", () => {
+    expect(() => transpile("return\nplot(close)")).toThrow(PineUnsupportedError);
+  });
+
+  it("rejects an assignment inside an expression", () => {
+    expect(() => transpile("plot(x := 1)")).toThrow(PineUnsupportedError);
+  });
+
+  it("reads ta.atr's length from a keyword argument", () => {
+    const out = runPine("plot(ta.atr(length=3))", makeContext(10));
+    const vals = values(out.plots[0]!.values);
+    expect(vals.at(-1)).toBeGreaterThan(0);
+    expect(Number.isFinite(vals.at(-1)!)).toBe(true);
+  });
+
+  it("rejects request.security at transpile time", () => {
+    expect(() => transpile('x = request.security(syminfo.tickerid, "D", close)')).toThrow(PineUnsupportedError);
+    expect(() => transpile('x = security(syminfo.tickerid, "D", close)')).toThrow(PineUnsupportedError);
+  });
+
+  it("propagates na through division and modulo by zero", () => {
+    const out = runPine("plot(1 / 0)\nplot(5 % 0)", makeContext(2));
+    expect(values(out.plots[0]!.values)).toEqual([undefined, undefined]);
+    expect(values(out.plots[1]!.values)).toEqual([undefined, undefined]);
+  });
+
+  it("treats non-finite numbers as falsy", () => {
+    const out = runPine("plot(math.sqrt(-1) ? 1 : 0)", makeContext(1));
+    expect(values(out.plots[0]!.values)).toEqual([0]);
+  });
+
+  it("masks ta.hma warm-up instead of treating nulls as zero", () => {
+    const out = runPine("plot(ta.hma(close, 9))", makeContext(20));
+    const vals = values(out.plots[0]!.values);
+    expect(vals[0]).toBeUndefined();
+    expect(vals.at(-1)).toBeGreaterThan(100);
+    expect(Number.isFinite(vals.at(-1)!)).toBe(true);
+  });
+
+  it("drops dangerous kwarg names from emitted object literals", () => {
+    const proto = Object.prototype as unknown as Record<string, unknown>;
+    const before = proto.color;
+    const out = runPine('plot(close, __proto__=1, title="Safe")', makeContext(2));
+    expect(out.plots[0]?.title).toBe("Safe");
+    expect(proto.color).toBe(before);
+    expect(Object.prototype.hasOwnProperty.call(proto, "color")).toBe(false);
+  });
 });

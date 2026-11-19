@@ -153,6 +153,35 @@ describe("second batch — spot values", () => {
     expect(last).toBeGreaterThan(0);
   });
 
+  it("PSAR restarts AF at `start` on a reversal bar", () => {
+    // Rising trend then a crash: the bull->bear reversal bar must place the dot
+    // exactly on the prior trend's extreme EP (old highest high). If AF had
+    // kept incrementing across the reversal, the projected sar would overshoot.
+    const n = 40;
+    const close = Array.from({ length: n }, (_, i) => 100 + i * 2);
+    const d: OHLCV = {
+      open: close.map((c) => c),
+      high: close.map((c) => c + 1),
+      low: close.map((c) => c - 1),
+      close,
+      volume: Array.from({ length: n }, () => 100),
+    };
+    for (let i = 0; i < 6; i++) {
+      const c = close[n - 1]! - (i + 1) * 6;
+      d.open.push(c + 6);
+      d.close.push(c);
+      d.high.push(c + 1);
+      d.low.push(c - 1);
+      d.volume.push(100);
+    }
+    const out = getIndicator("psar")!.compute(d, { start: 0.02, inc: 0.02, max: 0.2 }).values;
+    const flipIdx = out.findIndex((v, i) => v !== null && v > d.high[i]!);
+    expect(flipIdx).toBeGreaterThan(0);
+    expect(out[flipIdx]).toBeCloseTo(Math.max(...d.high.slice(0, flipIdx)), 6);
+    // Bear sar then walks down toward the new EP, never back above the old one.
+    expect(out[flipIdx + 1]!).toBeLessThanOrEqual(out[flipIdx]!);
+  });
+
   it("Ichimoku returns a cloud as spanA and spanB plots", () => {
     const out = getIndicator("ichimoku")!.compute(data, { tenkan: 9, kijun: 26, senkou: 52, shift: 26 });
     expect(out.plots?.base).toBeDefined();

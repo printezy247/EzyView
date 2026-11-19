@@ -29,7 +29,7 @@ export function runPine(source: string, ctx: Context): PineResult {
     `"use strict";
      const {
        NA, isNa, nz, ta, math, color, strategy, shape, location, size,
-       crossover, crossunder,
+       crossover, crossunder, not,
        add, sub, mul, div, mod, eq, ne, lt, le, gt, ge, and, or,
        truthy, num, at, atBar, plotCall, shapeCall, bgcolorCall, inputCall, inputScalar,
        strategyEntry, strategyClose, strategyExit, strategyCloseAll,
@@ -184,7 +184,9 @@ function truthy(v: PineValue | PineValue[], barIndex?: number): boolean {
   if (Array.isArray(v)) return truthy(barIndex === undefined ? (v[v.length - 1] ?? NA) : (v[barIndex] ?? NA));
   if (isNa(v)) return false;
   if (typeof v === "boolean") return v;
-  if (typeof v === "number") return v !== 0;
+  // Non-finite numbers (NaN, ±Infinity) carry no meaningful Pine value —
+  // division by zero used to make NaN truthy, so treat them as falsy.
+  if (typeof v === "number") return Number.isFinite(v) && v !== 0;
   if (typeof v === "string") return v.length > 0;
   return false;
 }
@@ -215,17 +217,22 @@ function atBar(v: PineValue | PineValue[], barIndex: number): PineValue {
   return Array.isArray(v) ? (v[barIndex] ?? NA) : v;
 }
 
-/** Comparison helpers collapse to a scalar on the current bar. */
+/** Word negation: collapses a series to the current bar like any truthiness read. */
+function not(v: PineValue | PineValue[], barIndex: number): boolean {
+  return !truthy(v, barIndex);
+}
+
+/**
+ * Comparison helpers broadcast element-wise so a comparison keeps its series
+ * shape — `cond[1]` reads the previous bar's verdict instead of na. Truthiness
+ * (`if`, ternary, boolean ops) collapses at the current bar.
+ */
 function compare(
   a: PineValue | PineValue[],
   b: PineValue | PineValue[],
   fn: (x: number, y: number) => boolean,
-  barIndex: number,
-): boolean {
-  const av = atBar(a, barIndex);
-  const bv = atBar(b, barIndex);
-  if (isNa(av) || isNa(bv)) return false;
-  return fn(num(av), num(bv));
+): PineValue | PineValue[] {
+  return broadcast(a, b, (x, y) => (fn(x, y) ? 1 : 0));
 }
 
 function and(a: PineValue | PineValue[], b: PineValue | PineValue[], barIndex: number): boolean {
@@ -264,9 +271,14 @@ function ensurePlot(
     plots[site] = plot;
   }
   if (Array.isArray(series)) {
-    // A full series argument is complete on first sight.
+    // A full series argument is complete on first sight. When scalar writes
+    // already filled some slots, merge the series over them per bar instead of
+    // discarding it — a site may mix `plot(x)` and `plot(series)` across bars.
     if (plot.values.length === 0) plot.values = series;
+    else for (let i = 0; i < series.length; i++) plot.values[i] = series[i] ?? NA;
   } else {
+    // A scalar write lands in its own slot; over an existing full series it
+    // updates the current bar only.
     plot.values[barIndex] = series;
   }
   return plot;
@@ -518,7 +530,15 @@ function strategyCloseAll(barIndex: number, orders: PineOrder[], _kwargs: Kwargs
   orders.push({ side: "long", action: "close", barIndex, price: Number.NaN, qty: 0, id: "*" });
 }
 
+/** Mask non-finite numeric results to NA: Pine propagates na where JS yields Infinity/NaN. */
+function naGuard(v: PineValue | PineValue[]): PineValue | PineValue[] {
+  if (Array.isArray(v)) return v.map((x) => (typeof x === "number" && !Number.isFinite(x) ? NA : x));
+  return typeof v === "number" && !Number.isFinite(v) ? NA : v;
+}
+
 function buildHelpers(): Record<string, unknown> {
+  // Pine propagates `na` through division and modulo: dividing by zero yields
+  // Infinity/NaN in JS but `na` in Pine, so non-finite results are masked.
   return {
     NA,
     isNa,
@@ -538,16 +558,19 @@ function buildHelpers(): Record<string, unknown> {
     add: (a: PineValue | PineValue[], b: PineValue | PineValue[]) => broadcast(a, b, (x, y) => x + y),
     sub: (a: PineValue | PineValue[], b: PineValue | PineValue[]) => broadcast(a, b, (x, y) => x - y),
     mul: (a: PineValue | PineValue[], b: PineValue | PineValue[]) => broadcast(a, b, (x, y) => x * y),
-    div: (a: PineValue | PineValue[], b: PineValue | PineValue[]) => broadcast(a, b, (x, y) => x / y),
-    mod: (a: PineValue | PineValue[], b: PineValue | PineValue[]) => broadcast(a, b, (x, y) => x % y),
+    div: (a: PineValue | PineValue[], b: PineValue | PineValue[]) =>
+      naGuard(broadcast(a, b, (x, y) => x / y)),
+    mod: (a: PineValue | PineValue[], b: PineValue | PineValue[]) =>
+      naGuard(broadcast(a, b, (x, y) => x % y)),
     eq,
     ne: (a: PineValue | PineValue[], b: PineValue | PineValue[]) => map1(eq(a, b) as PineValue[], (x) => (x ? 0 : 1)),
-    lt: (a: PineValue | PineValue[], b: PineValue | PineValue[], barIndex: number) => compare(a, b, (x, y) => x < y, barIndex),
-    le: (a: PineValue | PineValue[], b: PineValue | PineValue[], barIndex: number) => compare(a, b, (x, y) => x <= y, barIndex),
-    gt: (a: PineValue | PineValue[], b: PineValue | PineValue[], barIndex: number) => compare(a, b, (x, y) => x > y, barIndex),
-    ge: (a: PineValue | PineValue[], b: PineValue | PineValue[], barIndex: number) => compare(a, b, (x, y) => x >= y, barIndex),
+    lt: (a: PineValue | PineValue[], b: PineValue | PineValue[]) => compare(a, b, (x, y) => x < y),
+    le: (a: PineValue | PineValue[], b: PineValue | PineValue[]) => compare(a, b, (x, y) => x <= y),
+    gt: (a: PineValue | PineValue[], b: PineValue | PineValue[]) => compare(a, b, (x, y) => x > y),
+    ge: (a: PineValue | PineValue[], b: PineValue | PineValue[]) => compare(a, b, (x, y) => x >= y),
     and,
     or,
+    not,
     truthy,
     num,
     atBar,

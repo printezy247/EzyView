@@ -51,7 +51,9 @@ const naiveSlope = (values: number[], period: number): (number | null)[] => {
       sumY += y;
       sumXY += j * y;
     }
-    return (period * sumXY - sumX * sumY) / denom;
+    // Negated to match linregSlope's convention: x = 0 is the newest bar, so a
+    // rising series yields a positive slope.
+    return -((period * sumXY - sumX * sumY) / denom);
   });
 };
 
@@ -73,5 +75,14 @@ describe("incremental wma/linregSlope equivalence", () => {
     expect(wma([1, 2, 3], 5).every((v) => v === null)).toBe(true);
     expect(linregSlope([1, 2, 3], 5).every((v) => v === null)).toBe(true);
     expect(linregSlope([1], 1).every((v) => v === null)).toBe(true);
+  });
+
+  it("a rising series yields a positive slope (convention: newest bar is x = 0)", () => {
+    const rising = Array.from({ length: 30 }, (_, i) => 100 + i);
+    const slope = linregSlope(rising, 10).at(-1)!;
+    expect(slope).not.toBeNull();
+    expect(slope).toBeCloseTo(1, 8);
+    const falling = Array.from({ length: 30 }, (_, i) => 100 - i);
+    expect(linregSlope(falling, 10).at(-1)!).toBeCloseTo(-1, 8);
   });
 });

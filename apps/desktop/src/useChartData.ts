@@ -162,11 +162,15 @@ export function useChartData(ctx: HostContext, props: Props): void {
       const applyLive = () => {
         rafId = null;
         if (cancelled) return;
+        // Read the latest snapshot, not the one this frame was scheduled
+        // from: a burst of ticks must never paint a stale one.
+        const latest = historyRef.current;
+        if (latest.length === 0) return;
         // A tick inside the forming bar is one series.update; only a new bar
         // needs the full setData (and the state update behind the legend).
-        if (!openedNewBar && chartRef.current?.updateLastBar(merged[merged.length - 1]!)) return;
-        chartRef.current?.setData(merged);
-        if (openedNewBar) setShown(merged);
+        if (!openedNewBar && chartRef.current?.updateLastBar(latest[latest.length - 1]!)) return;
+        chartRef.current?.setData(latest);
+        if (openedNewBar) setShown(latest);
       };
       if (typeof requestAnimationFrame === "function") {
         if (rafId === null) rafId = requestAnimationFrame(applyLive);

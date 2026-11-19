@@ -604,7 +604,7 @@ function ColorRow({ label, value, onChange }: { label: string; value: string; on
   return (
     <div className="flex items-center gap-2">
       <span className="w-28 text-dense text-ev-muted">{label}</span>
-      <ColorInput label={label} value={/^#[0-9a-f]{6}$/i.test(value) ? value : "#2962ff"} onChange={(value) => onChange(value)} className="h-6 w-9 cursor-pointer rounded border border-ev-line bg-ev-bg" />
+      <ColorInput label={label} value={/^#[0-9a-f]{6}$/i.test(value) ? value : "#2962ff"} onChange={(picked) => onChange(picked)} className="h-6 w-9 cursor-pointer rounded border border-ev-line bg-ev-bg" />
       <div className="flex flex-wrap gap-1">
         {COLORS.slice(0, 6).map((c) => (
           <button

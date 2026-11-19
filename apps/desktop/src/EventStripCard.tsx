@@ -1,4 +1,5 @@
 import type { EventStripHit, EventStripMarker } from "@ezyview/chart-engine";
+import { safeHref } from "./links";
 import { Chip } from "./ui";
 
 const IMPACT_TONE = { high: "down", medium: "warn", low: "neutral", none: "neutral" } as const;
@@ -58,7 +59,7 @@ function EventDetail({ m }: { m: EventStripMarker }) {
           {m.url && (
             <>
               {" · "}
-              <a href={m.url} target="_blank" rel="noreferrer" className="underline hover:text-ev-strong">
+              <a href={safeHref(m.url) ?? "#"} target="_blank" rel="noreferrer" className="underline hover:text-ev-strong">
                 source
               </a>
             </>

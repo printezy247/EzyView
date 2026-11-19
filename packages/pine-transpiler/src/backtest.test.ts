@@ -278,4 +278,41 @@ describe("backtest", () => {
     expect(result.trades[0]?.exitBar).toBe(1);
     expect(result.trades[0]?.pnl).toBeCloseTo(8, 6);
   });
+
+  it("exits a long at the trailed level, which ratchets with the favorable extreme", () => {
+    // Long at 100, trail 2 points: bar 1's high 104 sets the level at 102
+    // (low 102.5 does not cross), bar 2's high 104.5 ratchets it to 102.5,
+    // and bar 3's low 99 crosses it.
+    const orders = [
+      order({ action: "entry", barIndex: 0, side: "long", id: "L" }),
+      order({ action: "exit", barIndex: 0, id: "ex", fromEntry: "L", trail: { points: 2 } }),
+    ];
+    const result = backtest(orders, {
+      close: [100, 103, 103.5, 100],
+      high: [101, 104, 104.5, 101],
+      low: [99, 102.5, 103, 99],
+    });
+
+    expect(result.trades).toHaveLength(1);
+    expect(result.trades[0]?.exitBar).toBe(3);
+    expect(result.trades[0]?.exitPrice).toBeCloseTo(102.5, 6);
+  });
+
+  it("trails downward for a short position", () => {
+    // Short at 100, trail 2 points: bar 1's low 96 sets the level at 98,
+    // and bar 2's high 98 crosses it.
+    const orders = [
+      order({ action: "entry", barIndex: 0, side: "short", id: "S" }),
+      order({ action: "exit", barIndex: 0, id: "ex", fromEntry: "S", trail: { points: 2 } }),
+    ];
+    const result = backtest(orders, {
+      close: [100, 97, 96.5, 101],
+      high: [101, 97.5, 98, 102],
+      low: [99, 96, 96, 100],
+    });
+
+    expect(result.trades).toHaveLength(1);
+    expect(result.trades[0]?.exitBar).toBe(2);
+    expect(result.trades[0]?.exitPrice).toBeCloseTo(98, 6);
+  });
 });

@@ -270,6 +270,12 @@ export class PaperTradingEngine implements TradingAdapter {
     if (patch.stopPrice !== undefined && (patch.stopPrice <= 0 || !Number.isFinite(patch.stopPrice))) {
       throw new PaperTradingError("invalid_stop_price", "stop price must be greater than zero");
     }
+    for (const key of ["stopLoss", "takeProfit"] as const) {
+      const value = patch[key];
+      if (value !== undefined && !Number.isFinite(value)) {
+        throw new PaperTradingError("invalid_price", `${key} must be a finite price or undefined`);
+      }
+    }
     const next: PaperOrder = {
       ...order,
       qty: patch.qty ?? order.qty,
@@ -499,17 +505,19 @@ export class PaperTradingEngine implements TradingAdapter {
     if (!finite(order.price)) return null;
     switch (order.side) {
       case "buy":
-        return price <= order.price ? order.price : null;
+        // A buy limit fills at the market price when it gaps below the limit —
+        // never worse than the limit, but better when the venue allows it.
+        return price <= order.price ? price : null;
       case "sell":
-        return price >= order.price ? order.price : null;
+        return price >= order.price ? price : null;
       default:
         return null;
     }
   }
 
-  private checkExits(symbol: string, price: number, time: EpochSeconds): void {
+  private checkExits(symbol: string, price: number, time: EpochSeconds): boolean {
     const position = this.positions.get(symbol);
-    if (!position) return;
+    if (!position) return false;
 
     const stopLoss = position.stopLoss;
     const takeProfit = position.takeProfit;
@@ -519,9 +527,11 @@ export class PaperTradingEngine implements TradingAdapter {
     if (hitStop || hitTarget) {
       const triggerPrice = hitStop ? (stopLoss as number) : (takeProfit as number);
       this.closeAt(symbol, position, triggerPrice, time);
+      return true;
     }
 
     this.checkStopOut(time);
+    return false;
   }
 
   /** Close the whole position at an explicit price, recording the deal. */
@@ -548,7 +558,7 @@ export class PaperTradingEngine implements TradingAdapter {
     const margin = this.usedMargin();
     if (margin <= 0) return;
     const equity = this.balance + this.totalUnrealized();
-    if (equity / margin >= this.options.maintenanceMarginRate * 100) return;
+    if (equity / margin >= this.options.maintenanceMarginRate) return;
     for (const position of Array.from(this.positions.values())) {
       this.closeAt(position.symbol, position, this.last.get(position.symbol) ?? position.markPrice, time);
     }
@@ -576,8 +586,9 @@ export class PaperTradingEngine implements TradingAdapter {
 
     const rejection = this.validate(request, price);
     if (rejection) {
+      // Report the rejection but don't store it: rejected orders would
+      // otherwise pile up in the snapshot and on every boot forever.
       const rejected: Order = { ...order, status: "rejected", reason: rejection, updateTime: this.now() };
-      this.orders.set(rejected.id, rejected);
       this.onUpdate?.();
       return rejected;
     }
