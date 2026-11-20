@@ -64,7 +64,7 @@ export function RightDock({ tabs, active, onSelect, width }: Props) {
             >
               {TAB_ICON[tab.id]}
               {tab.badge !== undefined && tab.badge > 0 && (
-                <span className="num absolute -right-0.5 -top-0.5 rounded-full bg-ev-accent px-1 text-micro leading-3.5 text-white">
+                <span className="num absolute -right-0.5 -top-0.5 rounded-full bg-ev-accent px-1 text-micro leading-3.5 text-ev-accent-ink">
                   {tab.badge}
                 </span>
               )}
@@ -126,7 +126,7 @@ export function RightDock({ tabs, active, onSelect, width }: Props) {
               {TAB_ICON[tab.id]}
               <span>{tab.label}</span>
               {tab.badge !== undefined && tab.badge > 0 && (
-                <span className="num rounded bg-ev-accent px-1 text-micro text-white">{tab.badge}</span>
+                <span className="num rounded bg-ev-accent px-1 text-micro text-ev-accent-ink">{tab.badge}</span>
               )}
             </Button>
           );

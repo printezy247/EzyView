@@ -189,7 +189,7 @@ export function TradingPanel({ symbol }: Props) {
               >
                 {t.label}
                 {t.id === "positions" && openPositions > 0 && (
-                  <span className="ml-1 rounded bg-ev-accent px-1 text-dense text-white">{openPositions}</span>
+                  <span className="ml-1 rounded bg-ev-accent px-1 text-dense text-ev-accent-ink">{openPositions}</span>
                 )}
                 {t.id === "orders" && orders.length > 0 && (
                   <span className="ml-1 rounded bg-ev-dim px-1 text-dense text-ev-strong">{orders.length}</span>

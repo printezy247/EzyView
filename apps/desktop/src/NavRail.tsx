@@ -1,5 +1,6 @@
 import { type ReactNode } from "react";
 import { NavLink } from "react-router";
+import { motion, useReducedMotion } from "motion/react";
 import {
   BarChart3,
   Bell,
@@ -16,6 +17,8 @@ import {
 } from "lucide-react";
 import { NAV_SECTIONS } from "./nav";
 import { SHELL_RAIL_ICON, SHELL_RAIL_WIDTH, shellToolClass } from "./ui";
+import { BrandMark } from "./BrandMark";
+import { springs } from "./motion";
 import { useWorkspace } from "./store";
 import { useNavRail } from "./navRailStore";
 import { useTrading } from "./trading";
@@ -52,6 +55,9 @@ export function NavRail() {
   // The rail's width lives in a store so a keyboard binding can toggle it.
   const expanded = useNavRail((s) => s.expanded);
   const setExpanded = useNavRail((s) => s.setExpanded);
+  // The active marker glides between destinations on a spring; reduced-motion
+  // users get the same marker without the travel.
+  const reduceMotion = useReducedMotion();
 
   // Narrow subscriptions: the badge counts, not the objects they live in.
   const alertCount = useWorkspace((s) => s.alerts.length);
@@ -69,7 +75,17 @@ export function NavRail() {
       data-expanded={expanded ? "true" : "false"}
       className={`flex ${expanded ? EXPANDED_WIDTH : SHELL_RAIL_WIDTH} shrink-0 flex-col items-stretch gap-1 border-r border-ev-raised bg-ev-chrome py-2 ev-panel-edge transition-[width] duration-150`}
     >
-      <div className={`flex shrink-0 items-center ${expanded ? "justify-end px-2" : "justify-center"}`}>
+      {/* Brand block: wordmark when expanded, bare mark when collapsed. The
+          collapse/expand control rides the same row so the rail header is one
+          consistent strip in both states. */}
+      <div className={`flex shrink-0 items-center ${expanded ? "justify-between px-2 pb-1" : "flex-col gap-1.5 pb-1"}`}>
+        {expanded && (
+          <span className="flex min-w-0 items-center gap-2">
+            <BrandMark />
+            <span className="truncate text-body font-semibold tracking-tight text-ev-strong">EzyView</span>
+          </span>
+        )}
+        {!expanded && <BrandMark className="size-7 rounded-lg [&_svg]:size-3.5" />}
         <button
           type="button"
           aria-expanded={expanded}
@@ -107,7 +123,7 @@ export function NavRail() {
                       {/* In the collapsed rail the count rides the icon, so the
                           badge does not need the extra width. */}
                       {!expanded && badge !== undefined && (
-                        <span className="num absolute -right-1.5 -top-1.5 min-w-3.5 rounded-full bg-ev-accent px-1 text-micro leading-3.5 text-white">
+                        <span className="num absolute -right-1.5 -top-1.5 min-w-3.5 rounded-full bg-ev-accent px-1 text-micro leading-3.5 text-ev-accent-ink">
                           {badge}
                         </span>
                       )}
@@ -116,19 +132,24 @@ export function NavRail() {
                       <span className="flex min-w-0 flex-1 items-center gap-2">
                         <span className="truncate text-base font-medium">{item.label}</span>
                         {badge !== undefined && (
-                          <span className="num ml-auto rounded bg-ev-accent px-1.5 text-micro leading-4 text-white">
+                          <span className="num ml-auto rounded bg-ev-accent px-1.5 text-micro leading-4 text-ev-accent-ink">
                             {badge}
                           </span>
                         )}
                       </span>
                     )}
                     <span className="sr-only">{item.label}</span>
-                    {isActive && (
-                      <span
-                        className="absolute left-0 top-1.5 h-5 w-0.5 rounded bg-ev-accent"
-                        aria-hidden
-                      />
-                    )}
+                    {isActive &&
+                      (reduceMotion ? (
+                        <span className="absolute left-0 top-1.5 h-5 w-0.5 rounded bg-ev-accent" aria-hidden />
+                      ) : (
+                        <motion.span
+                          layoutId="nav-rail-active"
+                          transition={springs.snappy}
+                          className="absolute left-0 top-1.5 h-5 w-0.5 rounded bg-ev-accent"
+                          aria-hidden
+                        />
+                      ))}
                     {/* Hover/focus flyout: the collapsed rail is icon-only, so
                         the label and the one-line description appear beside it
                         rather than as a bare browser tooltip. */}

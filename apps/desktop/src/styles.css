@@ -23,70 +23,83 @@
 }
 
 /*
- * Colour tokens. Components use them as Tailwind colours (`bg-ev-panel`,
- * `text-ev-muted`, `border-ev-line/40`) so the whole shell follows the theme
- * set on <html data-theme>. Text tokens meet WCAG AA (4.5:1) on bg, panel and
- * raised surfaces in both themes.
- *
- * The palette is Investing.com's: brand red #d91400, market green #0ea600,
- * link blue #1256a0, gold #f2a93b, dark chrome #181c21. These values are
- * mirrored in `packages/brand/src/index.ts` (the single source of truth for
- * the chart engine); keep the two in step.
+ * JetBrains Mono (latin subset, SIL OFL) — the numeral face. Every price,
+ * quantity, percentage and timestamp renders in it via `.num`, which is what
+ * gives the shell its terminal character: digits line up in fixed-width
+ * columns instead of relying on tabular figures.
+ */
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("/fonts/JetBrainsMono-Latin.woff2") format("woff2-variations");
+}
+
+/*
+ * Colour tokens — "Terminal Pro". Deep blue-black surfaces, one signal-cyan
+ * accent, market green/red kept strictly separate from the brand colour.
+ * Components use them as Tailwind colours (`bg-ev-panel`, `text-ev-muted`,
+ * `border-ev-line/40`) so the whole shell follows the theme set on
+ * <html data-theme>. Text tokens meet WCAG AA (4.5:1) on bg, panel and
+ * raised surfaces in both themes. Mirrored in `packages/brand/src/index.ts`.
  */
 :root,
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --ev-bg: #12161d;
-  --ev-panel: #181c21;
-  --ev-raised: #22272f;
-  --ev-chrome: #0e1216;
-  --ev-line: #2a2f38;
-  --ev-line-strong: #3a4049;
-  --ev-dim: #4a4f59;
-  --ev-faint: #8b909a;
-  --ev-muted: #aab0ba;
-  --ev-text: #d8dce2;
-  --ev-strong: #ffffff;
-  --ev-accent: #d91400;
-  --ev-accent-hover: #b91100;
-  --ev-accent-text: #ff4b3e;
-  --ev-up: #0ea600;
-  --ev-down: #d91400;
-  --ev-up-solid: #0a7d00;
-  --ev-down-solid: #b91100;
+  --ev-bg: #0a0d13;
+  --ev-panel: #10141d;
+  --ev-raised: #171d29;
+  --ev-chrome: #060910;
+  --ev-line: #1f2735;
+  --ev-line-strong: #2f3a4d;
+  --ev-dim: #4c5a70;
+  --ev-faint: #7d8aa0;
+  --ev-muted: #93a0b6;
+  --ev-text: #c4cfdf;
+  --ev-strong: #eef2fa;
+  --ev-accent: #22d3ee;
+  --ev-accent-hover: #06b6d4;
+  --ev-accent-text: #67e8f9;
+  --ev-accent-ink: #04222b;
+  --ev-up: #22c55e;
+  --ev-down: #ef4444;
+  --ev-up-solid: #15803d;
+  --ev-down-solid: #dc2626;
   /* Text-safe up/down (>= 4.5:1 on bg, panel and raised); chart candles keep --ev-up/--ev-down. */
-  --ev-up-text: #1db30f;
-  --ev-down-text: #ff5a4d;
-  --ev-link: #4a90e2;
-  --ev-warn: #f2a93b;
-  --ev-orange: #ff9800;
+  --ev-up-text: #4ade80;
+  --ev-down-text: #f87171;
+  --ev-link: #60a5fa;
+  --ev-warn: #fbbf24;
+  --ev-orange: #fb923c;
 }
 
 :root[data-theme="light"] {
   color-scheme: light;
-  --ev-bg: #ffffff;
-  --ev-panel: #f7f8fa;
-  --ev-raised: #eceff2;
-  --ev-chrome: #f0f3fa;
-  --ev-line: #e2e5ea;
-  --ev-line-strong: #c9cdd4;
-  --ev-dim: #b2b5be;
-  --ev-faint: #6b7078;
-  --ev-muted: #4a4e56;
-  --ev-text: #1b1f26;
-  --ev-strong: #000000;
-  --ev-accent: #d91400;
-  --ev-accent-hover: #b91100;
-  --ev-accent-text: #c11200;
-  --ev-up: #0ea600;
-  --ev-down: #d91400;
-  --ev-up-solid: #0a7d00;
-  --ev-down-solid: #b91100;
-  --ev-up-text: #0a7d00;
-  --ev-down-text: #c11200;
-  --ev-link: #1256a0;
-  --ev-warn: #8a7000;
-  --ev-orange: #b1560f;
+  --ev-bg: #faf7f0;
+  --ev-panel: #f4efe4;
+  --ev-raised: #eae2d2;
+  --ev-chrome: #efe9d8;
+  --ev-line: #ddd2bd;
+  --ev-line-strong: #c9bb9f;
+  --ev-dim: #b3a68c;
+  --ev-faint: #7d7260;
+  --ev-muted: #5f5543;
+  --ev-text: #2b2517;
+  --ev-strong: #16120a;
+  --ev-accent: #0e7490;
+  --ev-accent-hover: #155e75;
+  --ev-accent-text: #0e7490;
+  --ev-accent-ink: #ffffff;
+  --ev-up: #16a34a;
+  --ev-down: #dc2626;
+  --ev-up-solid: #15803d;
+  --ev-down-solid: #b91c1c;
+  --ev-up-text: #166534;
+  --ev-down-text: #b91c1c;
+  --ev-link: #1d4ed8;
+  --ev-warn: #a16207;
+  --ev-orange: #c2410c;
 }
 
 :root[data-theme="tokyo"] {
@@ -98,22 +111,23 @@
   --ev-line: #3b4261;
   --ev-line-strong: #565f89;
   --ev-dim: #565f89;
-  --ev-faint: #8a8fae;
+  --ev-faint: #787c99;
   --ev-muted: #9aa5ce;
   --ev-text: #c0caf5;
   --ev-strong: #ffffff;
-  --ev-accent: #d91400;
-  --ev-accent-hover: #b91100;
-  --ev-accent-text: #ff4b3e;
-  --ev-up: #9ece6a;
-  --ev-down: #f7768e;
-  --ev-up-solid: #4c7a3f;
-  --ev-down-solid: #a53a4a;
-  --ev-up-text: #9ece6a;
-  --ev-down-text: #f7768e;
+  --ev-accent: #22d3ee;
+  --ev-accent-hover: #06b6d4;
+  --ev-accent-text: #67e8f9;
+  --ev-accent-ink: #04222b;
+  --ev-up: #4ade80;
+  --ev-down: #f87171;
+  --ev-up-solid: #15803d;
+  --ev-down-solid: #dc2626;
+  --ev-up-text: #4ade80;
+  --ev-down-text: #f87171;
   --ev-link: #7aa2f7;
-  --ev-warn: #e0af68;
-  --ev-orange: #ff9e64;
+  --ev-warn: #fbbf24;
+  --ev-orange: #fb923c;
 }
 
 @theme inline {
@@ -131,6 +145,7 @@
   --color-ev-accent: var(--ev-accent);
   --color-ev-accent-hover: var(--ev-accent-hover);
   --color-ev-accent-text: var(--ev-accent-text);
+  --color-ev-accent-ink: var(--ev-accent-ink);
   --color-ev-up: var(--ev-up);
   --color-ev-down: var(--ev-down);
   --color-ev-up-text: var(--ev-up-text);
@@ -162,9 +177,10 @@
   --text-head: 18px;
   --text-head--line-height: 24px;
 
-  /* One radius, one elevation language. */
-  --radius: 4px;
-  --radius-ev: 4px;
+  /* One radius, one elevation language. Controls stay crisp (6px); floating
+     surfaces (dialogs, listboxes, popovers) opt into `rounded-lg`+. */
+  --radius: 6px;
+  --radius-ev: 6px;
 
   /*
    * Z-index scale. Every stacking context in the app picks a rung: canvas <
@@ -184,13 +200,19 @@
 }
 
 /*
- * Numbers inside tables, prices and P&L line up column-wise. Inter ships
- * tabular figures; the fallbacks in a proportional font still read acceptably
- * because the class is only about alignment.
+ * Numbers inside tables, prices and P&L render in JetBrains Mono — fixed-width
+ * digits that line up column-wise without relying on tabular-figure support.
+ * This is the signature "terminal" detail of the redesign.
  */
 .num {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
+}
+
+/* Convenience alias for non-numeric mono text (timestamps, shortcuts, keys). */
+.mono {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 
@@ -209,6 +231,22 @@ body {
   color: var(--ev-text);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * Ambient top glow: a faint accent bloom behind the chrome bars. It is the
+ * only decoration in the shell — just enough to stop the surfaces reading as
+ * flat cuts, and it follows whichever theme accent is active.
+ */
+#root {
+  background:
+    radial-gradient(1100px 320px at 50% -8%, color-mix(in srgb, var(--ev-accent) 5%, transparent), transparent 65%),
+    var(--ev-bg);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--ev-accent) 32%, transparent);
+  color: var(--ev-strong);
 }
 
 /*
@@ -238,10 +276,18 @@ textarea:focus-visible,
   outline: 2px solid var(--ev-accent);
   outline-offset: -1px;
   /* Inner ring in the page colour + outer ring in the text colour, so the
-     focus shows on accent-filled buttons too. */
+     focus shows on accent-filled buttons too, plus a soft accent bloom. */
   box-shadow:
     0 0 0 1px var(--ev-bg),
-    0 0 0 3px var(--ev-strong);
+    0 0 0 3px var(--ev-strong),
+    0 0 14px color-mix(in srgb, var(--ev-accent) 30%, transparent);
+}
+
+/* Text inputs keep their border-focus language but gain the same bloom. */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ev-accent) 22%, transparent);
 }
 
 /* Press feedback: buttons must react on mousedown, not only on hover. */
@@ -430,4 +476,51 @@ button[aria-disabled="true"] {
   box-shadow:
     inset 1px 0 0 0 color-mix(in srgb, var(--ev-strong) 6%, transparent),
     -2px 0 6px -2px color-mix(in srgb, var(--ev-bg) 70%, transparent);
+}
+
+/*
+ * Live-status dot: a slow breathing pulse for "market open", "feed live",
+ * "recording". App.tsx toggles `data-hidden` on <html> when the tab is
+ * hidden, and the rule below parks the animation so background tabs burn no
+ * frames (motion-foundations rule: infinite animation pauses when hidden).
+ */
+@keyframes ev-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
+}
+
+.ev-pulse {
+  animation: ev-pulse 2.4s ease-in-out infinite;
+}
+
+:root[data-hidden] .ev-pulse {
+  animation-play-state: paused;
+}
+
+/*
+ * Skeleton shimmer for loading panels. Same visibility contract as ev-pulse:
+ * the sweep stops while the window is hidden.
+ */
+@keyframes ev-shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.ev-shimmer {
+  animation: ev-shimmer 1.6s ease-in-out infinite;
+}
+
+:root[data-hidden] .ev-shimmer {
+  animation-play-state: paused;
 }

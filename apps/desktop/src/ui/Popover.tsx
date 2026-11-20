@@ -90,7 +90,7 @@ export function Popover({
             aria-label={label}
             tabIndex={-1}
             className={cn(
-              "fixed z-[var(--z-dropdown)] rounded border border-ev-line bg-ev-panel p-2 shadow-xl",
+              "fixed z-[var(--z-dropdown)] rounded-lg border border-ev-line bg-ev-panel p-2 shadow-xl",
               panelClassName,
             )}
             style={{ top: placement.top, left: placement.left, width: placement.width, minWidth: placement.minWidth, maxHeight: placement.maxHeight, overflowY: "auto" }}
@@ -154,7 +154,7 @@ export function Tooltip({ content, children, side = "bottom" }: TooltipProps) {
           <div
             role="tooltip"
             id={id}
-            className="pointer-events-none fixed z-[var(--z-dropdown)] max-w-64 rounded border border-ev-line bg-ev-panel px-2 py-1 text-dense text-ev-text shadow-lg"
+            className="pointer-events-none fixed z-[var(--z-dropdown)] max-w-64 rounded-lg border border-ev-line bg-ev-panel px-2 py-1 text-dense text-ev-text shadow-lg"
             style={{ top, left: placement.left, minWidth: placement.minWidth }}
           >
             {content}

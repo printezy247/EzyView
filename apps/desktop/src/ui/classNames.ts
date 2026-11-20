@@ -19,8 +19,9 @@ export const BUTTON_SIZES: Record<ControlSize, string> = {
 export type ButtonVariant = "solid" | "outline" | "ghost" | "danger";
 
 export const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
-  // The brand red, white text. Investing.com's primary action.
-  solid: "bg-ev-accent text-white hover:bg-ev-accent-hover disabled:hover:bg-ev-accent",
+  // The brand cyan with ink text — the accent is bright, so the label colour
+  // comes from the theme's accentInk token, not a hardcoded white.
+  solid: "bg-ev-accent text-ev-accent-ink hover:bg-ev-accent-hover disabled:hover:bg-ev-accent",
   outline: "border border-ev-line bg-transparent text-ev-text hover:bg-ev-raised hover:text-ev-strong",
   ghost: "bg-transparent text-ev-muted hover:bg-ev-raised hover:text-ev-strong",
   danger: "border border-ev-down/40 bg-transparent text-ev-down-text hover:bg-ev-down/10",
@@ -91,7 +92,7 @@ export function selectTriggerClass(options: { size?: ControlSize; className?: Cl
 
 /** The floating listbox under a Select or Combobox. */
 export const LISTBOX_CLASS =
-  "fixed z-[var(--z-dropdown)] overflow-y-auto rounded border border-ev-line bg-ev-panel py-1 shadow-xl";
+  "fixed z-[var(--z-dropdown)] overflow-y-auto rounded-lg border border-ev-line bg-ev-panel py-1 shadow-xl";
 
 /** One row of a listbox or a menu popup. */
 export function optionClass(options: { active?: boolean; selected?: boolean; disabled?: boolean } = {}): string {
@@ -137,7 +138,7 @@ export function segmentClass(options: { active?: boolean; className?: ClassValue
 }
 
 /** Dialog surface: one radius, one border, one shadow. */
-export const DIALOG_CLASS = "flex max-h-[85vh] flex-col rounded border border-ev-line bg-ev-panel shadow-2xl";
+export const DIALOG_CLASS = "flex max-h-[85vh] flex-col rounded-lg border border-ev-line bg-ev-panel shadow-2xl";
 
 /**
  * Shell chrome: one bar height, one rail width, one icon scale, one

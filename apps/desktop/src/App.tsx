@@ -26,6 +26,7 @@ import { bootstrapMt5, getMt5, useMt5 } from "./mt5";
 import { useMt5Accounts } from "./mt5Accounts";
 import { NoticeHost } from "./NoticeHost";
 import { Button, Toaster, buttonClass } from "./ui";
+import { BrandMark } from "./BrandMark";
 import { useShortcut, useShortcutDispatcher } from "./shortcuts";
 import { useSectionNavigation } from "./useSectionNavigation";
 import { quoteOf } from "./data";
@@ -97,6 +98,17 @@ export default function App() {
   const [hotkeysOpen, setHotkeysOpen] = useState(false);
   const [chartSettingsOpen, setChartSettingsOpen] = useState(false);
   const [shortcutFeedback, setShortcutFeedback] = useState<string | null>(null);
+
+  // Infinite CSS animations (.ev-pulse, .ev-shimmer) park themselves while the
+  // window is hidden — styles.css keys off this attribute, so a backgrounded
+  // terminal burns no frames on decorative loops.
+  useEffect(() => {
+    const sync = () =>
+      document.documentElement.toggleAttribute("data-hidden", document.visibilityState === "hidden");
+    sync();
+    document.addEventListener("visibilitychange", sync);
+    return () => document.removeEventListener("visibilitychange", sync);
+  }, []);
 
   useShortcut({
     id: "app.fullscreen",
@@ -302,7 +314,7 @@ export default function App() {
           <div
             role="status"
             aria-live="polite"
-            className="fixed top-3 right-6 z-[9999] rounded bg-ev-accent px-3 py-1.5 text-dense font-semibold text-white shadow-lg animate-fade-in pointer-events-none"
+            className="fixed top-3 right-6 z-[9999] rounded bg-ev-accent px-3 py-1.5 text-dense font-semibold text-ev-accent-ink shadow-lg animate-fade-in pointer-events-none"
           >
             {shortcutFeedback}
           </div>
@@ -320,6 +332,11 @@ export default function App() {
         />
 
         <footer className="ev-bar-below flex h-7 shrink-0 items-center gap-3 overflow-x-auto border-t border-ev-raised bg-ev-chrome px-3 text-dense text-ev-muted">
+          <span className="flex shrink-0 items-center gap-1.5" title="EzyView — open-source trading terminal">
+            <BrandMark className="size-4 rounded [&_svg]:size-2.5" />
+            <span className="text-micro font-semibold uppercase tracking-wider text-ev-faint">EzyView</span>
+          </span>
+          <div className="h-3.5 w-px shrink-0 bg-ev-raised" />
           <SourceToggle />
           <FeedStatus symbol={symbol} />
 
