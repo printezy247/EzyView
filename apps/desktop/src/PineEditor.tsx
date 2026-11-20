@@ -431,7 +431,7 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
                 refreshMarkers();
               }}
               className={`rounded px-2 py-1 text-base ${
-                s.id === scriptId ? "bg-ev-accent text-white" : "bg-ev-line text-ev-muted hover:bg-ev-line-strong"
+                s.id === scriptId ? "bg-ev-accent text-ev-accent-ink" : "bg-ev-line text-ev-muted hover:bg-ev-line-strong"
               }`}
             >
               {s.name}

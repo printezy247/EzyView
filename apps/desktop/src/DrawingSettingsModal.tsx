@@ -369,7 +369,7 @@ function StyleTab({
           <ColorRow label="Stop colour" value={style.stopColor ?? "#ef5350"} onChange={(stopColor) => onStyle({ stopColor })} />
           <ColorRow label="Target colour" value={style.targetColor ?? "#26a69a"} onChange={(targetColor) => onStyle({ targetColor })} />
           <Checkbox label="Show price labels" checked={style.showPriceLabels !== false} onChange={(on) => onStyle({ showPriceLabels: on })} />
-          <Button size="sm" variant="outline" onClick={onApplyToOrder} className="border-ev-accent/60 bg-ev-accent/20 text-ev-accent-text hover:bg-ev-accent hover:text-white">
+          <Button size="sm" variant="outline" onClick={onApplyToOrder} className="border-ev-accent/60 bg-ev-accent/20 text-ev-accent-text hover:bg-ev-accent hover:text-ev-accent-ink">
             Apply to Order Ticket
           </Button>
         </Section>

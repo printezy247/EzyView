@@ -71,10 +71,10 @@ describe("variants and tones", () => {
     expect(buttonClass()).toContain("h-7");
   });
 
-  it("paints the primary button in the brand red with white text", () => {
+  it("paints the primary button in the brand accent with ink text", () => {
     const primary = buttonClass({ variant: "solid" });
     expect(primary).toContain("bg-ev-accent");
-    expect(primary).toContain("text-white");
+    expect(primary).toContain("text-ev-accent-ink");
   });
 
   it("never paints a button with a colour that is not a token", () => {

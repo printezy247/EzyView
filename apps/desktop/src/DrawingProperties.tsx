@@ -10,7 +10,7 @@ import { newAssetId, putImageAsset, readImageSize } from "./imageAssets";
 import { Button, IconButton, Input } from "./ui";
 import { Select } from "./ui";
 
-const COLORS = ["#d91400", "#0ea600", "#f2a93b", "#4a90e2", "#9c27b0", "#00bcd4", "#ffd700", "#ffffff"];
+const COLORS = ["#ef4444", "#22c55e", "#fbbf24", "#60a5fa", "#a78bfa", "#22d3ee", "#ffd700", "#ffffff"];
 const WIDTHS = [1, 2, 3, 4];
 const LINE_STYLES = ["solid", "dashed", "dotted"] as const;
 
@@ -82,7 +82,7 @@ export function DrawingProperties() {
           size="sm"
           variant="outline"
           onClick={applyToOrder}
-          className="mb-2.5 w-full border-ev-accent/60 bg-ev-accent/20 text-ev-accent-text hover:bg-ev-accent hover:text-white"
+          className="mb-2.5 w-full border-ev-accent/60 bg-ev-accent/20 text-ev-accent-text hover:bg-ev-accent hover:text-ev-accent-ink"
         >
           <ArrowRightLeft size={12} aria-hidden />
           <span>Apply to Order Ticket</span>

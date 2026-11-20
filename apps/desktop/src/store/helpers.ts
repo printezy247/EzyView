@@ -11,8 +11,8 @@ import type { WorkspaceStore } from "./types";
 
 
 /** Deep copy for "Duplicate layout"; indicator defs are shared, not cloned, as they hold functions. */
-export const LAYOUT_COLORS = ["#d91400", "#0ea600", "#f2a93b", "#4a90e2", "#9c27b0", "#00bcd4"];
-export const COMPARE_COLORS = ["#f2a93b", "#9c27b0", "#26a69a", "#ef5350", "#42a5f5", "#ffca28"];
+export const LAYOUT_COLORS = ["#ef4444", "#22c55e", "#fbbf24", "#60a5fa", "#a78bfa", "#22d3ee"];
+export const COMPARE_COLORS = ["#fbbf24", "#a78bfa", "#2dd4bf", "#f87171", "#60a5fa", "#fde047"];
 
 /**
  * Maximum undo/redo drawing states kept in memory per layout.

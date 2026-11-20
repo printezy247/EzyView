@@ -102,7 +102,7 @@ export function Toaster() {
           key={item.id}
           role={item.tone === "error" ? "alert" : "status"}
           className={cn(
-            "pointer-events-auto flex items-start gap-2 rounded border bg-ev-panel px-2.5 py-2 text-dense shadow-xl",
+            "pointer-events-auto flex items-start gap-2 rounded-lg border border-l-2 bg-ev-panel px-2.5 py-2 text-dense shadow-xl",
             TONE_CLASS[item.tone],
           )}
         >

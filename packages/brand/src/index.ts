@@ -1,9 +1,10 @@
 /**
- * EzyView brand palette — Investing.com's system, not TradingView's.
+ * EzyView brand palette — "Terminal Pro".
  *
- * Measured from investing.com (Oct 2026): main red `#d91400`, market green
- * `#0ea600`, link blue `#1256a0`, gold `#b19e00` / `#f2a93b`, dark chrome
- * `#181c21` over a white content canvas, Inter as the primary typeface.
+ * Deep blue-black surfaces with a signal-cyan accent, semantic green/red for
+ * market direction kept strictly separate from the brand colour, and JetBrains
+ * Mono for every numeral. The light theme is a warm paper palette; Tokyo Night
+ * keeps its indigo surfaces under the same cyan accent.
  *
  * This module is the single source of truth: `styles.css` carries the same
  * values as CSS custom properties, and `./theme.ts` derives the chart palette
@@ -15,7 +16,7 @@
  * here, add it there too.
  */
 
-/** Named UI themes. `dark` is the Investing.com dark terminal, `light` the web. */
+/** Named UI themes. `dark` is the terminal dark, `light` the warm paper theme. */
 export type ThemeName = "dark" | "light" | "tokyo";
 
 export const THEME_NAMES: readonly ThemeName[] = ["dark", "light", "tokyo"] as const;
@@ -44,15 +45,17 @@ export interface ThemeColors {
   text: string;
   /** Emphasised text. */
   strong: string;
-  /** Brand red: primary buttons, active states, negative/bid colour. */
+  /** Brand cyan: primary buttons, active states, focus rings. Never a market direction. */
   accent: string;
-  /** Pressed/hover brand red. */
+  /** Pressed/hover brand cyan. */
   accentHover: string;
-  /** Brand red legible on a dark panel (AA). */
+  /** Brand cyan legible as text on a panel (AA). */
   accentText: string;
-  /** Investing.com market green: up, positive, bid. */
+  /** Text/icon colour drawn on top of an `accent`-filled surface. */
+  accentInk: string;
+  /** Market green: up, positive, bid. */
   up: string;
-  /** Investing.com market red: down, negative, ask. */
+  /** Market red: down, negative, ask. */
   down: string;
   /** Filled up badges (white text on top). */
   upSolid: string;
@@ -66,57 +69,59 @@ export interface ThemeColors {
   orange: string;
 }
 
-/** Investing.com dark terminal (default). */
-export const INVEST_DARK: ThemeColors = {
-  bg: "#12161d",
-  panel: "#181c21",
-  raised: "#22272f",
-  chrome: "#0e1216",
-  line: "#2a2f38",
-  lineStrong: "#3a4049",
-  dim: "#4a4f59",
-  faint: "#8b909a",
-  muted: "#aab0ba",
-  text: "#d8dce2",
-  strong: "#ffffff",
-  accent: "#d91400",
-  accentHover: "#b91100",
-  accentText: "#ff4b3e",
-  up: "#0ea600",
-  down: "#d91400",
-  upSolid: "#0a7d00",
-  downSolid: "#b91100",
-  link: "#4a90e2",
-  warn: "#f2a93b",
-  orange: "#ff9800",
+/** Terminal dark: deep blue-black chrome, signal-cyan accent (default). */
+export const TERMINAL_DARK: ThemeColors = {
+  bg: "#0a0d13",
+  panel: "#10141d",
+  raised: "#171d29",
+  chrome: "#060910",
+  line: "#1f2735",
+  lineStrong: "#2f3a4d",
+  dim: "#4c5a70",
+  faint: "#7d8aa0",
+  muted: "#93a0b6",
+  text: "#c4cfdf",
+  strong: "#eef2fa",
+  accent: "#22d3ee",
+  accentHover: "#06b6d4",
+  accentText: "#67e8f9",
+  accentInk: "#04222b",
+  up: "#22c55e",
+  down: "#ef4444",
+  upSolid: "#15803d",
+  downSolid: "#dc2626",
+  link: "#60a5fa",
+  warn: "#fbbf24",
+  orange: "#fb923c",
 };
 
-/** Investing.com light: clean light terminal palette. */
-export const INVEST_LIGHT: ThemeColors = {
-  bg: "#ffffff",
-  panel: "#f7f8fa",
-  raised: "#eceff2",
-  chrome: "#f0f3fa",
-  line: "#e2e5ea",
-  lineStrong: "#c9cdd4",
-  dim: "#b2b5be",
-  faint: "#6b7078",
-  muted: "#4a4e56",
-  text: "#1b1f26",
-  strong: "#000000",
-  accent: "#d91400",
-  accentHover: "#b91100",
-  accentText: "#c11200",
-  up: "#0ea600",
-  down: "#d91400",
-  upSolid: "#0a7d00",
-  downSolid: "#b91100",
-  link: "#1256a0",
-  warn: "#8a7000",
-  orange: "#b1560f",
+/** Warm paper light: cream surfaces, deep cyan accent. */
+export const WARM_LIGHT: ThemeColors = {
+  bg: "#faf7f0",
+  panel: "#f4efe4",
+  raised: "#eae2d2",
+  chrome: "#efe9d8",
+  line: "#ddd2bd",
+  lineStrong: "#c9bb9f",
+  dim: "#b3a68c",
+  faint: "#7d7260",
+  muted: "#5f5543",
+  text: "#2b2517",
+  strong: "#16120a",
+  accent: "#0e7490",
+  accentHover: "#155e75",
+  accentText: "#0e7490",
+  accentInk: "#ffffff",
+  up: "#16a34a",
+  down: "#dc2626",
+  upSolid: "#15803d",
+  downSolid: "#b91c1c",
+  link: "#1d4ed8",
+  warn: "#a16207",
+  orange: "#c2410c",
 };
 
-/** Tokyo Night — the optional indigo theme, on the same red-accent system. */
+/** Tokyo Night — indigo surfaces under the same cyan accent system. */
 export const TOKYO: ThemeColors = {
   bg: "#1a1b26",
   panel: "#24283b",
@@ -129,21 +134,22 @@ export const TOKYO: ThemeColors = {
   muted: "#9aa5ce",
   text: "#c0caf5",
   strong: "#ffffff",
-  accent: "#d91400",
-  accentHover: "#b91100",
-  accentText: "#ff4b3e",
-  up: "#9ece6a",
-  down: "#f7768e",
-  upSolid: "#4c7a3f",
-  downSolid: "#a53a4a",
+  accent: "#22d3ee",
+  accentHover: "#06b6d4",
+  accentText: "#67e8f9",
+  accentInk: "#04222b",
+  up: "#4ade80",
+  down: "#f87171",
+  upSolid: "#15803d",
+  downSolid: "#dc2626",
   link: "#7aa2f7",
-  warn: "#e0af68",
-  orange: "#ff9e64",
+  warn: "#fbbf24",
+  orange: "#fb923c",
 };
 
 const BY_NAME: Record<ThemeName, ThemeColors> = {
-  dark: INVEST_DARK,
-  light: INVEST_LIGHT,
+  dark: TERMINAL_DARK,
+  light: WARM_LIGHT,
   tokyo: TOKYO,
 };
 

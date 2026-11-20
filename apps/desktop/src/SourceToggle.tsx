@@ -98,7 +98,7 @@ export function SourceToggle() {
           }
           className={
             source === id
-              ? `font-medium ${id === "mt5" ? "bg-ev-accent text-white" : "bg-ev-raised text-ev-strong"}`
+              ? `font-medium ${id === "mt5" ? "bg-ev-accent text-ev-accent-ink" : "bg-ev-raised text-ev-strong"}`
               : undefined
           }
         >

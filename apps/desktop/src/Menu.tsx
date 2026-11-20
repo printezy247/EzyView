@@ -146,7 +146,7 @@ export function Menu({ label, caption, entries, icon, badge, triggerActive, alig
         {icon}
         {label}
         {badge !== undefined && badge > 0 && (
-          <span className="rounded bg-ev-accent px-1 text-dense leading-4 text-white">{badge}</span>
+          <span className="rounded bg-ev-accent px-1 text-dense leading-4 text-ev-accent-ink">{badge}</span>
         )}
         <ChevronDown size={12} aria-hidden />
       </button>
@@ -159,7 +159,7 @@ export function Menu({ label, caption, entries, icon, badge, triggerActive, alig
             role="menu"
             aria-label={caption ?? label}
             onKeyDown={onListKey}
-            className="fixed z-[var(--z-dropdown)] whitespace-nowrap rounded border border-ev-line bg-ev-panel py-1 shadow-xl"
+            className="fixed z-[var(--z-dropdown)] whitespace-nowrap rounded-lg border border-ev-line bg-ev-panel py-1 shadow-xl"
             style={{ ...popupPosition(triggerRef.current, { align, minWidth: 220 }), overflowY: "auto" }}
           >
             <MenuItems entries={entries} onPick={pick} />
