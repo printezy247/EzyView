@@ -37,6 +37,12 @@ export interface LiveSourceDeps {
   now?: () => number;
   /** Called when a provider answers 429/418 so the app can show "rate limited". */
   onRateLimit?: (source: LiveSourceId, retryAfterMs: number) => void;
+  /**
+   * Stream health transitions: `ok=false` when the socket gives up and the
+   * adapter falls back to polling, `ok=true` when a live tick arrives again.
+   * Lets the app mark the feed stale instead of showing a frozen chart as live.
+   */
+  onHealth?: (source: LiveSourceId, ok: boolean, reason?: string) => void;
 }
 
 export const LIVE_SOURCE_IDS: readonly LiveSourceId[] = ["binance", "kraken", "twelvedata"];
@@ -58,7 +64,11 @@ const MAX_RETRY_AFTER_MS = 5 * 60_000;
 // ---------------------------------------------------------------------------
 
 /** "BINANCE:BTCUSDT" -> "BTCUSDT" (text after the last colon, upper-cased). */
-const tickerOf = (symbol: string): string => symbol.slice(symbol.lastIndexOf(":") + 1).trim().toUpperCase();
+const tickerOf = (symbol: string): string =>
+  symbol
+    .slice(symbol.lastIndexOf(":") + 1)
+    .trim()
+    .toUpperCase();
 
 /** Parse a number or numeric string; null unless finite. */
 const toNum = (v: unknown): number | null => {
@@ -71,13 +81,21 @@ const toPrice = (v: unknown): number | null => {
   return n !== null && n > 0 ? n : null;
 };
 
-const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
 
 /** Kraken's ticker fields wrap the value in a one-element array. */
 const firstOf = (v: unknown): unknown => (Array.isArray(v) ? v[0] : undefined);
 
 /** Build a candle only when every field is valid. */
-function makeCandle(time: unknown, o: unknown, h: unknown, l: unknown, c: unknown, v: unknown): Candle | null {
+function makeCandle(
+  time: unknown,
+  o: unknown,
+  h: unknown,
+  l: unknown,
+  c: unknown,
+  v: unknown,
+): Candle | null {
   const t = toNum(time);
   const open = toPrice(o);
   const high = toPrice(h);
@@ -88,8 +106,12 @@ function makeCandle(time: unknown, o: unknown, h: unknown, l: unknown, c: unknow
 }
 
 const finishCandles = (list: Candle[], req: HistoricalRequest): Candle[] => {
-  const out = list.filter((c) => c.time >= req.from && c.time <= req.to).sort((a, b) => a.time - b.time);
-  return req.limit && req.limit > 0 && out.length > req.limit ? out.slice(out.length - req.limit) : out;
+  const out = list
+    .filter((c) => c.time >= req.from && c.time <= req.to)
+    .sort((a, b) => a.time - b.time);
+  return req.limit && req.limit > 0 && out.length > req.limit
+    ? out.slice(out.length - req.limit)
+    : out;
 };
 
 interface Ctx {
@@ -174,6 +196,7 @@ interface StreamPlan {
 
 function startStream(
   ctx: Ctx,
+  id: LiveSourceId,
   plan: StreamPlan,
   symbol: string,
   getQuote: () => Promise<Quote | null>,
@@ -190,6 +213,15 @@ function startStream(
   let reprobeTimer: ReturnType<typeof setTimeout> | null = null;
   let watchTimer: ReturnType<typeof setTimeout> | null = null;
   const staleMs = plan.staleMs ?? STALE_SOCKET_MS;
+
+  /** Tell the host the stream fell back to polling / recovered. Never throws. */
+  const reportHealth = (ok: boolean, reason?: string) => {
+    try {
+      ctx.deps.onHealth?.(id, ok, reason);
+    } catch {
+      /* a listener must not break the feed */
+    }
+  };
 
   const stopWatch = () => {
     if (watchTimer) clearTimeout(watchTimer);
@@ -236,6 +268,7 @@ function startStream(
     if (closed) return;
     fails += 1;
     if (fails >= plan.maxFails || !WS) {
+      reportHealth(false, "stream unavailable, polling");
       startPolling();
       return;
     }
@@ -311,12 +344,17 @@ function startStream(
         const r = plan.parse(typeof data === "string" ? data : String(data));
         if (r === "fail") return die();
         if (r === null) return;
+        if (fails > 0) reportHealth(true);
         fails = 0;
         const tick: Tick = typeof r === "number" ? { price: r } : r;
         // Prefer the exchange's trade time: the local clock can be seconds off and put a tick in the wrong bar.
-        const t = tick.time !== undefined && Number.isFinite(tick.time) && tick.time > 0 ? Math.floor(tick.time) : ctx.nowSec();
+        const t =
+          tick.time !== undefined && Number.isFinite(tick.time) && tick.time > 0
+            ? Math.floor(tick.time)
+            : ctx.nowSec();
         const quote: Quote = { symbol, last: tick.price, time: t };
-        if (tick.volume !== undefined && Number.isFinite(tick.volume) && tick.volume > 0) quote.tickVolume = tick.volume;
+        if (tick.volume !== undefined && Number.isFinite(tick.volume) && tick.volume > 0)
+          quote.tickVolume = tick.volume;
         emit(quote);
       },
       { signal: listeners.signal },
@@ -458,8 +496,14 @@ function buildSource(cfg: SourceConfig, deps: LiveSourceDeps): LiveSource {
       );
       if (stopped) return () => {};
       for (const item of planned) {
-        if (item) stops.push(startStream(ctx, item.plan, item.symbol, () => getQuote(item.symbol), onQuote));
+        if (item)
+          stops.push(
+            startStream(ctx, cfg.id, item.plan, item.symbol, () => getQuote(item.symbol), onQuote),
+          );
       }
+      // No stream could be planned (e.g. a missing API key): report "no push
+      // feed" so the caller falls back to polling rather than going silent.
+      if (stops.length === 0) return null;
       return () => {
         stopped = true;
         for (const s of stops.splice(0)) s();
@@ -475,7 +519,8 @@ function buildSource(cfg: SourceConfig, deps: LiveSourceDeps): LiveSource {
 const BINANCE_REST = "https://data-api.binance.vision";
 const BINANCE_WS = "wss://stream.binance.vision/ws";
 
-const BINANCE_INTERVAL: Partial<Record<Resolution, string>> = {
+/** Exported so the app derives its supported-interval sets from one source. */
+export const BINANCE_INTERVAL: Partial<Record<Resolution, string>> = {
   "1s": "1s",
   "1m": "1m",
   "3m": "3m",
@@ -589,7 +634,18 @@ const KRAKEN_REST = "https://api.kraken.com/0/public";
 const KRAKEN_WS = "wss://ws.kraken.com/v2";
 
 const KRAKEN_QUOTES = ["USDT", "USDC", "USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF"];
-const NOT_CRYPTO_BASES = new Set(["USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "NZD", "XAU", "XAG"]);
+const NOT_CRYPTO_BASES = new Set([
+  "USD",
+  "EUR",
+  "GBP",
+  "JPY",
+  "AUD",
+  "CAD",
+  "CHF",
+  "NZD",
+  "XAU",
+  "XAG",
+]);
 /** REST pair names that differ from the common ticker. */
 const KRAKEN_REST_BASE: Record<string, string> = { BTC: "XBT", DOGE: "XDG" };
 
@@ -612,7 +668,8 @@ const krakenWsPair = (ticker: string): string => {
   return p ? `${p.base}/${p.quote}` : ticker;
 };
 
-const KRAKEN_INTERVAL: Partial<Record<Resolution, number>> = {
+/** Exported so the app derives its supported-interval sets from one source. */
+export const KRAKEN_INTERVAL: Partial<Record<Resolution, number>> = {
   "1m": 1,
   "5m": 5,
   "15m": 15,
@@ -667,7 +724,9 @@ const krakenConfig: SourceConfig = {
   },
 
   async quote(ctx, ticker) {
-    const t = krakenFirst(await ctx.getJson(`${KRAKEN_REST}/Ticker?pair=${krakenRestPair(ticker)}`));
+    const t = krakenFirst(
+      await ctx.getJson(`${KRAKEN_REST}/Ticker?pair=${krakenRestPair(ticker)}`),
+    );
     if (!isRecord(t)) return null;
     const last = toPrice(firstOf(t.c));
     if (last === null) return null;
@@ -692,7 +751,10 @@ const krakenConfig: SourceConfig = {
       url: KRAKEN_WS,
       maxFails: 3,
       pollMs: POLL_MS,
-      onOpen: (ws) => ws.send(JSON.stringify({ method: "subscribe", params: { channel: "ticker", symbol: [pair] } })),
+      onOpen: (ws) =>
+        ws.send(
+          JSON.stringify({ method: "subscribe", params: { channel: "ticker", symbol: [pair] } }),
+        ),
       parse(raw) {
         try {
           const m: unknown = JSON.parse(raw);
@@ -725,7 +787,8 @@ const TD_CCY = new Set([
   "SEK", "NOK", "MXN", "ZAR", "SGD", "HKD", "TRY", "PLN", "CNH",
 ]); // prettier-ignore
 
-const TD_INTERVAL: Partial<Record<Resolution, string>> = {
+/** Exported so the app derives its supported-interval sets from one source. */
+export const TD_INTERVAL: Partial<Record<Resolution, string>> = {
   "1m": "1min",
   "5m": "5min",
   "15m": "15min",
@@ -738,8 +801,13 @@ const TD_INTERVAL: Partial<Record<Resolution, string>> = {
   "1M": "1month",
 };
 
-const tdSupports = (t: string): boolean => /^[A-Z]{6}$/.test(t) && TD_CCY.has(t.slice(0, 3)) && TD_CCY.has(t.slice(3));
+const tdSupports = (t: string): boolean =>
+  /^[A-Z]{6}$/.test(t) && TD_CCY.has(t.slice(0, 3)) && TD_CCY.has(t.slice(3));
 const tdPair = (t: string): string => `${t.slice(0, 3)}/${t.slice(3)}`;
+
+/** Twelve Data wants "YYYY-MM-DD HH:MM:SS" (UTC), not ISO's "T" separator. */
+const tdDateTime = (sec: number): string =>
+  new Date(sec * 1000).toISOString().slice(0, 19).replace("T", " ");
 
 /** "YYYY-MM-DD HH:mm:ss" (or date only), read as UTC -> epoch seconds. */
 function parseUtc(s: unknown): number | null {
@@ -750,7 +818,8 @@ function parseUtc(s: unknown): number | null {
   return Number.isFinite(ms) ? Math.floor(ms / 1000) : null;
 }
 
-const tdIsError = (j: unknown): boolean => isRecord(j) && (j.status === "error" || j.code !== undefined);
+const tdIsError = (j: unknown): boolean =>
+  isRecord(j) && (j.status === "error" || j.code !== undefined);
 
 function makeTwelveConfig(deps: LiveSourceDeps): SourceConfig {
   const key = async (): Promise<string | null> => {
@@ -790,8 +859,8 @@ function makeTwelveConfig(deps: LiveSourceDeps): SourceConfig {
       const url =
         `${TD_REST}/time_series?symbol=${tdPair(ticker)}&interval=${interval}&outputsize=${size}` +
         `&order=asc&timezone=UTC&apikey=${encodeURIComponent(apikey)}` +
-        (req.to ? `&end=${new Date(req.to * 1000).toISOString().slice(0, 19)}` : "") +
-        (req.from ? `&start=${new Date(req.from * 1000).toISOString().slice(0, 19)}` : "");
+        (req.to ? `&end=${encodeURIComponent(tdDateTime(req.to))}` : "") +
+        (req.from ? `&start=${encodeURIComponent(tdDateTime(req.from))}` : "");
       const j = await ctx.getJson(url);
       if (!isRecord(j) || tdIsError(j) || !Array.isArray(j.values)) return [];
       const out: Candle[] = [];
@@ -806,7 +875,9 @@ function makeTwelveConfig(deps: LiveSourceDeps): SourceConfig {
     async quote(ctx, ticker) {
       const apikey = await key();
       if (!apikey) return null;
-      const j = await ctx.getJson(`${TD_REST}/price?symbol=${tdPair(ticker)}&apikey=${encodeURIComponent(apikey)}`);
+      const j = await ctx.getJson(
+        `${TD_REST}/price?symbol=${tdPair(ticker)}&apikey=${encodeURIComponent(apikey)}`,
+      );
       if (!isRecord(j) || tdIsError(j)) return null;
       const last = toPrice(j.price);
       return last === null ? null : { last, time: ctx.nowSec() };
@@ -829,7 +900,9 @@ function makeTwelveConfig(deps: LiveSourceDeps): SourceConfig {
             if (!isRecord(m)) return null;
             if (m.status === "error") return "fail";
             if (m.event === "subscribe-status") {
-              return m.status === "error" || (Array.isArray(m.fails) && m.fails.length > 0) ? "fail" : null;
+              return m.status === "error" || (Array.isArray(m.fails) && m.fails.length > 0)
+                ? "fail"
+                : null;
             }
             if (m.event !== "price") return null;
             const price = toPrice(m.price);

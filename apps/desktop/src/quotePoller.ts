@@ -51,7 +51,11 @@ const pushedQuotes = new Map<string, { quote: Quote; at: number }>();
 const PUSHED_TTL_MS = 60_000;
 
 /** A chart registers its loaded history's last close; demo ticks anchor to it. */
-export function setDemoAnchorBase(symbol: string, baseClose: number, source?: DataSourceChoice): void {
+export function setDemoAnchorBase(
+  symbol: string,
+  baseClose: number,
+  source?: DataSourceChoice,
+): void {
   demoAnchors.set(keyOf(symbol, source), { base: baseClose, offset: null });
 }
 
@@ -68,7 +72,8 @@ function anchoredQuote(key: string, quote: Quote | null): Quote | null {
 }
 let hidden = typeof document !== "undefined" && document.hidden;
 
-const keyOf = (symbol: string, source?: DataSourceChoice): string => `${source ?? "auto"}:${symbol}`;
+const keyOf = (symbol: string, source?: DataSourceChoice): string =>
+  `${source ?? "auto"}:${symbol}`;
 
 const cadenceOf = (poller: Poller): number =>
   Math.max(MIN_INTERVAL_MS, Math.min(...[...poller.subscribers].map((s) => s.intervalMs)));
@@ -187,6 +192,9 @@ export function subscribeQuote(
     stopTimer(poller!);
     tickerReleases.get(key)?.();
     pollers.delete(key);
+    // The anchor only matters while someone watches the symbol; the next
+    // history load re-registers it, so dropping it here keeps the map bounded.
+    demoAnchors.delete(key);
   };
 }
 

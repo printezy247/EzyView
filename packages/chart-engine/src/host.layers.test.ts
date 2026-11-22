@@ -111,7 +111,13 @@ function stubHost(overrides: AnyRecord = {}): AnyRecord {
     sharedOhlcv: null,
     sharedOhlcvKey: "",
     seriesCache: null,
-    drawings: { setDrawings: vi.fn(), setSelection: vi.fn(), setImages: vi.fn(), setPreview: vi.fn(), setHovered: vi.fn() },
+    drawings: {
+      setDrawings: vi.fn(),
+      setSelection: vi.fn(),
+      setImages: vi.fn(),
+      setPreview: vi.fn(),
+      setHovered: vi.fn(),
+    },
     bgBands: { setBands: vi.fn() },
     sessionBands: { setBands: vi.fn() },
     volumeProfile: { setEnabled: vi.fn(), setColors: vi.fn(), setCandles: vi.fn() },
@@ -121,7 +127,11 @@ function stubHost(overrides: AnyRecord = {}): AnyRecord {
   return self;
 }
 
-const fakeDef = (id: string, pane: IndicatorDef["pane"], compute?: IndicatorDef["compute"]): IndicatorDef => ({
+const fakeDef = (
+  id: string,
+  pane: IndicatorDef["pane"],
+  compute?: IndicatorDef["compute"],
+): IndicatorDef => ({
   id,
   name: id,
   pane,
@@ -130,7 +140,11 @@ const fakeDef = (id: string, pane: IndicatorDef["pane"], compute?: IndicatorDef[
   params: [],
   compute: compute ?? (() => ({ id, name: id, values: [] })),
 });
-const inst = (uid: string, def: IndicatorDef, params: IndicatorInstance["params"] = {}): Indicator => ({
+const inst = (
+  uid: string,
+  def: IndicatorDef,
+  params: IndicatorInstance["params"] = {},
+): Indicator => ({
   uid,
   def,
   params,
@@ -139,7 +153,10 @@ const inst = (uid: string, def: IndicatorDef, params: IndicatorInstance["params"
 
 /** Call a private method on a prototype stub with a typed receiver. */
 const protoCall = (name: string, thisArg: unknown, ...args: unknown[]) =>
-  (EzyChart.prototype as unknown as AnyRecord)[name]!.apply(thisArg as Record<string, unknown>, args);
+  (EzyChart.prototype as unknown as AnyRecord)[name]!.apply(
+    thisArg as Record<string, unknown>,
+    args,
+  );
 
 describe("isTimeBased", () => {
   it("classifies price-only types separately", () => {
@@ -197,8 +214,12 @@ describe("toFundamentalLines", () => {
 });
 
 describe("mergeMarkerLayers", () => {
-  const m = (time: number, color: string): SeriesMarker<Time> =>
-    ({ time: time as Time, position: "aboveBar", shape: "circle", color });
+  const m = (time: number, color: string): SeriesMarker<Time> => ({
+    time: time as Time,
+    position: "aboveBar",
+    shape: "circle",
+    color,
+  });
   it("merges ascending and keeps script markers first on equal times", () => {
     const out = mergeMarkerLayers([m(1000, "a"), m(3000, "c")], [m(1000, "b"), m(2000, "d")]);
     expect(out.map((x) => x.color)).toEqual(["a", "b", "d", "c"]);
@@ -240,7 +261,10 @@ describe("indicatorValues caching", () => {
     const proto = EzyChart.prototype as AnyRecord;
     proto["indicatorValues"].call(self, instance);
     // A tick moves the forming bar only: same closed key, no recompute.
-    self["data"] = [...(self["data"] as Candle[]).slice(0, -1), candle(self["data"][(self["data"] as Candle[]).length - 1]!.time, 999)];
+    self["data"] = [
+      ...(self["data"] as Candle[]).slice(0, -1),
+      candle(self["data"][(self["data"] as Candle[]).length - 1]!.time, 999),
+    ];
     proto["indicatorValues"].call(self, instance);
     expect(compute).toHaveBeenCalledTimes(1);
     // A new bar opens: the closed window grew, recompute.
@@ -257,9 +281,9 @@ describe("setIndicators", () => {
     (self["indicatorCache"] as Map<string, unknown>).set("u-old", { key: "k", values: {} });
     (self["indicatorCache"] as Map<string, unknown>).set("u-keep", { key: "k", values: {} });
     self["reconcileLayers"] = vi.fn();
-    (EzyChart.prototype.setIndicators as (this: unknown, instances: IndicatorInstance[]) => void).call(self, [
-      inst("u-keep", fakeDef("x", "separate")),
-    ]);
+    (
+      EzyChart.prototype.setIndicators as (this: unknown, instances: IndicatorInstance[]) => void
+    ).call(self, [inst("u-keep", fakeDef("x", "separate"))]);
     expect([...(self["indicatorCache"] as Map<string, unknown>).keys()]).toEqual(["u-keep"]);
     expect(self["reconcileLayers"]).toHaveBeenCalledTimes(1);
   });
@@ -325,7 +349,15 @@ describe("syncScriptLayers", () => {
       eventStrip: { setMarkers, chipAt: vi.fn(() => null) },
       currentBands: [{ color: "#f00", values: [1, null, 5] }],
       currentPlots: [
-        { uid: "p1", title: "Shape", style: "circle", values: [10, null, 20, 30], color: "#0f0", linewidth: 1, overlay: true } as ScriptPlotSpec,
+        {
+          uid: "p1",
+          title: "Shape",
+          style: "circle",
+          values: [10, null, 20, 30],
+          color: "#0f0",
+          linewidth: 1,
+          overlay: true,
+        } as ScriptPlotSpec,
       ],
       fundamentalEventRows: [
         { time: data[0]!.time, kind: "event", title: "past" },
@@ -335,7 +367,9 @@ describe("syncScriptLayers", () => {
     self["applyMarkers"] = applyMarkers;
     protoCall("syncScriptLayers", self);
     expect(bgBands.setBands).toHaveBeenCalledTimes(1);
-    expect(bgBands.setBands.mock.calls[0]![0]).toEqual([{ color: "#f00", flags: [true, false, true, false] }]);
+    expect(bgBands.setBands.mock.calls[0]![0]).toEqual([
+      { color: "#f00", flags: [true, false, true, false] },
+    ]);
     // Script markers still go above the bars; one future event stays off the strip.
     expect(applyMarkers).toHaveBeenCalledTimes(1);
     expect(applyMarkers).toHaveBeenCalledWith();
@@ -357,7 +391,10 @@ describe("updateLastBar", () => {
     self["volumeProfile"] = { setCandles };
     const last = (self["data"] as Candle[])[(self["data"] as Candle[]).length - 1]!;
     const tick = { ...last, close: last.close + 5 };
-    const ok = (EzyChart.prototype.updateLastBar as (this: unknown, c: Candle) => boolean).call(self, tick);
+    const ok = (EzyChart.prototype.updateLastBar as (this: unknown, c: Candle) => boolean).call(
+      self,
+      tick,
+    );
     expect(ok).toBe(true);
     expect(update).toHaveBeenCalledTimes(1);
     expect(rebuildCompare).toHaveBeenCalledTimes(1);
@@ -371,14 +408,19 @@ describe("updateLastBar", () => {
     self["mainSeries"] = { update, setData: vi.fn() };
     const last = (self["data"] as Candle[])[(self["data"] as Candle[]).length - 1]!;
     const nextBar = { ...last, time: last.time + 86400 };
-    const ok = (EzyChart.prototype.updateLastBar as (this: unknown, c: Candle) => boolean).call(self, nextBar);
+    const ok = (EzyChart.prototype.updateLastBar as (this: unknown, c: Candle) => boolean).call(
+      self,
+      nextBar,
+    );
     expect(ok).toBe(false);
     expect(update).not.toHaveBeenCalled();
 
     const renko = stubHost({ type: "renko" });
     renko["mainSeries"] = { update, setData: vi.fn() };
     const renkoLast = (renko["data"] as Candle[])[(renko["data"] as Candle[]).length - 1]!;
-    const okRenko = (EzyChart.prototype.updateLastBar as (this: unknown, c: Candle) => boolean).call(renko, renkoLast);
+    const okRenko = (
+      EzyChart.prototype.updateLastBar as (this: unknown, c: Candle) => boolean
+    ).call(renko, renkoLast);
     expect(okRenko).toBe(false);
   });
 });
@@ -425,7 +467,9 @@ describe("setCompare", () => {
     chart.priceScale = vi.fn(() => ({ applyOptions: priceScaleApply }));
     const self = stubHost({ chart });
     self["rebuildCompare"] = vi.fn();
-    (EzyChart.prototype.setCompare as (this: unknown, series: unknown[]) => void).call(self, [input("a")]);
+    (EzyChart.prototype.setCompare as (this: unknown, series: unknown[]) => void).call(self, [
+      input("a"),
+    ]);
     (EzyChart.prototype.setCompare as (this: unknown, series: unknown[]) => void).call(self, []);
     expect(priceScaleApply).toHaveBeenCalledTimes(1);
   });
@@ -452,7 +496,9 @@ describe("setData", () => {
     expect(refreshIndicator).not.toHaveBeenCalled();
     expect(frameBars).toHaveBeenCalledTimes(1);
     expect(self["data"]).toBe(next);
-    expect((self["volumeProfile"] as { setCandles: ReturnType<typeof vi.fn> }).setCandles).toHaveBeenCalledWith(next);
+    expect(
+      (self["volumeProfile"] as { setCandles: ReturnType<typeof vi.fn> }).setCandles,
+    ).toHaveBeenCalledWith(next);
   });
 });
 
@@ -495,7 +541,11 @@ describe("setVisibleTimeRange / scrollToTime / fitContent / frameBars", () => {
     const chart = fakeChart();
     chart.timeScale = vi.fn(() => timeScale) as never;
     const self = stubHost({ chart });
-    (EzyChart.prototype.setVisibleTimeRange as (this: unknown, a: number, b: number) => void).call(self, 100, 200);
+    (EzyChart.prototype.setVisibleTimeRange as (this: unknown, a: number, b: number) => void).call(
+      self,
+      100,
+      200,
+    );
     expect(setVisibleRange).toHaveBeenCalledTimes(1);
     const range = setVisibleRange.mock.calls[0]![0] as { from: number; to: number };
     expect(Number(range.from)).toBe(100);
@@ -530,7 +580,10 @@ describe("setTradingLines", () => {
     expect(removePriceLine).toHaveBeenCalledTimes(1);
     expect(createPriceLine).toHaveBeenCalledTimes(2);
     expect((self["priceLineApi"] as unknown[]).length).toBe(2);
-    (EzyChart.prototype.setTradingLines as (this: unknown, lines: unknown[]) => void).call(self, []);
+    (EzyChart.prototype.setTradingLines as (this: unknown, lines: unknown[]) => void).call(
+      self,
+      [],
+    );
     expect((self["priceLineApi"] as unknown[]).length).toBe(0);
   });
 });

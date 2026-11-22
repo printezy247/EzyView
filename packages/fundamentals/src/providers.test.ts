@@ -1,12 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { AlphaVantageClient, AlphaVantageFundamentalsAdapter } from "./alphavantage.js";
-import { FinnhubClient, FinnhubCorporateCalendarAdapter, FinnhubEarningsAdapter, FinnhubNewsAdapter } from "./finnhub.js";
+import {
+  FinnhubClient,
+  FinnhubCorporateCalendarAdapter,
+  FinnhubEarningsAdapter,
+  FinnhubNewsAdapter,
+} from "./finnhub.js";
 import { classify, ProviderError } from "./http.js";
 import type { FetchLike } from "./http.js";
 import { buildSources } from "./sources.js";
 
 /** Fake fetch: routes by URL substring, records every URL it was asked for. */
-function fakeFetch(routes: Record<string, unknown | { status: number }>): FetchLike & { urls: string[] } {
+function fakeFetch(
+  routes: Record<string, unknown | { status: number }>,
+): FetchLike & { urls: string[] } {
   const urls: string[] = [];
   const fn = (async (url: string) => {
     urls.push(url);
@@ -22,7 +29,9 @@ function fakeFetch(routes: Record<string, unknown | { status: number }>): FetchL
   return fn;
 }
 
-const fallback = async () => [{ symbol: "DEMO:AAPL", exDate: 1, amount: 0.25, source: "alphavantage" }];
+const fallback = async () => [
+  { symbol: "DEMO:AAPL", exDate: 1, amount: 0.25, source: "alphavantage" },
+];
 
 describe("classify", () => {
   it("separates stocks, crypto and forex", () => {
@@ -42,7 +51,10 @@ describe("Finnhub", () => {
         { id: 3, headline: "no time" },
       ],
     });
-    const news = await new FinnhubNewsAdapter(new FinnhubClient("KEY", f)).getNews({ symbols: ["DEMO:AAPL"], limit: 10 });
+    const news = await new FinnhubNewsAdapter(new FinnhubClient("KEY", f)).getNews({
+      symbols: ["DEMO:AAPL"],
+      limit: 10,
+    });
     expect(news.map((n) => n.headline)).toEqual(["New", "Old"]);
     expect(news[0]).toMatchObject({ id: "finnhub-2", source: "CNBC", symbols: ["DEMO:AAPL"] });
     expect(f.urls[0]).toContain("symbol=AAPL");
@@ -50,8 +62,12 @@ describe("Finnhub", () => {
   });
 
   it("uses the crypto news category for crypto symbols", async () => {
-    const f = fakeFetch({ "category=crypto": [{ id: 9, datetime: 1_700_000_000, headline: "BTC up" }] });
-    const news = await new FinnhubNewsAdapter(new FinnhubClient("K", f)).getNews({ symbols: ["BINANCE:BTCUSDT"] });
+    const f = fakeFetch({
+      "category=crypto": [{ id: 9, datetime: 1_700_000_000, headline: "BTC up" }],
+    });
+    const news = await new FinnhubNewsAdapter(new FinnhubClient("K", f)).getNews({
+      symbols: ["BINANCE:BTCUSDT"],
+    });
     expect(news).toHaveLength(1);
     expect(f.urls).toHaveLength(1);
   });
@@ -63,17 +79,23 @@ describe("Finnhub", () => {
         { actual: 1.6, estimate: 1.55, period: "2024-06-30", quarter: 2, year: 2024 },
       ],
       "/calendar/earnings": {
-        earningsCalendar: [{ date: "2024-08-01", epsActual: null, epsEstimate: 1.7, quarter: 3, year: 2024 }],
+        earningsCalendar: [
+          { date: "2024-08-01", epsActual: null, epsEstimate: 1.7, quarter: 3, year: 2024 },
+        ],
       },
     });
-    const rows = await new FinnhubEarningsAdapter(new FinnhubClient("K", f)).getEarnings("DEMO:AAPL");
+    const rows = await new FinnhubEarningsAdapter(new FinnhubClient("K", f)).getEarnings(
+      "DEMO:AAPL",
+    );
     expect(rows.map((r) => r.quarter)).toEqual(["Q1 2024", "Q2 2024", "Q3 2024"]);
     expect(rows[2]).toMatchObject({ eps: null, estimate: 1.7, time: Date.UTC(2024, 7, 1) / 1000 });
   });
 
   it("skips earnings requests for non-stocks", async () => {
     const f = fakeFetch({});
-    expect(await new FinnhubEarningsAdapter(new FinnhubClient("K", f)).getEarnings("DEMO:EURUSD")).toEqual([]);
+    expect(
+      await new FinnhubEarningsAdapter(new FinnhubClient("K", f)).getEarnings("DEMO:EURUSD"),
+    ).toEqual([]);
     expect(f.urls).toHaveLength(0);
   });
 
@@ -81,13 +103,24 @@ describe("Finnhub", () => {
     const f = fakeFetch({
       "/calendar/ipo": {
         ipoCalendar: [
-          { date: "2024-05-02", name: "B Corp", symbol: "BC", price: "10.00-12.00", numberOfShares: 5e6, status: "expected", exchange: "NYSE" },
+          {
+            date: "2024-05-02",
+            name: "B Corp",
+            symbol: "BC",
+            price: "10.00-12.00",
+            numberOfShares: 5e6,
+            status: "expected",
+            exchange: "NYSE",
+          },
           { date: "2024-05-01", name: "A Corp", symbol: "AC", price: null, status: "priced" },
           { date: "bad", name: "Skip" },
         ],
       },
     });
-    const ipos = await new FinnhubCorporateCalendarAdapter(new FinnhubClient("K", f)).getIpos(0, 2e9);
+    const ipos = await new FinnhubCorporateCalendarAdapter(new FinnhubClient("K", f)).getIpos(
+      0,
+      2e9,
+    );
     expect(ipos.map((i) => i.symbol)).toEqual(["AC", "BC"]);
     expect(ipos[1]).toMatchObject({ price: "10.00-12.00", shares: 5e6, exchange: "NYSE" });
   });
@@ -96,14 +129,20 @@ describe("Finnhub", () => {
     const f = fakeFetch({ "/stock/dividend": { status: 403 } });
     const cal = new FinnhubCorporateCalendarAdapter(new FinnhubClient("K", f), fallback);
     expect(await cal.getDividends("DEMO:AAPL", 0, 2e9)).toHaveLength(1);
-    await expect(new FinnhubCorporateCalendarAdapter(new FinnhubClient("K", f)).getDividends("DEMO:AAPL", 0, 2e9)).rejects.toThrow(
-      /plan does not include/,
-    );
+    await expect(
+      new FinnhubCorporateCalendarAdapter(new FinnhubClient("K", f)).getDividends(
+        "DEMO:AAPL",
+        0,
+        2e9,
+      ),
+    ).rejects.toThrow(/plan does not include/);
   });
 
   it("reports a bad key as a ProviderError", async () => {
     const f = fakeFetch({ "/news": { status: 401 } });
-    const err = await new FinnhubNewsAdapter(new FinnhubClient("bad", f)).getNews().catch((e: unknown) => e);
+    const err = await new FinnhubNewsAdapter(new FinnhubClient("bad", f))
+      .getNews()
+      .catch((e: unknown) => e);
     expect(err).toBeInstanceOf(ProviderError);
     expect((err as ProviderError).denied).toBe(true);
   });
@@ -124,20 +163,37 @@ describe("Alpha Vantage", () => {
         Beta: "None",
       },
     });
-    const profile = await new AlphaVantageFundamentalsAdapter(new AlphaVantageClient("K", f)).getProfile("DEMO:IBM");
-    expect(profile).toMatchObject({ Name: "IBM", "Market cap ($B)": 180, "P/E": 22.5, "Dividend yield (%)": 3.85, "Net margin (%)": 12, Beta: null });
+    const profile = await new AlphaVantageFundamentalsAdapter(
+      new AlphaVantageClient("K", f),
+    ).getProfile("DEMO:IBM");
+    expect(profile).toMatchObject({
+      Name: "IBM",
+      "Market cap ($B)": 180,
+      "P/E": 22.5,
+      "Dividend yield (%)": 3.85,
+      "Net margin (%)": 12,
+      Beta: null,
+    });
     expect(f.urls[0]).toContain("symbol=IBM");
     expect(f.urls[0]).toContain("apikey=K");
   });
 
   it("returns an empty profile for unknown symbols", async () => {
     const f = fakeFetch({ OVERVIEW: {} });
-    expect(await new AlphaVantageFundamentalsAdapter(new AlphaVantageClient("K", f)).getProfile("DEMO:ZZZZ")).toEqual({});
+    expect(
+      await new AlphaVantageFundamentalsAdapter(new AlphaVantageClient("K", f)).getProfile(
+        "DEMO:ZZZZ",
+      ),
+    ).toEqual({});
   });
 
   it("turns a rate-limit note into a 429 ProviderError", async () => {
-    const f = fakeFetch({ OVERVIEW: { Information: "Our standard API rate limit is 25 requests per day." } });
-    const err = await new AlphaVantageFundamentalsAdapter(new AlphaVantageClient("K", f)).getProfile("DEMO:IBM").catch((e: unknown) => e);
+    const f = fakeFetch({
+      OVERVIEW: { Information: "Our standard API rate limit is 25 requests per day." },
+    });
+    const err = await new AlphaVantageFundamentalsAdapter(new AlphaVantageClient("K", f))
+      .getProfile("DEMO:IBM")
+      .catch((e: unknown) => e);
     expect(err).toBeInstanceOf(ProviderError);
     expect((err as ProviderError).status).toBe(429);
   });
@@ -152,7 +208,9 @@ describe("Alpha Vantage", () => {
         ],
       },
     });
-    const rows = await new AlphaVantageFundamentalsAdapter(new AlphaVantageClient("K", f)).getDividends("DEMO:IBM", Date.UTC(2024, 0, 1) / 1000, 2e9);
+    const rows = await new AlphaVantageFundamentalsAdapter(
+      new AlphaVantageClient("K", f),
+    ).getDividends("DEMO:IBM", Date.UTC(2024, 0, 1) / 1000, 2e9);
     expect(rows.map((r) => r.amount)).toEqual([1.67, 1.67]);
     expect(rows[0]!.payDate).toBe(Date.UTC(2024, 8, 10) / 1000);
     expect(rows[1]!.payDate).toBeNull();
@@ -168,8 +226,17 @@ describe("buildSources", () => {
 
   it("goes live per provider key", () => {
     const f = fakeFetch({});
-    expect(buildSources({ finnhub: "a" }, f).live).toMatchObject({ news: "Finnhub", ipos: "Finnhub", profile: null, calendar: null });
-    expect(buildSources({ alphavantage: "b" }, f).live).toMatchObject({ news: null, profile: "Alpha Vantage", earnings: "Alpha Vantage" });
+    expect(buildSources({ finnhub: "a" }, f).live).toMatchObject({
+      news: "Finnhub",
+      ipos: "Finnhub",
+      profile: null,
+      calendar: null,
+    });
+    expect(buildSources({ alphavantage: "b" }, f).live).toMatchObject({
+      news: null,
+      profile: "Alpha Vantage",
+      earnings: "Alpha Vantage",
+    });
     expect(buildSources({ finnhub: "  " }, f).live.news).toBeNull();
   });
 });

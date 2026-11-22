@@ -12,7 +12,11 @@ import { DEFAULT_DRAWING_STYLE, getDrawingLevels, priceAt } from "@ezyview/drawi
 import { uid, useWorkspace } from "./store";
 import { activeChartOf } from "./layout";
 import { linkGroupOf } from "./linkGroups";
-import { applyDrawingTemplate, listDrawingTemplates, saveDrawingTemplate } from "./drawingTemplates";
+import {
+  applyDrawingTemplate,
+  listDrawingTemplates,
+  saveDrawingTemplate,
+} from "./drawingTemplates";
 import { useDrawingUi } from "./drawingUi";
 import { drawingLabel } from "./ObjectTree";
 
@@ -114,7 +118,9 @@ export function ChartMenuHost({
 
   const prefill = (side: "buy" | "sell", type: "limit" | "stop") => {
     if (!tradingOpen) onToggleTrading();
-    useOrderDraft.getState().setDraft({ symbol: symbol, side, type, price: price.toFixed(precision) });
+    useOrderDraft
+      .getState()
+      .setDraft({ symbol: symbol, side, type, price: price.toFixed(precision) });
   };
 
   const actions: ChartMenuActions = {
@@ -124,17 +130,32 @@ export function ChartMenuHost({
     },
     paste: () => pasteDrawing({ time, price }),
     addAlert: () =>
-      addAlert(symbol, { kind: "crossing", value: Number(price.toFixed(precision)) }, "once", `${symbol} crossing ${price.toFixed(precision)}`),
+      addAlert(
+        symbol,
+        { kind: "crossing", value: Number(price.toFixed(precision)) },
+        "once",
+        `${symbol} crossing ${price.toFixed(precision)}`,
+      ),
     sellLimit: () => prefill("sell", "limit"),
     buyStop: () => prefill("buy", "stop"),
-    addOrder: () => prefill(draftSideForPrice(price, getActiveExportSource()?.getCandles().at(-1)?.close ?? null), "limit"),
+    addOrder: () =>
+      prefill(
+        draftSideForPrice(price, getActiveExportSource()?.getCandles().at(-1)?.close ?? null),
+        "limit",
+      ),
     toggleCursorLock: () => {
       const existing = drawings.find((d) => d.name === LOCK_NAME);
       if (existing) deleteDrawing(existing.id);
       else
         setDrawings([
           ...drawings,
-          { id: uid(), tool: "vertical_line", points: [{ time, price }], style: { ...DEFAULT_DRAWING_STYLE }, name: LOCK_NAME },
+          {
+            id: uid(),
+            tool: "vertical_line",
+            points: [{ time, price }],
+            style: { ...DEFAULT_DRAWING_STYLE },
+            name: LOCK_NAME,
+          },
         ]);
     },
     openTable: onOpenTable,
@@ -153,7 +174,9 @@ export function ChartMenuHost({
   const target = request.drawingId ? drawings.find((d) => d.id === request.drawingId) : undefined;
   const levels = target ? getDrawingLevels(target, request.time) : [];
   const targetLevel = levels[0];
-  const levelPrice = targetLevel?.price ?? (target ? (priceAt(target, request.time) ?? target.points[0]?.price) : undefined);
+  const levelPrice =
+    targetLevel?.price ??
+    (target ? (priceAt(target, request.time) ?? target.points[0]?.price) : undefined);
   const hasLevel = target !== undefined && levelPrice !== undefined && Number.isFinite(levelPrice);
   const drawing = target
     ? {
@@ -177,7 +200,8 @@ export function ChartMenuHost({
               targetLevel?.key,
             );
           },
-          saveTemplate: () => saveDrawingTemplate(uniqueDrawingTemplateName(drawingLabel(target)), target.style),
+          saveTemplate: () =>
+            saveDrawingTemplate(uniqueDrawingTemplateName(drawingLabel(target)), target.style),
           applyTemplate: (id: string) => void applyDrawingTemplate(id, target.id),
           clone: () => duplicateDrawing(target.id),
           copy: () => copyDrawing(target.id),

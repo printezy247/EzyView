@@ -43,7 +43,6 @@ export function OptimizePanel({
   // so this can take real seconds (budget-bounded, cancellable by the app).
   const [gridBusy, setGridBusy] = useState(false);
 
-
   // Parsed on render so the Run button's disabled state matches what a click
   // would actually execute; invalid rows are flagged live, empty ones skipped.
   const specs: ParamSpec[] = [];
@@ -91,7 +90,10 @@ export function OptimizePanel({
         </Button>
         {appliedBest && (
           <span className="text-ev-muted">
-            Next run uses: {Object.entries(appliedBest).map(([k, v]) => `${k}=${v}`).join(" ")}
+            Next run uses:{" "}
+            {Object.entries(appliedBest)
+              .map(([k, v]) => `${k}=${v}`)
+              .join(" ")}
           </span>
         )}
       </div>
@@ -112,17 +114,23 @@ export function OptimizePanel({
         </div>
       ))}
 
-      {bars.length === 0 && <div className="mb-1 text-ev-muted">No data loaded for this symbol yet.</div>}
+      {bars.length === 0 && (
+        <div className="mb-1 text-ev-muted">No data loaded for this symbol yet.</div>
+      )}
       {invalidKeys.length > 0 && (
         <div className="mb-1 text-ev-muted">Ignored invalid rows: {invalidKeys.join(", ")}</div>
       )}
       {!canRun && bars.length > 0 && specs.length === 0 && (
-        <div className="mb-1 text-ev-muted">Enter values for at least one input, e.g. 10..50 step 10.</div>
+        <div className="mb-1 text-ev-muted">
+          Enter values for at least one input, e.g. 10..50 step 10.
+        </div>
       )}
 
       {outcome && runHint && <div className="mb-1 text-ev-muted">{runHint}</div>}
       {outcome && outcome.runs.length === 0 && (
-        <div className="mb-1 text-ev-muted">No successful runs{outcome.capped ? " (grid capped)" : ""}.</div>
+        <div className="mb-1 text-ev-muted">
+          No successful runs{outcome.capped ? " (grid capped)" : ""}.
+        </div>
       )}
       {outcome && outcome.best && (
         <>
@@ -137,18 +145,35 @@ export function OptimizePanel({
           <table className="w-full text-left num">
             <thead>
               <tr className="text-dense uppercase tracking-wider text-ev-faint">
-                <th scope="col" className="py-0.5 font-semibold">Params</th>
-                <th scope="col" className="py-0.5 font-semibold">Net PnL</th>
-                <th scope="col" className="py-0.5 font-semibold">Win rate</th>
-                <th scope="col" className="py-0.5 font-semibold">PF</th>
+                <th scope="col" className="py-0.5 font-semibold">
+                  Params
+                </th>
+                <th scope="col" className="py-0.5 font-semibold">
+                  Net PnL
+                </th>
+                <th scope="col" className="py-0.5 font-semibold">
+                  Win rate
+                </th>
+                <th scope="col" className="py-0.5 font-semibold">
+                  PF
+                </th>
               </tr>
             </thead>
             <tbody className="text-ev-muted">
               {/* Runs arrive best-first; the first row is the highlighted best. */}
               {outcome.runs.slice(0, 10).map((r, i) => (
-                <tr key={i} className={`border-t border-ev-raised ${i === 0 ? "bg-ev-line/40" : ""}`}>
-                  <td className="py-0.5">{Object.entries(r.inputs).map(([k, v]) => `${k}=${v}`).join(" ")}</td>
-                  <td className={`py-0.5 ${r.result.totalPnl >= 0 ? "text-ev-up-text" : "text-ev-down-text"}`}>
+                <tr
+                  key={i}
+                  className={`border-t border-ev-raised ${i === 0 ? "bg-ev-line/40" : ""}`}
+                >
+                  <td className="py-0.5">
+                    {Object.entries(r.inputs)
+                      .map(([k, v]) => `${k}=${v}`)
+                      .join(" ")}
+                  </td>
+                  <td
+                    className={`py-0.5 ${r.result.totalPnl >= 0 ? "text-ev-up-text" : "text-ev-down-text"}`}
+                  >
                     {r.result.totalPnl.toFixed(2)}
                   </td>
                   <td className="py-0.5">{(r.result.winRate * 100).toFixed(1)}%</td>
@@ -164,4 +189,3 @@ export function OptimizePanel({
     </div>
   );
 }
-

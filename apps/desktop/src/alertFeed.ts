@@ -18,7 +18,9 @@ export function liveAlerts(alerts: readonly PriceAlert[]): PriceAlert[] {
   return alerts.filter((a) => a.state === "armed" || a.frequency !== "once");
 }
 
-export const alertSymbols = (alerts: readonly PriceAlert[]): string[] => [...new Set(liveAlerts(alerts).map((a) => a.symbol))];
+export const alertSymbols = (alerts: readonly PriceAlert[]): string[] => [
+  ...new Set(liveAlerts(alerts).map((a) => a.symbol)),
+];
 
 /** Bucket a unix-seconds timestamp to the start of its bar period. */
 export function barBucketTime(time: number, stepSeconds = BAR_BUCKET_SECONDS): number {
@@ -61,7 +63,9 @@ export async function tickAlertFeed(): Promise<void> {
   busy = true;
   try {
     const symbols = alertSymbols(useWorkspace.getState().alerts);
-    const quotes = await Promise.all(symbols.map((s) => withTimeout(safeQuote(s), QUOTE_TIMEOUT_MS)));
+    const quotes = await Promise.all(
+      symbols.map((s) => withTimeout(safeQuote(s), QUOTE_TIMEOUT_MS)),
+    );
     for (const [i, symbol] of symbols.entries()) {
       const quote = quotes[i];
       if (!quote) continue;
@@ -73,7 +77,8 @@ export async function tickAlertFeed(): Promise<void> {
       const fired = useWorkspace.getState().applyCandle(symbol, candle, barClosed);
       for (const id of fired) {
         const alert = useWorkspace.getState().alerts.find((a) => a.id === id);
-        if (alert) void notifyNative("EzyView alert", alert.message || `${alert.symbol} alert triggered`);
+        if (alert)
+          void notifyNative("EzyView alert", alert.message || `${alert.symbol} alert triggered`);
       }
     }
   } finally {

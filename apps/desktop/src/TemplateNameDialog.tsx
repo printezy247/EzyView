@@ -2,7 +2,13 @@ import { useState } from "react";
 import { Button, Dialog, Input } from "./ui";
 
 /** Asks for a template name; Enter saves, Escape or Cancel closes. */
-export function TemplateNameDialog({ onSave, onClose }: { onSave: (name: string) => void; onClose: () => void }) {
+export function TemplateNameDialog({
+  onSave,
+  onClose,
+}: {
+  onSave: (name: string) => void;
+  onClose: () => void;
+}) {
   const [name, setName] = useState("");
   const submit = () => {
     if (name.trim()) {

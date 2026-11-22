@@ -23,8 +23,14 @@ const note = (over: Partial<JournalNote> = {}): JournalNote => ({
 });
 
 /** Epoch seconds for a local wall-clock time (tests stay portable across timezones). */
-const local = (year: number, month: number, day: number, hour = 0, minute = 0, second = 0): number =>
-  Math.floor(new Date(year, month - 1, day, hour, minute, second).getTime() / 1000);
+const local = (
+  year: number,
+  month: number,
+  day: number,
+  hour = 0,
+  minute = 0,
+  second = 0,
+): number => Math.floor(new Date(year, month - 1, day, hour, minute, second).getTime() / 1000);
 
 /** Open (unclosed) entry: never moves a stat, still counts toward "Trades". */
 const open = (over: Partial<JournalEntry> = {}): JournalEntry =>
@@ -87,7 +93,14 @@ describe("composeReview", () => {
 
   it("emits every line of the full template in order", () => {
     const entries = [
-      trade({ entryTime: 1500, pnl: 12.5, rules: [{ label: "setup", done: true }, { label: "risk", done: false }] }),
+      trade({
+        entryTime: 1500,
+        pnl: 12.5,
+        rules: [
+          { label: "setup", done: true },
+          { label: "risk", done: false },
+        ],
+      }),
       trade({ entryTime: 1600, pnl: -3, rules: [{ label: "setup", done: true }] }),
       open({ entryTime: 1700 }),
     ];
@@ -108,9 +121,14 @@ describe("composeReview", () => {
 
   it("formats a losing window with signed money", () => {
     expect(composeReview([trade({ entryTime: 1500, pnl: -3 })], [], 1000, 2000)).toBe(
-      ["Trades: 1", "Wins 0 · Losses 1 · Breakeven 0", "Net -3.00", "Win rate 0%", "Best -3.00", "Worst -3.00"].join(
-        "\n",
-      ),
+      [
+        "Trades: 1",
+        "Wins 0 · Losses 1 · Breakeven 0",
+        "Net -3.00",
+        "Win rate 0%",
+        "Best -3.00",
+        "Worst -3.00",
+      ].join("\n"),
     );
   });
 
@@ -125,7 +143,12 @@ describe("composeReview", () => {
   });
 
   it("rounds win rate to the nearest integer percent", () => {
-    const text = composeReview([trade({ pnl: 5 }), trade({ pnl: -1 }), trade({ pnl: -1 })], [], 1000, 2000);
+    const text = composeReview(
+      [trade({ pnl: 5 }), trade({ pnl: -1 }), trade({ pnl: -1 })],
+      [],
+      1000,
+      2000,
+    );
     expect(text).toContain("Win rate 33%");
   });
 
@@ -152,7 +175,12 @@ describe("composeReview", () => {
   });
 
   it("counts only notes whose time falls in [start, end)", () => {
-    const notes = [note({ time: 999 }), note({ time: 1000 }), note({ time: 1999 }), note({ time: 2000 })];
+    const notes = [
+      note({ time: 999 }),
+      note({ time: 1000 }),
+      note({ time: 1999 }),
+      note({ time: 2000 }),
+    ];
     expect(composeReview([], notes, 1000, 2000)).toBe(["Trades: 0", "Notes 2"].join("\n"));
   });
 });

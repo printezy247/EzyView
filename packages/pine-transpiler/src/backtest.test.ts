@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { backtest } from "./backtest.js";
 import type { PineOrder } from "./runtime.js";
 
-const order = (partial: Partial<PineOrder> & Pick<PineOrder, "action" | "barIndex">): PineOrder => ({
+const order = (
+  partial: Partial<PineOrder> & Pick<PineOrder, "action" | "barIndex">,
+): PineOrder => ({
   side: "long",
   price: Number.NaN,
   qty: 1,

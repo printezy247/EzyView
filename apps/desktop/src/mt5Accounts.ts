@@ -63,7 +63,10 @@ export function parseAccounts(raw: unknown): SavedAccount[] {
       login: candidate.login.trim(),
       demo: candidate.demo === true,
       label: isText(candidate.label) ? candidate.label.trim() : undefined,
-      addedAt: typeof candidate.addedAt === "number" && Number.isFinite(candidate.addedAt) ? candidate.addedAt : Date.now(),
+      addedAt:
+        typeof candidate.addedAt === "number" && Number.isFinite(candidate.addedAt)
+          ? candidate.addedAt
+          : Date.now(),
     });
   }
   return out;
@@ -116,14 +119,24 @@ export interface Mt5AccountsState {
   /** Update and persist the safety rails. */
   saveSafety(patch: Partial<SafetyConfig>): void;
   /** Store the password in the keyring and remember the metadata (no password). */
-  addAccount(input: { server: string; login: string; password: string; label?: string }): Promise<SavedAccount>;
+  addAccount(input: {
+    server: string;
+    login: string;
+    password: string;
+    label?: string;
+  }): Promise<SavedAccount>;
   /**
    * Log in through the bridge. `password` is required the first time; later
    * calls read it back from the keyring. Real accounts throw a
    * `RiskRequiredError` unless `riskAccepted` — the bridge is logged out again
    * before the throw.
    */
-  connect(input: { server: string; login: string; password?: string; riskAccepted?: boolean }): Promise<Mt5Session>;
+  connect(input: {
+    server: string;
+    login: string;
+    password?: string;
+    riskAccepted?: boolean;
+  }): Promise<Mt5Session>;
   disconnect(): Promise<void>;
   /** Forget an account: keyring entry deleted, metadata dropped, session closed if it was this one. */
   forget(server: string, login: string): Promise<void>;
@@ -131,7 +144,6 @@ export interface Mt5AccountsState {
   fetchAudit(limit?: number): Promise<Record<string, unknown>[]>;
   clearError(): void;
 }
-
 
 export const useMt5Accounts = create<Mt5AccountsState>((set, get) => ({
   accounts: readAccounts(),
@@ -157,11 +169,18 @@ export const useMt5Accounts = create<Mt5AccountsState>((set, get) => ({
     const l = login.trim();
     const name = mt5KeyringName(s, l);
     if (!name) throw new Error("Server and login may only use letters, digits and . _ + -");
-    if (!keyringAvailable()) throw new Error("Broker passwords need the EzyView desktop app (OS keyring).");
+    if (!keyringAvailable())
+      throw new Error("Broker passwords need the EzyView desktop app (OS keyring).");
     set({ busy: true, error: null });
     try {
       await keyringSet(name, password);
-      const account: SavedAccount = { server: s, login: l, demo: false, label: label?.trim() || undefined, addedAt: Date.now() };
+      const account: SavedAccount = {
+        server: s,
+        login: l,
+        demo: false,
+        label: label?.trim() || undefined,
+        addedAt: Date.now(),
+      };
       const rest = get().accounts.filter((a) => !(a.server === s && a.login === l));
       const accounts = [...rest, account];
       writeAccounts(accounts);
@@ -175,7 +194,9 @@ export const useMt5Accounts = create<Mt5AccountsState>((set, get) => ({
   async connect({ server, login, password, riskAccepted }) {
     const transport = getMt5().transport;
     if (typeof transport.connect !== "function") {
-      throw new Error("In-app broker login needs the local bridge transport (Settings → MT5 → bridge).");
+      throw new Error(
+        "In-app broker login needs the local bridge transport (Settings → MT5 → bridge).",
+      );
     }
     const s = server.trim();
     const l = login.trim();
@@ -185,7 +206,8 @@ export const useMt5Accounts = create<Mt5AccountsState>((set, get) => ({
     try {
       let secret = password;
       if (secret === undefined) {
-        if (!keyringAvailable()) throw new Error("Open EzyView on the desktop to use the saved password.");
+        if (!keyringAvailable())
+          throw new Error("Open EzyView on the desktop to use the saved password.");
         secret = (await keyringGet(name)) ?? undefined;
         if (!secret) throw new Error(`No stored password for ${l} on ${s} — re-enter it.`);
       }

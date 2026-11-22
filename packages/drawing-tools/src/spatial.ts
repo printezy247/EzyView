@@ -78,7 +78,12 @@ export class SpatialIndex {
         for (const entry of bucket) {
           if (seen.has(entry.id)) continue;
           seen.add(entry.id);
-          if (x >= entry.box.x0 - pad && x <= entry.box.x1 + pad && y >= entry.box.y0 - pad && y <= entry.box.y1 + pad) {
+          if (
+            x >= entry.box.x0 - pad &&
+            x <= entry.box.x1 + pad &&
+            y >= entry.box.y0 - pad &&
+            y <= entry.box.y1 + pad
+          ) {
             out.push(entry.id);
           }
         }
@@ -91,7 +96,8 @@ export class SpatialIndex {
   visible(width: number, height: number): Set<string> {
     const out = new Set<string>();
     for (const entry of this.all) {
-      if (entry.box.x1 >= 0 && entry.box.x0 <= width && entry.box.y1 >= 0 && entry.box.y0 <= height) out.add(entry.id);
+      if (entry.box.x1 >= 0 && entry.box.x0 <= width && entry.box.y1 >= 0 && entry.box.y0 <= height)
+        out.add(entry.id);
     }
     return out;
   }

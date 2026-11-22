@@ -35,11 +35,17 @@ import { FeedStatus } from "./FeedStatus";
 
 const MarketsPage = lazy(() => import("./MarketsPage").then((m) => ({ default: m.MarketsPage })));
 const TradePage = lazy(() => import("./TradePage").then((m) => ({ default: m.TradePage })));
-const ResearchPage = lazy(() => import("./ResearchPage").then((m) => ({ default: m.ResearchPage })));
+const ResearchPage = lazy(() =>
+  import("./ResearchPage").then((m) => ({ default: m.ResearchPage })),
+);
 const JournalPage = lazy(() => import("./JournalPage").then((m) => ({ default: m.JournalPage })));
-const StrategiesPage = lazy(() => import("./StrategiesPage").then((m) => ({ default: m.StrategiesPage })));
+const StrategiesPage = lazy(() =>
+  import("./StrategiesPage").then((m) => ({ default: m.StrategiesPage })),
+);
 const AlertsPage = lazy(() => import("./AlertsPage").then((m) => ({ default: m.AlertsPage })));
-const SettingsPage = lazy(() => import("./SettingsPage").then((m) => ({ default: m.SettingsPage })));
+const SettingsPage = lazy(() =>
+  import("./SettingsPage").then((m) => ({ default: m.SettingsPage })),
+);
 
 /**
  * The persistent shell: left section rail, tab strip, toolbar, routed page
@@ -60,13 +66,7 @@ export default function App() {
     theme: c.theme,
     drawingCount: c.drawings.length,
   }));
-  const {
-    updateActive,
-    setSymbol,
-    alerts,
-    addAlert,
-    removeAlert,
-  } = useWorkspace(
+  const { updateActive, setSymbol, alerts, addAlert, removeAlert } = useWorkspace(
     useShallow((s) => ({
       updateActive: s.updateActive,
       setSymbol: s.setSymbol,
@@ -104,7 +104,10 @@ export default function App() {
   // terminal burns no frames on decorative loops.
   useEffect(() => {
     const sync = () =>
-      document.documentElement.toggleAttribute("data-hidden", document.visibilityState === "hidden");
+      document.documentElement.toggleAttribute(
+        "data-hidden",
+        document.visibilityState === "hidden",
+      );
     sync();
     document.addEventListener("visibilitychange", sync);
     return () => document.removeEventListener("visibilitychange", sync);
@@ -170,7 +173,8 @@ export default function App() {
   useEffect(() => {
     if (!alertOpen) return;
     let cancelled = false;
-    const watched = useWorkspace.getState().watchlist.find((w) => w.symbol === symbol)?.price ?? null;
+    const watched =
+      useWorkspace.getState().watchlist.find((w) => w.symbol === symbol)?.price ?? null;
     if (watched !== null) setAlertSeedPrice(watched);
     void quoteOf(symbol)
       .then((q) => {
@@ -192,7 +196,13 @@ export default function App() {
   const mt5Status = useMt5((s) => s.status);
   const session = useMt5Accounts((s) => s.session);
   const mt5Badge =
-    mt5Status === "online" ? (session ? "bg-ev-up" : "bg-ev-accent") : mt5Status === "error" ? "bg-ev-down" : "";
+    mt5Status === "online"
+      ? session
+        ? "bg-ev-up"
+        : "bg-ev-accent"
+      : mt5Status === "error"
+        ? "bg-ev-down"
+        : "";
 
   // The shell's colour tokens follow the app theme setting (Settings →
   // Appearance); `auto` follows the focused chart, which is how the app
@@ -272,38 +282,43 @@ export default function App() {
             }
           >
             <RouteShell
-              onResetChart={() => useWorkspace.getState().updateActive({ indicators: [], drawings: [] })}
+              onResetChart={() =>
+                useWorkspace.getState().updateActive({ indicators: [], drawings: [] })
+              }
             >
-            <Routes>
-              <Route index element={<Navigate to={normalizePath("/")} replace />} />
-              <Route
-                path="/chart"
-                element={
-                  <ChartPage
-                    dockTab={dockTab}
-                    onSelectDockTab={selectDockTab}
-                    onSetDockTab={setDockTabDirect}
-                    tradingOpen={tradingOpen}
-                    onToggleTrading={toggleTrading}
-                    onOpenAlerts={() => setAlertOpen(true)}
-                    onOpenHotkeys={() => setHotkeysOpen(true)}
-                    onOpenSettings={() => setChartSettingsOpen(true)}
-                  />
-                }
-              />
-              <Route path="/markets" element={<MarketsPage />} />
-              <Route path="/trade" element={<TradePage />} />
-              <Route path="/research" element={<ResearchPage />} />
-              <Route path="/journal" element={<JournalPage />} />
-              <Route path="/strategies" element={<StrategiesPage />} />
-              <Route path="/alerts" element={<AlertsPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              {/* Legacy paths: a persisted last route or an old bookmark still lands. */}
-              <Route path="/fundamentals" element={<Navigate to="/research?tab=fundamentals" replace />} />
-              <Route path="/options" element={<Navigate to="/research?tab=options" replace />} />
-              <Route path="/pine" element={<Navigate to="/strategies" replace />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+              <Routes>
+                <Route index element={<Navigate to={normalizePath("/")} replace />} />
+                <Route
+                  path="/chart"
+                  element={
+                    <ChartPage
+                      dockTab={dockTab}
+                      onSelectDockTab={selectDockTab}
+                      onSetDockTab={setDockTabDirect}
+                      tradingOpen={tradingOpen}
+                      onToggleTrading={toggleTrading}
+                      onOpenAlerts={() => setAlertOpen(true)}
+                      onOpenHotkeys={() => setHotkeysOpen(true)}
+                      onOpenSettings={() => setChartSettingsOpen(true)}
+                    />
+                  }
+                />
+                <Route path="/markets" element={<MarketsPage />} />
+                <Route path="/trade" element={<TradePage />} />
+                <Route path="/research" element={<ResearchPage />} />
+                <Route path="/journal" element={<JournalPage />} />
+                <Route path="/strategies" element={<StrategiesPage />} />
+                <Route path="/alerts" element={<AlertsPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                {/* Legacy paths: a persisted last route or an old bookmark still lands. */}
+                <Route
+                  path="/fundamentals"
+                  element={<Navigate to="/research?tab=fundamentals" replace />}
+                />
+                <Route path="/options" element={<Navigate to="/research?tab=options" replace />} />
+                <Route path="/pine" element={<Navigate to="/strategies" replace />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
             </RouteShell>
           </Suspense>
         </div>
@@ -332,9 +347,14 @@ export default function App() {
         />
 
         <footer className="ev-bar-below flex h-7 shrink-0 items-center gap-3 overflow-x-auto border-t border-ev-raised bg-ev-chrome px-3 text-dense text-ev-muted">
-          <span className="flex shrink-0 items-center gap-1.5" title="EzyView — open-source trading terminal">
+          <span
+            className="flex shrink-0 items-center gap-1.5"
+            title="EzyView — open-source trading terminal"
+          >
             <BrandMark className="size-4 rounded [&_svg]:size-2.5" />
-            <span className="text-micro font-semibold uppercase tracking-wider text-ev-faint">EzyView</span>
+            <span className="text-micro font-semibold uppercase tracking-wider text-ev-faint">
+              EzyView
+            </span>
           </span>
           <div className="h-3.5 w-px shrink-0 bg-ev-raised" />
           <SourceToggle />
@@ -351,7 +371,9 @@ export default function App() {
               aria-label="Toggle bottom Trading Panel and Order Ticket"
               title="Toggle bottom Trading Panel & Order Ticket"
               onClick={toggleTrading}
-              className={tradingOpen ? "bg-ev-accent/20 font-medium text-ev-accent-text" : undefined}
+              className={
+                tradingOpen ? "bg-ev-accent/20 font-medium text-ev-accent-text" : undefined
+              }
             >
               Trading Panel
             </Button>
@@ -362,7 +384,9 @@ export default function App() {
               aria-label="Toggle right-hand Watchlist dock"
               title="Toggle right-hand Watchlist dock"
               onClick={() => selectDockTab("watchlist")}
-              className={dockTab === "watchlist" ? "bg-ev-raised font-medium text-ev-strong" : undefined}
+              className={
+                dockTab === "watchlist" ? "bg-ev-raised font-medium text-ev-strong" : undefined
+              }
             >
               Watchlist
             </Button>
@@ -373,14 +397,24 @@ export default function App() {
               aria-label="Toggle right-hand Depth of Market dock"
               title="Toggle right-hand Depth of Market (DOM)"
               onClick={() => selectDockTab("depth")}
-              className={dockTab === "depth" ? "bg-ev-raised font-medium text-ev-strong" : undefined}
+              className={
+                dockTab === "depth" ? "bg-ev-raised font-medium text-ev-strong" : undefined
+              }
             >
               DOM
             </Button>
-            <Link to="/markets" title="Open Stock, Crypto & Forex Screener / Heatmaps" className={footerLink}>
+            <Link
+              to="/markets"
+              title="Open Stock, Crypto & Forex Screener / Heatmaps"
+              className={footerLink}
+            >
               Screener & Heatmaps
             </Link>
-            <Link to="/strategies" title="Open Pine Script Editor & Strategy Tester" className={footerLink}>
+            <Link
+              to="/strategies"
+              title="Open Pine Script Editor & Strategy Tester"
+              className={footerLink}
+            >
               Pine Editor
             </Link>
             <Link to="/journal" title="Open Trading Journal & AI Coach" className={footerLink}>
@@ -399,7 +433,12 @@ export default function App() {
               className={footerLink}
             >
               Settings
-              {mt5Badge && <span className={`ml-1 inline-block size-1.5 rounded-full ${mt5Badge}`} aria-hidden />}
+              {mt5Badge && (
+                <span
+                  className={`ml-1 inline-block size-1.5 rounded-full ${mt5Badge}`}
+                  aria-hidden
+                />
+              )}
             </Link>
             <span className="uppercase">{theme}</span>
           </span>
@@ -411,4 +450,3 @@ export default function App() {
     </div>
   );
 }
-

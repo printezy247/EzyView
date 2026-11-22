@@ -28,7 +28,11 @@ export function TradePage() {
   const symbol = useWorkspace(selectActiveSymbol);
   const [params, setParams] = useSearchParams();
 
-  const tab = resolveTabParam(params.get("tab"), TABS.map((t) => t.id), defaultTab);
+  const tab = resolveTabParam(
+    params.get("tab"),
+    TABS.map((t) => t.id),
+    defaultTab,
+  );
   const selectTab = (id: string) => {
     setParams(id === defaultTab ? {} : { tab: id }, { replace: true });
   };

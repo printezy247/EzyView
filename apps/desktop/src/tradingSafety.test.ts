@@ -17,31 +17,50 @@ const rails = (over: Partial<SafetyConfig> = {}): SafetyConfig => ({ ...DEFAULT_
 
 describe("gateAction", () => {
   it("blocks volume above the cap without opening a dialog", () => {
-    const result = gateAction({ action: "place", symbol: "XAUUSD", volume: 2, accountKind: "demo" }, rails({ maxOrderVolume: 1 }));
+    const result = gateAction(
+      { action: "place", symbol: "XAUUSD", volume: 2, accountKind: "demo" },
+      rails({ maxOrderVolume: 1 }),
+    );
     expect(result.decision).toBe("block");
     expect(result.reasons.join(" ")).toMatch(/exceeds the max order size/);
   });
 
   it("never blocks closes with the volume cap — exiting must always be possible", () => {
     for (const action of ["close", "cancel", "modify"] as const) {
-      const result = gateAction({ action, symbol: "XAUUSD", volume: 2, accountKind: "demo" }, rails({ maxOrderVolume: 1 }));
+      const result = gateAction(
+        { action, symbol: "XAUUSD", volume: 2, accountKind: "demo" },
+        rails({ maxOrderVolume: 1 }),
+      );
       expect(result.decision).not.toBe("block");
     }
   });
 
   it("blocks non-positive volume", () => {
-    expect(gateAction({ action: "place", volume: 0, accountKind: "demo" }, rails()).decision).toBe("block");
-    expect(gateAction({ action: "place", volume: -1, accountKind: "demo" }, rails()).decision).toBe("block");
+    expect(gateAction({ action: "place", volume: 0, accountKind: "demo" }, rails()).decision).toBe(
+      "block",
+    );
+    expect(gateAction({ action: "place", volume: -1, accountKind: "demo" }, rails()).decision).toBe(
+      "block",
+    );
   });
 
   it("blocks symbols outside a non-empty allow-list, case-insensitively", () => {
     const config = rails({ symbolAllowList: ["eurusd"] });
-    expect(gateAction({ action: "place", symbol: "EURUSD", volume: 0.1, accountKind: "demo" }, config).decision).toBe("confirm");
-    expect(gateAction({ action: "place", symbol: "XAUUSD", volume: 0.1, accountKind: "demo" }, config).decision).toBe("block");
+    expect(
+      gateAction({ action: "place", symbol: "EURUSD", volume: 0.1, accountKind: "demo" }, config)
+        .decision,
+    ).toBe("confirm");
+    expect(
+      gateAction({ action: "place", symbol: "XAUUSD", volume: 0.1, accountKind: "demo" }, config)
+        .decision,
+    ).toBe("block");
   });
 
   it("warns instead of blocking when the allow-list is empty", () => {
-    const result = gateAction({ action: "place", symbol: "anything", volume: 0.1, accountKind: "demo" }, rails());
+    const result = gateAction(
+      { action: "place", symbol: "anything", volume: 0.1, accountKind: "demo" },
+      rails(),
+    );
     expect(result.decision).toBe("confirm");
     expect(result.reasons.join(" ")).toMatch(/allow-list empty/);
   });
@@ -66,7 +85,10 @@ describe("gateAction", () => {
   });
 
   it("says dry-run on the wire so the dialog can show it", () => {
-    const result = gateAction({ action: "place", volume: 0.1, accountKind: "demo" }, rails({ dryRun: true }));
+    const result = gateAction(
+      { action: "place", volume: 0.1, accountKind: "demo" },
+      rails({ dryRun: true }),
+    );
     expect(result.dryRun).toBe(true);
     expect(result.reasons.join(" ")).toMatch(/not sent/);
   });
@@ -217,7 +239,12 @@ describe("mt5KeyringName", () => {
 
 describe("scrub", () => {
   it("redacts password-shaped keys at any depth", () => {
-    const input = { login: "1", password: "hunter2", nested: { api_key: "k", ok: 1 }, list: [{ secret: "s" }] };
+    const input = {
+      login: "1",
+      password: "hunter2",
+      nested: { api_key: "k", ok: 1 },
+      list: [{ secret: "s" }],
+    };
     expect(scrub(input)).toEqual({
       login: "1",
       password: "***",
@@ -227,7 +254,10 @@ describe("scrub", () => {
   });
 
   it("leaves null-ish secret values alone", () => {
-    expect(scrub({ password: null, token: undefined })).toEqual({ password: null, token: undefined });
+    expect(scrub({ password: null, token: undefined })).toEqual({
+      password: null,
+      token: undefined,
+    });
   });
 });
 
@@ -239,7 +269,11 @@ describe("parseSafety", () => {
   });
 
   it("trims and keeps valid entries", () => {
-    const result = parseSafety({ maxOrderVolume: 0.5, symbolAllowList: [" EURUSD ", "", 7], dryRun: true });
+    const result = parseSafety({
+      maxOrderVolume: 0.5,
+      symbolAllowList: [" EURUSD ", "", 7],
+      dryRun: true,
+    });
     expect(result).toEqual({
       maxOrderVolume: 0.5,
       symbolAllowList: ["EURUSD"],
@@ -262,33 +296,59 @@ describe("order rate and price freshness", () => {
     expect(limiter.countLastMinute(30_000)).toBe(2);
     expect(limiter.countLastMinute(61_500)).toBe(1); // first one aged out
     const config = rails({ maxOrdersPerMinute: 2 });
-    const blocked = gateAction({ action: "place", symbol: "X", volume: 1, accountKind: "demo", ordersLastMinute: 2 }, config);
+    const blocked = gateAction(
+      { action: "place", symbol: "X", volume: 1, accountKind: "demo", ordersLastMinute: 2 },
+      config,
+    );
     expect(blocked.decision).toBe("block");
     expect(blocked.reasons.join(" ")).toMatch(/orders in the last minute/);
-    const ok = gateAction({ action: "place", symbol: "X", volume: 1, accountKind: "demo", ordersLastMinute: 1 }, config);
+    const ok = gateAction(
+      { action: "place", symbol: "X", volume: 1, accountKind: "demo", ordersLastMinute: 1 },
+      config,
+    );
     expect(ok.decision).not.toBe("block");
   });
 
   it("0 turns the order rate limit off", () => {
-    const r = gateAction({ action: "place", volume: 1, accountKind: "demo", ordersLastMinute: 99 }, rails({ maxOrdersPerMinute: 0 }));
+    const r = gateAction(
+      { action: "place", volume: 1, accountKind: "demo", ordersLastMinute: 99 },
+      rails({ maxOrdersPerMinute: 0 }),
+    );
     expect(r.decision).not.toBe("block");
   });
 
   it("blocks a new order on a stale or down price feed, not a close", () => {
     const config = rails({ maxQuoteAgeSec: 15 });
-    const stale = gateAction({ action: "place", volume: 1, accountKind: "demo", quoteAgeSec: 40 }, config);
+    const stale = gateAction(
+      { action: "place", volume: 1, accountKind: "demo", quoteAgeSec: 40 },
+      config,
+    );
     expect(stale.decision).toBe("block");
     expect(stale.reasons.join(" ")).toMatch(/price is 40s old/);
-    expect(gateAction({ action: "place", volume: 1, accountKind: "demo", feedDown: true }, config).decision).toBe("block");
-    expect(gateAction({ action: "place", volume: 1, accountKind: "demo", quoteAgeSec: 3 }, config).decision).not.toBe("block");
+    expect(
+      gateAction({ action: "place", volume: 1, accountKind: "demo", feedDown: true }, config)
+        .decision,
+    ).toBe("block");
+    expect(
+      gateAction({ action: "place", volume: 1, accountKind: "demo", quoteAgeSec: 3 }, config)
+        .decision,
+    ).not.toBe("block");
     // Getting out of a position must stay possible when the feed is bad.
-    expect(gateAction({ action: "close", symbol: "X", accountKind: "demo", quoteAgeSec: 99, feedDown: true }, config).decision).not.toBe("block");
+    expect(
+      gateAction(
+        { action: "close", symbol: "X", accountKind: "demo", quoteAgeSec: 99, feedDown: true },
+        config,
+      ).decision,
+    ).not.toBe("block");
   });
 
   it("parses and defaults the new limits", () => {
     expect(parseSafety({}).maxOrdersPerMinute).toBe(10);
     expect(parseSafety({}).maxQuoteAgeSec).toBe(15);
-    expect(parseSafety({ maxOrdersPerMinute: 0, maxQuoteAgeSec: 0 })).toMatchObject({ maxOrdersPerMinute: 0, maxQuoteAgeSec: 0 });
+    expect(parseSafety({ maxOrdersPerMinute: 0, maxQuoteAgeSec: 0 })).toMatchObject({
+      maxOrdersPerMinute: 0,
+      maxQuoteAgeSec: 0,
+    });
     expect(parseSafety({ maxOrdersPerMinute: -3 }).maxOrdersPerMinute).toBe(10);
   });
 });

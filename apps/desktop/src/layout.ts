@@ -270,7 +270,8 @@ export const GRID_MODES: readonly { id: GridMode; label: string; cells: number }
   { id: "9", label: "9 charts (3 × 3)", cells: 9 },
 ];
 
-export const cellCount = (grid: GridMode): number => GRID_MODES.find((g) => g.id === grid)?.cells ?? 1;
+export const cellCount = (grid: GridMode): number =>
+  GRID_MODES.find((g) => g.id === grid)?.cells ?? 1;
 
 /**
  * A named, restorable workspace. Tabs in the tab bar map 1:1 to layouts; each
@@ -318,7 +319,11 @@ export function setActiveChart(layout: Layout, index: number): Layout {
 }
 
 /** Apply `fn` to one cell, leaving the rest untouched. */
-export function updateChart(layout: Layout, index: number, fn: (chart: ChartState) => ChartState): Layout {
+export function updateChart(
+  layout: Layout,
+  index: number,
+  fn: (chart: ChartState) => ChartState,
+): Layout {
   if (index < 0 || index >= layout.charts.length) return layout;
   return { ...layout, charts: layout.charts.map((c, i) => (i === index ? fn(c) : c)) };
 }
@@ -331,7 +336,11 @@ const GRID_IDS = new Set<string>(GRID_MODES.map((g) => g.id));
  * compute function, which JSON cannot hold, so each is looked up again by id;
  * unknown ids are dropped.
  */
-function restoreChart(raw: unknown, fallback: ChartState, resolveDef: (id: string) => IndicatorDef | null | undefined): ChartState {
+function restoreChart(
+  raw: unknown,
+  fallback: ChartState,
+  resolveDef: (id: string) => IndicatorDef | null | undefined,
+): ChartState {
   if (!isObject(raw)) return { ...fallback };
   const chart = { ...fallback, ...raw } as ChartState;
   const indicators: ActiveIndicator[] = [];
@@ -356,9 +365,12 @@ export function restoreLayout(
   resolveDef: (id: string) => IndicatorDef | null | undefined,
 ): Layout | null {
   if (!isObject(raw) || typeof raw.id !== "string") return null;
-  const charts = (Array.isArray(raw.charts) ? raw.charts : []).map((c) => restoreChart(c, fallback, resolveDef));
+  const charts = (Array.isArray(raw.charts) ? raw.charts : []).map((c) =>
+    restoreChart(c, fallback, resolveDef),
+  );
   if (charts.length === 0) return null;
-  const grid: GridMode = typeof raw.grid === "string" && GRID_IDS.has(raw.grid) ? (raw.grid as GridMode) : "1";
+  const grid: GridMode =
+    typeof raw.grid === "string" && GRID_IDS.has(raw.grid) ? (raw.grid as GridMode) : "1";
   const sized = setGrid(
     {
       id: raw.id,
@@ -406,8 +418,12 @@ export function restoreWorkspace(
   const layouts = (Array.isArray(raw.layouts) ? raw.layouts : [])
     .map((l) => restoreLayout(l, fallback, resolveDef))
     .filter((l): l is Layout => l !== null);
-  const magnet = typeof raw.magnet === "string" && MAGNET_IDS.has(raw.magnet) ? (raw.magnet as MagnetMode) : current.magnet;
-  const crosshairSync = typeof raw.crosshairSync === "boolean" ? raw.crosshairSync : current.crosshairSync;
+  const magnet =
+    typeof raw.magnet === "string" && MAGNET_IDS.has(raw.magnet)
+      ? (raw.magnet as MagnetMode)
+      : current.magnet;
+  const crosshairSync =
+    typeof raw.crosshairSync === "boolean" ? raw.crosshairSync : current.crosshairSync;
   const replaySpeed =
     typeof raw.replaySpeed === "number" && REPLAY_SPEEDS.has(raw.replaySpeed)
       ? (raw.replaySpeed as ReplaySpeed)

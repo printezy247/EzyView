@@ -39,13 +39,21 @@ describe("defaultDateRange", () => {
   });
 
   it("rolls the pair across a month boundary", () => {
-    expect(defaultDateRange(new Date(2026, 11, 28))).toEqual({ from: "2026-12-28", to: "2027-01-04" });
+    expect(defaultDateRange(new Date(2026, 11, 28))).toEqual({
+      from: "2026-12-28",
+      to: "2027-01-04",
+    });
   });
 });
 
 describe("currencyOptions", () => {
   it("lists distinct currencies sorted, keeping the first-seen casing", () => {
-    const out = currencyOptions([event("a", "USD"), event("b", "eur"), event("c", "usd"), event("d", "JPY")]);
+    const out = currencyOptions([
+      event("a", "USD"),
+      event("b", "eur"),
+      event("c", "usd"),
+      event("d", "JPY"),
+    ]);
     expect(out).toEqual(["eur", "JPY", "USD"]);
   });
 

@@ -1,4 +1,10 @@
-import type { EconomicEvent, EarningsReport, EpochSeconds, Impact, NewsItem } from "@ezyview/data-adapters";
+import type {
+  EconomicEvent,
+  EarningsReport,
+  EpochSeconds,
+  Impact,
+  NewsItem,
+} from "@ezyview/data-adapters";
 
 export interface EventFilterOptions {
   /** `"all"` or omitted = no impact filtering; otherwise keep only that impact. */
@@ -53,14 +59,23 @@ const IMPACT_RANK: Record<Impact, number> = { high: 3, medium: 2, low: 1, none: 
  * Filter economic calendar events with AND semantics. Never mutates the input.
  * `from` is inclusive, `to` is exclusive; currency and search are case-insensitive.
  */
-export function filterEvents(events: readonly EconomicEvent[], opts: EventFilterOptions): EconomicEvent[] {
+export function filterEvents(
+  events: readonly EconomicEvent[],
+  opts: EventFilterOptions,
+): EconomicEvent[] {
   const impact = opts.impact ?? "all";
   const currency = opts.currency?.trim().toLowerCase();
   const search = opts.search?.trim().toLowerCase() ?? "";
   return events.filter((e) => {
     if (impact !== "all" && e.impact !== impact) return false;
-    if (currency !== undefined && currency !== "" && e.currency.toLowerCase() !== currency) return false;
-    if (search && !e.title.toLowerCase().includes(search) && !e.currency.toLowerCase().includes(search)) return false;
+    if (currency !== undefined && currency !== "" && e.currency.toLowerCase() !== currency)
+      return false;
+    if (
+      search &&
+      !e.title.toLowerCase().includes(search) &&
+      !e.currency.toLowerCase().includes(search)
+    )
+      return false;
     if (opts.from !== undefined && e.time < opts.from) return false;
     if (opts.to !== undefined && e.time >= opts.to) return false;
     return true;
@@ -74,7 +89,9 @@ export function filterEvents(events: readonly EconomicEvent[], opts: EventFilter
 export function filterNews(items: readonly NewsItem[], search: string): NewsItem[] {
   const q = search.trim().toLowerCase();
   if (!q) return items.slice();
-  return items.filter((n) => n.headline.toLowerCase().includes(q) || (n.summary?.toLowerCase().includes(q) ?? false));
+  return items.filter(
+    (n) => n.headline.toLowerCase().includes(q) || (n.summary?.toLowerCase().includes(q) ?? false),
+  );
 }
 
 /**
@@ -121,7 +138,8 @@ export function fundamentalOverlays(
   const lineSet = new Set<number>();
   const allowed = opts.impacts ? new Set<Impact>(opts.impacts) : null;
   for (const ev of opts.showEvents === false ? [] : events) {
-    if (allowed ? !allowed.has(ev.impact) : IMPACT_RANK[ev.impact] < IMPACT_RANK[minImpact]) continue;
+    if (allowed ? !allowed.has(ev.impact) : IMPACT_RANK[ev.impact] < IMPACT_RANK[minImpact])
+      continue;
     lineSet.add(ev.time);
     push({
       time: ev.time,

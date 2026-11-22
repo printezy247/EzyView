@@ -18,7 +18,9 @@ const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 function cellBackground(net: number, maxAbs: number): string | undefined {
   if (net === 0 || maxAbs <= 0) return undefined;
   const intensity = 0.15 + 0.55 * (Math.min(Math.abs(net), maxAbs) / maxAbs);
-  return net > 0 ? `rgba(38, 166, 154, ${intensity.toFixed(3)})` : `rgba(239, 83, 80, ${intensity.toFixed(3)})`;
+  return net > 0
+    ? `rgba(38, 166, 154, ${intensity.toFixed(3)})`
+    : `rgba(239, 83, 80, ${intensity.toFixed(3)})`;
 }
 
 /**
@@ -41,7 +43,10 @@ export function JournalCalendar({ entries, selectedDay, onSelectDay }: Props) {
     return max;
   }, [nets]);
 
-  const monthLabel = new Date(year, month, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  const monthLabel = new Date(year, month, 1).toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric",
+  });
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   // Mon-first offset: JS Sunday=0 → 6, Monday=1 → 0, …
   const leadingBlanks = (new Date(year, month, 1).getDay() + 6) % 7;
@@ -64,7 +69,9 @@ export function JournalCalendar({ entries, selectedDay, onSelectDay }: Props) {
         <IconButton size="sm" label="Previous month" onClick={() => step(-1)}>
           <ChevronLeft size={14} aria-hidden />
         </IconButton>
-        <span className="min-w-40 text-center text-base font-medium text-ev-strong">{monthLabel}</span>
+        <span className="min-w-40 text-center text-base font-medium text-ev-strong">
+          {monthLabel}
+        </span>
         <IconButton size="sm" label="Next month" onClick={() => step(1)}>
           <ChevronRight size={14} aria-hidden />
         </IconButton>
@@ -102,9 +109,13 @@ export function JournalCalendar({ entries, selectedDay, onSelectDay }: Props) {
               className={`flex h-14 flex-col items-start rounded border p-1 text-left hover:border-ev-line-strong ${
                 selected ? "border-ev-accent" : "border-ev-line"
               } ${isToday && !selected ? "border-ev-line-strong" : ""}`}
-              style={{ backgroundColor: net === undefined ? undefined : cellBackground(net, maxAbs) }}
+              style={{
+                backgroundColor: net === undefined ? undefined : cellBackground(net, maxAbs),
+              }}
             >
-              <span className={`text-dense num ${selected ? "font-semibold text-ev-strong" : "text-ev-text"}`}>
+              <span
+                className={`text-dense num ${selected ? "font-semibold text-ev-strong" : "text-ev-text"}`}
+              >
                 {day}
               </span>
               {count > 0 && (
@@ -133,7 +144,8 @@ export function JournalCalendar({ entries, selectedDay, onSelectDay }: Props) {
             style={{
               // The brand's profit and loss colours, so the calendar matches
               // every other P&L surface in the app.
-              background: "linear-gradient(to right, var(--ev-down), var(--ev-raised), var(--ev-up))",
+              background:
+                "linear-gradient(to right, var(--ev-down), var(--ev-raised), var(--ev-up))",
             }}
           />
           <span>Profit</span>

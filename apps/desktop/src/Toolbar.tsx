@@ -29,8 +29,22 @@ import type { DockTabId } from "./RightDock";
 import { Menu } from "./Menu";
 import { SymbolSearch } from "./SymbolSearch";
 import { QuoteHeader } from "./QuoteHeader";
-import { getActiveExportSource, getExportSourceVersion, subscribeExportSources } from "./exportBridge";
-import { copyChartEmbed, copyChartLink, pickTextFile, printChart, saveChartCsv, saveChartJson, saveChartPng, saveChartSvg, saveLayoutJson } from "./exportUi";
+import {
+  getActiveExportSource,
+  getExportSourceVersion,
+  subscribeExportSources,
+} from "./exportBridge";
+import {
+  copyChartEmbed,
+  copyChartLink,
+  pickTextFile,
+  printChart,
+  saveChartCsv,
+  saveChartJson,
+  saveChartPng,
+  saveChartSvg,
+  saveLayoutJson,
+} from "./exportUi";
 import { parseLayoutJson } from "./layoutShare";
 import { getIndicator } from "@ezyview/indicators";
 import { activeChartOf } from "./layout";
@@ -48,7 +62,6 @@ import { CHART_TYPES, PALETTE_KEY, buildToolbarMenus, type ExportMenuApi } from 
 export type PanelId = "dock" | "trading";
 export type { DockTabId } from "./RightDock";
 
-
 interface Props {
   /** Which dock tab is visible, or null when the dock is closed. */
   dockTab: DockTabId | null;
@@ -61,7 +74,6 @@ interface Props {
   onSelectDockTab: (id: DockTabId) => void;
   onToggleTrading: () => void;
 }
-
 
 /**
  * The top bar is a quiet menu bar, not a row of buttons. Features are grouped
@@ -142,7 +154,10 @@ export function Toolbar(props: Props) {
 
   const hasTwelveKey = useApiKeys((s) => Boolean(s.keys.twelvedata));
   const liveSources = getLiveSources();
-  const sourceOpts = sourceOptions(chart.symbol, { supports: (id, sym) => liveSources[id].supports(sym), hasTwelveKey });
+  const sourceOpts = sourceOptions(chart.symbol, {
+    supports: (id, sym) => liveSources[id].supports(sym),
+    hasTwelveKey,
+  });
   const exportApi: ExportMenuApi = {
     getActive: getActiveExportSource,
     savePng: saveChartPng,
@@ -215,7 +230,9 @@ export function Toolbar(props: Props) {
   const analysisOpen = replayActive;
 
   return (
-    <div className={`ev-bar flex ${SHELL_BAR_HEIGHT} shrink-0 items-center gap-0.5 overflow-x-auto border-b border-ev-raised bg-ev-chrome px-2`}>
+    <div
+      className={`ev-bar flex ${SHELL_BAR_HEIGHT} shrink-0 items-center gap-0.5 overflow-x-auto border-b border-ev-raised bg-ev-chrome px-2`}
+    >
       <SymbolSearch symbol={chart.symbol} onSelect={actions.setSymbol} />
       <Menu
         label=""
@@ -237,7 +254,12 @@ export function Toolbar(props: Props) {
         options={PICKER_RESOLUTIONS.map((r) => ({ value: r, label: r, title: resolutionName(r) }))}
       />
 
-      <Menu label={chart.resolution} caption="Interval" icon={<Clock size={13} aria-hidden />} entries={intervalEntries} />
+      <Menu
+        label={chart.resolution}
+        caption="Interval"
+        icon={<Clock size={13} aria-hidden />}
+        entries={intervalEntries}
+      />
       <Menu
         label={CHART_TYPES.find((t) => t.id === chart.chartType)?.label ?? "Candles"}
         caption="Chart type"
@@ -258,7 +280,13 @@ export function Toolbar(props: Props) {
         <NumberInput
           inline
           className="ml-1"
-          label={chart.chartType === "kagi" ? "Reversal" : chart.chartType === "linebreak" ? "Lines" : "Box"}
+          label={
+            chart.chartType === "kagi"
+              ? "Reversal"
+              : chart.chartType === "linebreak"
+                ? "Lines"
+                : "Box"
+          }
           hint={`${chart.chartType === "kagi" ? "Reversal amount" : chart.chartType === "linebreak" ? "Lines per break" : "Box size"}; leave empty to size it from the average true range`}
           min={0}
           step={0.01}
@@ -283,8 +311,18 @@ export function Toolbar(props: Props) {
           icon={<Bookmark size={13} aria-hidden />}
           entries={templateEntries}
         />
-        <Menu label="Analysis" icon={<Telescope size={13} aria-hidden />} triggerActive={analysisOpen} entries={analysisEntries} />
-        <Menu label="Trade" icon={<ArrowLeftRight size={13} aria-hidden />} triggerActive={tradeOpen} entries={tradeEntries} />
+        <Menu
+          label="Analysis"
+          icon={<Telescope size={13} aria-hidden />}
+          triggerActive={analysisOpen}
+          entries={analysisEntries}
+        />
+        <Menu
+          label="Trade"
+          icon={<ArrowLeftRight size={13} aria-hidden />}
+          triggerActive={tradeOpen}
+          entries={tradeEntries}
+        />
         <Menu label="View" icon={<Eye size={13} aria-hidden />} entries={viewEntries} />
         <Menu label="Export" icon={<Share2 size={13} aria-hidden />} entries={exportEntries} />
       </nav>
@@ -293,7 +331,12 @@ export function Toolbar(props: Props) {
 
       {/* Direct 1-click TradingView action buttons: Alert, Replay, Grid, Snapshot */}
       <Tooltip content="Create a price alert on the active symbol">
-        <Button size="sm" variant="ghost" onClick={props.onOpenAlerts} aria-label="Create price alert">
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={props.onOpenAlerts}
+          aria-label="Create price alert"
+        >
           <BellPlus size={13} aria-hidden />
           <span className="hidden xl:inline">Alert</span>
         </Button>
@@ -357,7 +400,11 @@ export function Toolbar(props: Props) {
       </Button>
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} groups={groups} />
-      <IntervalDialog open={intervalOpen} onClose={() => setIntervalOpen(false)} onPick={actions.setResolution} />
+      <IntervalDialog
+        open={intervalOpen}
+        onClose={() => setIntervalOpen(false)}
+        onPick={actions.setResolution}
+      />
     </div>
   );
 }

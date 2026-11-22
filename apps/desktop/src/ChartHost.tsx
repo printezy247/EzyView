@@ -83,7 +83,13 @@ export interface Props {
   /** Draw the symbol/interval watermark; absent = off. */
   watermark?: boolean;
   /** Secondary symbols to overlay on this cell, normalised. */
-  compare?: { id: string; symbol: string; color: string; mode: CompareSeries["mode"]; visible?: boolean }[];
+  compare?: {
+    id: string;
+    symbol: string;
+    color: string;
+    mode: CompareSeries["mode"];
+    visible?: boolean;
+  }[];
   /** Crosshair position mirrored from another cell while sync is on. */
   syncCrosshair?: { time: number; price: number } | null;
   onCrosshairTime?: (time: number | null) => void;
@@ -95,7 +101,13 @@ export interface Props {
    */
   chartIndex?: number;
   /** Right-click on the plot: viewport position plus the time/price under it. */
-  onContextMenu?: (info: { clientX: number; clientY: number; time: number; price: number; drawingId?: string }) => void;
+  onContextMenu?: (info: {
+    clientX: number;
+    clientY: number;
+    time: number;
+    price: number;
+    drawingId?: string;
+  }) => void;
   /** Screen bounding box of the selected drawing, for the floating settings bar. */
   onDrawingBox?: (box: DrawingBox | null) => void;
 }
@@ -132,8 +144,12 @@ export function ChartHost(props: Props) {
   propsRef.current = props;
   // Draggable stop/target levels and their drop handler, read inside the
   // mount-only pointer effect so a new position does not re-subscribe it.
-  const levelDragRef = useRef<{ symbol: string; levels: { id: string; price: number }[] } | null>(null);
-  levelDragRef.current = props.draggableLevels ? { symbol: props.symbol, levels: props.draggableLevels } : null;
+  const levelDragRef = useRef<{ symbol: string; levels: { id: string; price: number }[] } | null>(
+    null,
+  );
+  levelDragRef.current = props.draggableLevels
+    ? { symbol: props.symbol, levels: props.draggableLevels }
+    : null;
   // Session id + theme, read inside the shading helper so it never needs to be
   // re-created when either changes.
   const sessionRef = useRef<string | null>(props.session ?? null);
@@ -143,7 +159,10 @@ export function ChartHost(props: Props) {
 
   // In-progress drawing anchors, kept off the store so each pointer move does
   // not trigger a React render.
-  const pendingRef = useRef<{ tool: DrawingToolId; points: { time: number; price: number }[] } | null>(null);
+  const pendingRef = useRef<{
+    tool: DrawingToolId;
+    points: { time: number; price: number }[];
+  } | null>(null);
   // Guards against a single physical click producing two anchors.
   const drawingInProgressRef = useRef(false);
   const lastClickAtRef = useRef(0);
@@ -160,8 +179,14 @@ export function ChartHost(props: Props) {
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
   /** Transient strip preview (hover) and the pinned card (click). */
-  const [eventHover, setEventHover] = useState<{ hit: EventStripHit; x: number; y: number } | null>(null);
-  const [eventPinned, setEventPinned] = useState<{ hit: EventStripHit; x: number; y: number } | null>(null);
+  const [eventHover, setEventHover] = useState<{ hit: EventStripHit; x: number; y: number } | null>(
+    null,
+  );
+  const [eventPinned, setEventPinned] = useState<{
+    hit: EventStripHit;
+    x: number;
+    y: number;
+  } | null>(null);
   /** Last viewport pointer position, so the engine's hit-only callback can place the card. */
   const mouseRef = useRef({ x: 0, y: 0 });
   const needOlderRef = useRef<() => void>(() => {});
@@ -212,7 +237,8 @@ export function ChartHost(props: Props) {
   // Timeframe visibility and the global hide toggle filter the layer before it
   // reaches the primitive, so hit-testing and rendering always agree.
   const visibleDrawings = useMemo(
-    () => (hideAllDrawings ? [] : props.drawings.filter((d) => visibleOnResolution(d, props.resolution))),
+    () =>
+      hideAllDrawings ? [] : props.drawings.filter((d) => visibleOnResolution(d, props.resolution)),
     [props.drawings, props.resolution, hideAllDrawings],
   );
 
@@ -272,7 +298,12 @@ export function ChartHost(props: Props) {
         if (isPositionTool(tool)) {
           // One click is enough: stop/target come from recent volatility and
           // the width handle can be dragged afterwards.
-          placePosition(tool as "long_position" | "short_position", info.time, info.price, chartIndex);
+          placePosition(
+            tool as "long_position" | "short_position",
+            info.time,
+            info.price,
+            chartIndex,
+          );
           return;
         }
         drawingInProgressRef.current = true;
@@ -347,7 +378,11 @@ export function ChartHost(props: Props) {
       const { symbol, resolution, dataSource } = propsRef.current;
       const history = historyRef.current;
       if (history.length === 0 || history[0]!.time <= from) return;
-      const need = barsNeeded(from, history[history.length - 1]!.time, RESOLUTION_SECONDS[resolution]);
+      const need = barsNeeded(
+        from,
+        history[history.length - 1]!.time,
+        RESOLUTION_SECONDS[resolution],
+      );
       if (need <= history.length) return;
       const more = await safeHistory(symbol, resolution, need, dataSource);
       if (
@@ -381,7 +416,9 @@ export function ChartHost(props: Props) {
   );
   // Price-only types drop the time axis, so time-aligned layers cannot be drawn on them.
   const typeLabel = PRICE_ONLY_LABEL[props.chartType];
-  const hidesLayers = typeLabel !== undefined && (props.showVolume || props.indicators.length > 0 || Object.keys(scripts).length > 0);
+  const hidesLayers =
+    typeLabel !== undefined &&
+    (props.showVolume || props.indicators.length > 0 || Object.keys(scripts).length > 0);
   return (
     <>
       <div
@@ -402,7 +439,8 @@ export function ChartHost(props: Props) {
           const price = chart.coordinateToPrice(e.clientY - rect.top);
           if (price === null) return;
           // Past the newest bar there is no time under the cursor; use the newest bar's.
-          const time = chart.coordinateToTime(e.clientX - rect.left) ?? historyRef.current.at(-1)?.time;
+          const time =
+            chart.coordinateToTime(e.clientX - rect.left) ?? historyRef.current.at(-1)?.time;
           if (time === undefined) return;
           // Right-clicking a drawing selects it and gives the menu drawing actions.
           const hit = hitAt(e.clientX - rect.left, e.clientY - rect.top);
@@ -438,7 +476,10 @@ export function ChartHost(props: Props) {
           : `${selectedIds.length} of ${visibleDrawings.length} drawings selected`}
       </p>
       {loadError && (
-        <div role="alert" className="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
+        <div
+          role="alert"
+          className="pointer-events-none absolute inset-0 flex items-center justify-center p-4"
+        >
           <p className="max-w-xs rounded border border-ev-down/40 bg-ev-panel/95 px-3 py-2 text-center text-base text-ev-down-text">
             Could not load {props.symbol}: {loadError}
           </p>
@@ -451,7 +492,11 @@ export function ChartHost(props: Props) {
       )}
       {(eventPinned ?? eventHover) && (
         <HoverCard
-          title={(eventPinned ?? eventHover)!.hit.count === 1 ? (eventPinned ?? eventHover)!.hit.markers[0]!.title : `${(eventPinned ?? eventHover)!.hit.count} events`}
+          title={
+            (eventPinned ?? eventHover)!.hit.count === 1
+              ? (eventPinned ?? eventHover)!.hit.markers[0]!.title
+              : `${(eventPinned ?? eventHover)!.hit.count} events`
+          }
           x={(eventPinned ?? eventHover)!.x}
           y={(eventPinned ?? eventHover)!.y}
           onClose={eventPinned ? () => setEventPinned(null) : undefined}

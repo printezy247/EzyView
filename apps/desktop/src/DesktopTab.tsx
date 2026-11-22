@@ -90,7 +90,11 @@ export function DesktopTab() {
             {update.kind === "available" && (
               <>
                 Version {update.version} is available.{" "}
-                <button type="button" className="text-ev-accent-text underline" onClick={() => void openReleasePage(update.url)}>
+                <button
+                  type="button"
+                  className="text-ev-accent-text underline"
+                  onClick={() => void openReleasePage(update.url)}
+                >
                   Open release page
                 </button>
               </>
@@ -139,7 +143,12 @@ export function DesktopTab() {
             Test chime
           </Button>
         </div>
-        <Button size="sm" variant="outline" onClick={() => void notifyNative("EzyView", "Notifications are working.")} className="mt-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => void notifyNative("EzyView", "Notifications are working.")}
+          className="mt-2"
+        >
           Send test notification
         </Button>
       </section>
@@ -147,8 +156,8 @@ export function DesktopTab() {
       <section aria-label="Shortcut">
         <h2 className={heading}>Global shortcut</h2>
         <p className="text-base text-ev-text">
-          <kbd className="rounded border border-ev-line px-1.5">Ctrl+Alt+E</kbd> brings EzyView to the front from any app.
-          If another program already uses it, the shortcut is skipped.
+          <kbd className="rounded border border-ev-line px-1.5">Ctrl+Alt+E</kbd> brings EzyView to
+          the front from any app. If another program already uses it, the shortcut is skipped.
         </p>
       </section>
 
@@ -157,7 +166,12 @@ export function DesktopTab() {
         <p role="status" className="text-base text-ev-text">
           {mcpStatusLine(mcp)}
         </p>
-        <Button size="sm" variant="outline" onClick={() => void fetchMcpRuntimeStatus().then(setMcp)} className="mt-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => void fetchMcpRuntimeStatus().then(setMcp)}
+          className="mt-2"
+        >
           Recheck
         </Button>
       </section>
@@ -200,7 +214,10 @@ export function DesktopTab() {
 
       <section aria-label="Factory reset">
         <h2 className={heading}>Factory reset</h2>
-        <p className="mb-2 text-dense text-ev-muted">Wipes local app data and restarts. API keys in the OS keyring are kept unless cleared separately.</p>
+        <p className="mb-2 text-dense text-ev-muted">
+          Wipes local app data and restarts. API keys in the OS keyring are kept unless cleared
+          separately.
+        </p>
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="danger" onClick={() => void reset()}>
             Factory reset…

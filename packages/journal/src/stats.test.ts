@@ -37,7 +37,14 @@ describe("computeStats", () => {
 
   it("leaves every new aggregator empty when nothing is closed", () => {
     const stats = computeStats([
-      trade({ pnl: undefined, exitTime: undefined, exitPrice: undefined, plannedRisk: 25, setup: "breakout", tags: ["trend"] }),
+      trade({
+        pnl: undefined,
+        exitTime: undefined,
+        exitPrice: undefined,
+        plannedRisk: 25,
+        setup: "breakout",
+        tags: ["trend"],
+      }),
     ]);
     expect(stats).toMatchObject({
       trades: 0,
@@ -51,7 +58,9 @@ describe("computeStats", () => {
   });
 
   it("ignores open trades when counting", () => {
-    const stats = computeStats([trade({ pnl: undefined, exitTime: undefined, exitPrice: undefined })]);
+    const stats = computeStats([
+      trade({ pnl: undefined, exitTime: undefined, exitPrice: undefined }),
+    ]);
     expect(stats.trades).toBe(0);
     expect(stats.netPnl).toBe(0);
   });
@@ -126,7 +135,14 @@ describe("computeStats", () => {
       trade({ pnl: 20, plannedRisk: 10 }),
       trade({ pnl: 30, plannedRisk: 10 }),
     ]);
-    expect(stats.rDistribution.map((bucket) => bucket.label)).toEqual(["≤-2", "-2..-1", "-1..0", "0..1", "1..2", "≥2"]);
+    expect(stats.rDistribution.map((bucket) => bucket.label)).toEqual([
+      "≤-2",
+      "-2..-1",
+      "-1..0",
+      "0..1",
+      "1..2",
+      "≥2",
+    ]);
     expect(stats.rDistribution.map((bucket) => bucket.count)).toEqual([1, 2, 2, 2, 2, 2]);
   });
 

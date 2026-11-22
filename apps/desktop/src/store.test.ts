@@ -33,7 +33,12 @@ describe("drawing selection and editing", () => {
     expect(s.activeChart().drawings.map((d) => d.id)).toEqual(["d2"]);
     expect(s.selectedDrawingId).toBeNull();
     s.undoDrawing();
-    expect(useWorkspace.getState().activeChart().drawings.map((d) => d.id)).toEqual(["d1", "d2"]);
+    expect(
+      useWorkspace
+        .getState()
+        .activeChart()
+        .drawings.map((d) => d.id),
+    ).toEqual(["d1", "d2"]);
   });
 
   it("updateDrawing pushes one undo entry", () => {
@@ -49,17 +54,25 @@ describe("drawing selection and editing", () => {
     const before = useWorkspace.getState().activeChart().drawings;
     const undoDepth = useWorkspace.getState().drawingUndo.length;
     useWorkspace.getState().previewDrawing("p1", { points: [{ time: 2, price: 2 }] });
-    expect(useWorkspace.getState().activeChart().drawings[0]?.points[0]).toEqual({ time: 2, price: 2 });
+    expect(useWorkspace.getState().activeChart().drawings[0]?.points[0]).toEqual({
+      time: 2,
+      price: 2,
+    });
     expect(useWorkspace.getState().drawingUndo.length).toBe(undoDepth); // preview pushes nothing
     useWorkspace.getState().commitDrawingHistory(before);
     expect(useWorkspace.getState().drawingUndo.length).toBe(undoDepth + 1); // exactly one entry
     useWorkspace.getState().undoDrawing();
-    expect(useWorkspace.getState().activeChart().drawings[0]?.points[0]).toEqual({ time: 100, price: 50 });
+    expect(useWorkspace.getState().activeChart().drawings[0]?.points[0]).toEqual({
+      time: 100,
+      price: 50,
+    });
   });
 
   it("moving a horizontal line updates the price of its bound alert", () => {
     seed(line("m1"));
-    useWorkspace.getState().addAlert("TEST", { kind: "crossing", value: 50 }, "once_per_bar_close", "bound", "m1");
+    useWorkspace
+      .getState()
+      .addAlert("TEST", { kind: "crossing", value: 50 }, "once_per_bar_close", "bound", "m1");
     useWorkspace.getState().updateDrawing("m1", { points: [{ time: 100, price: 61 }] });
     const alert = useWorkspace.getState().alerts.find((x) => x.drawingId === "m1");
     expect(alert?.condition).toEqual({ kind: "crossing", value: 61 });
@@ -70,15 +83,23 @@ describe("drawing selection and editing", () => {
     const tl = {
       id: "tl1",
       tool: "trend_line" as const,
-      points: [{ time: 100, price: 50 }, { time: 200, price: 100 }],
+      points: [
+        { time: 100, price: 50 },
+        { time: 200, price: 100 },
+      ],
       style: { color: "#fff", width: 1, lineStyle: "solid" as const },
     };
     seed(tl);
-    useWorkspace.getState().addAlert("AAPL", { kind: "crossing", value: 75 }, "once_per_bar_close", "TL alert", "tl1");
+    useWorkspace
+      .getState()
+      .addAlert("AAPL", { kind: "crossing", value: 75 }, "once_per_bar_close", "TL alert", "tl1");
 
     // Moving the trend line up by 10 points
     useWorkspace.getState().updateDrawing("tl1", {
-      points: [{ time: 100, price: 60 }, { time: 200, price: 110 }],
+      points: [
+        { time: 100, price: 60 },
+        { time: 200, price: 110 },
+      ],
     });
     const tlAlert = useWorkspace.getState().alerts.find((x) => x.drawingId === "tl1");
     // At eval time (100), price is now 60
@@ -86,30 +107,65 @@ describe("drawing selection and editing", () => {
 
     // Apply candle crossing the trendline at time 150 (trendline price at 150 is 85):
     // Prior candle at 80, current candle at 90 -> crosses 85!
-    useWorkspace.getState().applyCandle("AAPL", { time: 140, open: 79, high: 81, low: 78, close: 80, volume: 100 }, true);
-    const fired = useWorkspace.getState().applyCandle("AAPL", { time: 150, open: 80, high: 92, low: 79, close: 90, volume: 100 }, true);
+    useWorkspace
+      .getState()
+      .applyCandle(
+        "AAPL",
+        { time: 140, open: 79, high: 81, low: 78, close: 80, volume: 100 },
+        true,
+      );
+    const fired = useWorkspace
+      .getState()
+      .applyCandle(
+        "AAPL",
+        { time: 150, open: 80, high: 92, low: 79, close: 90, volume: 100 },
+        true,
+      );
     expect(fired).toContain(tlAlert?.id);
 
     // 2. Fib level alert: 0 to 100, ratio 0.5 level is at 50
     const fib = {
       id: "fib1",
       tool: "fib_retracement" as const,
-      points: [{ time: 10, price: 0 }, { time: 20, price: 100 }],
+      points: [
+        { time: 10, price: 0 },
+        { time: 20, price: 100 },
+      ],
       style: { color: "#fff", width: 1, lineStyle: "solid" as const },
     };
     seed(fib);
-    useWorkspace.getState().addAlert("TSLA", { kind: "crossing", value: 50 }, "once_per_bar_close", "Fib alert", "fib1", "0.5");
+    useWorkspace
+      .getState()
+      .addAlert(
+        "TSLA",
+        { kind: "crossing", value: 50 },
+        "once_per_bar_close",
+        "Fib alert",
+        "fib1",
+        "0.5",
+      );
 
     // Move fib anchor 2 from 100 to 200 -> 0.5 level becomes 100
     useWorkspace.getState().updateDrawing("fib1", {
-      points: [{ time: 10, price: 0 }, { time: 20, price: 200 }],
+      points: [
+        { time: 10, price: 0 },
+        { time: 20, price: 200 },
+      ],
     });
     const fibAlert = useWorkspace.getState().alerts.find((x) => x.drawingId === "fib1");
     expect(fibAlert?.condition).toMatchObject({ value: 100 });
 
     // Candle crossing 100 fires fib alert
-    useWorkspace.getState().applyCandle("TSLA", { time: 30, open: 90, high: 95, low: 88, close: 95, volume: 100 }, true);
-    const fibFired = useWorkspace.getState().applyCandle("TSLA", { time: 40, open: 96, high: 105, low: 95, close: 105, volume: 100 }, true);
+    useWorkspace
+      .getState()
+      .applyCandle("TSLA", { time: 30, open: 90, high: 95, low: 88, close: 95, volume: 100 }, true);
+    const fibFired = useWorkspace
+      .getState()
+      .applyCandle(
+        "TSLA",
+        { time: 40, open: 96, high: 105, low: 95, close: 105, volume: 100 },
+        true,
+      );
     expect(fibFired).toContain(fibAlert?.id);
   });
 
@@ -166,8 +222,14 @@ describe("global drawing modes", () => {
 
   it("editing a drawing's style teaches the tool its next default", () => {
     seed(line("st1"));
-    useWorkspace.getState().updateDrawing("st1", { style: { color: "#123456", width: 3, lineStyle: "dashed" } });
-    expect(useWorkspace.getState().drawingToolStyles.horizontal_line).toEqual({ color: "#123456", width: 3, lineStyle: "dashed" });
+    useWorkspace
+      .getState()
+      .updateDrawing("st1", { style: { color: "#123456", width: 3, lineStyle: "dashed" } });
+    expect(useWorkspace.getState().drawingToolStyles.horizontal_line).toEqual({
+      color: "#123456",
+      width: 3,
+      lineStyle: "dashed",
+    });
   });
 });
 
@@ -189,14 +251,24 @@ describe("pine script inputs snapshot", () => {
     useWorkspace.getState().setPineResult("p1", pineRecord({ id: "p1", inputs }));
     expect(useWorkspace.getState().pineScripts["p1"]?.inputs).toEqual(inputs);
     // Persisted blobs are JSON — the snapshot must survive encode/decode.
-    const blob = JSON.parse(JSON.stringify(useWorkspace.getState().pineScripts["p1"])) as PineScriptRecord;
+    const blob = JSON.parse(
+      JSON.stringify(useWorkspace.getState().pineScripts["p1"]),
+    ) as PineScriptRecord;
     expect(blob.inputs).toEqual(inputs);
   });
 
   it("an old blob without inputs restores with inputs undefined", () => {
     // Pre-Task-3 shape: no `inputs` key at all.
     const oldBlob = JSON.parse(
-      JSON.stringify({ id: "p2", name: "Old", source: "src", options: null, plots: [], orders: [], error: null }),
+      JSON.stringify({
+        id: "p2",
+        name: "Old",
+        source: "src",
+        options: null,
+        plots: [],
+        orders: [],
+        error: null,
+      }),
     ) as PineScriptRecord;
     useWorkspace.getState().setPineResult("p2", oldBlob);
     expect(useWorkspace.getState().pineScripts["p2"]?.inputs).toBeUndefined();
@@ -242,7 +314,10 @@ describe("pine script versions", () => {
     useWorkspace.getState().savePineScript("ver3", "R", "one");
     useWorkspace.getState().savePineScript("ver3", "R", "two");
     useWorkspace.getState().savePineScript("ver3", "R", "three");
-    expect(useWorkspace.getState().pineScripts["ver3"]?.versions?.map((v) => v.source)).toEqual(["two", "one"]);
+    expect(useWorkspace.getState().pineScripts["ver3"]?.versions?.map((v) => v.source)).toEqual([
+      "two",
+      "one",
+    ]);
     // Restore "one": head "three" is archived (it existed nowhere else), and
     // the old entries stay so flip-back is possible.
     useWorkspace.getState().restorePineScriptVersion("ver3", 1);
@@ -274,7 +349,9 @@ describe("pine script versions", () => {
 
   it("no-op restore paths do not notify subscribers", () => {
     useWorkspace.getState().savePineScript("notify1", "N", "src");
-    useWorkspace.getState().setPineResult("notify2", pineRecord({ id: "notify2", source: "legacy" }));
+    useWorkspace
+      .getState()
+      .setPineResult("notify2", pineRecord({ id: "notify2", source: "legacy" }));
     let notified = 0;
     const unsub = useWorkspace.subscribe(() => {
       notified++;
@@ -356,7 +433,15 @@ describe("pine script persistence", () => {
       activeLayoutId: useWorkspace.getState().activeLayoutId,
       magnet: "off",
       pineScripts: {
-        legacy: { id: "legacy", name: "Old", source: "src", options: null, plots: [], orders: [], error: null },
+        legacy: {
+          id: "legacy",
+          name: "Old",
+          source: "src",
+          options: null,
+          plots: [],
+          orders: [],
+          error: null,
+        },
       },
     };
     const merged = persistOptions().merge!(oldBlob, useWorkspace.getState());
@@ -398,7 +483,14 @@ describe("undo/redo drawings", () => {
   it("restores drawings byte-for-byte", () => {
     const s = useWorkspace.getState();
     s.setDrawings([]); // reset: this file's tests share one store
-    const d = [{ id: "d1", tool: "trend_line" as const, points: [{ time: 1, price: 2 }], style: { color: "#fff", width: 1, lineStyle: "solid" as const } }];
+    const d = [
+      {
+        id: "d1",
+        tool: "trend_line" as const,
+        points: [{ time: 1, price: 2 }],
+        style: { color: "#fff", width: 1, lineStyle: "solid" as const },
+      },
+    ];
     s.setDrawings(d);
     const after = useWorkspace.getState().activeChart().drawings;
     expect(after).toEqual(d);
@@ -411,8 +503,22 @@ describe("undo/redo drawings", () => {
   it("2-cell test: edit B, focus A, undo leaves A untouched and reverts B", () => {
     const s = useWorkspace.getState();
     s.setGrid("2h"); // cell 0 (A) and cell 1 (B)
-    const initialA = [{ id: "a1", tool: "trend_line" as const, points: [{ time: 10, price: 20 }], style: { color: "#f00", width: 1, lineStyle: "solid" as const } }];
-    const initialB = [{ id: "b1", tool: "trend_line" as const, points: [{ time: 30, price: 40 }], style: { color: "#0f0", width: 1, lineStyle: "solid" as const } }];
+    const initialA = [
+      {
+        id: "a1",
+        tool: "trend_line" as const,
+        points: [{ time: 10, price: 20 }],
+        style: { color: "#f00", width: 1, lineStyle: "solid" as const },
+      },
+    ];
+    const initialB = [
+      {
+        id: "b1",
+        tool: "trend_line" as const,
+        points: [{ time: 30, price: 40 }],
+        style: { color: "#0f0", width: 1, lineStyle: "solid" as const },
+      },
+    ];
     s.setDrawings(initialA, 0);
     s.setDrawings(initialB, 1);
     // Clear undo history so we only test the subsequent edit on B
@@ -427,7 +533,9 @@ describe("undo/redo drawings", () => {
     // Edit cell B (chartIndex 1)
     s.setActiveChart(1);
     s.updateDrawing("b1", { points: [{ time: 35, price: 45 }] }, 1);
-    expect(useWorkspace.getState().activeLayout().charts[1]?.drawings[0]?.points[0]?.price).toBe(45);
+    expect(useWorkspace.getState().activeLayout().charts[1]?.drawings[0]?.points[0]?.price).toBe(
+      45,
+    );
 
     // Focus cell A (chartIndex 0)
     s.setActiveChart(0);
@@ -509,7 +617,12 @@ describe("multi-select, groups and bulk edits", () => {
       { time: 110, price: 55 },
     ]);
     useWorkspace.getState().undoDrawing();
-    expect(useWorkspace.getState().activeChart().drawings.map((d) => d.points[0])).toEqual([
+    expect(
+      useWorkspace
+        .getState()
+        .activeChart()
+        .drawings.map((d) => d.points[0]),
+    ).toEqual([
       { time: 100, price: 50 },
       { time: 100, price: 50 },
     ]);
@@ -526,7 +639,12 @@ describe("multi-select, groups and bulk edits", () => {
     expect(grouped[1]!.groupId).toBe(groupId);
     expect(grouped[2]!.groupId).toBeUndefined();
     s.ungroupSelectedDrawings();
-    expect(useWorkspace.getState().activeChart().drawings.every((d) => d.groupId === undefined)).toBe(true);
+    expect(
+      useWorkspace
+        .getState()
+        .activeChart()
+        .drawings.every((d) => d.groupId === undefined),
+    ).toBe(true);
   });
 
   it("deletes the whole selection and its alerts in one step", () => {
@@ -534,7 +652,12 @@ describe("multi-select, groups and bulk edits", () => {
     const s = useWorkspace.getState();
     s.setDrawingSelection(["a", "c"]);
     s.deleteSelectedDrawings();
-    expect(useWorkspace.getState().activeChart().drawings.map((d) => d.id)).toEqual(["b"]);
+    expect(
+      useWorkspace
+        .getState()
+        .activeChart()
+        .drawings.map((d) => d.id),
+    ).toEqual(["b"]);
     expect(useWorkspace.getState().selectedDrawingIds).toEqual([]);
     useWorkspace.getState().undoDrawing();
     expect(useWorkspace.getState().activeChart().drawings).toHaveLength(3);
@@ -588,8 +711,24 @@ describe("chart templates", () => {
 describe("performance optimizations", () => {
   it("maintains memoized watchlistSymbolKey on add/remove and not on price updates", () => {
     useWorkspace.setState({ watchlist: [], watchlistSymbolKey: "" });
-    const entry1 = { symbol: "BINANCE:BTCUSDT", ticker: "BTCUSDT", description: "Bitcoin", assetClass: "crypto", precision: 2, price: null, changePct: null };
-    const entry2 = { symbol: "OANDA:XAUUSD", ticker: "XAUUSD", description: "Gold", assetClass: "commodity", precision: 2, price: null, changePct: null };
+    const entry1 = {
+      symbol: "BINANCE:BTCUSDT",
+      ticker: "BTCUSDT",
+      description: "Bitcoin",
+      assetClass: "crypto",
+      precision: 2,
+      price: null,
+      changePct: null,
+    };
+    const entry2 = {
+      symbol: "OANDA:XAUUSD",
+      ticker: "XAUUSD",
+      description: "Gold",
+      assetClass: "commodity",
+      precision: 2,
+      price: null,
+      changePct: null,
+    };
 
     useWorkspace.getState().addToWatchlist(entry1);
     expect(useWorkspace.getState().watchlistSymbolKey).toBe("BINANCE:BTCUSDT");
@@ -615,7 +754,17 @@ describe("performance optimizations", () => {
 
   it("avoids state reallocations in updateWatchPrice when price and changePct are unchanged", () => {
     useWorkspace.setState({
-      watchlist: [{ symbol: "BINANCE:BTCUSDT", ticker: "BTCUSDT", description: "Bitcoin", assetClass: "crypto", precision: 2, price: 65000, changePct: 2.5 }],
+      watchlist: [
+        {
+          symbol: "BINANCE:BTCUSDT",
+          ticker: "BTCUSDT",
+          description: "Bitcoin",
+          assetClass: "crypto",
+          precision: 2,
+          price: 65000,
+          changePct: 2.5,
+        },
+      ],
       watchlistSymbolKey: "BINANCE:BTCUSDT",
     });
     const prevWatchlist = useWorkspace.getState().watchlist;

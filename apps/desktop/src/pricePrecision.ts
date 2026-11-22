@@ -15,13 +15,21 @@ const FX_PAIR = /^[A-Z]{6}$/;
 /** Precious metals quote to two decimals despite having six-letter tickers. */
 const METAL = /^(XAU|XAG|XPT|XPD)/;
 
-export function precisionForSymbol(symbol: string | null | undefined, price: number | null): number {
+export function precisionForSymbol(
+  symbol: string | null | undefined,
+  price: number | null,
+): number {
   if (symbol) {
     const ticker = tickerOf(symbol).toUpperCase();
     const watched = useWorkspace
       .getState()
       .watchlist.find((entry) => entry.symbol === symbol || entry.ticker.toUpperCase() === ticker);
-    if (watched && Number.isInteger(watched.precision) && watched.precision >= 0 && watched.precision <= 8) {
+    if (
+      watched &&
+      Number.isInteger(watched.precision) &&
+      watched.precision >= 0 &&
+      watched.precision <= 8
+    ) {
       return watched.precision;
     }
     if (METAL.test(ticker)) return 2;

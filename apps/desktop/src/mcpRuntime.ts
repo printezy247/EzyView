@@ -18,13 +18,17 @@ export interface McpRuntimeStatus {
 const inTauri = (): boolean => typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
 /** Promise problems never break the settings page; null means "unknown". */
-export async function fetchMcpRuntimeStatus(invokeFn?: <T>(cmd: string) => Promise<T>): Promise<McpRuntimeStatus | null> {
+export async function fetchMcpRuntimeStatus(
+  invokeFn?: <T>(cmd: string) => Promise<T>,
+): Promise<McpRuntimeStatus | null> {
   if (!inTauri()) return null;
   try {
-    const invoke = invokeFn ?? (async <T,>(cmd: string) => {
-      const { invoke: call } = await import("@tauri-apps/api/core");
-      return call<T>(cmd);
-    });
+    const invoke =
+      invokeFn ??
+      (async <T>(cmd: string) => {
+        const { invoke: call } = await import("@tauri-apps/api/core");
+        return call<T>(cmd);
+      });
     return await invoke<McpRuntimeStatus>("mcp_runtime_status");
   } catch {
     return null;

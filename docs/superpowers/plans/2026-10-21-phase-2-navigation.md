@@ -41,9 +41,11 @@
 ### Task 0: Loose item — E2E drawing pass (MASTERPLAN checklist)
 
 **Files:**
+
 - Modify: `MASTERPLAN.md` (tick the Phase 0 E2E checkbox after the pass)
 
 **Interfaces:**
+
 - Consumes: running dev server (`npm run dev --workspace apps/desktop`, vite on 127.0.0.1:1420), browser driver (puppeteer MCP).
 - Produces: checked checkbox `- [x]` for "E2E test: place 3-point trend line, verify 3 anchors, undo, redo".
 
@@ -57,10 +59,12 @@
 ### Task 1: `nav.ts` route logic (TDD)
 
 **Files:**
+
 - Create: `apps/desktop/src/nav.ts`
 - Test: `apps/desktop/src/nav.test.ts`
 
 **Interfaces:**
+
 - Produces:
   - `ROUTE_PATHS` — `readonly ["/chart", "/journal", "/fundamentals", "/options", "/pine", "/settings"]`
   - `NAV_ITEMS: readonly { to: string; label: string; key: string }[]` — left-rail order per §17 (labels: Chart, Journal, Fundamentals, Options, Pine, Settings; icons stay in NavRail.tsx)
@@ -78,6 +82,7 @@
 ### Task 2: Router mount, shell, ChartPage extraction
 
 **Files:**
+
 - Modify: `apps/desktop/package.json` (add `react-router`)
 - Modify: `apps/desktop/src/main.tsx` — main branch only: `<HashRouter><App/></HashRouter>`; detached branch untouched
 - Create: `apps/desktop/src/NavRail.tsx` — `NavLink` rail, icons via lucide-react (`LineChart`, `BookOpen`, `Newspaper`, `Sigma`, `Code`, `Settings`), active styling from `NAV_ITEMS`
@@ -89,6 +94,7 @@
 - Route table: exactly `ROUTE_PATHS`; `Route index` → Navigate to normalizePath; `path="*"` → Navigate to `"/"` (chain resolves via normalize)
 
 **Interfaces:**
+
 - Consumes: Task 1 (`ROUTE_PATHS`, `NAV_ITEMS`, `normalizePath`, `rememberRoute`)
 - Produces: `ChartPage` props `{ watchlistOpen, domOpen, objectsOpen, tradingOpen, onToggle: (id: PanelId) => void, onOpenAlerts: () => void }` (alert dialog stays shell-owned; ChartPage calls back)
 
@@ -101,12 +107,14 @@
 ### Task 3: Journal / Fundamentals / Options pages
 
 **Files:**
+
 - Modify: `apps/desktop/src/JournalPanel.tsx` — root `h-56` → `min-h-0 flex-1` (page fill); Close button stays, calls `onClose`
 - Modify: `apps/desktop/src/FundamentalsPanel.tsx` — root `h-64` → `min-h-0 flex-1`
 - Modify: `apps/desktop/src/OptionsPanel.tsx` — root `h-64` → `min-h-0 flex-1`
 - Modify: `JournalPage.tsx` / `FundamentalsPage.tsx` / `OptionsPage.tsx` — render the (still-lazy) panels full page; `onClose={() => navigate("/chart")}`; Fundamentals keeps `symbol`/`onPickSymbol` from active chart (read `useWorkspace` inside the page, not shell)
 
 **Interfaces:**
+
 - Consumes: shell side-panel state; `useWorkspace` store (global — pages read it directly)
 - Produces: unchanged panel component APIs (props signatures identical)
 
@@ -118,11 +126,13 @@
 ### Task 4: Pine page
 
 **Files:**
+
 - Modify: `apps/desktop/src/PineEditor.tsx` — drop `open` prop and `Modal` wrapper; root becomes `<section aria-label="Pine editor" className="flex min-h-0 flex-1 flex-col …">`; header Close calls `onClose`
 - Create: `apps/desktop/src/PinePage.tsx` — reads active symbol/resolution from `useWorkspace`; owns the bars-loading effect (moved from App.tsx:108-117); renders `<PineEditor onClose={() => navigate("/chart")} bars symbol/>`
 - Modify: `App.tsx` — delete `<PineEditor …>` mount and `pineBars` state
 
 **Interfaces:**
+
 - Consumes: `loadHistory` from `./data`, `useWorkspace`
 - Produces: `PineEditor` props `{ onClose, bars, symbol }` (note: `open` removed)
 
@@ -134,11 +144,13 @@
 ### Task 5: Settings page + Mt5Setup relocation
 
 **Files:**
+
 - Modify: `apps/desktop/src/Mt5Setup.tsx` — export the four tab bodies (`ConnectionTab`, `BrokerTab`, `SafetyTab`, `AuditTab`) or a new exported `Mt5SettingsTabs` component (tab row + active tab state, no popover); delete popover/footer-only `Mt5Setup` button
 - Create: `apps/desktop/src/SettingsPage.tsx` — tab row: Connection | Broker | Safety | Audit | Data | Appearance; Data = button opening the existing ApiKeys dialog (`useApiKeys.getState().openDialog()`); Appearance = dark/light radio writing active chart theme (`updateActive({theme})`)
 - Modify: `apps/desktop/src/App.tsx` footer — replace `<Mt5Setup />` with a `Link to="/settings"` (gear icon + same status badge: `useMt5` status dot copied from old button)
 
 **Interfaces:**
+
 - Consumes: `useMt5`, `useMt5Accounts`, `useApiKeys` (all global stores — unchanged)
 - Produces: SettingsPage with zero new state stores
 
@@ -150,6 +162,7 @@
 ### Task 6: MASTERPLAN status + final verification
 
 **Files:**
+
 - Modify: `MASTERPLAN.md` — §7 table: Phase 2 → `**done** (PR #12)` (adjust to actual PR number); §8 snapshot: navigation bullet → closed, note Mt5Setup now on `/settings`; §11 heading → "Delivered (PR #N). Deviations: journal second-monitor window deferred to Phase 9; panel sizes fixed — only last route persisted."; §21 approval gate update; §14 checkbox already ticked from Task 0
 
 - [x] **Step 1:** Edit MASTERPLAN status sections.

@@ -22,25 +22,31 @@ export const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
   // The brand cyan with ink text — the accent is bright, so the label colour
   // comes from the theme's accentInk token, not a hardcoded white.
   solid: "bg-ev-accent text-ev-accent-ink hover:bg-ev-accent-hover disabled:hover:bg-ev-accent",
-  outline: "border border-ev-line bg-transparent text-ev-text hover:bg-ev-raised hover:text-ev-strong",
+  outline:
+    "border border-ev-line bg-transparent text-ev-text hover:bg-ev-raised hover:text-ev-strong",
   ghost: "bg-transparent text-ev-muted hover:bg-ev-raised hover:text-ev-strong",
   danger: "border border-ev-down/40 bg-transparent text-ev-down-text hover:bg-ev-down/10",
 };
 
-const BASE = "inline-flex shrink-0 items-center justify-center font-medium transition disabled:cursor-not-allowed disabled:opacity-50";
+const BASE =
+  "inline-flex shrink-0 items-center justify-center font-medium transition disabled:cursor-not-allowed disabled:opacity-50";
 
 /**
  * The one button class. `Button`/`IconButton` in `./Button` wrap this; a few
  * trigger components (Menu, Select) need the string directly because they own
  * their own element.
  */
-export function buttonClass(options: { size?: ControlSize; variant?: ButtonVariant; className?: ClassValue } = {}): string {
+export function buttonClass(
+  options: { size?: ControlSize; variant?: ButtonVariant; className?: ClassValue } = {},
+): string {
   const { size = "md", variant = "solid", className } = options;
   return cn(BASE, BUTTON_SIZES[size], BUTTON_VARIANTS[variant], className);
 }
 
 /** Square icon button; a label is mandatory at the call site. */
-export function iconButtonClass(options: { size?: ControlSize; variant?: ButtonVariant; className?: ClassValue } = {}): string {
+export function iconButtonClass(
+  options: { size?: ControlSize; variant?: ButtonVariant; className?: ClassValue } = {},
+): string {
   const { size = "md", variant = "ghost", className } = options;
   const box = size === "sm" ? "size-6" : size === "lg" ? "size-8" : "size-7";
   return cn(BASE, box, "rounded", BUTTON_VARIANTS[variant], className);
@@ -57,7 +63,9 @@ export function inputClass(className?: ClassValue): string {
 }
 
 /** Status/interval chip. Never a button. */
-export function chipClass(options: { tone?: "neutral" | "up" | "down" | "warn" | "accent"; className?: ClassValue } = {}): string {
+export function chipClass(
+  options: { tone?: "neutral" | "up" | "down" | "warn" | "accent"; className?: ClassValue } = {},
+): string {
   const tones = {
     neutral: "bg-ev-raised text-ev-muted",
     up: "bg-ev-up/15 text-ev-up-text",
@@ -78,7 +86,9 @@ export function chipClass(options: { tone?: "neutral" | "up" | "down" | "warn" |
  * radius, with the chevron pushed to the far end. Kept separate from
  * `inputClass` because a trigger is a button and carries `justify-between`.
  */
-export function selectTriggerClass(options: { size?: ControlSize; className?: ClassValue; open?: boolean } = {}): string {
+export function selectTriggerClass(
+  options: { size?: ControlSize; className?: ClassValue; open?: boolean } = {},
+): string {
   const { size = "md", open, className } = options;
   const height = size === "sm" ? "h-6" : size === "lg" ? "h-8" : "h-7";
   return cn(
@@ -95,7 +105,9 @@ export const LISTBOX_CLASS =
   "fixed z-[var(--z-dropdown)] overflow-y-auto rounded-lg border border-ev-line bg-ev-panel py-1 shadow-xl";
 
 /** One row of a listbox or a menu popup. */
-export function optionClass(options: { active?: boolean; selected?: boolean; disabled?: boolean } = {}): string {
+export function optionClass(
+  options: { active?: boolean; selected?: boolean; disabled?: boolean } = {},
+): string {
   return cn(
     "flex w-full items-center gap-2 px-2 py-1 text-left text-base outline-none",
     options.disabled
@@ -119,10 +131,16 @@ export function invalidClass(invalid?: boolean): string {
 }
 
 /** Segmented control: one container, equal-height options, no gaps. */
-export function segmentedClass(options: { size?: ControlSize; className?: ClassValue } = {}): string {
+export function segmentedClass(
+  options: { size?: ControlSize; className?: ClassValue } = {},
+): string {
   const { size = "md", className } = options;
   const height = size === "sm" ? "h-6" : size === "lg" ? "h-8" : "h-7";
-  return cn("inline-flex shrink-0 items-stretch rounded border border-ev-line bg-ev-bg p-0.5", height, className);
+  return cn(
+    "inline-flex shrink-0 items-stretch rounded border border-ev-line bg-ev-bg p-0.5",
+    height,
+    className,
+  );
 }
 
 /** One segment. `active` is the selected one. */
@@ -138,7 +156,8 @@ export function segmentClass(options: { active?: boolean; className?: ClassValue
 }
 
 /** Dialog surface: one radius, one border, one shadow. */
-export const DIALOG_CLASS = "flex max-h-[85vh] flex-col rounded-lg border border-ev-line bg-ev-panel shadow-2xl";
+export const DIALOG_CLASS =
+  "flex max-h-[85vh] flex-col rounded-lg border border-ev-line bg-ev-panel shadow-2xl";
 
 /**
  * Shell chrome: one bar height, one rail width, one icon scale, one
@@ -172,7 +191,14 @@ export function shellToolClass(options: { active?: boolean; className?: ClassVal
  * explicit `density` prop is for the rare row that must opt out of that
  * global setting; it wins, because `tailwind-merge` keeps the last height.
  */
-export function rowClass(options: { density?: "compact" | "comfortable"; selected?: boolean; className?: ClassValue } = {}): string {
+export function rowClass(
+  options: { density?: "compact" | "comfortable"; selected?: boolean; className?: ClassValue } = {},
+): string {
   const h = options.density === "comfortable" ? "h-8" : options.density === "compact" ? "h-6" : "";
-  return cn("num ev-row flex items-center px-2 text-dense", h, options.selected ? "bg-ev-raised" : "", options.className);
+  return cn(
+    "num ev-row flex items-center px-2 text-dense",
+    h,
+    options.selected ? "bg-ev-raised" : "",
+    options.className,
+  );
 }

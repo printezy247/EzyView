@@ -48,7 +48,8 @@ export function flattenGroups(groups: readonly CommandGroup[]): Command[] {
         id: entry.id,
         label: entry.label,
         hint: entry.kind === "action" ? entry.hint : undefined,
-        on: entry.kind === "toggle" ? entry.checked : entry.kind === "radio" ? entry.selected : false,
+        on:
+          entry.kind === "toggle" ? entry.checked : entry.kind === "radio" ? entry.selected : false,
         run: entry.onSelect,
       });
     }
@@ -93,6 +94,9 @@ export function buildSubViewCommands(navigate: (to: string) => void = () => {}):
     if (!tables) continue;
     for (const tab of tables.tabs) {
       const href = tabHref(tables.path, tab.id, tables.defaultTab);
+      // The default tab's href is the section path itself — buildNavCommands
+      // already emits that key, and duplicate keys break the palette list.
+      if (href === section.to) continue;
       out.push({
         key: `Go to:${href}`,
         group: "Go to",

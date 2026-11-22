@@ -8,7 +8,9 @@ import {
   type EventStripMarker,
 } from "./eventStrip.js";
 
-const marker = (over: Partial<EventStripMarker> & Pick<EventStripMarker, "time" | "title">): EventStripMarker => ({
+const marker = (
+  over: Partial<EventStripMarker> & Pick<EventStripMarker, "time" | "title">,
+): EventStripMarker => ({
   kind: "event",
   impact: "high",
   ...over,
@@ -63,7 +65,6 @@ const primitive = () => {
 };
 
 describe("EventStripPrimitive.hitTest", () => {
-
   it("returns null above the strip and the chip id inside it", () => {
     const p = primitive();
     p.setMarkers([marker({ time: 10, title: "NFP" })]);
@@ -79,8 +80,9 @@ describe("EventStripPrimitive.hitTest", () => {
       rect: () => {},
     };
     p.render({
-      useMediaCoordinateSpace: (fn: (scope: { context: unknown; mediaSize: { width: number; height: number } }) => void) =>
-        fn({ context: ctx, mediaSize: { width: 800, height: 400 } }),
+      useMediaCoordinateSpace: (
+        fn: (scope: { context: unknown; mediaSize: { width: number; height: number } }) => void,
+      ) => fn({ context: ctx, mediaSize: { width: 800, height: 400 } }),
     } as never);
     // The marker at time 10 lands on x=100; the strip is the bottom band.
     expect(p.hitTest(0, 400 - 1)).toBeNull();

@@ -74,7 +74,8 @@ const clusterColor = (members: EventStripMarker[]): string => {
   let best: EventStripMarker | null = null;
   for (const m of members) {
     if (m.kind === "earnings") return EVENT_EARNINGS_COLOR;
-    if (!best || (IMPACT_RANK[m.impact ?? "high"] ?? 0) > (IMPACT_RANK[best.impact ?? "high"] ?? 0)) best = m;
+    if (!best || (IMPACT_RANK[m.impact ?? "high"] ?? 0) > (IMPACT_RANK[best.impact ?? "high"] ?? 0))
+      best = m;
   }
   return best ? chipColor(best) : "#787b86";
 };
@@ -106,7 +107,14 @@ export function layoutEventStrip(
       continue;
     }
     const id = `evstrip:${index++}`;
-    chips.push({ id, x: dot.x, color: chipColor(dot.m), shape: chipShape([dot.m]), count: 1, members: [dot.m] });
+    chips.push({
+      id,
+      x: dot.x,
+      color: chipColor(dot.m),
+      shape: chipShape([dot.m]),
+      count: 1,
+      members: [dot.m],
+    });
   }
   return chips;
 }
@@ -175,7 +183,9 @@ export class EventStripPrimitive implements IPanePrimitive<Time> {
       const scale = this.chart?.timeScale() ?? null;
       if (!scale) return;
       this.height = height;
-      this.chips = layoutEventStrip(scale, this.markers).filter((c) => c.x >= -20 && c.x <= width + 20);
+      this.chips = layoutEventStrip(scale, this.markers).filter(
+        (c) => c.x >= -20 && c.x <= width + 20,
+      );
       const y = height - EVENT_STRIP_HEIGHT / 2;
       ctx.save();
       ctx.textAlign = "center";

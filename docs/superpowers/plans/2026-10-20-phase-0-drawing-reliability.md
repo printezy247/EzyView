@@ -31,10 +31,12 @@
 ### Task 1: `screenToTimePrice` validity helper in `EzyChart`
 
 **Files:**
+
 - Modify: `packages/chart-engine/src/host.ts` (add method + debug fields + subscribeClick refactor)
 - Test: `packages/chart-engine/src/host.test.ts` (new, pure-helper unit tests where possible)
 
 **Interfaces:**
+
 - Produces: `EzyChart.screenToTimePrice(x, y): { ok: boolean; time: number | null; price: number | null; reason: string | null }`, public fields `clickCount: number`, `lastClick: { x: number; y: number; t: number } | null`.
 
 - [ ] **Step 1: Add debug fields + method.** Add `clickCount` and `lastClick` private fields initialised in constructor, and a public `screenToTimePrice` method that increments the counter, records `lastClick`, converts via `coordinateToTime`/`coordinateToPrice`, and returns the validated result with reason `"outside chart"` / `"non-finite"` / `null`.
@@ -46,9 +48,11 @@
 ### Task 2: `ChartHost` onClick reliability (ghost, cleanup, guard, feedback)
 
 **Files:**
+
 - Modify: `apps/desktop/src/ChartHost.tsx`
 
 **Interfaces:**
+
 - Consumes: `EzyChart.screenToTimePrice` (Task 1), `snapToOhlc`, `isComplete`.
 - Produces: `drawingInProgress` guard via ref; `ghost` + `flash` local state; `finally`-style cleanup.
 
@@ -63,11 +67,13 @@
 ### Task 3: Undo/redo in store + keyboard shortcuts
 
 **Files:**
+
 - Modify: `apps/desktop/src/store.ts`
 - Modify: `apps/desktop/src/App.tsx` (keyboard shortcuts)
 - Modify: `apps/desktop/src/DrawingToolbar.tsx` (wire Undo to store; add Redo)
 
 **Interfaces:**
+
 - Produces: store actions `undoDrawing(): void`, `redoDrawing(): void`; state `drawingUndo: Drawing[][]`, `drawingRedo: Drawing[][]` (not persisted).
 
 - [ ] **Step 1: Add state + actions to `WorkspaceStore` interface.**
@@ -82,11 +88,13 @@
 ### Task 4: `ChartCommandInput` overlay
 
 **Files:**
+
 - Create: `apps/desktop/src/ChartCommandInput.tsx`
 - Modify: `apps/desktop/src/ChartHost.tsx` (mount overlay, open state, `/` + Ctrl+K triggers)
 - Modify: `apps/desktop/src/Toolbar.tsx` (move feature palette to Ctrl+Shift+K)
 
 **Interfaces:**
+
 - Produces: exported pure helpers `TIMEFRAMES`, `parseCommand`, `filterSymbols`; component `ChartCommandInput`.
 
 - [ ] **Step 1: Pure helpers** with unit tests in `apps/desktop/src/ChartCommandInput.test.ts`.
@@ -100,6 +108,7 @@
 ### Task 5: Magnet persistence & tooltip (verify)
 
 **Files:**
+
 - Verify only: `store.ts` partialize already persists `magnet`; `DrawingToolbar` tooltip shows mode.
 
 - [ ] **Step 1: Confirm persisted** via existing restoreWorkspace tests; no code change expected. Add a note in plan only.

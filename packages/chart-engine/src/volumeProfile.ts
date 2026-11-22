@@ -42,7 +42,12 @@ export class VolumeProfilePrimitive implements IPanePrimitive<Time> {
   private upFill = withAlpha("#26a69a", 0.28);
   private downFill = withAlpha("#ef5350", 0.28);
   /** The profile only changes with the candles or the visible range, not every repaint. */
-  private cache: { candles: readonly Candle[]; from: number; to: number; profile: VolumeProfile } | null = null;
+  private cache: {
+    candles: readonly Candle[];
+    from: number;
+    to: number;
+    profile: VolumeProfile;
+  } | null = null;
 
   constructor(private readonly priceToY: (price: number) => number | null) {}
 

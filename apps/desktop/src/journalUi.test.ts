@@ -4,7 +4,8 @@ import { dateKey } from "@ezyview/journal";
 import { dayCounts, dayNetOn, dayNets, isDailyLossBreached, isDrawdownBreached } from "./journalUi";
 
 /** Noon local on a fixed day avoids DST edge cases in dateKey. */
-const noon = (y: number, m: number, d: number): number => Math.floor(new Date(y, m - 1, d, 12).getTime() / 1000);
+const noon = (y: number, m: number, d: number): number =>
+  Math.floor(new Date(y, m - 1, d, 12).getTime() / 1000);
 
 const entry = (over: Partial<JournalEntry> & { entryTime: number }): JournalEntry => ({
   id: `e${over.entryTime}`,
@@ -34,7 +35,11 @@ describe("dayNets / dayNetOn", () => {
 
   it("counts every entry per day, including open ones", () => {
     const a = noon(2026, 10, 20);
-    const counts = dayCounts([entry({ entryTime: a }), entry({ entryTime: a, pnl: undefined }), entry({ entryTime: a + 60 })]);
+    const counts = dayCounts([
+      entry({ entryTime: a }),
+      entry({ entryTime: a, pnl: undefined }),
+      entry({ entryTime: a + 60 }),
+    ]);
     expect(counts.get(dateKey(a))).toBe(3);
   });
 });

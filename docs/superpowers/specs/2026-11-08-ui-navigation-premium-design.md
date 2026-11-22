@@ -96,11 +96,11 @@ terminal that is harder to learn.
 Markets, Trade and Journal move their tab state into the URL, matching
 Research and Settings:
 
-| Page | URL |
-|---|---|
+| Page    | URL                     |
+| ------- | ----------------------- |
 | Markets | `/markets?tab=screener` |
-| Trade | `/trade?tab=blotter` |
-| Journal | `/journal?tab=stats` |
+| Trade   | `/trade?tab=blotter`    |
+| Journal | `/journal?tab=stats`    |
 
 The tab is written to the URL on change and read back on mount, so a reload
 keeps the view and the link can be shared. Unknown or absent `?tab=` falls
@@ -143,22 +143,22 @@ shell actually reads: `symbol`, `resolution`, `theme`, `drawings.length`.
 
 The same applies to:
 
-| File | Subscribes to | Replaced with |
-|---|---|---|
-| `App.tsx` | `activeLayout()` | symbol, resolution, theme, drawing count |
-| `ChartPage.tsx` | `activeLayout()` | the fields the page reads |
-| `Watchlist.tsx` | `activeLayout()` twice | symbol, data source |
-| `ChartSettingsDialog.tsx` | `activeChart()` | the settings fields |
-| `SettingsPage.tsx` | `activeLayout()` | symbol, resolution, theme |
-| `MarketsPage.tsx` | `activeLayout()` | symbol only |
-| `StrategiesPage.tsx` | `activeLayout()` | symbol, resolution, theme |
-| `TradePage.tsx` | `activeLayout()` | symbol only |
-| `AlertsPage.tsx` | `activeLayout()` | symbol only |
-| `TimeAndSales.tsx` | `activeLayout()` | symbol only |
-| `CurrencyConverter.tsx` | `activeLayout().charts[0].symbol` | the symbol |
+| File                      | Subscribes to                     | Replaced with                            |
+| ------------------------- | --------------------------------- | ---------------------------------------- |
+| `App.tsx`                 | `activeLayout()`                  | symbol, resolution, theme, drawing count |
+| `ChartPage.tsx`           | `activeLayout()`                  | the fields the page reads                |
+| `Watchlist.tsx`           | `activeLayout()` twice            | symbol, data source                      |
+| `ChartSettingsDialog.tsx` | `activeChart()`                   | the settings fields                      |
+| `SettingsPage.tsx`        | `activeLayout()`                  | symbol, resolution, theme                |
+| `MarketsPage.tsx`         | `activeLayout()`                  | symbol only                              |
+| `StrategiesPage.tsx`      | `activeLayout()`                  | symbol, resolution, theme                |
+| `TradePage.tsx`           | `activeLayout()`                  | symbol only                              |
+| `AlertsPage.tsx`          | `activeLayout()`                  | symbol only                              |
+| `TimeAndSales.tsx`        | `activeLayout()`                  | symbol only                              |
+| `CurrencyConverter.tsx`   | `activeLayout().charts[0].symbol` | the symbol                               |
 
 Where a component needs several fields, one `useShallow` selector reads them
-together, so the component re-renders only when one of *those* fields changes
+together, so the component re-renders only when one of _those_ fields changes
 rather than whenever any part of the layout does.
 
 ### 3b. Route-level error isolation

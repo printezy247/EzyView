@@ -41,7 +41,15 @@ export function tabPanelId(prefix: string, id: string): string {
  * Left/Right/Home/End move the selection. That is the WAI-ARIA tabs pattern
  * and it is what makes a dock usable without a mouse.
  */
-export function Tabs({ items, value, onChange, label, className, tabClassName, idPrefix }: TabsProps) {
+export function Tabs({
+  items,
+  value,
+  onChange,
+  label,
+  className,
+  tabClassName,
+  idPrefix,
+}: TabsProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const generated = useId();
   const prefix = idPrefix ?? generated;
@@ -68,7 +76,7 @@ export function Tabs({ items, value, onChange, label, className, tabClassName, i
       e.preventDefault();
       if (enabled.length === 0) return;
       const from = enabled.findIndex((i) => i.id === value);
-      const next = enabled[(((from === -1 ? 0 : from) + delta + enabled.length) % enabled.length)]!;
+      const next = enabled[((from === -1 ? 0 : from) + delta + enabled.length) % enabled.length]!;
       select(items.indexOf(next));
     };
     if (e.key === "ArrowRight") step(1);
@@ -118,7 +126,9 @@ export function Tabs({ items, value, onChange, label, className, tabClassName, i
           >
             {item.label}
             {item.badge !== undefined && (
-              <span className="rounded bg-ev-raised px-1 text-micro leading-4 text-ev-muted">{item.badge}</span>
+              <span className="rounded bg-ev-raised px-1 text-micro leading-4 text-ev-muted">
+                {item.badge}
+              </span>
             )}
           </button>
         );

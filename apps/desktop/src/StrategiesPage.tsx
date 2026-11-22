@@ -14,7 +14,11 @@ const PineEditor = lazy(() => import("./PineEditor").then((m) => ({ default: m.P
  */
 export function StrategiesPage() {
   const navigate = useNavigate();
-  const { symbol, resolution, theme: chartTheme } = useActiveChart((c) => ({
+  const {
+    symbol,
+    resolution,
+    theme: chartTheme,
+  } = useActiveChart((c) => ({
     symbol: c.symbol,
     resolution: c.resolution,
     theme: c.theme,
@@ -38,8 +42,19 @@ export function StrategiesPage() {
   }, [symbol, resolution]);
 
   return (
-    <Suspense fallback={<div className="flex flex-1 items-center justify-center text-dense text-ev-muted">Loading Pine Editor…</div>}>
-      <PineEditor onClose={() => navigate("/chart")} bars={bars} symbol={symbol} uiTheme={uiTheme} />
+    <Suspense
+      fallback={
+        <div className="flex flex-1 items-center justify-center text-dense text-ev-muted">
+          Loading Pine Editor…
+        </div>
+      }
+    >
+      <PineEditor
+        onClose={() => navigate("/chart")}
+        bars={bars}
+        symbol={symbol}
+        uiTheme={uiTheme}
+      />
     </Suspense>
   );
 }

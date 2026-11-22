@@ -30,7 +30,9 @@ const readRecent = (key: string): string[] => {
     const raw = localStorage.getItem(key);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string").slice(0, MAX_RECENT) : [];
+    return Array.isArray(parsed)
+      ? parsed.filter((x): x is string => typeof x === "string").slice(0, MAX_RECENT)
+      : [];
   } catch {
     return [];
   }
@@ -81,7 +83,8 @@ export function symbolsForSource(symbols: readonly string[], source: EffectiveSo
 export function normalizeSymbolForSource(input: string, source: EffectiveSource): string {
   const value = input.trim().toUpperCase();
   if (!value) return "";
-  if (source === "mt5") return value.includes(":") ? value.slice(value.lastIndexOf(":") + 1) : value;
+  if (source === "mt5")
+    return value.includes(":") ? value.slice(value.lastIndexOf(":") + 1) : value;
   if (source === "twelvedata") return value.replace(":", "/");
   if (source === "binance" || source === "kraken") {
     const prefix = `${source.toUpperCase()}:`;
@@ -125,7 +128,13 @@ export function normalizeTimeframe(input: string): string | null {
   const exact = TIMEFRAMES.find((t) => t === value);
   if (exact) return exact;
   const lower = value.toLowerCase();
-  const aliases: Record<string, string> = { "60": "1h", "240": "4h", "1d": "1D", "1w": "1W", "1mo": "1M" };
+  const aliases: Record<string, string> = {
+    "60": "1h",
+    "240": "4h",
+    "1d": "1D",
+    "1w": "1W",
+    "1mo": "1M",
+  };
   const alias = aliases[lower];
   if (alias) return alias;
   const folded = TIMEFRAMES.filter((t) => t.toLowerCase() === lower);
@@ -261,7 +270,11 @@ export function ChartCommandInput({
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActive((i) => Math.max(i - 1, 0));
-    } else if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && query === "" && mode === "symbol") {
+    } else if (
+      (e.key === "ArrowLeft" || e.key === "ArrowRight") &&
+      query === "" &&
+      mode === "symbol"
+    ) {
       // TradingView-style timeframe stepping from an empty palette. Keep the
       // palette open so several steps can be taken without reopening it.
       e.preventDefault();
@@ -314,13 +327,18 @@ export function ChartCommandInput({
           placeholder="Symbol, @timeframe, or /command"
           className="h-9 flex-1 bg-transparent text-body text-ev-strong placeholder:text-ev-faint focus:outline-none"
         />
-        <span className="rounded border border-ev-line px-1.5 text-dense text-ev-muted" title="Active data source">
+        <span
+          className="rounded border border-ev-line px-1.5 text-dense text-ev-muted"
+          title="Active data source"
+        >
           {sourceLabel(source)}
         </span>
         <kbd className="rounded border border-ev-line px-1.5 text-dense text-ev-muted">Esc</kbd>
       </div>
       {mode === "symbol" && recent.length > 0 && query.trim() === "" && (
-        <div className="px-3 py-1 text-micro uppercase tracking-wider text-ev-faint">Recent · {sourceLabel(source)}</div>
+        <div className="px-3 py-1 text-micro uppercase tracking-wider text-ev-faint">
+          Recent · {sourceLabel(source)}
+        </div>
       )}
       <ul className="max-h-60 overflow-y-auto py-1">
         {list.length === 0 && <li className="px-3 py-2 text-base text-ev-muted">No matches</li>}
@@ -341,7 +359,8 @@ export function ChartCommandInput({
       </ul>
       {cmd && (
         <div className="border-t border-ev-raised px-3 py-1.5 text-dense text-ev-muted">
-          Commands: /tf &lt;timeframe&gt;, /sym &lt;symbol&gt;, /pair &lt;base/quote&gt;, /layout &lt;name&gt;
+          Commands: /tf &lt;timeframe&gt;, /sym &lt;symbol&gt;, /pair &lt;base/quote&gt;, /layout
+          &lt;name&gt;
         </div>
       )}
     </div>

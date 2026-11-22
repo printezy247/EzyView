@@ -3,16 +3,20 @@ import { parseCrosshairMessage } from "./crosshairBus";
 
 describe("parseCrosshairMessage", () => {
   it("accepts a position and a clear from another window", () => {
-    expect(parseCrosshairMessage({ from: "b", symbol: "OANDA:XAUUSD", time: 10, price: 2650.5 }, "a")).toEqual({
+    expect(
+      parseCrosshairMessage({ from: "b", symbol: "OANDA:XAUUSD", time: 10, price: 2650.5 }, "a"),
+    ).toEqual({
       symbol: "OANDA:XAUUSD",
       time: 10,
       price: 2650.5,
     });
-    expect(parseCrosshairMessage({ from: "b", symbol: "X", time: null, price: null }, "a")).toEqual({
-      symbol: "X",
-      time: null,
-      price: null,
-    });
+    expect(parseCrosshairMessage({ from: "b", symbol: "X", time: null, price: null }, "a")).toEqual(
+      {
+        symbol: "X",
+        time: null,
+        price: null,
+      },
+    );
   });
 
   it("ignores our own echo and malformed payloads", () => {

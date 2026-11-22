@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { DELAY_AFTER_SECONDS, STALE_AFTER_SECONDS, provenanceOf, provenanceLabel, provenanceTone } from "./provenance";
+import {
+  DELAY_AFTER_SECONDS,
+  STALE_AFTER_SECONDS,
+  provenanceOf,
+  provenanceLabel,
+  provenanceTone,
+} from "./provenance";
 
 /**
  * Where a price came from, stated on the quote itself.
@@ -33,12 +39,18 @@ describe("provenanceOf", () => {
   });
 
   it("downgrades a live feed to delayed once the quote goes stale", () => {
-    expect(provenanceOf({ source: "mt5", status: "online", ageSeconds: DELAY_AFTER_SECONDS - 1 })).toBe("live");
-    expect(provenanceOf({ source: "mt5", status: "online", ageSeconds: DELAY_AFTER_SECONDS + 1 })).toBe("delayed");
+    expect(
+      provenanceOf({ source: "mt5", status: "online", ageSeconds: DELAY_AFTER_SECONDS - 1 }),
+    ).toBe("live");
+    expect(
+      provenanceOf({ source: "mt5", status: "online", ageSeconds: DELAY_AFTER_SECONDS + 1 }),
+    ).toBe("delayed");
   });
 
   it("calls a feed with no tick for a minute stale, not merely delayed", () => {
-    expect(provenanceOf({ source: "mt5", status: "online", ageSeconds: STALE_AFTER_SECONDS + 1 })).toBe("stale");
+    expect(
+      provenanceOf({ source: "mt5", status: "online", ageSeconds: STALE_AFTER_SECONDS + 1 }),
+    ).toBe("stale");
   });
 
   it("does not downgrade a cached feed any further", () => {

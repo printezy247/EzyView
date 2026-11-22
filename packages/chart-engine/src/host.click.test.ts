@@ -22,7 +22,12 @@ function stub(times: (x: number) => number | null, prices: (y: number) => number
   return { clickCount: 0, lastClick: null, coordinateToTime: times, coordinateToPrice: prices };
 }
 
-type ScreenResult = { ok: boolean; time: number | null; price: number | null; reason: string | null };
+type ScreenResult = {
+  ok: boolean;
+  time: number | null;
+  price: number | null;
+  reason: string | null;
+};
 
 const screenToTimePrice = EzyChart.prototype.screenToTimePrice as unknown as (
   this: Stub,
@@ -48,7 +53,12 @@ describe("EzyChart.screenToTimePrice", () => {
         () => 1700000000,
         () => 1.5,
       );
-      expect(call(self, bad, 10)).toMatchObject({ ok: false, reason: "non-finite", time: null, price: null });
+      expect(call(self, bad, 10)).toMatchObject({
+        ok: false,
+        reason: "non-finite",
+        time: null,
+        price: null,
+      });
       expect(call(self, 10, bad)).toMatchObject({ ok: false, reason: "non-finite" });
     }
   });

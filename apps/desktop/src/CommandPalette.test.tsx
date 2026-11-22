@@ -63,7 +63,12 @@ describe("CommandPalette", () => {
       <CommandPalette
         open
         onClose={onClose}
-        groups={[{ title: "Go to", entries: [{ kind: "action", id: "nav-chart", label: "Terminal", onSelect: run }] }]}
+        groups={[
+          {
+            title: "Go to",
+            entries: [{ kind: "action", id: "nav-chart", label: "Terminal", onSelect: run }],
+          },
+        ]}
       />,
     );
     await user.keyboard("{Enter}");

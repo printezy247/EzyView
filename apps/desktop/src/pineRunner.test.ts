@@ -31,7 +31,9 @@ describe("runPineWithBudget (inline path)", () => {
   });
 
   it("propagates script errors with their original message", async () => {
-    await expect(runPineWithBudget("plot(ta.nonexistent(close, 3))", ctx([1, 2, 3]))).rejects.toThrow(/nonexistent|unknown/i);
+    await expect(
+      runPineWithBudget("plot(ta.nonexistent(close, 3))", ctx([1, 2, 3])),
+    ).rejects.toThrow(/nonexistent|unknown/i);
   });
 
   it("honours a custom budget by still finishing fast scripts", async () => {

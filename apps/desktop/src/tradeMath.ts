@@ -1,8 +1,22 @@
 /** Pure trading helpers, kept out of the components so they can be tested. */
 
 const FOREX_CURRENCIES = new Set([
-  "USD", "EUR", "GBP", "JPY", "CHF", "AUD", "CAD", "NZD",
-  "SGD", "HKD", "CNH", "SEK", "NOK", "TRY", "ZAR", "MXN",
+  "USD",
+  "EUR",
+  "GBP",
+  "JPY",
+  "CHF",
+  "AUD",
+  "CAD",
+  "NZD",
+  "SGD",
+  "HKD",
+  "CNH",
+  "SEK",
+  "NOK",
+  "TRY",
+  "ZAR",
+  "MXN",
 ]);
 
 /** Standard contract multipliers for asset classes and symbols */
@@ -68,7 +82,8 @@ export function riskQty(i: {
   if (stop === undefined || !Number.isFinite(stop) || stop <= 0) return null;
   if (!Number.isFinite(entry) || entry <= 0 || !Number.isFinite(equity) || equity <= 0) return null;
   if (side === "buy" ? stop >= entry : stop <= entry) return null;
-  const mult = Number.isFinite(contractMultiplier) && contractMultiplier > 0 ? contractMultiplier : 1;
+  const mult =
+    Number.isFinite(contractMultiplier) && contractMultiplier > 0 ? contractMultiplier : 1;
   const distance = Math.abs(entry - stop);
   if (distance <= 0) return null;
   const raw = (equity * riskPct) / 100 / (distance * mult);

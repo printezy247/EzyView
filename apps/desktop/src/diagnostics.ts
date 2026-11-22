@@ -13,7 +13,10 @@ const inTauri = (): boolean => typeof window !== "undefined" && "__TAURI_INTERNA
 
 /** One log block: ISO time, kind, message and (optional) stack. */
 export function formatCrash(kind: string, error: unknown, now: Date = new Date()): string {
-  const err = error instanceof Error ? error : new Error(typeof error === "string" ? error : JSON.stringify(error));
+  const err =
+    error instanceof Error
+      ? error
+      : new Error(typeof error === "string" ? error : JSON.stringify(error));
   const stack = err.stack && err.stack !== err.message ? `\n${err.stack}` : "";
   return `[${now.toISOString()}] ${kind}: ${err.message}${stack}\n`;
 }
@@ -76,7 +79,8 @@ export async function clearCrashLog(): Promise<void> {
 }
 
 const onError = (e: ErrorEvent) => void appendCrash(formatCrash("error", e.error ?? e.message));
-const onRejection = (e: PromiseRejectionEvent) => void appendCrash(formatCrash("unhandledrejection", e.reason));
+const onRejection = (e: PromiseRejectionEvent) =>
+  void appendCrash(formatCrash("unhandledrejection", e.reason));
 
 /** Record uncaught errors and unhandled promise rejections. Returns the uninstall. */
 export function installCrashCapture(): () => void {
@@ -99,7 +103,8 @@ export interface PerfStats {
 }
 
 /** Frames over a window → fps, rounded; 0 for an empty window. */
-export const fpsOf = (frames: number, windowMs: number): number => (windowMs > 0 ? Math.round((frames * 1000) / windowMs) : 0);
+export const fpsOf = (frames: number, windowMs: number): number =>
+  windowMs > 0 ? Math.round((frames * 1000) / windowMs) : 0;
 
 /** Sample frame rate once a second and long tasks continuously. Returns the stop function. */
 export function startPerfSampler(onStats: (stats: PerfStats) => void): () => void {
@@ -126,7 +131,8 @@ export function startPerfSampler(onStats: (stats: PerfStats) => void): () => voi
 
   const timer = setInterval(() => {
     const now = performance.now();
-    const heap = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize;
+    const heap = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory
+      ?.usedJSHeapSize;
     onStats({
       fps: fpsOf(frames, now - last),
       longTasks,

@@ -20,11 +20,18 @@ function pngSize(dataUrl: string): { width: number; height: number } {
   const head = atob(payload.slice(0, 32));
   if (head.length < 24 || !head.startsWith("\x89PNG")) throw new Error("Not a PNG data URL");
   const u32 = (at: number): number =>
-    ((head.charCodeAt(at) << 24) | (head.charCodeAt(at + 1) << 16) | (head.charCodeAt(at + 2) << 8) | head.charCodeAt(at + 3)) >>> 0;
+    ((head.charCodeAt(at) << 24) |
+      (head.charCodeAt(at + 1) << 16) |
+      (head.charCodeAt(at + 2) << 8) |
+      head.charCodeAt(at + 3)) >>>
+    0;
   return { width: u32(16), height: u32(20) };
 }
 
-export function svgFromPng(dataUrl: string, meta: { title: string; symbol: string; resolution: string }): string {
+export function svgFromPng(
+  dataUrl: string,
+  meta: { title: string; symbol: string; resolution: string },
+): string {
   const { width, height } = pngSize(dataUrl);
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',

@@ -1,5 +1,16 @@
 import type { IndicatorDef, SeriesResult, SeriesValue } from "./types.js";
-import { change, ema, highest, lowest, map2, rma, round, sma, stdev, trueRange } from "./helpers.js";
+import {
+  change,
+  ema,
+  highest,
+  lowest,
+  map2,
+  rma,
+  round,
+  sma,
+  stdev,
+  trueRange,
+} from "./helpers.js";
 
 type Params = Record<string, number | boolean | string>;
 
@@ -8,15 +19,25 @@ export const num = (params: Params, id: string, fallback: number): number => {
   return typeof v === "number" && Number.isFinite(v) ? v : fallback;
 };
 
-export const res = (id: string, name: string, values: SeriesValue[], plots?: Record<string, SeriesValue[]>): SeriesResult => ({
+export const res = (
+  id: string,
+  name: string,
+  values: SeriesValue[],
+  plots?: Record<string, SeriesValue[]>,
+): SeriesResult => ({
   id,
   name,
   values: round(values),
-  ...(plots ? { plots: Object.fromEntries(Object.entries(plots).map(([k, v]) => [k, round(v)])) } : {}),
+  ...(plots
+    ? { plots: Object.fromEntries(Object.entries(plots).map(([k, v]) => [k, round(v)])) }
+    : {}),
 });
 
 /** Price source by id, matching TV's source selector. */
-export function source(data: { close: number[]; open: number[]; high: number[]; low: number[]; hl2?: number[] }, id: string): number[] {
+export function source(
+  data: { close: number[]; open: number[]; high: number[]; low: number[]; hl2?: number[] },
+  id: string,
+): number[] {
   switch (id) {
     case "open":
       return data.open;
@@ -70,7 +91,8 @@ const smaDef: IndicatorDef = {
     { id: "length", label: "Length", type: "int", default: 20, min: 1, max: 500 },
     srcParam("close"),
   ],
-  compute: (d, p) => res("sma", "SMA", sma(source(d, String(p.source ?? "close")), num(p, "length", 20))),
+  compute: (d, p) =>
+    res("sma", "SMA", sma(source(d, String(p.source ?? "close")), num(p, "length", 20))),
 };
 
 const emaDef: IndicatorDef = {
@@ -83,7 +105,8 @@ const emaDef: IndicatorDef = {
     { id: "length", label: "Length", type: "int", default: 21, min: 1, max: 500 },
     srcParam("close"),
   ],
-  compute: (d, p) => res("ema", "EMA", ema(source(d, String(p.source ?? "close")), num(p, "length", 21))),
+  compute: (d, p) =>
+    res("ema", "EMA", ema(source(d, String(p.source ?? "close")), num(p, "length", 21))),
 };
 
 const vwmaDef: IndicatorDef = {
@@ -98,7 +121,11 @@ const vwmaDef: IndicatorDef = {
     const pv = d.close.map((c, i) => c * d.volume[i]!);
     const pvSum = sma(pv, n);
     const vSum = sma(d.volume, n);
-    return res("vwma", "VWMA", map2(pvSum, vSum, (a, b) => (b === 0 ? null : a / b)));
+    return res(
+      "vwma",
+      "VWMA",
+      map2(pvSum, vSum, (a, b) => (b === 0 ? null : a / b)),
+    );
   },
 };
 
@@ -167,7 +194,8 @@ const stdevDef: IndicatorDef = {
     { id: "length", label: "Length", type: "int", default: 20, min: 1, max: 500 },
     srcParam("close"),
   ],
-  compute: (d, p) => res("stdev", "StdDev", stdev(source(d, String(p.source ?? "close")), num(p, "length", 20))),
+  compute: (d, p) =>
+    res("stdev", "StdDev", stdev(source(d, String(p.source ?? "close")), num(p, "length", 20))),
 };
 
 // --- momentum --------------------------------------------------------------
@@ -364,7 +392,12 @@ const volumeDef: IndicatorDef = {
   family: "volume",
   defaultColorIndex: 13,
   params: [],
-  compute: (d) => res("volume", "Volume", d.volume.map((v) => v)),
+  compute: (d) =>
+    res(
+      "volume",
+      "Volume",
+      d.volume.map((v) => v),
+    ),
 };
 
 /** Everything shipped with EzyView. */

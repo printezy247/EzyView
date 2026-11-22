@@ -15,13 +15,22 @@ import { EmptyState } from "./EmptyState";
 
 describe("EmptyState", () => {
   it("states that the list is empty and why it matters", () => {
-    render(<EmptyState title="No alerts yet" body="An alert fires when the price crosses the level you set." />);
+    render(
+      <EmptyState
+        title="No alerts yet"
+        body="An alert fires when the price crosses the level you set."
+      />,
+    );
     expect(screen.getByText("No alerts yet")).toBeTruthy();
-    expect(screen.getByText("An alert fires when the price crosses the level you set.")).toBeTruthy();
+    expect(
+      screen.getByText("An alert fires when the price crosses the level you set."),
+    ).toBeTruthy();
   });
 
   it("renders the icon when one is given", () => {
-    const { container } = render(<EmptyState title="No alerts yet" body="body" icon={<span data-testid="icon" />} />);
+    const { container } = render(
+      <EmptyState title="No alerts yet" body="body" icon={<span data-testid="icon" />} />,
+    );
     expect(container.querySelector('[data-testid="icon"]')).toBeTruthy();
   });
 

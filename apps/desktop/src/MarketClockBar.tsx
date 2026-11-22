@@ -43,7 +43,11 @@ export function MarketClock() {
           aria-label={`${s.label} ${s.open ? "open" : "closed"}`}
         >
           <span
-            className={s.open ? "ev-pulse size-1.5 rounded-full bg-ev-up" : "size-1.5 rounded-full bg-ev-faint"}
+            className={
+              s.open
+                ? "ev-pulse size-1.5 rounded-full bg-ev-up"
+                : "size-1.5 rounded-full bg-ev-faint"
+            }
             aria-hidden
           />
           {s.label}

@@ -148,7 +148,10 @@ export class DailyRiskTracker {
     }
   }
 
-  checkDailyDrawdown(currentEquity: number, maxLossPct: number): { tripped: boolean; drawdownPct: number } {
+  checkDailyDrawdown(
+    currentEquity: number,
+    maxLossPct: number,
+  ): { tripped: boolean; drawdownPct: number } {
     this.ensureSession();
     if (!maxLossPct || maxLossPct <= 0 || !this.startingBalance || this.startingBalance <= 0) {
       return { tripped: false, drawdownPct: 0 };
@@ -162,7 +165,11 @@ export class DailyRiskTracker {
     return { tripped: false, drawdownPct: Number(dropPct.toFixed(2)) };
   }
 
-  isSymbolInCooldown(symbol: string, cooldownSeconds: number, now: number = Date.now()): { inCooldown: boolean; remainingSec: number } {
+  isSymbolInCooldown(
+    symbol: string,
+    cooldownSeconds: number,
+    now: number = Date.now(),
+  ): { inCooldown: boolean; remainingSec: number } {
     if (!cooldownSeconds || cooldownSeconds <= 0 || !symbol) {
       return { inCooldown: false, remainingSec: 0 };
     }
@@ -206,7 +213,10 @@ export class RiskSessionSync {
    * the first sync, not the balance right now, otherwise a losing trade would
    * reset the drawdown base and the breaker would never trip.
    */
-  sync(account: { balance: number } | null, deals: readonly { id: string; symbol: string; pnl: number; time: number }[]): void {
+  sync(
+    account: { balance: number } | null,
+    deals: readonly { id: string; symbol: string; pnl: number; time: number }[],
+  ): void {
     if (!account) return;
     if (!Number.isFinite(account.balance) || account.balance <= 0) return;
     if (this.lastBalance === null || dailyRiskTracker.sessionRolledOver()) {
@@ -238,9 +248,18 @@ export function gateAction(input: GateInput, config: SafetyConfig): GateResult {
   const reasons: string[] = [];
 
   if (input.volume !== undefined && !(input.volume > 0)) {
-    return { decision: "block", reasons: ["volume must be positive"], secondConfirm: false, dryRun: config.dryRun };
+    return {
+      decision: "block",
+      reasons: ["volume must be positive"],
+      secondConfirm: false,
+      dryRun: config.dryRun,
+    };
   }
-  if (input.volume !== undefined && input.action === "place" && input.volume > config.maxOrderVolume) {
+  if (
+    input.volume !== undefined &&
+    input.action === "place" &&
+    input.volume > config.maxOrderVolume
+  ) {
     // Closing a position must always be possible: the cap only limits new risk.
     reasons.push(
       `volume ${input.volume} exceeds the max order size (${config.maxOrderVolume}) — raise it in Settings → MT5 safety or send from the terminal`,
@@ -248,7 +267,9 @@ export function gateAction(input: GateInput, config: SafetyConfig): GateResult {
     return { decision: "block", reasons, secondConfirm: false, dryRun: config.dryRun };
   }
   if (config.symbolAllowList.length > 0 && input.symbol) {
-    const allowed = config.symbolAllowList.some((s) => s.toUpperCase() === input.symbol?.toUpperCase());
+    const allowed = config.symbolAllowList.some(
+      (s) => s.toUpperCase() === input.symbol?.toUpperCase(),
+    );
     if (!allowed) {
       reasons.push(`${input.symbol} is not on the symbol allow-list`);
       return { decision: "block", reasons, secondConfirm: false, dryRun: config.dryRun };
@@ -259,16 +280,26 @@ export function gateAction(input: GateInput, config: SafetyConfig): GateResult {
     // Only new risk is gated on price quality; closing a position must always be possible.
     if (config.maxQuoteAgeSec && config.maxQuoteAgeSec > 0) {
       if (input.feedDown) {
-        reasons.push("the price feed is down, so the price on screen is not trustworthy. Wait for it to recover.");
+        reasons.push(
+          "the price feed is down, so the price on screen is not trustworthy. Wait for it to recover.",
+        );
         return { decision: "block", reasons, secondConfirm: false, dryRun: config.dryRun };
       }
       if (input.quoteAgeSec !== undefined && input.quoteAgeSec > config.maxQuoteAgeSec) {
-        reasons.push(`the price is ${Math.round(input.quoteAgeSec)}s old (max ${config.maxQuoteAgeSec}s). Wait for a fresh quote.`);
+        reasons.push(
+          `the price is ${Math.round(input.quoteAgeSec)}s old (max ${config.maxQuoteAgeSec}s). Wait for a fresh quote.`,
+        );
         return { decision: "block", reasons, secondConfirm: false, dryRun: config.dryRun };
       }
     }
-    if (config.maxOrdersPerMinute && config.maxOrdersPerMinute > 0 && (input.ordersLastMinute ?? 0) >= config.maxOrdersPerMinute) {
-      reasons.push(`${input.ordersLastMinute} orders in the last minute reached the limit of ${config.maxOrdersPerMinute}. Wait a moment.`);
+    if (
+      config.maxOrdersPerMinute &&
+      config.maxOrdersPerMinute > 0 &&
+      (input.ordersLastMinute ?? 0) >= config.maxOrdersPerMinute
+    ) {
+      reasons.push(
+        `${input.ordersLastMinute} orders in the last minute reached the limit of ${config.maxOrdersPerMinute}. Wait a moment.`,
+      );
       return { decision: "block", reasons, secondConfirm: false, dryRun: config.dryRun };
     }
     if (config.maxDailyLossPct && config.maxDailyLossPct > 0 && input.currentEquity !== undefined) {
@@ -378,7 +409,11 @@ export function scrub<T>(value: T): T {
   if (value && typeof value === "object") {
     const out: Record<string, unknown> = {};
     for (const [key, inner] of Object.entries(value as Record<string, unknown>)) {
-      out[key] = SECRET_KEY.test(key) ? (inner === undefined || inner === null ? inner : "***") : scrub(inner);
+      out[key] = SECRET_KEY.test(key)
+        ? inner === undefined || inner === null
+          ? inner
+          : "***"
+        : scrub(inner);
     }
     return out as T;
   }
@@ -395,18 +430,26 @@ export function parseSafety(raw: unknown): SafetyConfig {
   if (typeof raw !== "object" || raw === null) return DEFAULT_SAFETY;
   const candidate = raw as Partial<SafetyConfig>;
   const maxOrderVolume =
-    typeof candidate.maxOrderVolume === "number" && Number.isFinite(candidate.maxOrderVolume) && candidate.maxOrderVolume > 0
+    typeof candidate.maxOrderVolume === "number" &&
+    Number.isFinite(candidate.maxOrderVolume) &&
+    candidate.maxOrderVolume > 0
       ? candidate.maxOrderVolume
       : DEFAULT_SAFETY.maxOrderVolume;
   const symbolAllowList = Array.isArray(candidate.symbolAllowList)
-    ? candidate.symbolAllowList.filter((s): s is string => typeof s === "string" && s.trim() !== "").map((s) => s.trim())
+    ? candidate.symbolAllowList
+        .filter((s): s is string => typeof s === "string" && s.trim() !== "")
+        .map((s) => s.trim())
     : [];
   const maxDailyLossPct =
-    typeof candidate.maxDailyLossPct === "number" && Number.isFinite(candidate.maxDailyLossPct) && candidate.maxDailyLossPct >= 0
+    typeof candidate.maxDailyLossPct === "number" &&
+    Number.isFinite(candidate.maxDailyLossPct) &&
+    candidate.maxDailyLossPct >= 0
       ? candidate.maxDailyLossPct
       : DEFAULT_SAFETY.maxDailyLossPct;
   const lossCooldownSeconds =
-    typeof candidate.lossCooldownSeconds === "number" && Number.isFinite(candidate.lossCooldownSeconds) && candidate.lossCooldownSeconds >= 0
+    typeof candidate.lossCooldownSeconds === "number" &&
+    Number.isFinite(candidate.lossCooldownSeconds) &&
+    candidate.lossCooldownSeconds >= 0
       ? candidate.lossCooldownSeconds
       : DEFAULT_SAFETY.lossCooldownSeconds;
 
@@ -416,7 +459,10 @@ export function parseSafety(raw: unknown): SafetyConfig {
     dryRun: candidate.dryRun === true,
     maxDailyLossPct,
     lossCooldownSeconds,
-    maxOrdersPerMinute: nonNegative(candidate.maxOrdersPerMinute, DEFAULT_SAFETY.maxOrdersPerMinute),
+    maxOrdersPerMinute: nonNegative(
+      candidate.maxOrdersPerMinute,
+      DEFAULT_SAFETY.maxOrdersPerMinute,
+    ),
     maxQuoteAgeSec: nonNegative(candidate.maxQuoteAgeSec, DEFAULT_SAFETY.maxQuoteAgeSec),
   };
 }

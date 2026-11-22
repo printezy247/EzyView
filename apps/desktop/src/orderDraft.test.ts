@@ -3,10 +3,19 @@ import { draftSideForPrice, syncPositionDrawingToOrderTicket, useOrderDraft } fr
 
 describe("order draft", () => {
   it("publishes a draft with a new sequence number each time", () => {
-    useOrderDraft.getState().setDraft({ symbol: "OANDA:XAUUSD", side: "sell", type: "limit", price: "4165.89" });
+    useOrderDraft
+      .getState()
+      .setDraft({ symbol: "OANDA:XAUUSD", side: "sell", type: "limit", price: "4165.89" });
     const first = useOrderDraft.getState().draft!;
-    expect(first).toMatchObject({ symbol: "OANDA:XAUUSD", side: "sell", type: "limit", price: "4165.89" });
-    useOrderDraft.getState().setDraft({ symbol: "OANDA:XAUUSD", side: "sell", type: "limit", price: "4165.89" });
+    expect(first).toMatchObject({
+      symbol: "OANDA:XAUUSD",
+      side: "sell",
+      type: "limit",
+      price: "4165.89",
+    });
+    useOrderDraft
+      .getState()
+      .setDraft({ symbol: "OANDA:XAUUSD", side: "sell", type: "limit", price: "4165.89" });
     expect(useOrderDraft.getState().draft!.seq).toBeGreaterThan(first.seq);
   });
 

@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { MARKET_SESSIONS, clockFor, isOpen, nextTransition, sessionState, utcOffsetLabel } from "./marketClock";
+import {
+  MARKET_SESSIONS,
+  clockFor,
+  isOpen,
+  nextTransition,
+  sessionState,
+  utcOffsetLabel,
+} from "./marketClock";
 
 /**
  * The market clock is pure date math, so it is tested at fixed instants rather
@@ -23,7 +30,9 @@ describe("session table", () => {
   });
 
   it("marks crypto as the one session that never closes", () => {
-    expect(MARKET_SESSIONS.find((s) => s.id === "crypto")?.openUtc).toBe(MARKET_SESSIONS.find((s) => s.id === "crypto")?.closeUtc);
+    expect(MARKET_SESSIONS.find((s) => s.id === "crypto")?.openUtc).toBe(
+      MARKET_SESSIONS.find((s) => s.id === "crypto")?.closeUtc,
+    );
   });
 });
 
@@ -50,7 +59,11 @@ describe("isOpen", () => {
 describe("clockFor", () => {
   it("reads a UTC instant as minutes past midnight", () => {
     // 2026-01-05 is a Monday.
-    expect(clockFor(at("2026-01-05T14:30:00Z"))).toEqual({ minutes: 14 * 60 + 30, weekday: 1, isWeekend: false });
+    expect(clockFor(at("2026-01-05T14:30:00Z"))).toEqual({
+      minutes: 14 * 60 + 30,
+      weekday: 1,
+      isWeekend: false,
+    });
   });
 
   it("flags Saturday and Sunday", () => {

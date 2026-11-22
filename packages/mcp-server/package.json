@@ -2,8 +2,8 @@
   "name": "@ezyview/mcp-server",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "description": "EzyView MCP server: market data, indicators, options and fundamentals for AI clients over stdio.",
+  "type": "module",
   "main": "./src/server.ts",
   "types": "./src/server.ts",
   "scripts": {
@@ -15,6 +15,7 @@
     "@ezyview/fundamentals": "*",
     "@ezyview/indicators": "*",
     "@ezyview/journal": "*",
+    "@ezyview/mt5-adapter": "*",
     "@ezyview/options": "*"
   },
   "devDependencies": {

@@ -10,14 +10,7 @@ export class PineSyntaxError extends Error {
   }
 }
 
-export type TokenType =
-  | "number"
-  | "string"
-  | "ident"
-  | "op"
-  | "punct"
-  | "newline"
-  | "eof";
+export type TokenType = "number" | "string" | "ident" | "op" | "punct" | "newline" | "eof";
 
 export interface Token {
   type: TokenType;
@@ -166,7 +159,8 @@ export function lex(source: string): Token[] {
       }
       const raw = source.slice(start, i);
       const value = Number(raw);
-      if (!Number.isFinite(value)) throw new PineSyntaxError("number literal must be finite", line, col);
+      if (!Number.isFinite(value))
+        throw new PineSyntaxError("number literal must be finite", line, col);
       push("number", raw, value);
       continue;
     }

@@ -11,7 +11,12 @@ function useAlertField<T>(initial: T): [T, (next: T) => void] {
 
 interface Props {
   alerts: PriceAlert[];
-  onAdd: (symbol: string, condition: AlertCondition, frequency: AlertFrequency, message: string) => void;
+  onAdd: (
+    symbol: string,
+    condition: AlertCondition,
+    frequency: AlertFrequency,
+    message: string,
+  ) => void;
   onRemove: (id: string) => void;
   symbol: string;
   lastPrice: number | null;
@@ -81,9 +86,13 @@ export function AlertDialog({
                 <span className="text-base text-ev-strong">{describeCondition(a.condition)}</span>
                 <span className="text-dense text-ev-muted">{FREQ_LABELS[a.frequency]}</span>
                 {a.state === "triggered" && (
-                  <span className="rounded bg-ev-line px-1.5 text-dense text-ev-orange">triggered</span>
+                  <span className="rounded bg-ev-line px-1.5 text-dense text-ev-orange">
+                    triggered
+                  </span>
                 )}
-                {a.message && <span className="truncate text-dense text-ev-muted">{a.message}</span>}
+                {a.message && (
+                  <span className="truncate text-dense text-ev-muted">{a.message}</span>
+                )}
                 <IconButton
                   label="Delete alert"
                   size="sm"
@@ -91,7 +100,9 @@ export function AlertDialog({
                   className="ml-auto hover:text-ev-down-text"
                 >
                   <Bell size={13} aria-hidden className="hidden" />
-                  <span aria-hidden className="text-base leading-none">×</span>
+                  <span aria-hidden className="text-base leading-none">
+                    ×
+                  </span>
                 </IconButton>
               </li>
             ))}
@@ -215,10 +226,7 @@ function AlertForm({
         className="min-w-32 flex-1"
       />
 
-      <Button
-        onClick={submit}
-        disabled={disabled}
-      >
+      <Button onClick={submit} disabled={disabled}>
         {busy ? "Creating…" : "Create"}
       </Button>
     </div>

@@ -1,97 +1,107 @@
 import type { PineScriptRecord, PineScriptVersion, WorkspaceStore } from "./types";
 
 type SliceSet = (
-  partial: Partial<WorkspaceStore> | ((s: WorkspaceStore) => Partial<WorkspaceStore> | WorkspaceStore),
+  partial:
+    | Partial<WorkspaceStore>
+    | ((s: WorkspaceStore) => Partial<WorkspaceStore> | WorkspaceStore),
 ) => void;
 
-type PineSliceKeys = "pineScripts" | "savePineScript" | "restorePineScriptVersion" | "deletePineScript" | "setPineResult";
+type PineSliceKeys =
+  | "pineScripts"
+  | "savePineScript"
+  | "restorePineScriptVersion"
+  | "deletePineScript"
+  | "setPineResult";
 
 /** Pine-script slice: saved sources with their archived versions and last run. */
-export function createPineSlice(set: SliceSet, _get: () => WorkspaceStore): Pick<WorkspaceStore, PineSliceKeys> {
+export function createPineSlice(
+  set: SliceSet,
+  _get: () => WorkspaceStore,
+): Pick<WorkspaceStore, PineSliceKeys> {
   return {
     pineScripts: {},
 
-      savePineScript: (id, name, source) =>
-        set((s) => {
-          const existing = s.pineScripts[id];
-          // Re-saving the same source must not spam the history: only a
-          // changed head archives the one it replaces (newest first, capped).
-          const versions =
-            existing && existing.source !== source
-              ? archiveVersion(existing.versions, existing.source)
-              : existing?.versions;
-          return {
-            pineScripts: {
-              ...s.pineScripts,
-              // Keep the last run's output when only the source changed.
-              [id]: {
-                id,
-                name,
-                source,
-                options: existing?.options ?? null,
-                plots: existing?.plots ?? [],
-                orders: existing?.orders ?? [],
-                error: existing?.error ?? null,
-                // Spread so a record without the snapshot stays without it.
-                ...(existing?.inputs !== undefined ? { inputs: existing.inputs } : {}),
-                ...(versions !== undefined ? { versions } : {}),
-              },
+    savePineScript: (id, name, source) =>
+      set((s) => {
+        const existing = s.pineScripts[id];
+        // Re-saving the same source must not spam the history: only a
+        // changed head archives the one it replaces (newest first, capped).
+        const versions =
+          existing && existing.source !== source
+            ? archiveVersion(existing.versions, existing.source)
+            : existing?.versions;
+        return {
+          pineScripts: {
+            ...s.pineScripts,
+            // Keep the last run's output when only the source changed.
+            [id]: {
+              id,
+              name,
+              source,
+              options: existing?.options ?? null,
+              plots: existing?.plots ?? [],
+              orders: existing?.orders ?? [],
+              error: existing?.error ?? null,
+              // Spread so a record without the snapshot stays without it.
+              ...(existing?.inputs !== undefined ? { inputs: existing.inputs } : {}),
+              ...(versions !== undefined ? { versions } : {}),
             },
-          };
-        }),
+          },
+        };
+      }),
 
-      restorePineScriptVersion: (id, index) =>
-        set((s) => {
-          const existing = s.pineScripts[id];
-          const entry = existing?.versions?.[index];
-          // Unknown id, out-of-range index, or a pre-versioning record: no-op.
-          if (!existing || !entry) return s;
-          return {
-            pineScripts: {
-              ...s.pineScripts,
-              [id]: {
-                ...existing,
-                // The current head exists nowhere else — archive it before the
-                // restore overwrites it (same prepend+cap as a save).
-                ...(existing.source !== entry.source
-                  ? { versions: archiveVersion(existing.versions, existing.source) }
-                  : {}),
-                source: entry.source,
-              },
+    restorePineScriptVersion: (id, index) =>
+      set((s) => {
+        const existing = s.pineScripts[id];
+        const entry = existing?.versions?.[index];
+        // Unknown id, out-of-range index, or a pre-versioning record: no-op.
+        if (!existing || !entry) return s;
+        return {
+          pineScripts: {
+            ...s.pineScripts,
+            [id]: {
+              ...existing,
+              // The current head exists nowhere else — archive it before the
+              // restore overwrites it (same prepend+cap as a save).
+              ...(existing.source !== entry.source
+                ? { versions: archiveVersion(existing.versions, existing.source) }
+                : {}),
+              source: entry.source,
             },
-          };
-        }),
+          },
+        };
+      }),
 
-      deletePineScript: (id) =>
-        set((s) => {
-          const next = { ...s.pineScripts };
-          delete next[id];
-          return { pineScripts: next };
-        }),
+    deletePineScript: (id) =>
+      set((s) => {
+        const next = { ...s.pineScripts };
+        delete next[id];
+        return { pineScripts: next };
+      }),
 
-      setPineResult: (id, result) =>
-        set((s) => {
-          if (!result) return {};
-          const existing = s.pineScripts[id];
-          // A run writes the live buffer into the record; archive the head it
-          // replaces so a later same-source save cannot destroy it.
-          const versions =
-            existing && existing.source !== result.source
-              ? archiveVersion(existing.versions, existing.source)
-              : existing?.versions;
-          return {
-            pineScripts: {
-              ...s.pineScripts,
-              [id]: {
-                ...existing,
-                ...result,
-                id,
-                // Spread so a pre-versioning record stays without the key.
-                ...(versions !== undefined ? { versions } : {}),
-              },
+    setPineResult: (id, result) =>
+      set((s) => {
+        if (!result) return {};
+        const existing = s.pineScripts[id];
+        // A run writes the live buffer into the record; archive the head it
+        // replaces so a later same-source save cannot destroy it.
+        const versions =
+          existing && existing.source !== result.source
+            ? archiveVersion(existing.versions, existing.source)
+            : existing?.versions;
+        return {
+          pineScripts: {
+            ...s.pineScripts,
+            [id]: {
+              ...existing,
+              ...result,
+              id,
+              // Spread so a pre-versioning record stays without the key.
+              ...(versions !== undefined ? { versions } : {}),
             },
-          };
-        }),
+          },
+        };
+      }),
   };
 }
 
@@ -124,11 +134,19 @@ export function restorePineScripts(raw: unknown): Record<string, PineScriptRecor
     if (id === "__proto__") continue;
     if (typeof value !== "object" || value === null || Array.isArray(value)) continue;
     const rec = value as Partial<PineScriptRecord>;
-    if (typeof rec.id !== "string" || typeof rec.name !== "string" || typeof rec.source !== "string") continue;
+    if (
+      typeof rec.id !== "string" ||
+      typeof rec.name !== "string" ||
+      typeof rec.source !== "string"
+    )
+      continue;
     const versions = Array.isArray(rec.versions)
       ? rec.versions.filter(
           (v): v is PineScriptVersion =>
-            typeof v === "object" && v !== null && typeof v.source === "string" && typeof v.savedAt === "number",
+            typeof v === "object" &&
+            v !== null &&
+            typeof v.source === "string" &&
+            typeof v.savedAt === "number",
         )
       : undefined;
     out[id] = {
@@ -150,4 +168,3 @@ export function restorePineScripts(raw: unknown): Record<string, PineScriptRecor
   }
   return out;
 }
-

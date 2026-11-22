@@ -31,10 +31,16 @@ export interface RetryOptions {
   shouldRetry?: (err: unknown, attempt: number) => boolean;
 }
 
-const defaultSleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+const defaultSleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Exponential backoff with full jitter: `random(0 .. min(max, base * 2^n))`. */
-export function backoffDelay(attempt: number, baseDelayMs: number, maxDelayMs: number, rand = Math.random): number {
+export function backoffDelay(
+  attempt: number,
+  baseDelayMs: number,
+  maxDelayMs: number,
+  rand = Math.random,
+): number {
   const exp = Math.min(maxDelayMs, baseDelayMs * 2 ** attempt);
   return Math.floor(rand() * exp);
 }
@@ -46,7 +52,10 @@ export function backoffDelay(attempt: number, baseDelayMs: number, maxDelayMs: n
  * retry (e.g. an HTTP 400 is not transient); when it returns false the error
  * is rethrown immediately. The final error is rethrown if every attempt fails.
  */
-export async function withRetry<T>(fn: (signal: AbortSignal | undefined) => Promise<T>, opts: RetryOptions = {}): Promise<T> {
+export async function withRetry<T>(
+  fn: (signal: AbortSignal | undefined) => Promise<T>,
+  opts: RetryOptions = {},
+): Promise<T> {
   const attempts = Math.max(1, opts.attempts ?? 3);
   const base = opts.baseDelayMs ?? 250;
   const max = opts.maxDelayMs ?? 2000;
@@ -84,7 +93,11 @@ function runOnce<T>(
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   const guarded = Promise.resolve(fn(ctrl.signal)).finally(() => clearTimeout(timer));
   const expiry = new Promise<never>((_resolve, reject) => {
-    ctrl.signal.addEventListener("abort", () => reject(new Error(`Timed out after ${timeoutMs}ms`)), { once: true });
+    ctrl.signal.addEventListener(
+      "abort",
+      () => reject(new Error(`Timed out after ${timeoutMs}ms`)),
+      { once: true },
+    );
   });
   return Promise.race([guarded, expiry]);
 }
@@ -131,7 +144,8 @@ export class CircuitBreaker {
   before(): void {
     if (this.state === "closed") return;
     const elapsed = this.now() - this.openedAt;
-    if (elapsed < this.cooldownMs) throw new CircuitOpenError(this.openedAt + this.cooldownMs - elapsed);
+    if (elapsed < this.cooldownMs)
+      throw new CircuitOpenError(this.openedAt + this.cooldownMs - elapsed);
     // Cooldown elapsed: let exactly one probe through.
     this.state = "half_open";
   }

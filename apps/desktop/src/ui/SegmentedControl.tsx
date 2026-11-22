@@ -29,7 +29,14 @@ export interface SegmentedControlProps {
  *
  * Arrow keys move the selection, Home/End jump to the ends.
  */
-export function SegmentedControl({ value, onChange, options, label, size = "md", className }: SegmentedControlProps) {
+export function SegmentedControl({
+  value,
+  onChange,
+  options,
+  label,
+  size = "md",
+  className,
+}: SegmentedControlProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   const enabled = options.filter((o) => !o.disabled);
@@ -43,7 +50,7 @@ export function SegmentedControl({ value, onChange, options, label, size = "md",
     const from = enabled.findIndex((o) => o.value === value);
     const move = (delta: 1 | -1) => {
       e.preventDefault();
-      const next = enabled[(((from === -1 ? 0 : from) + delta + enabled.length) % enabled.length)]!;
+      const next = enabled[((from === -1 ? 0 : from) + delta + enabled.length) % enabled.length]!;
       onChange(next.value);
       const buttons = ref.current?.querySelectorAll<HTMLButtonElement>("button");
       if (buttons) buttons[[...buttons].findIndex((b) => b.dataset.value === next.value)]?.focus();
@@ -60,7 +67,13 @@ export function SegmentedControl({ value, onChange, options, label, size = "md",
   };
 
   return (
-    <div ref={ref} role="group" aria-label={label} onKeyDown={onKeyDown} className={segmentedClass({ size, className })}>
+    <div
+      ref={ref}
+      role="group"
+      aria-label={label}
+      onKeyDown={onKeyDown}
+      className={segmentedClass({ size, className })}
+    >
       {options.map((option) => {
         const active = option.value === value;
         return (

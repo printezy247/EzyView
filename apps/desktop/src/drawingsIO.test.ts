@@ -32,7 +32,9 @@ describe("drawingsIO", () => {
   it("rejects entries missing a string id or known tool", () => {
     expect(parseDrawings('{"version":1,"drawings":[{"id":1}]}').ok).toBe(false);
     expect(
-      parseDrawings('{"version":1,"drawings":[{"id":"a","tool":"no_such_tool","points":[],"style":{}}]}').ok,
+      parseDrawings(
+        '{"version":1,"drawings":[{"id":"a","tool":"no_such_tool","points":[],"style":{}}]}',
+      ).ok,
     ).toBe(false);
   });
 
@@ -76,7 +78,14 @@ describe("drawingsIO", () => {
   it("migrates a v1 drawing and keeps its v2 fields optional", () => {
     const legacy = JSON.stringify({
       version: 1,
-      drawings: [{ id: "old", tool: "trend_line", points: [{ time: 1, price: 2 }], style: { color: "#fff", width: 1, lineStyle: "solid" } }],
+      drawings: [
+        {
+          id: "old",
+          tool: "trend_line",
+          points: [{ time: 1, price: 2 }],
+          style: { color: "#fff", width: 1, lineStyle: "solid" },
+        },
+      ],
     });
     const parsed = parseDrawings(legacy);
     expect(parsed.ok).toBe(true);
@@ -104,7 +113,11 @@ describe("drawingsIO", () => {
       groupId: "g1",
       zIndex: 7,
       scale: "screen",
-      pattern: { kind: "harmonic", ratios: { "0": 0.618, "1": 1.27 }, labels: ["X", "A", "B", "C", "D"] },
+      pattern: {
+        kind: "harmonic",
+        ratios: { "0": 0.618, "1": 1.27 },
+        labels: ["X", "A", "B", "C", "D"],
+      },
       image: { assetId: "img_1", width: 640, height: 360, lockAspect: true },
     };
     const parsed = parseDrawings(serializeDrawings([rich]));
@@ -119,21 +132,36 @@ describe("drawingsIO", () => {
 
   it("rejects malformed v2 metadata instead of trusting it", () => {
     const base = { id: "a", tool: "trend_line", points: [{ time: 1, price: 1 }], style: {} };
-    expect(parseDrawings(JSON.stringify({ version: 2, drawings: [{ ...base, groupId: "" }] })).ok).toBe(false);
-    expect(parseDrawings(JSON.stringify({ version: 2, drawings: [{ ...base, zIndex: "front" }] })).ok).toBe(false);
-    expect(parseDrawings(JSON.stringify({ version: 2, drawings: [{ ...base, scale: "page" }] })).ok).toBe(false);
-    expect(parseDrawings(JSON.stringify({ version: 2, drawings: [{ ...base, image: { assetId: "" } }] })).ok).toBe(false);
+    expect(
+      parseDrawings(JSON.stringify({ version: 2, drawings: [{ ...base, groupId: "" }] })).ok,
+    ).toBe(false);
+    expect(
+      parseDrawings(JSON.stringify({ version: 2, drawings: [{ ...base, zIndex: "front" }] })).ok,
+    ).toBe(false);
+    expect(
+      parseDrawings(JSON.stringify({ version: 2, drawings: [{ ...base, scale: "page" }] })).ok,
+    ).toBe(false);
+    expect(
+      parseDrawings(JSON.stringify({ version: 2, drawings: [{ ...base, image: { assetId: "" } }] }))
+        .ok,
+    ).toBe(false);
   });
 
   it("rejects malformed visibility values instead of trusting them", () => {
     const bad =
       '{"version":1,"drawings":[{"id":"a","tool":"trend_line","points":[{"time":1,"price":1}],"style":{},"visibility":{"minutes":"no"}}]}';
     expect(parseDrawings(bad).ok).toBe(false);
-    expect(parseDrawings('{"version":1,"drawings":[{"id":"a","tool":"trend_line","points":[{"time":1,"price":1}],"style":{},"visibility":[]}]}').ok).toBe(false);
+    expect(
+      parseDrawings(
+        '{"version":1,"drawings":[{"id":"a","tool":"trend_line","points":[{"time":1,"price":1}],"style":{},"visibility":[]}]}',
+      ).ok,
+    ).toBe(false);
   });
 
   it("reports which entry failed", () => {
-    const res = parseDrawings('{"version":1,"drawings":[{"id":"ok","tool":"text","points":[{"time":1,"price":1}],"style":{}},{"id":2}]}');
+    const res = parseDrawings(
+      '{"version":1,"drawings":[{"id":"ok","tool":"text","points":[{"time":1,"price":1}],"style":{}},{"id":2}]}',
+    );
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error).toMatch(/1/); // names the bad index
   });

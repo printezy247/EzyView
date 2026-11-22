@@ -33,8 +33,9 @@ function mediaTarget(width: number, height: number) {
     fillRect: vi.fn(),
   };
   const target = {
-    useMediaCoordinateSpace: (cb: (scope: { context: typeof ctx; mediaSize: { width: number; height: number } }) => void) =>
-      cb({ context: ctx, mediaSize: { width, height } }),
+    useMediaCoordinateSpace: (
+      cb: (scope: { context: typeof ctx; mediaSize: { width: number; height: number } }) => void,
+    ) => cb({ context: ctx, mediaSize: { width, height } }),
   };
   return { target: target as never, ctx };
 }

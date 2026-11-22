@@ -44,7 +44,9 @@ describe("isTypingTarget", () => {
   it("is true for inputs, textareas and contenteditable hosts", () => {
     expect(isTypingTarget({ tagName: "INPUT" } as unknown as HTMLElement)).toBe(true);
     expect(isTypingTarget({ tagName: "TEXTAREA" } as unknown as HTMLElement)).toBe(true);
-    expect(isTypingTarget({ tagName: "DIV", isContentEditable: true } as unknown as HTMLElement)).toBe(true);
+    expect(
+      isTypingTarget({ tagName: "DIV", isContentEditable: true } as unknown as HTMLElement),
+    ).toBe(true);
   });
 
   it("is false for buttons, the body and null", () => {

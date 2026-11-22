@@ -12,7 +12,9 @@ const randomWalk = (n: number, seed = 42): number[] => {
   const out: number[] = [];
   for (let i = 0; i < n; i++) {
     // Deterministic xorshift so failures are reproducible.
-    x ^= x << 13; x ^= x >>> 17; x ^= x << 5;
+    x ^= x << 13;
+    x ^= x >>> 17;
+    x ^= x << 5;
     out.push(((x % 10_000) / 100) | 0);
   }
   return out;

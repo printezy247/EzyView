@@ -26,7 +26,10 @@ export function dateKey(epochSeconds: number): string {
  * boundary with the clock instead of adding a fixed 24 h.
  */
 // eslint-disable-next-line no-shadow -- public parameter name is `dateKey` by design.
-export function reviewWindow(dateKey: string, period: "daily" | "weekly"): { start: number; end: number } {
+export function reviewWindow(
+  dateKey: string,
+  period: "daily" | "weekly",
+): { start: number; end: number } {
   const [year = 0, month = 1, day = 1] = dateKey.split("-").map(Number);
   const keyDate = new Date(year, month - 1, day);
 
@@ -36,7 +39,10 @@ export function reviewWindow(dateKey: string, period: "daily" | "weekly"): { sta
 
   // ISO weekday of the key (Monday = 0 … Sunday = 6), then step back to Monday.
   const sinceMonday = (keyDate.getDay() + 6) % 7;
-  return windowOf(new Date(year, month - 1, day - sinceMonday), new Date(year, month - 1, day - sinceMonday + 7));
+  return windowOf(
+    new Date(year, month - 1, day - sinceMonday),
+    new Date(year, month - 1, day - sinceMonday + 7),
+  );
 }
 
 /** Deterministic review text for entries (by `entryTime`) and notes in `[startSec, endSec)`. */
@@ -73,7 +79,9 @@ export function composeReview(
     }
   }
   if (rulesTotal > 0) {
-    lines.push(`Rule adherence ${Math.round((rulesDone / rulesTotal) * 100)}% (${rulesDone}/${rulesTotal})`);
+    lines.push(
+      `Rule adherence ${Math.round((rulesDone / rulesTotal) * 100)}% (${rulesDone}/${rulesTotal})`,
+    );
   }
 
   if (windowNotes.length > 0) lines.push(`Notes ${windowNotes.length}`);

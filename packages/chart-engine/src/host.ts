@@ -29,11 +29,7 @@ import type { IndicatorDef, SeriesResult, SeriesValue } from "@ezyview/indicator
 import type { Drawing, ScreenPoint } from "@ezyview/drawing-tools";
 import { BgBandsPrimitive } from "./bands.js";
 import { FundamentalLinesPrimitive, type FundamentalLine } from "./fundamentalLines.js";
-import {
-  EventStripPrimitive,
-  type EventStripChip,
-  type EventStripMarker,
-} from "./eventStrip.js";
+import { EventStripPrimitive, type EventStripChip, type EventStripMarker } from "./eventStrip.js";
 import { DrawingsPrimitive } from "./drawings.js";
 import { timeToX, xToTime } from "./timeAxis.js";
 import { DARK_THEME, colorAt, type ChartTheme } from "./theme.js";
@@ -47,7 +43,17 @@ import {
   type CrosshairStyleName,
   type PriceScaleModeName,
 } from "./settings.js";
-import { autoBoxSize, heikinAshi, kagi, lineBreak, pointAndFigure, rangeBars, renko, sequentialTimes, type PriceBox } from "./transforms.js";
+import {
+  autoBoxSize,
+  heikinAshi,
+  kagi,
+  lineBreak,
+  pointAndFigure,
+  rangeBars,
+  renko,
+  sequentialTimes,
+  type PriceBox,
+} from "./transforms.js";
 import { VolumeProfilePrimitive } from "./volumeProfile.js";
 import { sessionBreaks } from "./sessionBreaks.js";
 import { alignCompare, type CompareSeries } from "./overlays.js";
@@ -75,11 +81,26 @@ export type ChartType =
  * are hidden while one is shown.
  */
 export function isTimeBased(type: ChartType): boolean {
-  return type !== "renko" && type !== "kagi" && type !== "pnf" && type !== "linebreak" && type !== "rangebars";
+  return (
+    type !== "renko" &&
+    type !== "kagi" &&
+    type !== "pnf" &&
+    type !== "linebreak" &&
+    type !== "rangebars"
+  );
 }
 
 /** Types drawn with the candlestick series and the theme's up/down colors. */
-const CANDLE_TYPES = new Set<ChartType>(["candles", "hollow", "bars", "heikin", "renko", "pnf", "linebreak", "rangebars"]);
+const CANDLE_TYPES = new Set<ChartType>([
+  "candles",
+  "hollow",
+  "bars",
+  "heikin",
+  "renko",
+  "pnf",
+  "linebreak",
+  "rangebars",
+]);
 
 export interface IndicatorInstance {
   uid: string;
@@ -237,16 +258,16 @@ const IMPACT_COLORS: Record<Impact, string> = {
 const EARNINGS_COLOR = "#f0b90b";
 
 /** Map overlay markers onto LWC series markers: amber circles and impact squares. */
-export function toFundamentalMarkers(markers: readonly FundamentalEventMarker[]): SeriesMarker<Time>[] {
+export function toFundamentalMarkers(
+  markers: readonly FundamentalEventMarker[],
+): SeriesMarker<Time>[] {
   return markers
-    .map(
-      (m): SeriesMarker<Time> => ({
-        time: m.time as UTCTimestamp,
-        position: "aboveBar",
-        shape: m.kind === "earnings" ? "circle" : "square",
-        color: m.kind === "earnings" ? EARNINGS_COLOR : IMPACT_COLORS[m.impact ?? "high"],
-      }),
-    )
+    .map((m): SeriesMarker<Time> => ({
+      time: m.time as UTCTimestamp,
+      position: "aboveBar",
+      shape: m.kind === "earnings" ? "circle" : "square",
+      color: m.kind === "earnings" ? EARNINGS_COLOR : IMPACT_COLORS[m.impact ?? "high"],
+    }))
     .sort((a, b) => Number(a.time) - Number(b.time));
 }
 
@@ -306,7 +327,9 @@ export class EzyChart {
    */
   private readonly sessionBands = new BgBandsPrimitive();
   /** Volume-by-price for the visible range, along the right edge. */
-  private readonly volumeProfile = new VolumeProfilePrimitive((price) => this.priceToCoordinate(price));
+  private readonly volumeProfile = new VolumeProfilePrimitive((price) =>
+    this.priceToCoordinate(price),
+  );
   /** Markers contributed by `plotshape()`-style plots, rebuilt with the data. */
   private markerLayer: SeriesMarker<Time>[] = [];
   /** Compare symbols drawn on their own normalised scale. */
@@ -319,7 +342,9 @@ export class EzyChart {
   /** Last strip chip id sent to `onEventHover`; hover only fires on change. */
   private lastEventOid: string | null = null;
   /** Full-pane dashed lines for macro events; a primitive, never a drawing. */
-  private readonly fundamentalLines = new FundamentalLinesPrimitive((time) => this.timeToCoordinate(time));
+  private readonly fundamentalLines = new FundamentalLinesPrimitive((time) =>
+    this.timeToCoordinate(time),
+  );
   /** v5 exposes markers as a series plugin, so it is bound to the main series. */
   private markerApi: ISeriesMarkersPluginApi<Time> | null = null;
   /** Entry/stop/target levels for the open position, drawn as price lines. */
@@ -346,9 +371,20 @@ export class EzyChart {
   private drawingsLayer: Drawing[] = [];
   private boxSize: number | null;
   /** Last main-series points and what they were built from, so a theme or type round-trip reuses them. */
-  private seriesCache: { data: Candle[]; type: ChartType; theme: ChartTheme; box: number | null; points: never[] } | null =
-    null;
-  private sharedOhlcv: { open: number[]; high: number[]; low: number[]; close: number[]; volume: number[] } | null = null;
+  private seriesCache: {
+    data: Candle[];
+    type: ChartType;
+    theme: ChartTheme;
+    box: number | null;
+    points: never[];
+  } | null = null;
+  private sharedOhlcv: {
+    open: number[];
+    high: number[];
+    low: number[];
+    close: number[];
+    volume: number[];
+  } | null = null;
   private sharedOhlcvKey = "";
 
   /** A tick can move high, low or volume while the close lands where it was, so the key covers the whole last bar. */
@@ -356,7 +392,13 @@ export class EzyChart {
     return `${this.data.length}|${last?.time ?? 0}|${last?.open ?? 0}|${last?.high ?? 0}|${last?.low ?? 0}|${last?.close ?? 0}|${last?.volume ?? 0}`;
   }
 
-  private getSharedOhlcv(): { open: number[]; high: number[]; low: number[]; close: number[]; volume: number[] } {
+  private getSharedOhlcv(): {
+    open: number[];
+    high: number[];
+    low: number[];
+    close: number[];
+    volume: number[];
+  } {
     const first = this.data[0];
     const last = this.data.at(-1);
     // The key also covers the first bar and total volume: a backfill that
@@ -454,7 +496,8 @@ export class EzyChart {
     this.chart.subscribeCrosshairMove((param) => {
       const time = param.time === undefined ? null : Number(param.time);
       this.opts.onCrosshairTime?.(time);
-      const oid = typeof param.hoveredInfo?.objectId === "string" ? param.hoveredInfo.objectId : null;
+      const oid =
+        typeof param.hoveredInfo?.objectId === "string" ? param.hoveredInfo.objectId : null;
       const key = oid?.startsWith("evstrip:") ? oid : null;
       if (key !== this.lastEventOid) {
         this.lastEventOid = key;
@@ -464,7 +507,8 @@ export class EzyChart {
       }
       if (this.opts.onCrosshairMove) {
         const y = param.point?.y;
-        const price = y === undefined || !this.mainSeries ? null : this.mainSeries.coordinateToPrice(y);
+        const price =
+          y === undefined || !this.mainSeries ? null : this.mainSeries.coordinateToPrice(y);
         this.opts.onCrosshairMove(time, price === null ? null : Number(price));
       }
     });
@@ -472,7 +516,12 @@ export class EzyChart {
     // Scrolling to the left edge asks the app for older bars (once per request:
     // the app answers with `prependCandles`, or the edge simply stays).
     this.chart.timeScale().subscribeVisibleLogicalRangeChange?.((range) => {
-      if (range && range.from < OLDER_TRIGGER_BARS && this.data.length > 0 && isTimeBased(this.type)) {
+      if (
+        range &&
+        range.from < OLDER_TRIGGER_BARS &&
+        this.data.length > 0 &&
+        isTimeBased(this.type)
+      ) {
         this.opts.onNeedOlder?.();
       }
     });
@@ -485,7 +534,8 @@ export class EzyChart {
         return;
       }
       const result = this.screenToTimePrice(point.x, point.y);
-      const oid = typeof param.hoveredInfo?.objectId === "string" ? param.hoveredInfo.objectId : null;
+      const oid =
+        typeof param.hoveredInfo?.objectId === "string" ? param.hoveredInfo.objectId : null;
       const eventHit = oid?.startsWith("evstrip:") ? this.eventStripHit(oid) : null;
       this.opts.onClick?.({
         time: result.time,
@@ -512,7 +562,9 @@ export class EzyChart {
     const range = this.chart.timeScale().getVisibleLogicalRange();
     this.setData([...fresh, ...this.data]);
     if (range) {
-      this.chart.timeScale().setVisibleLogicalRange({ from: range.from + fresh.length, to: range.to + fresh.length });
+      this.chart
+        .timeScale()
+        .setVisibleLogicalRange({ from: range.from + fresh.length, to: range.to + fresh.length });
     }
     return fresh.length;
   }
@@ -699,10 +751,19 @@ export class EzyChart {
         textColor: theme.textColor,
         panes: { separatorColor: theme.paneSeparator, enableResize: true },
       },
-      grid: { vertLines: { color: this.gridColor("vert") }, horzLines: { color: this.gridColor("horz") } },
+      grid: {
+        vertLines: { color: this.gridColor("vert") },
+        horzLines: { color: this.gridColor("horz") },
+      },
       crosshair: {
-        vertLine: { color: this.crosshairColor ?? theme.crosshair, style: this.crosshairLineStyle() },
-        horzLine: { color: this.crosshairColor ?? theme.crosshair, style: this.crosshairLineStyle() },
+        vertLine: {
+          color: this.crosshairColor ?? theme.crosshair,
+          style: this.crosshairLineStyle(),
+        },
+        horzLine: {
+          color: this.crosshairColor ?? theme.crosshair,
+          style: this.crosshairLineStyle(),
+        },
       },
       rightPriceScale: { borderColor: theme.grid },
       timeScale: { borderColor: theme.grid },
@@ -717,7 +778,8 @@ export class EzyChart {
     }
     // Kagi colors its line per point, so the data carries the theme. Column
     // and high-low bake theme colors into points/options the same way.
-    if (this.type === "kagi" || this.type === "column" || this.type === "highlow") this.mainSeries?.setData(this.seriesData());
+    if (this.type === "kagi" || this.type === "column" || this.type === "highlow")
+      this.mainSeries?.setData(this.seriesData());
     for (const line of this.levelLines) line.applyOptions({ color: theme.paneSeparator });
   }
 
@@ -740,13 +802,21 @@ export class EzyChart {
    * colours follow the theme; hidden lines are transparent, not removed, so
    * toggling is instant and does not rebuild the chart.
    */
-  setGrid(options: { vert?: boolean; horz?: boolean; vertColor?: string | null; horzColor?: string | null }): void {
+  setGrid(options: {
+    vert?: boolean;
+    horz?: boolean;
+    vertColor?: string | null;
+    horzColor?: string | null;
+  }): void {
     if (options.vert !== undefined) this.showVertGrid = options.vert;
     if (options.horz !== undefined) this.showHorzGrid = options.horz;
     if (options.vertColor !== undefined) this.gridVertColor = options.vertColor || null;
     if (options.horzColor !== undefined) this.gridHorzColor = options.horzColor || null;
     this.chart.applyOptions({
-      grid: { vertLines: { color: this.gridColor("vert") }, horzLines: { color: this.gridColor("horz") } },
+      grid: {
+        vertLines: { color: this.gridColor("vert") },
+        horzLines: { color: this.gridColor("horz") },
+      },
     });
   }
 
@@ -768,7 +838,10 @@ export class EzyChart {
   setLastPriceVisible(visible: boolean): void {
     if (visible === this.showLastPrice) return;
     this.showLastPrice = visible;
-    (this.mainSeries as ISeriesApi<SeriesType> | null)?.applyOptions({ priceLineVisible: visible, lastValueVisible: visible });
+    (this.mainSeries as ISeriesApi<SeriesType> | null)?.applyOptions({
+      priceLineVisible: visible,
+      lastValueVisible: visible,
+    });
   }
 
   private gridColor(axis: "vert" | "horz"): string {
@@ -836,7 +909,12 @@ export class EzyChart {
     }
     const lines = [{ text, color: translucent(this.theme.textColor, 0.12) }];
     if (this.watermark) this.watermark.applyOptions({ lines });
-    else this.watermark = createTextWatermark(pane, { lines, horzAlign: "center", vertAlign: "center" });
+    else
+      this.watermark = createTextWatermark(pane, {
+        lines,
+        horzAlign: "center",
+        vertAlign: "center",
+      });
   }
 
   /** Resolve a strip chip id from a hover/click to its markers. */
@@ -868,7 +946,9 @@ export class EzyChart {
   private syncEventStrip(): void {
     const data = this.layerData;
     const maxTime = data.length > 0 ? Number(data[data.length - 1]!.time) : Infinity;
-    const visible = Number.isFinite(maxTime) ? this.fundamentalEventRows.filter((m) => m.time <= maxTime) : [];
+    const visible = Number.isFinite(maxTime)
+      ? this.fundamentalEventRows.filter((m) => m.time <= maxTime)
+      : [];
     this.eventStrip.setMarkers(visible);
   }
 
@@ -886,7 +966,10 @@ export class EzyChart {
       return;
     }
     const breaks = sessionBreaks(times, sessionId);
-    this.sessionBands.setBands(breaks.length > 0 ? [{ color, flags: breaks }] : [], times as UTCTimestamp[]);
+    this.sessionBands.setBands(
+      breaks.length > 0 ? [{ color, flags: breaks }] : [],
+      times as UTCTimestamp[],
+    );
   }
 
   /**
@@ -946,7 +1029,8 @@ export class EzyChart {
   setIndicators(instances: IndicatorInstance[]): void {
     this.currentInstances = instances;
     const live = new Set(instances.map((i) => i.uid));
-    for (const uid of this.indicatorCache.keys()) if (!live.has(uid)) this.indicatorCache.delete(uid);
+    for (const uid of this.indicatorCache.keys())
+      if (!live.has(uid)) this.indicatorCache.delete(uid);
     this.reconcileLayers();
   }
 
@@ -960,7 +1044,10 @@ export class EzyChart {
    * Called as one job with the indicator pass because pane indices shift on
    * removal — two independent reconcilers would fight over the same panes.
    */
-  setScriptPlots(plots: readonly ScriptPlotSpec[], bands: readonly { color: string; values: SeriesValue[] }[] = []): void {
+  setScriptPlots(
+    plots: readonly ScriptPlotSpec[],
+    bands: readonly { color: string; values: SeriesValue[] }[] = [],
+  ): void {
     this.currentPlots = [...plots];
     this.currentBands = [...bands];
     this.reconcileLayers();
@@ -1029,7 +1116,8 @@ export class EzyChart {
         out.push({
           time: data[i]!.time as UTCTimestamp,
           position: value < -1e15 ? "belowBar" : "aboveBar",
-          shape: plot.style === "triangle" ? "arrowUp" : plot.style === "cross" ? "square" : "circle",
+          shape:
+            plot.style === "triangle" ? "arrowUp" : plot.style === "cross" ? "square" : "circle",
           color: plot.color,
         });
       }
@@ -1048,10 +1136,9 @@ export class EzyChart {
     const merged = mergeMarkerLayers(this.markerLayer, []);
     if (this.markerApi === null) {
       if (merged.length === 0) return;
-      this.markerApi = createSeriesMarkers(
-        series as unknown as ISeriesApi<SeriesType, Time>,
-        [...merged],
-      );
+      this.markerApi = createSeriesMarkers(series as unknown as ISeriesApi<SeriesType, Time>, [
+        ...merged,
+      ]);
       return;
     }
     this.markerApi.setMarkers([...merged]);
@@ -1085,7 +1172,11 @@ export class EzyChart {
     if (plot.style === "histogram") {
       const series = this.chart.addSeries(
         HistogramSeries,
-        { priceLineVisible: false, lastValueVisible: false, priceFormat: { type: "price", precision: 4, minMove: 0.0001 } },
+        {
+          priceLineVisible: false,
+          lastValueVisible: false,
+          priceFormat: { type: "price", precision: 4, minMove: 0.0001 },
+        },
         paneIndex,
       );
       series.setData(toValueData(this.data, plot.values, plot.color, true));
@@ -1162,7 +1253,11 @@ export class EzyChart {
       if (spec.hist && !overlay) {
         const series = this.chart.addSeries(
           HistogramSeries,
-          { priceLineVisible: false, lastValueVisible: false, priceFormat: { type: "price", precision: 4, minMove: 0.0001 } },
+          {
+            priceLineVisible: false,
+            lastValueVisible: false,
+            priceFormat: { type: "price", precision: 4, minMove: 0.0001 },
+          },
           paneIndex,
         );
         series.setData(toValueData(this.data, spec.values, undefined, true));
@@ -1264,7 +1359,10 @@ export class EzyChart {
    * the click cannot be placed (outside the plot area, non-finite conversion,
    * or NaN/Infinity input). Increments the debug click counter on every call.
    */
-  screenToTimePrice(x: number, y: number): { ok: boolean; time: number | null; price: number | null; reason: string | null } {
+  screenToTimePrice(
+    x: number,
+    y: number,
+  ): { ok: boolean; time: number | null; price: number | null; reason: string | null } {
     this.clickCount += 1;
     this.lastClick = { x, y, t: Date.now() };
 
@@ -1397,7 +1495,11 @@ export class EzyChart {
     const base = { priceLineVisible: this.showLastPrice, lastValueVisible: this.showLastPrice };
     switch (this.type) {
       case "line":
-        this.mainSeries = this.chart.addSeries(LineSeries, { ...base, lineWidth: 2, color: "#2962ff" }) as ISeriesApi<never>;
+        this.mainSeries = this.chart.addSeries(LineSeries, {
+          ...base,
+          lineWidth: 2,
+          color: "#2962ff",
+        }) as ISeriesApi<never>;
         break;
       case "area":
         this.mainSeries = this.chart.addSeries(AreaSeries, {
@@ -1451,7 +1553,11 @@ export class EzyChart {
       case "linebreak":
       case "rangebars":
         // Bricks and columns have no wicks: high/low equal the body.
-        this.mainSeries = this.chart.addSeries(CandlestickSeries, { ...base, borderVisible: true, wickVisible: false }) as ISeriesApi<never>;
+        this.mainSeries = this.chart.addSeries(CandlestickSeries, {
+          ...base,
+          borderVisible: true,
+          wickVisible: false,
+        }) as ISeriesApi<never>;
         break;
       case "kagi":
         // A step line draws the shoulder across, then the next line vertically.
@@ -1462,7 +1568,11 @@ export class EzyChart {
         }) as ISeriesApi<never>;
         break;
       default:
-        this.mainSeries = this.chart.addSeries(CandlestickSeries, { ...base, borderVisible: true, wickVisible: true }) as ISeriesApi<never>;
+        this.mainSeries = this.chart.addSeries(CandlestickSeries, {
+          ...base,
+          borderVisible: true,
+          wickVisible: true,
+        }) as ISeriesApi<never>;
     }
     this.applyCandleColors();
     this.mainSeries.setData(this.seriesData());
@@ -1504,11 +1614,23 @@ export class EzyChart {
   /** Main-series points for the current type, theme and candles. */
   private seriesData(): never[] {
     const c = this.seriesCache;
-    if (c && c.data === this.data && c.type === this.type && c.theme === this.theme && c.box === this.boxSize) {
+    if (
+      c &&
+      c.data === this.data &&
+      c.type === this.type &&
+      c.theme === this.theme &&
+      c.box === this.boxSize
+    ) {
       return c.points;
     }
     const points = this.buildSeriesData();
-    this.seriesCache = { data: this.data, type: this.type, theme: this.theme, box: this.boxSize, points };
+    this.seriesCache = {
+      data: this.data,
+      type: this.type,
+      theme: this.theme,
+      box: this.boxSize,
+      points,
+    };
     return points;
   }
 
@@ -1550,7 +1672,11 @@ export class EzyChart {
         const color = (yang: boolean) => (yang ? this.theme.upColor : this.theme.downColor);
         return [
           { time: times[0] as UTCTimestamp, value: first.start, color: color(first.yang) },
-          ...lines.map((l, i) => ({ time: times[i + 1] as UTCTimestamp, value: l.end, color: color(l.yang) })),
+          ...lines.map((l, i) => ({
+            time: times[i + 1] as UTCTimestamp,
+            value: l.end,
+            color: color(l.yang),
+          })),
         ] as never[];
       }
       default:
@@ -1630,14 +1756,27 @@ function toBoxData(boxes: PriceBox[]): never[] {
   })) as never[];
 }
 
-function toValueData(candles: Candle[], values: SeriesValue[], color?: string, byColor?: boolean): never[] {
+function toValueData(
+  candles: Candle[],
+  values: SeriesValue[],
+  color?: string,
+  byColor?: boolean,
+): never[] {
   const out: never[] = [];
   for (let i = 0; i < candles.length; i++) {
     const v = values[i];
     if (v === null || v === undefined) continue;
     const c = candles[i]!;
-    const barColor = byColor ? (c.close >= c.open ? "rgba(38,166,154,0.8)" : "rgba(239,83,80,0.8)") : color;
-    out.push({ time: c.time as UTCTimestamp, value: v, ...(barColor ? { color: barColor } : {}) } as never);
+    const barColor = byColor
+      ? c.close >= c.open
+        ? "rgba(38,166,154,0.8)"
+        : "rgba(239,83,80,0.8)"
+      : color;
+    out.push({
+      time: c.time as UTCTimestamp,
+      value: v,
+      ...(barColor ? { color: barColor } : {}),
+    } as never);
   }
   return out;
 }

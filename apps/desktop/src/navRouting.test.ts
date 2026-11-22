@@ -17,7 +17,16 @@ vi.hoisted(() => {
   };
 });
 
-import { NAV_ITEMS, NAV_SECTIONS, PANEL_ROUTES, ROUTE_PATHS, normalizePath, readLastRoute, rememberRoute, resolveRoute } from "./nav";
+import {
+  NAV_ITEMS,
+  NAV_SECTIONS,
+  PANEL_ROUTES,
+  ROUTE_PATHS,
+  normalizePath,
+  readLastRoute,
+  rememberRoute,
+  resolveRoute,
+} from "./nav";
 
 beforeEach(() => h.storage.clear());
 

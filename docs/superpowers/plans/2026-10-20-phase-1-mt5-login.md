@@ -37,24 +37,24 @@ approval tokens) on every MT5 trade action.
    "I understand" confirmation dialog. The checkbox is the only path through.
 7. **Chart source toggle** already exists (`useMt5.setSource`, status bar) and keeps
    its attach-to-running-terminal behaviour. New in this phase: when the MT5 source
-   comes online with a *real* (non-demo) account, switching requires the "I
+   comes online with a _real_ (non-demo) account, switching requires the "I
    understand" risk confirmation keyed to that login; declining leaves the feed on
    the EzyView demo source.
 
 ## Files
 
-| File | Change |
-|---|---|
-| `tools/mt5-bridge/bridge.py` | `/connect`, `/disconnect`, `/audit`, session check, `dry_run`, SQLite audit, password redaction |
-| `apps/desktop/src-tauri/src/lib.rs` | `key_entry` accepts `mt5:<login>@<server>` + tests |
-| `packages/mt5-adapter/src/transport.ts` | `connect`/`disconnect`/`audit` on the interface + bridge impl; MCP throws unsupported |
-| `packages/mt5-adapter/src/adapter.test.ts` | tests for the new transport calls |
-| `apps/desktop/src/tradingSafety.ts` (+ `.test.ts`) | pure rails, tokens, redaction, masked login |
-| `apps/desktop/src/mt5Accounts.ts` (+ `.test.ts`) | accounts store, keyring get/set, connect/disconnect/forget, session |
-| `apps/desktop/src/Mt5Setup.tsx` | Brokers + Safety sections, add-account form, account summary |
-| `apps/desktop/src/trading.ts` | gate MT5 submits through `tradingSafety`; confirmation + dry-run + token |
-| `apps/desktop/src/TradingPanel.tsx` / `App.tsx` | confirm dialog surface for pending MT5 actions |
-| `MASTERPLAN.md` | Phase 1 → done, §8 gap line, §10 status |
+| File                                               | Change                                                                                          |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `tools/mt5-bridge/bridge.py`                       | `/connect`, `/disconnect`, `/audit`, session check, `dry_run`, SQLite audit, password redaction |
+| `apps/desktop/src-tauri/src/lib.rs`                | `key_entry` accepts `mt5:<login>@<server>` + tests                                              |
+| `packages/mt5-adapter/src/transport.ts`            | `connect`/`disconnect`/`audit` on the interface + bridge impl; MCP throws unsupported           |
+| `packages/mt5-adapter/src/adapter.test.ts`         | tests for the new transport calls                                                               |
+| `apps/desktop/src/tradingSafety.ts` (+ `.test.ts`) | pure rails, tokens, redaction, masked login                                                     |
+| `apps/desktop/src/mt5Accounts.ts` (+ `.test.ts`)   | accounts store, keyring get/set, connect/disconnect/forget, session                             |
+| `apps/desktop/src/Mt5Setup.tsx`                    | Brokers + Safety sections, add-account form, account summary                                    |
+| `apps/desktop/src/trading.ts`                      | gate MT5 submits through `tradingSafety`; confirmation + dry-run + token                        |
+| `apps/desktop/src/TradingPanel.tsx` / `App.tsx`    | confirm dialog surface for pending MT5 actions                                                  |
+| `MASTERPLAN.md`                                    | Phase 1 → done, §8 gap line, §10 status                                                         |
 
 ## Out of scope (deferred)
 

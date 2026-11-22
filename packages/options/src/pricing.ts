@@ -29,7 +29,9 @@ export interface Greeks {
 /** Standard normal CDF (Abramowitz–Stegun 26.2.17 via erf-free polynomial, |err| < 7.5e-8). */
 export function normCdf(x: number): number {
   const t = 1 / (1 + 0.2316419 * Math.abs(x));
-  const poly = t * (0.31938153 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+  const poly =
+    t *
+    (0.31938153 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
   const tail = normPdf(x) * poly;
   return x >= 0 ? 1 - tail : tail;
 }
@@ -53,7 +55,8 @@ function d1d2(o: OptionInput): { d1: number; d2: number } {
 const intrinsic = (o: OptionInput): number =>
   o.right === "call" ? Math.max(o.spot - o.strike, 0) : Math.max(o.strike - o.spot, 0);
 
-const degenerate = (o: OptionInput): boolean => o.years <= 0 || o.vol <= 0 || o.spot <= 0 || o.strike <= 0;
+const degenerate = (o: OptionInput): boolean =>
+  o.years <= 0 || o.vol <= 0 || o.spot <= 0 || o.strike <= 0;
 
 /** Black-Scholes-Merton price for a European option. */
 export function price(o: OptionInput): number {
@@ -88,7 +91,9 @@ export function greeks(o: OptionInput): Greeks {
     ? decay - r * o.strike * disc * normCdf(d2) + q * o.spot * fwd * normCdf(d1)
     : decay + r * o.strike * disc * normCdf(-d2) - q * o.spot * fwd * normCdf(-d1);
   const vega = o.spot * fwd * pdf * sqrtT;
-  const rho = call ? o.strike * o.years * disc * normCdf(d2) : -o.strike * o.years * disc * normCdf(-d2);
+  const rho = call
+    ? o.strike * o.years * disc * normCdf(d2)
+    : -o.strike * o.years * disc * normCdf(-d2);
   return { delta, gamma, theta: theta / 365, vega: vega / 100, rho: rho / 100 };
 }
 
@@ -110,7 +115,8 @@ export function impliedVol(o: Omit<OptionInput, "vol">, marketPrice: number): nu
   }
   const lo0 = 1e-4;
   const hi0 = 5;
-  if (marketPrice < price({ ...o, vol: lo0 }) - 1e-9 || marketPrice > price({ ...o, vol: hi0 })) return null;
+  if (marketPrice < price({ ...o, vol: lo0 }) - 1e-9 || marketPrice > price({ ...o, vol: hi0 }))
+    return null;
   let lo = lo0;
   let hi = hi0;
   for (let i = 0; i < 100; i++) {

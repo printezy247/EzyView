@@ -18,7 +18,11 @@ const YEAR_SECONDS = 365 * 86_400;
  * `null` when the window holds no payments or has no length: there is no rate
  * to quote, and saying "0" would read as "this pays nothing".
  */
-export function annualisedDividend(events: readonly DividendEvent[], from: number, to: number): number | null {
+export function annualisedDividend(
+  events: readonly DividendEvent[],
+  from: number,
+  to: number,
+): number | null {
   const window = to - from;
   if (window <= 0) return null;
   const paid = events

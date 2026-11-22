@@ -48,7 +48,12 @@ describe("sessionBreaks", () => {
 
   it("marks a whole weekend as one run of breaks", () => {
     // Friday's close through Monday's open. New York runs 14:30-21:00 UTC.
-    const across = [t("2026-01-02T20:00:00Z"), t("2026-01-03T12:00:00Z"), t("2026-01-04T12:00:00Z"), t("2026-01-05T15:00:00Z")];
+    const across = [
+      t("2026-01-02T20:00:00Z"),
+      t("2026-01-03T12:00:00Z"),
+      t("2026-01-04T12:00:00Z"),
+      t("2026-01-05T15:00:00Z"),
+    ];
     expect(sessionBreaks(across, "newyork")).toEqual([false, true, true, false]);
   });
 

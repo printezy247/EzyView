@@ -183,7 +183,12 @@ describe("second batch — spot values", () => {
   });
 
   it("Ichimoku returns a cloud as spanA and spanB plots", () => {
-    const out = getIndicator("ichimoku")!.compute(data, { tenkan: 9, kijun: 26, senkou: 52, shift: 26 });
+    const out = getIndicator("ichimoku")!.compute(data, {
+      tenkan: 9,
+      kijun: 26,
+      senkou: 52,
+      shift: 26,
+    });
     expect(out.plots?.base).toBeDefined();
     expect(out.plots?.spanA).toBeDefined();
     expect(out.plots?.spanB).toBeDefined();

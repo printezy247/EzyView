@@ -65,18 +65,18 @@ immediately via LWC's primitive API.
 
 ### 1.3 Other open-source charting platforms
 
-| Platform | Strengths worth copying |
-|---|---|
+| Platform                                   | Strengths worth copying                                                                                                                                                                                                           |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **deepentropy/lightweight-charts-drawing** | MIT, renderer-neutral drawing core (kind + time/price points + style), one LWC primitive for drawings/previews/handles/labels, 86 tools, multi-select/group drag, magnet, interval visibility, host-owned undo with `gestureEnd`. |
-| **tradecanvas** | 69 tools, per-tool settings schemas, editable defaults, style templates, timeframe visibility, drawing-bound alerts, multi-select, named groups, one undo step per compound edit, plugin hooks with `priceAt` for alerts. |
-| **marketcalls/openalgo-charts** | 87 tools, headless `DrawingController`, Objects dock, drawing alerts, undo/redo, drawing-tool search for mobile, touch sizing. |
-| **OpenCharts** | Terminal integration reference (adapter contract, panel composition, weak/strong magnet, object tree). |
-| **FlowMap** | Tauri + Python sidecar + WebGL2, Parquet replay, DOM/tape/CVD, feed-health/capability badges, performance HUD. |
-| **HyperData Terminal** | Labels feeds LIVE/PARTIAL/STALE/DRIFT, separates confirmed from estimated events, read-only MCP. |
-| **LuxAlgo/PineTS** | v5/v6, UDFs, arrays/maps/matrices, `request.security`, label/line/box/table, alerts, strategy commission/slippage/pyramiding. |
-| **nullarch/resin** | v5/v6 compiler with UDTs/methods, collections, nested requests, broker emulator (pyramiding, commission, slippage, OCA, margin calls, bar magnifier), TradingView differential testing. |
-| **pynesys/pynecore** | v4-v6, full collections, security/alerts, broad strategy rules, large compat matrix. |
-| **pinescription** | Bytecode VM, 164x over full recompute on Bollinger benchmark. |
+| **tradecanvas**                            | 69 tools, per-tool settings schemas, editable defaults, style templates, timeframe visibility, drawing-bound alerts, multi-select, named groups, one undo step per compound edit, plugin hooks with `priceAt` for alerts.         |
+| **marketcalls/openalgo-charts**            | 87 tools, headless `DrawingController`, Objects dock, drawing alerts, undo/redo, drawing-tool search for mobile, touch sizing.                                                                                                    |
+| **OpenCharts**                             | Terminal integration reference (adapter contract, panel composition, weak/strong magnet, object tree).                                                                                                                            |
+| **FlowMap**                                | Tauri + Python sidecar + WebGL2, Parquet replay, DOM/tape/CVD, feed-health/capability badges, performance HUD.                                                                                                                    |
+| **HyperData Terminal**                     | Labels feeds LIVE/PARTIAL/STALE/DRIFT, separates confirmed from estimated events, read-only MCP.                                                                                                                                  |
+| **LuxAlgo/PineTS**                         | v5/v6, UDFs, arrays/maps/matrices, `request.security`, label/line/box/table, alerts, strategy commission/slippage/pyramiding.                                                                                                     |
+| **nullarch/resin**                         | v5/v6 compiler with UDTs/methods, collections, nested requests, broker emulator (pyramiding, commission, slippage, OCA, margin calls, bar magnifier), TradingView differential testing.                                           |
+| **pynesys/pynecore**                       | v4-v6, full collections, security/alerts, broad strategy rules, large compat matrix.                                                                                                                                              |
+| **pinescription**                          | Bytecode VM, 164x over full recompute on Bollinger benchmark.                                                                                                                                                                     |
 
 ### 1.4 Key insight from research
 
@@ -122,6 +122,7 @@ fib_extension, rectangle, ellipse, triangle, arrow, text, callout, brush,
 measure, long_position, short_position.
 
 **Missing families (from TradingView's 110+):**
+
 - Pitchfork (standard, Schiff, modified Schiff, inside)
 - Fib fan, arcs, channel, time zones, wedge
 - Gann fan, box, square (fixed/from 2 points), time by 1/2/3
@@ -183,70 +184,70 @@ and linregSlope added (perf). No incremental append on tick (full recompute).
 
 ### Chart rendering gaps
 
-| Feature | TradingView | MetaTrader | EzyView | Priority |
-|---|---|---|---|---|
-| Chart types | 14 | 1 (OHLC) | 10 | P1 |
-| Price scales | 8 (normal/log/%/inverted/auto/manual/indexed/locked) | 4 | 4 | P2 |
-| Compare/overlay symbols | Yes | No | No | P1 |
-| Multiple panes (resize/reorder) | Yes | Yes (subwindows) | Separate panes, no resize | P2 |
-| Events on chart (earnings/news) | Yes | No | Fundamental lines only | P2 |
-| Bar countdown | Yes | No | No | P3 |
-| Feed-health badges | No (implicit) | No | Partial (provenance chip) | P2 |
-| WebGL large-history | Yes | No | No | P3 |
-| Tick coalescing | Yes | Yes | No | P2 |
-| Incremental indicator append | Yes | N/A | No (full recompute) | P2 |
+| Feature                         | TradingView                                          | MetaTrader       | EzyView                   | Priority |
+| ------------------------------- | ---------------------------------------------------- | ---------------- | ------------------------- | -------- |
+| Chart types                     | 14                                                   | 1 (OHLC)         | 10                        | P1       |
+| Price scales                    | 8 (normal/log/%/inverted/auto/manual/indexed/locked) | 4                | 4                         | P2       |
+| Compare/overlay symbols         | Yes                                                  | No               | No                        | P1       |
+| Multiple panes (resize/reorder) | Yes                                                  | Yes (subwindows) | Separate panes, no resize | P2       |
+| Events on chart (earnings/news) | Yes                                                  | No               | Fundamental lines only    | P2       |
+| Bar countdown                   | Yes                                                  | No               | No                        | P3       |
+| Feed-health badges              | No (implicit)                                        | No               | Partial (provenance chip) | P2       |
+| WebGL large-history             | Yes                                                  | No               | No                        | P3       |
+| Tick coalescing                 | Yes                                                  | Yes              | No                        | P2       |
+| Incremental indicator append    | Yes                                                  | N/A              | No (full recompute)       | P2       |
 
 ### Drawing gaps
 
-| Feature | TradingView | MetaTrader | EzyView | Priority |
-|---|---|---|---|---|
-| Tool count | 110+ | 44 | 20 | P1 |
-| Pitchfork | 4 variants | 1 | No | P1 |
-| Fib fan/arcs/channel/time zones | Yes | 4 types | Retracement + extension only | P1 |
-| Gann fan/box/square | Yes | 4 types | No | P1 |
-| Patterns (XABCD/H&S/Elliott) | Yes | No | No | P1 |
-| Projection (forecast/bars pattern) | Yes | No | No | P2 |
-| Image/sticker annotations | Yes | Bitmap | No | P1 |
-| Multi-select | Yes | No | No (single only) | P0 |
-| Named groups | Yes | No | No | P1 |
-| Object snapping (drawing-to-drawing) | Yes | No | OHLC only | P1 |
-| Keyboard nudge | Yes | No | No | P1 |
-| Object tree search/reorder | Yes | No | No (select/hide/lock/rename/delete) | P1 |
-| Style clipboard (copy/paste style) | Yes | No | Implicit auto-learn only | P1 |
-| Brush simplification | N/A | N/A | No (verbatim persist) | P0 |
-| Geometry cache | N/A | N/A | No | P2 |
-| Spatial index for hit-test | N/A | N/A | No | P2 |
-| Touch support (44px handles) | Yes | Yes | No | P2 |
+| Feature                              | TradingView | MetaTrader | EzyView                             | Priority |
+| ------------------------------------ | ----------- | ---------- | ----------------------------------- | -------- |
+| Tool count                           | 110+        | 44         | 20                                  | P1       |
+| Pitchfork                            | 4 variants  | 1          | No                                  | P1       |
+| Fib fan/arcs/channel/time zones      | Yes         | 4 types    | Retracement + extension only        | P1       |
+| Gann fan/box/square                  | Yes         | 4 types    | No                                  | P1       |
+| Patterns (XABCD/H&S/Elliott)         | Yes         | No         | No                                  | P1       |
+| Projection (forecast/bars pattern)   | Yes         | No         | No                                  | P2       |
+| Image/sticker annotations            | Yes         | Bitmap     | No                                  | P1       |
+| Multi-select                         | Yes         | No         | No (single only)                    | P0       |
+| Named groups                         | Yes         | No         | No                                  | P1       |
+| Object snapping (drawing-to-drawing) | Yes         | No         | OHLC only                           | P1       |
+| Keyboard nudge                       | Yes         | No         | No                                  | P1       |
+| Object tree search/reorder           | Yes         | No         | No (select/hide/lock/rename/delete) | P1       |
+| Style clipboard (copy/paste style)   | Yes         | No         | Implicit auto-learn only            | P1       |
+| Brush simplification                 | N/A         | N/A        | No (verbatim persist)               | P0       |
+| Geometry cache                       | N/A         | N/A        | No                                  | P2       |
+| Spatial index for hit-test           | N/A         | N/A        | No                                  | P2       |
+| Touch support (44px handles)         | Yes         | Yes        | No                                  | P2       |
 
 ### Pine gaps
 
-| Feature | TradingView | EzyView | Priority |
-|---|---|---|---|
-| User-defined functions | Yes | No (no AST node) | P1 |
-| Collections (array/map/matrix) | Yes | Partial (ArrayLit only) | P1 |
-| `request.security` | Yes | No | P1 |
-| `label/line/box/table` | Yes | No | P1 |
-| `alert()`/`alertcondition()` | Yes | No | P1 |
-| `switch`, `for...in`, UDTs | Yes | No | P2 |
-| `plot()` offset/fill/display | Yes | Ignored | P2 |
-| `plotshape()` text/size | Yes | Ignored | P2 |
-| Strategy commission/slippage/pyramiding | Yes | Defaults only | P0 |
-| Strategy brackets (stop/profit) | Yes | Stored in qty, never read | P0 |
-| `new Function` execution | N/A | Yes (CSP unsafe-eval) | P1 |
-| TA memoization (per-bar) | N/A | By source identity (O(n²)) | P1 |
-| Differential testing | N/A | No | P2 |
+| Feature                                 | TradingView | EzyView                    | Priority |
+| --------------------------------------- | ----------- | -------------------------- | -------- |
+| User-defined functions                  | Yes         | No (no AST node)           | P1       |
+| Collections (array/map/matrix)          | Yes         | Partial (ArrayLit only)    | P1       |
+| `request.security`                      | Yes         | No                         | P1       |
+| `label/line/box/table`                  | Yes         | No                         | P1       |
+| `alert()`/`alertcondition()`            | Yes         | No                         | P1       |
+| `switch`, `for...in`, UDTs              | Yes         | No                         | P2       |
+| `plot()` offset/fill/display            | Yes         | Ignored                    | P2       |
+| `plotshape()` text/size                 | Yes         | Ignored                    | P2       |
+| Strategy commission/slippage/pyramiding | Yes         | Defaults only              | P0       |
+| Strategy brackets (stop/profit)         | Yes         | Stored in qty, never read  | P0       |
+| `new Function` execution                | N/A         | Yes (CSP unsafe-eval)      | P1       |
+| TA memoization (per-bar)                | N/A         | By source identity (O(n²)) | P1       |
+| Differential testing                    | N/A         | No                         | P2       |
 
 ### Alert gaps
 
-| Feature | TradingView | EzyView | Priority |
-|---|---|---|---|
-| Price conditions | 9 types | 9 types | Done |
-| Indicator-plot alerts | Yes | No | P1 |
-| Multi-condition (AND/OR) | Yes | No | P2 |
-| Drawing alerts (any geometry) | Yes | Horizontal lines only | P0 |
-| Snooze/expiry | Yes | No | P2 |
-| Persisted event log | Yes | No | P2 |
-| Background evaluation | Yes | Price only | P1 |
+| Feature                       | TradingView | EzyView               | Priority |
+| ----------------------------- | ----------- | --------------------- | -------- |
+| Price conditions              | 9 types     | 9 types               | Done     |
+| Indicator-plot alerts         | Yes         | No                    | P1       |
+| Multi-condition (AND/OR)      | Yes         | No                    | P2       |
+| Drawing alerts (any geometry) | Yes         | Horizontal lines only | P0       |
+| Snooze/expiry                 | Yes         | No                    | P2       |
+| Persisted event log           | Yes         | No                    | P2       |
+| Background evaluation         | Yes         | Price only            | P1       |
 
 ---
 
@@ -257,21 +258,22 @@ and linregSlope added (perf). No incremental append on tick (full recompute).
 These are small, each has a clear test, and several get harder once groups/images
 exist.
 
-| # | Fix | Files | Acceptance |
-|---|---|---|---|
-| 0.1 | Chart-scoped drawing undo | `store.ts`, `ChartHost.tsx`, `ChartPage.tsx` | 2-cell test: edit B, focus A, undo leaves A untouched and reverts B |
-| 0.2 | Real strategy brackets | `pine-transpiler/src/backtest.ts`, `evaluate.ts`, `runtime.ts` | Stop/target fixtures fill at the requested level; market close unchanged |
-| 0.2b | Expose backtest costs and OHLC fills | `pineRunner.ts`, `pine.worker.ts`, `PineEditor.tsx` | Tester shows and uses cash/commission/slippage/multiplier; a costed fixture loses money |
-| 0.3 | Alert any drawing geometry | `drawing-tools/src/geometry.ts` (new `priceAt`), `ChartMenuHost.tsx`, `store.ts` | Trend line, channel, fib level alerts fire; moving the drawing updates the alert |
-| 0.4 | Brush/storage budgets | `ChartHost.tsx`, `drawingsIO.ts`, `geometry.ts` | 10k-point stroke stores <2k; import over cap is rejected with a message |
-| 0.5 | IO version gate + migrations | `drawingsIO.ts` | v2 file on v1 build says "newer format"; v1 file loads |
-| 0.6 | Docs correction | `MASTERPLAN.md` | No stale complexity claim (highest/lowest are now O(n) via deque) |
+| #    | Fix                                  | Files                                                                            | Acceptance                                                                              |
+| ---- | ------------------------------------ | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| 0.1  | Chart-scoped drawing undo            | `store.ts`, `ChartHost.tsx`, `ChartPage.tsx`                                     | 2-cell test: edit B, focus A, undo leaves A untouched and reverts B                     |
+| 0.2  | Real strategy brackets               | `pine-transpiler/src/backtest.ts`, `evaluate.ts`, `runtime.ts`                   | Stop/target fixtures fill at the requested level; market close unchanged                |
+| 0.2b | Expose backtest costs and OHLC fills | `pineRunner.ts`, `pine.worker.ts`, `PineEditor.tsx`                              | Tester shows and uses cash/commission/slippage/multiplier; a costed fixture loses money |
+| 0.3  | Alert any drawing geometry           | `drawing-tools/src/geometry.ts` (new `priceAt`), `ChartMenuHost.tsx`, `store.ts` | Trend line, channel, fib level alerts fire; moving the drawing updates the alert        |
+| 0.4  | Brush/storage budgets                | `ChartHost.tsx`, `drawingsIO.ts`, `geometry.ts`                                  | 10k-point stroke stores <2k; import over cap is rejected with a message                 |
+| 0.5  | IO version gate + migrations         | `drawingsIO.ts`                                                                  | v2 file on v1 build says "newer format"; v1 file loads                                  |
+| 0.6  | Docs correction                      | `MASTERPLAN.md`                                                                  | No stale complexity claim (highest/lowest are now O(n) via deque)                       |
 
 **Do not add new tool IDs until 0.1 and 0.5 land.**
 
 ### Phase 1 — Drawing breadth and multi-object editing (2-3 weeks)
 
 #### 1.1 Model changes (first, before any new tool)
+
 - `Drawing.groupId?: string`, `Drawing.zIndex?: number`
 - `Drawing.pattern?: { kind, ratios?, labels? }` for harmonic/Elliott
 - `Drawing.image?: { assetId, width, height, lockAspect }` (assets in IndexedDB)
@@ -280,7 +282,9 @@ exist.
 - `TOOL_LEVELS` / `priceAt` for alertable geometry
 
 #### 1.2 Tool packs (each: spec, renderer, hit-test, anchors, tests)
+
 Order by user value:
+
 1. **Pitchfork pack** (4 variants: standard, Schiff, modified Schiff, inside)
 2. **Fib pack** (fan, arcs, channel, time zones, wedge) — reuse `fib.ts`
 3. **Gann pack** (fan, box, square fixed, square from 2 points, time by 1/2/3)
@@ -294,6 +298,7 @@ that is the failure mode of egui-charts (98 listed types, some approximate,
 magnet not applied).
 
 #### 1.3 Multi-select and groups
+
 - `selectedDrawingIds: string[]` plus derived single id for compatibility
 - Shift-click toggles, marquee selects, Ctrl+A selects all unlocked
 - Group drag with one undo entry; group style/lock/hide/delete/z-order
@@ -302,16 +307,19 @@ magnet not applied).
 - Selection box draws anchor handles only for primary object
 
 #### 1.4 Alerts on geometry
+
 - `priceAt(drawing, time)` per tool; channels and fib expose multiple levels
 - Alert binding `{drawingId, levelKey}`; recompute level on move, persist
 - Support `crossing` and `crossing_up/down` first; add `greater/less` for horizontals
 
 #### 1.5 Object snapping
+
 - Priority: anchor → edge/midpoint → fib level → OHLC (weak/strong) → free
 - Visual snap glyph + Ctrl override (already the magnet override key)
 - Snap only to visible, unlocked objects on the same chart
 
 #### 1.6 Interaction and accessibility
+
 - Arrow nudge (1px; Shift 10px) with one undo entry; Alt+arrow moves by bar
 - Tab cycles objects in z-order; Shift+Tab reverses; Enter opens settings
 - `aria-live` announces "Trend line selected, 2 of 7"
@@ -319,6 +327,7 @@ magnet not applied).
 - Touch: 44px handles, long-press opens context menu, no hover-only action
 
 #### 1.7 Rendering/perf
+
 - Cache projected geometry per drawing keyed by `(timeRange, priceRange, size)`
 - RDP brush simplification; text metrics cache; batch strokes by style
 - Spatial index (bbox) for hit-testing above ~200 objects
@@ -348,11 +357,13 @@ magnet not applied).
 ### Phase 3 — Pine parity and sandbox (3-5 weeks)
 
 #### 3.1 Language
+
 - User-defined functions (single/multi-line, tuple returns), methods, UDTs,
   `switch`, `for...in`, line continuations, library imports.
 - Correct scoping and call-site state for recursive series usage.
 
 #### 3.2 Runtime
+
 - Collections: `array`, `map`, `matrix` with Pine's mutating semantics.
 - `request.security`, `request.security_lower_tf`, `lookahead`, nested requests
   with supplied feed provider.
@@ -365,12 +376,14 @@ magnet not applied).
   trailing stops, margin/risk rules, intrabar fill assumptions in UI.
 
 #### 3.3 Execution and security
+
 - Replace `new Function` with build-time ESM generation or bytecode VM.
 - Drop `unsafe-eval` from CSP.
 - Worker watchdog with wall-clock cap; compile-time loop limits; output caps.
 - Transfer OHLCV and outputs as typed arrays; avoid cloning full history.
 
 #### 3.4 Performance
+
 - Memoize TA at call site, not by source-array identity.
 - Keep rolling buffers, avoid per-bar array copies.
 - Benchmark 100k bars, publish number.
@@ -397,26 +410,26 @@ magnet not applied).
 
 ## 5. Priority table (ranked)
 
-| Rank | Item | Phase | Impact | Effort |
-|---|---|---|---|---|
-| 1 | Chart-scoped undo | 0 | Prevents wrong-chart data loss | S |
-| 2 | Strategy brackets + cost inputs | 0 | Backtest numbers become honest | M |
-| 3 | Alert any drawing geometry | 0 | Core TradingView workflow | M |
-| 4 | Multi-select + groups | 1 | Biggest daily editing gap | L |
-| 5 | Pitchfork + fib fan/arcs/channel/time zones | 1 | Highest-value missing tools | L |
-| 6 | Gann fan/box/square | 1 | Trader expectation | M |
-| 7 | Patterns (XABCD/H&S/Elliott) | 1 | Analysis depth | L |
-| 8 | Image/sticker annotations | 1 | Research workflow | M |
-| 9 | Object snapping + keyboard nudge | 1 | Precision/accessibility | S-M |
-| 10 | Pine UDF + collections | 3 | Script compatibility | L |
-| 11 | `request.security` | 3 | Multi-timeframe scripts | L |
-| 12 | Pine drawings/alerts | 3 | Plotting parity | L |
-| 13 | Remove `new Function` | 3 | Security/CSP | L |
-| 14 | Chart types + compare | 2 | Visual parity | M |
-| 15 | Indicator/multi-condition alerts | 2 | Alert parity | M |
-| 16 | Feed-health badges | 2 | Trust | S |
-| 17 | Journal plans/playbooks | 4 | Product differentiation | L |
-| 18 | E2E + visual gates | 4 | Regression safety | M |
+| Rank | Item                                        | Phase | Impact                         | Effort |
+| ---- | ------------------------------------------- | ----- | ------------------------------ | ------ |
+| 1    | Chart-scoped undo                           | 0     | Prevents wrong-chart data loss | S      |
+| 2    | Strategy brackets + cost inputs             | 0     | Backtest numbers become honest | M      |
+| 3    | Alert any drawing geometry                  | 0     | Core TradingView workflow      | M      |
+| 4    | Multi-select + groups                       | 1     | Biggest daily editing gap      | L      |
+| 5    | Pitchfork + fib fan/arcs/channel/time zones | 1     | Highest-value missing tools    | L      |
+| 6    | Gann fan/box/square                         | 1     | Trader expectation             | M      |
+| 7    | Patterns (XABCD/H&S/Elliott)                | 1     | Analysis depth                 | L      |
+| 8    | Image/sticker annotations                   | 1     | Research workflow              | M      |
+| 9    | Object snapping + keyboard nudge            | 1     | Precision/accessibility        | S-M    |
+| 10   | Pine UDF + collections                      | 3     | Script compatibility           | L      |
+| 11   | `request.security`                          | 3     | Multi-timeframe scripts        | L      |
+| 12   | Pine drawings/alerts                        | 3     | Plotting parity                | L      |
+| 13   | Remove `new Function`                       | 3     | Security/CSP                   | L      |
+| 14   | Chart types + compare                       | 2     | Visual parity                  | M      |
+| 15   | Indicator/multi-condition alerts            | 2     | Alert parity                   | M      |
+| 16   | Feed-health badges                          | 2     | Trust                          | S      |
+| 17   | Journal plans/playbooks                     | 4     | Product differentiation        | L      |
+| 18   | E2E + visual gates                          | 4     | Regression safety              | M      |
 
 S = 1-2 days, M = 3-5 days, L = 1-2 weeks for one developer familiar with the tree.
 
@@ -457,5 +470,5 @@ pipeline with one high-value family before committing to eight more.
 - FlowMap, HyperData Terminal, EdgeDepth Terminal, OpenAlgo Desktop
 - Journedge, TradeNote, deltalytix, LuxAlgo/trade-journal
 - tradesdontlie/tradingview-mcp, tedorigawa001/TradingView-MCP, options-chain-mcp, MaverickMCP
-EOF
-echo "written"
+  EOF
+  echo "written"

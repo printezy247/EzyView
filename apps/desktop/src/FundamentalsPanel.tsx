@@ -8,10 +8,27 @@ import {
   runScreener,
   scanUniverse,
 } from "@ezyview/fundamentals";
-import type { FundamentalsSources, ScreenerField, ScreenerRow, SourceSlot } from "@ezyview/fundamentals";
+import type {
+  FundamentalsSources,
+  ScreenerField,
+  ScreenerRow,
+  SourceSlot,
+} from "@ezyview/fundamentals";
 import { useApiKeys } from "./apiKeys";
 import { market } from "./data";
-import { CalendarTab, DAY, day, DividendsTab, EarningsTab, Empty, Failed, NewsTab, pct, tone, useLoad } from "./FundamentalsTabs";
+import {
+  CalendarTab,
+  DAY,
+  day,
+  DividendsTab,
+  EarningsTab,
+  Empty,
+  Failed,
+  NewsTab,
+  pct,
+  tone,
+  useLoad,
+} from "./FundamentalsTabs";
 import type { Src } from "./FundamentalsTabs";
 import { Button, IconButton, Input, Select, Tabs } from "./ui";
 
@@ -42,14 +59,26 @@ export function FundamentalsPanel({ symbol, onClose, onPickSymbol }: Props) {
   const openApiKeys = useApiKeys((s) => s.openDialog);
 
   // A new keys object means a key was saved or removed: rebuild and reload every tab.
-  const src = useMemo(() => ({ sources: buildSources(keys), version: String(Math.random()) }), [keys]);
+  const src = useMemo(
+    () => ({ sources: buildSources(keys), version: String(Math.random()) }),
+    [keys],
+  );
   const sources = src.sources;
   const active = TABS.find((t) => t.id === tab)!;
 
   return (
-    <section aria-label="Fundamentals" className="flex min-h-0 flex-1 flex-col border-t border-ev-raised bg-ev-bg">
+    <section
+      aria-label="Fundamentals"
+      className="flex min-h-0 flex-1 flex-col border-t border-ev-raised bg-ev-bg"
+    >
       <header className="flex h-8 shrink-0 items-center gap-1 border-b border-ev-raised px-3 text-dense">
-        <Tabs items={TABS} value={tab} onChange={(id) => setTab(id as Tab)} label="Fundamentals" className="gap-1" />
+        <Tabs
+          items={TABS}
+          value={tab}
+          onChange={(id) => setTab(id as Tab)}
+          label="Fundamentals"
+          className="gap-1"
+        />
         <SourceBadge slots={active.slots} live={sources.live} keyError={keyError} />
         <Button size="sm" variant="ghost" onClick={openApiKeys} className="ml-auto">
           <KeyRound size={12} aria-hidden />
@@ -73,15 +102,28 @@ export function FundamentalsPanel({ symbol, onClose, onPickSymbol }: Props) {
 }
 
 /** Says, for the open tab, whether the rows are live and from whom, or demo data. */
-function SourceBadge({ slots, live, keyError }: { slots: SourceSlot[]; live: FundamentalsSources["live"]; keyError: string | null }) {
+function SourceBadge({
+  slots,
+  live,
+  keyError,
+}: {
+  slots: SourceSlot[];
+  live: FundamentalsSources["live"];
+  keyError: string | null;
+}) {
   if (keyError) return <span className="ml-3 truncate text-ev-down-text">{keyError}</span>;
-  if (slots.length === 0) return <span className="ml-3 text-ev-muted">Scans the current market feed</span>;
+  if (slots.length === 0)
+    return <span className="ml-3 text-ev-muted">Scans the current market feed</span>;
   const names = [...new Set(slots.map((s) => live[s]).filter((n) => n !== null))];
   const demo = slots.some((s) => live[s] === null);
   if (names.length === 0) {
-    const hint = slots.includes("calendar") ? "no free live source for the economic calendar yet" : "add a free API key for live data";
+    const hint = slots.includes("calendar")
+      ? "no free live source for the economic calendar yet"
+      : "add a free API key for live data";
     return (
-      <span className="ml-3 rounded bg-ev-warn/15 px-1.5 py-0.5 text-ev-warn">DEMO DATA · {hint}</span>
+      <span className="ml-3 rounded bg-ev-warn/15 px-1.5 py-0.5 text-ev-warn">
+        DEMO DATA · {hint}
+      </span>
     );
   }
   return (
@@ -104,13 +146,27 @@ function IposTab({ src }: { src: Src }) {
     <table className="w-full text-dense">
       <thead className="text-left text-ev-muted">
         <tr>
-          <th scope="col" className="px-3 py-1 font-normal">Date</th>
-          <th scope="col" className="font-normal">Symbol</th>
-          <th scope="col" className="font-normal">Company</th>
-          <th scope="col" className="font-normal">Exchange</th>
-          <th scope="col" className="text-right font-normal">Price</th>
-          <th scope="col" className="text-right font-normal">Shares</th>
-          <th scope="col" className="pr-3 text-right font-normal">Status</th>
+          <th scope="col" className="px-3 py-1 font-normal">
+            Date
+          </th>
+          <th scope="col" className="font-normal">
+            Symbol
+          </th>
+          <th scope="col" className="font-normal">
+            Company
+          </th>
+          <th scope="col" className="font-normal">
+            Exchange
+          </th>
+          <th scope="col" className="text-right font-normal">
+            Price
+          </th>
+          <th scope="col" className="text-right font-normal">
+            Shares
+          </th>
+          <th scope="col" className="pr-3 text-right font-normal">
+            Status
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -153,7 +209,8 @@ function ScreenerTab({ onPick }: { onPick: (symbol: string) => void }) {
   const [descending, setDescending] = useState(true);
 
   const rows = useMemo(() => {
-    const bound = (s: string): number | undefined => (s.trim() === "" || Number.isNaN(Number(s)) ? undefined : Number(s));
+    const bound = (s: string): number | undefined =>
+      s.trim() === "" || Number.isNaN(Number(s)) ? undefined : Number(s);
     return runScreener(universe ?? [], {
       text,
       assetClass: assetClass || undefined,
@@ -166,19 +223,42 @@ function ScreenerTab({ onPick }: { onPick: (symbol: string) => void }) {
   return (
     <div className="text-dense">
       <div className="sticky top-0 flex flex-wrap items-center gap-2 bg-ev-bg px-3 py-1.5">
-        <Input aria-label="Search symbols" placeholder="Search" value={text} onChange={(e) => setText(e.target.value)} className="w-24" />
+        <Input
+          aria-label="Search symbols"
+          placeholder="Search"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          className="w-24"
+        />
         <Select
           label="Asset class"
           value={assetClass}
           onChange={setAssetClass}
           options={[
             { value: "", label: "All classes" },
-            ...[...new Set((universe ?? []).map((r) => r.assetClass))].map((c) => ({ value: c, label: c })),
+            ...[...new Set((universe ?? []).map((r) => r.assetClass))].map((c) => ({
+              value: c,
+              label: c,
+            })),
           ]}
         />
         <span className="text-ev-muted">RSI</span>
-        <Input aria-label="RSI minimum" placeholder="min" inputMode="decimal" value={rsiMin} onChange={(e) => setRsiMin(e.target.value)} className="w-14" />
-        <Input aria-label="RSI maximum" placeholder="max" inputMode="decimal" value={rsiMax} onChange={(e) => setRsiMax(e.target.value)} className="w-14" />
+        <Input
+          aria-label="RSI minimum"
+          placeholder="min"
+          inputMode="decimal"
+          value={rsiMin}
+          onChange={(e) => setRsiMin(e.target.value)}
+          className="w-14"
+        />
+        <Input
+          aria-label="RSI maximum"
+          placeholder="max"
+          inputMode="decimal"
+          value={rsiMax}
+          onChange={(e) => setRsiMax(e.target.value)}
+          className="w-14"
+        />
         <span className="text-ev-muted">Sort</span>
         <Select
           label="Sort by"
@@ -186,7 +266,13 @@ function ScreenerTab({ onPick }: { onPick: (symbol: string) => void }) {
           onChange={(v) => setSortBy(v as ScreenerField | "ticker")}
           options={SORTS.map((s) => ({ value: s.id, label: s.label }))}
         />
-        <Button size="sm" variant="ghost" aria-pressed={descending} title="Toggle sort direction" onClick={() => setDescending((d) => !d)}>
+        <Button
+          size="sm"
+          variant="ghost"
+          aria-pressed={descending}
+          title="Toggle sort direction"
+          onClick={() => setDescending((d) => !d)}
+        >
           {descending ? "↓ desc" : "↑ asc"}
         </Button>
         <span className="ml-auto text-ev-muted">{rows.length} match</span>
@@ -199,24 +285,47 @@ function ScreenerTab({ onPick }: { onPick: (symbol: string) => void }) {
         <table className="w-full">
           <thead className="text-left text-ev-muted">
             <tr>
-              <th scope="col" className="px-3 py-1 font-normal">Symbol</th>
-              <th scope="col" className="text-right font-normal">Price</th>
-              <th scope="col" className="text-right font-normal">Change</th>
-              <th scope="col" className="text-right font-normal">RSI</th>
-              <th scope="col" className="text-right font-normal">From high</th>
-              <th scope="col" className="pr-3 text-right font-normal">Volume</th>
+              <th scope="col" className="px-3 py-1 font-normal">
+                Symbol
+              </th>
+              <th scope="col" className="text-right font-normal">
+                Price
+              </th>
+              <th scope="col" className="text-right font-normal">
+                Change
+              </th>
+              <th scope="col" className="text-right font-normal">
+                RSI
+              </th>
+              <th scope="col" className="text-right font-normal">
+                From high
+              </th>
+              <th scope="col" className="pr-3 text-right font-normal">
+                Volume
+              </th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.symbol} className="cursor-pointer border-t border-ev-raised hover:bg-ev-panel" onClick={() => onPick(r.symbol)}>
+              <tr
+                key={r.symbol}
+                className="cursor-pointer border-t border-ev-raised hover:bg-ev-panel"
+                onClick={() => onPick(r.symbol)}
+              >
                 <th scope="row" className="px-3 py-1 text-left font-medium">
                   {/* The row is clickable for the mouse; the button is the keyboard and screen-reader path. */}
-                  <button type="button" onClick={(e) => (e.stopPropagation(), onPick(r.symbol))} className="hover:underline" aria-label={`Open ${r.ticker} chart`}>
+                  <button
+                    type="button"
+                    onClick={(e) => (e.stopPropagation(), onPick(r.symbol))}
+                    className="hover:underline"
+                    aria-label={`Open ${r.ticker} chart`}
+                  >
                     {r.ticker}
                   </button>
                 </th>
-                <td className="text-right">{r.price.toLocaleString(undefined, { maximumFractionDigits: 4 })}</td>
+                <td className="text-right">
+                  {r.price.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                </td>
                 <td className={`text-right ${tone(r.changePct)}`}>{pct(r.changePct)}</td>
                 <td className="text-right">{r.rsi?.toFixed(1) ?? "—"}</td>
                 <td className="text-right">{pct(r.fromHighPct)}</td>
@@ -238,7 +347,12 @@ function HeatmapTab({ onPick }: { onPick: (symbol: string) => void }) {
   const tiles = useMemo(
     () =>
       layoutHeatmap(
-        (universe ?? []).map((r) => ({ id: r.symbol, label: r.ticker, weight: Math.max(r.price * r.volume, 1), changePct: r.changePct })),
+        (universe ?? []).map((r) => ({
+          id: r.symbol,
+          label: r.ticker,
+          weight: Math.max(r.price * r.volume, 1),
+          changePct: r.changePct,
+        })),
         W,
         H,
       ),
@@ -246,13 +360,33 @@ function HeatmapTab({ onPick }: { onPick: (symbol: string) => void }) {
   );
   if (universe === null) return <Empty text="Scanning…" />;
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="size-full" role="img" aria-label="Heatmap of the symbol universe, sized by turnover and colored by change">
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      preserveAspectRatio="none"
+      className="size-full"
+      role="img"
+      aria-label="Heatmap of the symbol universe, sized by turnover and colored by change"
+    >
       {tiles.map((t) => (
         <g key={t.id} className="cursor-pointer" onClick={() => onPick(t.id)}>
           <title>{`${t.label} ${pct(t.changePct)}`}</title>
-          <rect x={t.x} y={t.y} width={t.w} height={t.h} fill={heatColor(t.changePct)} className="stroke-ev-bg" strokeWidth={2} />
+          <rect
+            x={t.x}
+            y={t.y}
+            width={t.w}
+            height={t.h}
+            fill={heatColor(t.changePct)}
+            className="stroke-ev-bg"
+            strokeWidth={2}
+          />
           {t.w > 60 && t.h > 30 && (
-            <text x={t.x + t.w / 2} y={t.y + t.h / 2} textAnchor="middle" fill="currentColor" fontSize={Math.min(22, t.w / 6)}>
+            <text
+              x={t.x + t.w / 2}
+              y={t.y + t.h / 2}
+              textAnchor="middle"
+              fill="currentColor"
+              fontSize={Math.min(22, t.w / 6)}
+            >
               <tspan x={t.x + t.w / 2} dy="-0.2em" fontWeight={600}>
                 {t.label}
               </tspan>

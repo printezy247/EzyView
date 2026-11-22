@@ -14,7 +14,10 @@ import type { NavKeyState } from "./sectionNavigation";
 const IDLE: NavKeyState = { chordPending: false };
 
 /** A key press with no modifier held. */
-const key = (k: string, mods: Partial<{ ctrl: boolean; shift: boolean; alt: boolean; meta: boolean }> = {}) => ({
+const key = (
+  k: string,
+  mods: Partial<{ ctrl: boolean; shift: boolean; alt: boolean; meta: boolean }> = {},
+) => ({
   key: k,
   ctrl: false,
   shift: false,
@@ -40,7 +43,10 @@ describe("resolveNavIntent", () => {
   });
 
   it("cycles forward and backward with Ctrl+Tab", () => {
-    expect(resolveNavIntent(key("Tab", { ctrl: true }), IDLE).intent).toEqual({ kind: "cycle", step: 1 });
+    expect(resolveNavIntent(key("Tab", { ctrl: true }), IDLE).intent).toEqual({
+      kind: "cycle",
+      step: 1,
+    });
     expect(resolveNavIntent(key("Tab", { ctrl: true, shift: true }), IDLE).intent).toEqual({
       kind: "cycle",
       step: -1,
@@ -48,7 +54,9 @@ describe("resolveNavIntent", () => {
   });
 
   it("toggles the rail with Ctrl+backslash", () => {
-    expect(resolveNavIntent(key("\\", { ctrl: true }), IDLE).intent).toEqual({ kind: "toggleRail" });
+    expect(resolveNavIntent(key("\\", { ctrl: true }), IDLE).intent).toEqual({
+      kind: "toggleRail",
+    });
   });
 
   it("starts the chord on g and jumps on the second key", () => {

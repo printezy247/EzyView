@@ -8,11 +8,21 @@ import { useMt5 } from "./mt5";
  * stay allowed. The live region is always mounted so screen readers announce
  * the text when it appears.
  */
-export function SourceWarning({ source, className = "" }: { source: DataSourceChoice | undefined; className?: string }) {
+export function SourceWarning({
+  source,
+  className = "",
+}: {
+  source: DataSourceChoice | undefined;
+  className?: string;
+}) {
   const globalFeed = useMt5((s) => s.source);
   const text = orderWarning(effectiveSource(source, globalFeed), globalFeed === "mt5");
   return (
-    <p role="status" aria-live="polite" className={text ? `text-dense text-ev-warn ${className}` : "sr-only"}>
+    <p
+      role="status"
+      aria-live="polite"
+      className={text ? `text-dense text-ev-warn ${className}` : "sr-only"}
+    >
       {text}
     </p>
   );

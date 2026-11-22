@@ -33,8 +33,10 @@ if (typeof globalThis.ResizeObserver === "undefined") {
 }
 
 if (typeof globalThis.requestAnimationFrame === "undefined") {
-  globalThis.requestAnimationFrame = ((cb: FrameRequestCallback) => setTimeout(() => cb(0), 0) as unknown as number) as typeof globalThis.requestAnimationFrame;
-  globalThis.cancelAnimationFrame = ((id: number) => clearTimeout(id)) as typeof globalThis.cancelAnimationFrame;
+  globalThis.requestAnimationFrame = ((cb: FrameRequestCallback) =>
+    setTimeout(() => cb(0), 0) as unknown as number) as typeof globalThis.requestAnimationFrame;
+  globalThis.cancelAnimationFrame = ((id: number) =>
+    clearTimeout(id)) as typeof globalThis.cancelAnimationFrame;
 }
 
 // The chart engine reaches for a canvas it will never draw on in a render

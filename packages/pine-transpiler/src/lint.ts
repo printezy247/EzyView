@@ -26,7 +26,12 @@ export function lintPine(source: string): PineLintIssue[] {
   const issues: PineLintIssue[] = [];
 
   if (!source.includes("//@version=")) {
-    issues.push({ line: 1, column: 1, message: "Missing //@version= comment", severity: "warning" });
+    issues.push({
+      line: 1,
+      column: 1,
+      message: "Missing //@version= comment",
+      severity: "warning",
+    });
   }
 
   const codeLines = source
@@ -49,7 +54,12 @@ export function lintPine(source: string): PineLintIssue[] {
     (line) => line.includes("plot(") || line.includes("plotshape(") || line.includes("strategy."),
   );
   if (!hasPlotCall) {
-    issues.push({ line: 1, column: 1, message: "Script has no plot or strategy call", severity: "warning" });
+    issues.push({
+      line: 1,
+      column: 1,
+      message: "Script has no plot or strategy call",
+      severity: "warning",
+    });
   }
 
   return issues;

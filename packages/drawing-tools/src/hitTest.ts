@@ -22,12 +22,17 @@ export interface HitResult {
 const bodyHit = (drawing: Drawing): HitResult => ({ id: drawing.id, handle: -1 });
 
 /** Extend flags as a pair, defaulting to a plain segment. */
-const extendOf = (d: Drawing): [boolean, boolean] => [d.style.extendLeft === true, d.style.extendRight === true];
+const extendOf = (d: Drawing): [boolean, boolean] => [
+  d.style.extendLeft === true,
+  d.style.extendRight === true,
+];
 
 /** Distance to a straight tool, honoring its extend-left/right settings. */
 function lineDistance(d: Drawing, click: ScreenPoint, a: ScreenPoint, b: ScreenPoint): number {
   const [left, right] = extendOf(d);
-  return left || right ? distToSegmentExtended(click, a, b, left, right) : distToSegment(click, a, b);
+  return left || right
+    ? distToSegmentExtended(click, a, b, left, right)
+    : distToSegment(click, a, b);
 }
 
 /**
@@ -58,7 +63,8 @@ export function hitTest(
   const pts = screen as ScreenPoint[];
   // The advanced packs share one geometry/hit-test implementation, so adding a
   // tool cannot make the renderer and the click target disagree.
-  if (isAdvancedTool(drawing.tool)) return advancedHitTest(drawing, screen, click, tol) ? bodyHit(drawing) : null;
+  if (isAdvancedTool(drawing.tool))
+    return advancedHitTest(drawing, screen, click, tol) ? bodyHit(drawing) : null;
   const [a, b, c] = pts;
 
   switch (drawing.tool) {
@@ -142,7 +148,8 @@ export function hitTest(
     }
     case "fib_extension": {
       if (!a || !b || !c) return null;
-      if (distToSegment(click, a, b) <= tol || distToSegment(click, b, c) <= tol) return bodyHit(drawing);
+      if (distToSegment(click, a, b) <= tol || distToSegment(click, b, c) <= tol)
+        return bodyHit(drawing);
       // Levels radiate from the third anchor by ratio × the 1→2 screen delta.
       const levels = resolvedFibExtensionLevels(drawing.points, drawing.style);
       return levels.some((level) => Math.abs(click.y - (c.y + (b.y - a.y) * level.ratio)) <= tol)
@@ -175,7 +182,10 @@ export function hitTest(
       const lines = (drawing.text ?? "Text").split("\n");
       // Match the renderer's block geometry (drawings.ts drawTextBlock):
       // lineHeight 1.35, width measured per line with a 0.6 em average.
-      const width = Math.max(fontSize * 2, Math.max(...lines.map((l) => l.length)) * fontSize * 0.6);
+      const width = Math.max(
+        fontSize * 2,
+        Math.max(...lines.map((l) => l.length)) * fontSize * 0.6,
+      );
       return insideRect(click, a, { x: a.x + width, y: a.y + lines.length * fontSize * 1.35 }, tol)
         ? bodyHit(drawing)
         : null;
@@ -191,7 +201,9 @@ export function hitTest(
       const textWidth = Math.max(...lines.map((l) => l.length)) * fontSize * 0.6;
       const boxWidth = Math.max(120, textWidth + 18);
       const boxHeight = lines.length * fontSize * 1.35 + 12;
-      return insideRect(click, b, { x: b.x + boxWidth, y: b.y + boxHeight }, tol) ? bodyHit(drawing) : null;
+      return insideRect(click, b, { x: b.x + boxWidth, y: b.y + boxHeight }, tol)
+        ? bodyHit(drawing)
+        : null;
     }
     case "long_position":
     case "short_position": {
@@ -200,14 +212,18 @@ export function hitTest(
       const x1 = pts[3]?.x ?? Math.max(a.x, b.x, c.x);
       const y0 = Math.min(a.y, b.y, c.y);
       const y1 = Math.max(a.y, b.y, c.y);
-      const onEdge =
-        Math.abs(click.x - x1) <= tol && click.y >= y0 - tol && click.y <= y1 + tol;
+      const onEdge = Math.abs(click.x - x1) <= tol && click.y >= y0 - tol && click.y <= y1 + tol;
       const onLine =
         click.x >= x0 - tol &&
         click.x <= x1 + tol &&
-        (Math.abs(click.y - a.y) <= tol || Math.abs(click.y - b.y) <= tol || Math.abs(click.y - c.y) <= tol);
+        (Math.abs(click.y - a.y) <= tol ||
+          Math.abs(click.y - b.y) <= tol ||
+          Math.abs(click.y - c.y) <= tol);
       if (onEdge || onLine) return bodyHit(drawing);
-      return click.x >= x0 - tol && click.x <= x1 + tol && click.y >= y0 - tol && click.y <= y1 + tol
+      return click.x >= x0 - tol &&
+        click.x <= x1 + tol &&
+        click.y >= y0 - tol &&
+        click.y <= y1 + tol
         ? bodyHit(drawing)
         : null;
     }
@@ -226,7 +242,12 @@ export function hitTest(
  * projected anchors. Keeps fib levels aligned with the renderer without the
  * hit test needing a price scale.
  */
-function screenYForPrice(drawing: Drawing, price: number, a: ScreenPoint, b: ScreenPoint): number | null {
+function screenYForPrice(
+  drawing: Drawing,
+  price: number,
+  a: ScreenPoint,
+  b: ScreenPoint,
+): number | null {
   const p0 = drawing.points[0]?.price;
   const p1 = drawing.points[1]?.price;
   if (p0 === undefined || p1 === undefined || p1 === p0) return null;

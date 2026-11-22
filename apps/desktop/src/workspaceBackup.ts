@@ -88,21 +88,26 @@ export function parseWorkspaceBackup(raw: string): { backup: WorkspaceBackup } |
   } catch {
     return { error: "Not valid JSON" };
   }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return { error: "Not a backup file" };
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+    return { error: "Not a backup file" };
   const obj = parsed as Record<string, unknown>;
   if (obj.app !== "ezyview" || obj.kind !== "workspace-backup") {
     return { error: "Not an EzyView workspace backup" };
   }
   if (obj.version !== 1) return { error: `Unsupported backup version: ${String(obj.version)}` };
   const state = obj.state;
-  if (!state || typeof state !== "object" || Array.isArray(state)) return { error: "Backup has no saved state" };
+  if (!state || typeof state !== "object" || Array.isArray(state))
+    return { error: "Backup has no saved state" };
   const clean: Record<string, string> = {};
   for (const key of BACKUP_KEYS) {
     const value = (state as Record<string, unknown>)[key];
     if (typeof value === "string") clean[key] = value;
   }
-  const createdAt = typeof obj.createdAt === "number" && Number.isFinite(obj.createdAt) ? obj.createdAt : 0;
-  return { backup: { app: "ezyview", kind: "workspace-backup", version: 1, createdAt, state: clean } };
+  const createdAt =
+    typeof obj.createdAt === "number" && Number.isFinite(obj.createdAt) ? obj.createdAt : 0;
+  return {
+    backup: { app: "ezyview", kind: "workspace-backup", version: 1, createdAt, state: clean },
+  };
 }
 
 export interface ApplyResult {

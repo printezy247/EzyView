@@ -11,9 +11,20 @@ export async function scanUniverse(
   const symbols = await market.searchSymbols("");
   const rows = await Promise.all(
     symbols.map(async (info) => {
-      const candles = await market.getHistory({ symbol: info.symbol, resolution, from: 0, to: 0, limit: bars });
+      const candles = await market.getHistory({
+        symbol: info.symbol,
+        resolution,
+        from: 0,
+        to: 0,
+        limit: bars,
+      });
       return rowFromBars(
-        { symbol: info.symbol, ticker: info.ticker, name: info.description, assetClass: info.assetClass },
+        {
+          symbol: info.symbol,
+          ticker: info.ticker,
+          name: info.description,
+          assetClass: info.assetClass,
+        },
         candles,
       );
     }),

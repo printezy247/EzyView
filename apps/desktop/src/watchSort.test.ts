@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { sortWatch } from "./watchSort";
 
-const e = (ticker: string, price: number | null, changePct: number | null = null) => ({ ticker, price, changePct });
+const e = (ticker: string, price: number | null, changePct: number | null = null) => ({
+  ticker,
+  price,
+  changePct,
+});
 
 describe("sortWatch", () => {
   const rows = [e("B", null), e("C", 2), e("A", 2), e("D", 1)];

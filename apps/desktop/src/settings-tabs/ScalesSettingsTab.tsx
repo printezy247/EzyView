@@ -12,41 +12,71 @@ export function ScalesSettingsTab({ draft, setDraft }: Props) {
     <div className="space-y-4">
       <div className="font-semibold text-ev-strong">Price Scale Labels</div>
       <div className="space-y-2.5">
-        <Checkbox label="Symbol name label" checked={draft.scales.symbolNameLabel} onChange={(checked) =>
-              setDraft((d) => ({
-                ...d,
-                scales: { ...d.scales, symbolNameLabel: checked },
-              }))} />
+        <Checkbox
+          label="Symbol name label"
+          checked={draft.scales.symbolNameLabel}
+          onChange={(checked) =>
+            setDraft((d) => ({
+              ...d,
+              scales: { ...d.scales, symbolNameLabel: checked },
+            }))
+          }
+        />
 
-        <Checkbox label="Symbol last value label" checked={draft.scales.symbolLastPriceLabel} onChange={(checked) =>
-              setDraft((d) => ({
-                ...d,
-                scales: { ...d.scales, symbolLastPriceLabel: checked },
-              }))} />
+        <Checkbox
+          label="Symbol last value label"
+          checked={draft.scales.symbolLastPriceLabel}
+          onChange={(checked) =>
+            setDraft((d) => ({
+              ...d,
+              scales: { ...d.scales, symbolLastPriceLabel: checked },
+            }))
+          }
+        />
 
-        <Checkbox label="High and low price labels" checked={draft.scales.highLowPriceLabels} onChange={(checked) =>
-              setDraft((d) => ({
-                ...d,
-                scales: { ...d.scales, highLowPriceLabels: checked },
-              }))} />
+        <Checkbox
+          label="High and low price labels"
+          checked={draft.scales.highLowPriceLabels}
+          onChange={(checked) =>
+            setDraft((d) => ({
+              ...d,
+              scales: { ...d.scales, highLowPriceLabels: checked },
+            }))
+          }
+        />
 
-        <Checkbox label="Average close price label" checked={draft.scales.averageClosePriceLabel} onChange={(checked) =>
-              setDraft((d) => ({
-                ...d,
-                scales: { ...d.scales, averageClosePriceLabel: checked },
-              }))} />
+        <Checkbox
+          label="Average close price label"
+          checked={draft.scales.averageClosePriceLabel}
+          onChange={(checked) =>
+            setDraft((d) => ({
+              ...d,
+              scales: { ...d.scales, averageClosePriceLabel: checked },
+            }))
+          }
+        />
 
-        <Checkbox label="Countdown to bar close" checked={draft.scales.countdownToBarClose} onChange={(checked) =>
-              setDraft((d) => ({
-                ...d,
-                scales: { ...d.scales, countdownToBarClose: checked },
-              }))} />
+        <Checkbox
+          label="Countdown to bar close"
+          checked={draft.scales.countdownToBarClose}
+          onChange={(checked) =>
+            setDraft((d) => ({
+              ...d,
+              scales: { ...d.scales, countdownToBarClose: checked },
+            }))
+          }
+        />
 
-        <Checkbox label="Plus button on price axis" checked={draft.scales.plusButton} onChange={(checked) =>
-              setDraft((d) => ({
-                ...d,
-                scales: { ...d.scales, plusButton: checked },
-              }))} />
+        <Checkbox
+          label="Plus button on price axis"
+          checked={draft.scales.plusButton}
+          onChange={(checked) =>
+            setDraft((d) => ({
+              ...d,
+              scales: { ...d.scales, plusButton: checked },
+            }))
+          }
+        />
       </div>
 
       <div className="my-3 border-t border-ev-raised" />
@@ -76,23 +106,38 @@ export function ScalesSettingsTab({ draft, setDraft }: Props) {
           />
         </div>
 
-        <Checkbox label="Invert scale" checked={draft.scales.invertScale} onChange={(checked) =>
-              setDraft((d) => ({
-                ...d,
-                scales: { ...d.scales, invertScale: checked },
-              }))} />
+        <Checkbox
+          label="Invert scale"
+          checked={draft.scales.invertScale}
+          onChange={(checked) =>
+            setDraft((d) => ({
+              ...d,
+              scales: { ...d.scales, invertScale: checked },
+            }))
+          }
+        />
 
         <div className="flex items-center justify-between">
-          <Checkbox label="Scales border lines" checked={draft.scales.scalesLines} onChange={(checked) =>
-                setDraft((d) => ({
-                  ...d,
-                  scales: { ...d.scales, scalesLines: checked },
-                }))} />
-          <ColorInput label="Scales line colour" value={draft.scales.scalesLinesColor} onChange={(value) =>
+          <Checkbox
+            label="Scales border lines"
+            checked={draft.scales.scalesLines}
+            onChange={(checked) =>
+              setDraft((d) => ({
+                ...d,
+                scales: { ...d.scales, scalesLines: checked },
+              }))
+            }
+          />
+          <ColorInput
+            label="Scales line colour"
+            value={draft.scales.scalesLinesColor}
+            onChange={(value) =>
               setDraft((d) => ({
                 ...d,
                 scales: { ...d.scales, scalesLinesColor: value },
-              }))} />
+              }))
+            }
+          />
         </div>
       </div>
     </div>

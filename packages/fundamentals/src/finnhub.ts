@@ -61,7 +61,11 @@ export class FinnhubNewsAdapter implements NewsAdapter {
 
   constructor(private readonly client: FinnhubClient) {}
 
-  async getNews(options?: { symbols?: string[]; from?: EpochSeconds; limit?: number }): Promise<NewsItem[]> {
+  async getNews(options?: {
+    symbols?: string[];
+    from?: EpochSeconds;
+    limit?: number;
+  }): Promise<NewsItem[]> {
     const limit = options?.limit ?? 30;
     const symbol = options?.symbols?.[0] ?? null;
     let items: NewsItem[] = [];
@@ -70,8 +74,14 @@ export class FinnhubNewsAdapter implements NewsAdapter {
       if (kind === "stock") {
         const to = now();
         const from = options?.from ?? to - 7 * DAY;
-        const raw = (await this.client.get("/company-news", { symbol: ticker, from: ymd(from), to: ymd(to) })) as RawNews[];
-        items = (Array.isArray(raw) ? raw : []).map((r) => toNews(r, symbol)).filter((n) => n !== null);
+        const raw = (await this.client.get("/company-news", {
+          symbol: ticker,
+          from: ymd(from),
+          to: ymd(to),
+        })) as RawNews[];
+        items = (Array.isArray(raw) ? raw : [])
+          .map((r) => toNews(r, symbol))
+          .filter((n) => n !== null);
       } else {
         items = await this.category(kind);
       }
@@ -113,13 +123,21 @@ interface RawEarningsCal {
 export class FinnhubEarningsAdapter implements Pick<FundamentalsAdapter, "getEarnings"> {
   constructor(private readonly client: FinnhubClient) {}
 
-  async getEarnings(symbol: string, from?: EpochSeconds, to?: EpochSeconds): Promise<EarningsReport[]> {
+  async getEarnings(
+    symbol: string,
+    from?: EpochSeconds,
+    to?: EpochSeconds,
+  ): Promise<EarningsReport[]> {
     const { ticker, kind } = classify(symbol);
     if (kind !== "stock") return [];
     const today = now();
     const [history, upcoming] = await Promise.all([
       this.client.get("/stock/earnings", { symbol: ticker }) as Promise<RawSurprise[]>,
-      this.client.get("/calendar/earnings", { symbol: ticker, from: ymd(today - 30 * DAY), to: ymd(today + 180 * DAY) }) as Promise<{
+      this.client.get("/calendar/earnings", {
+        symbol: ticker,
+        from: ymd(today - 30 * DAY),
+        to: ymd(today + 180 * DAY),
+      }) as Promise<{
         earningsCalendar?: RawEarningsCal[];
       }>,
     ]);
@@ -128,7 +146,14 @@ export class FinnhubEarningsAdapter implements Pick<FundamentalsAdapter, "getEar
       const time = parseYmd(r.period);
       if (time === null) continue;
       const quarter = r.quarter && r.year ? `Q${r.quarter} ${r.year}` : (r.period ?? "");
-      byQuarter.set(quarter, { symbol, time, eps: num(r.actual), estimate: num(r.estimate), quarter, source: "finnhub" });
+      byQuarter.set(quarter, {
+        symbol,
+        time,
+        eps: num(r.actual),
+        estimate: num(r.estimate),
+        quarter,
+        source: "finnhub",
+      });
     }
     for (const r of upcoming?.earningsCalendar ?? []) {
       const time = parseYmd(r.date);
@@ -170,7 +195,11 @@ interface RawDividend {
 }
 
 /** Dividend source used when Finnhub refuses /stock/dividend (it is a paid endpoint on many plans). */
-export type DividendFallback = (symbol: string, from: EpochSeconds, to: EpochSeconds) => Promise<DividendEvent[]>;
+export type DividendFallback = (
+  symbol: string,
+  from: EpochSeconds,
+  to: EpochSeconds,
+) => Promise<DividendEvent[]>;
 
 /** IPO calendar and dividend history from Finnhub. */
 export class FinnhubCorporateCalendarAdapter implements CorporateCalendarAdapter {
@@ -183,7 +212,9 @@ export class FinnhubCorporateCalendarAdapter implements CorporateCalendarAdapter
   ) {}
 
   async getIpos(from: EpochSeconds, to: EpochSeconds): Promise<IpoEvent[]> {
-    const raw = (await this.client.get("/calendar/ipo", { from: ymd(from), to: ymd(to) })) as { ipoCalendar?: RawIpo[] };
+    const raw = (await this.client.get("/calendar/ipo", { from: ymd(from), to: ymd(to) })) as {
+      ipoCalendar?: RawIpo[];
+    };
     const out: IpoEvent[] = [];
     for (const r of raw?.ipoCalendar ?? []) {
       const time = parseYmd(r.date);
@@ -202,14 +233,23 @@ export class FinnhubCorporateCalendarAdapter implements CorporateCalendarAdapter
     return [...out].sort((a, b) => a.time - b.time);
   }
 
-  async getDividends(symbol: string, from: EpochSeconds, to: EpochSeconds): Promise<DividendEvent[]> {
+  async getDividends(
+    symbol: string,
+    from: EpochSeconds,
+    to: EpochSeconds,
+  ): Promise<DividendEvent[]> {
     const { ticker, kind } = classify(symbol);
     if (kind !== "stock") return [];
     let raw: RawDividend[];
     try {
-      raw = (await this.client.get("/stock/dividend", { symbol: ticker, from: ymd(from), to: ymd(to) })) as RawDividend[];
+      raw = (await this.client.get("/stock/dividend", {
+        symbol: ticker,
+        from: ymd(from),
+        to: ymd(to),
+      })) as RawDividend[];
     } catch (err) {
-      if (err instanceof ProviderError && err.denied && this.dividendFallback) return this.dividendFallback(symbol, from, to);
+      if (err instanceof ProviderError && err.denied && this.dividendFallback)
+        return this.dividendFallback(symbol, from, to);
       throw err;
     }
     const out: DividendEvent[] = [];
@@ -217,7 +257,14 @@ export class FinnhubCorporateCalendarAdapter implements CorporateCalendarAdapter
       const exDate = parseYmd(r.date);
       const amount = num(r.amount);
       if (exDate === null || amount === null) continue;
-      out.push({ symbol, exDate, payDate: parseYmd(r.payDate), amount, currency: r.currency ?? null, source: "finnhub" });
+      out.push({
+        symbol,
+        exDate,
+        payDate: parseYmd(r.payDate),
+        amount,
+        currency: r.currency ?? null,
+        source: "finnhub",
+      });
     }
     return [...out].sort((a, b) => b.exDate - a.exDate);
   }

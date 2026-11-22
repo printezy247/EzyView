@@ -179,7 +179,11 @@ export function ReplayBar({ totalBars, symbol: symbolProp, resolution: resolutio
         onClick={toggle}
         className="shadow-sm"
       >
-        {playing ? <Pause size={14} aria-hidden /> : <Play size={14} className="ml-0.5" aria-hidden />}
+        {playing ? (
+          <Pause size={14} aria-hidden />
+        ) : (
+          <Play size={14} className="ml-0.5" aria-hidden />
+        )}
       </IconButton>
 
       {/* Step forward */}
@@ -237,7 +241,12 @@ export function ReplayBar({ totalBars, symbol: symbolProp, resolution: resolutio
           if (!value) return;
           const at = Math.floor(new Date(`${value}T00:00:00`).getTime() / 1000);
           if (!Number.isFinite(at)) return;
-          void loadHistory(symbol, resolution, undefined, useWorkspace.getState().activeChart().dataSource).then((bars) => {
+          void loadHistory(
+            symbol,
+            resolution,
+            undefined,
+            useWorkspace.getState().activeChart().dataSource,
+          ).then((bars) => {
             let index = bars.findIndex((b) => b.time > at);
             if (index === -1) index = bars.length - 1;
             else index = Math.max(0, index - 1);

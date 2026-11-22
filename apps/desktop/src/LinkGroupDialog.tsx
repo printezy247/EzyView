@@ -58,7 +58,13 @@ export function LinkGroupDialog({ open, onClose, current, available, onPick }: P
           <Button type="button" variant="ghost" size="lg" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" form="link-group-form" variant="solid" size="lg" disabled={value.trim() === ""}>
+          <Button
+            type="submit"
+            form="link-group-form"
+            variant="solid"
+            size="lg"
+            disabled={value.trim() === ""}
+          >
             Link
           </Button>
         </>

@@ -39,7 +39,6 @@ export function useDrawingGestures(ctx: HostContext, kit: ChartHostKit, props: P
   } = ctx;
   const { hitAt, snapAt, finishDrawing } = kit;
 
-  
   // Selection, dragging, rubber-band previews, freehand strokes and hover
   // cursors share one pointer effect: only one can be active at a time and all
   // need the same capture/release-pan bookkeeping. The pointerdown listener
@@ -89,12 +88,17 @@ export function useDrawingGestures(ctx: HostContext, kit: ChartHostKit, props: P
 
     const defaultCursor = () => {
       const st = useWorkspace.getState();
-      return st.activeTool || st.eraserMode || useDrawingUi.getState().crosshairCursor ? "crosshair" : "";
+      return st.activeTool || st.eraserMode || useDrawingUi.getState().crosshairCursor
+        ? "crosshair"
+        : "";
     };
 
     /** Style a live preview inherits: the tool's remembered look. */
     const previewStyle = (tool: DrawingToolId) =>
-      defaultStyleForTool(tool, useWorkspace.getState().drawingToolStyles[tool] ?? DEFAULT_DRAWING_STYLE);
+      defaultStyleForTool(
+        tool,
+        useWorkspace.getState().drawingToolStyles[tool] ?? DEFAULT_DRAWING_STYLE,
+      );
 
     /** Snap a preview point to 45° increments around the first anchor. */
     const snapAngle = (
@@ -111,7 +115,9 @@ export function useDrawingGestures(ctx: HostContext, kit: ChartHostKit, props: P
       const step = Math.PI / 4;
       const angle = Math.round(Math.atan2(at.y - y0, at.x - x0) / step) * step;
       const conv = chart.screenToTimePrice(x0 + Math.cos(angle) * len, y0 + Math.sin(angle) * len);
-      return conv.ok && conv.time !== null && conv.price !== null ? { time: conv.time, price: conv.price } : fallback;
+      return conv.ok && conv.time !== null && conv.price !== null
+        ? { time: conv.time, price: conv.price }
+        : fallback;
     };
 
     const onDown = (e: PointerEvent) => {
@@ -179,7 +185,13 @@ export function useDrawingGestures(ctx: HostContext, kit: ChartHostKit, props: P
       }
       const selected = all.filter((d) => useWorkspace.getState().selectedDrawingIds.includes(d.id));
       const targets = selected.length > 0 ? selected : all.filter((d) => d.id === hit.id);
-      if (targets.length === 0 || targets.some((d) => d.locked) || st.lockAllDrawings || st.eraserMode) return;
+      if (
+        targets.length === 0 ||
+        targets.some((d) => d.locked) ||
+        st.lockAllDrawings ||
+        st.eraserMode
+      )
+        return;
       const start = chart.screenToTimePrice(pt.x, pt.y);
       if (!start.ok || start.time === null || start.price === null) return;
       gesture = {
@@ -211,7 +223,8 @@ export function useDrawingGestures(ctx: HostContext, kit: ChartHostKit, props: P
             const conv = chart.screenToTimePrice(pt.x, pt.y);
             if (conv.ok && conv.time !== null && conv.price !== null) {
               const want = { time: conv.time, price: conv.price };
-              const magnet = e.ctrlKey || e.metaKey ? (st.magnet === "off" ? "weak" : "off") : st.magnet;
+              const magnet =
+                e.ctrlKey || e.metaKey ? (st.magnet === "off" ? "weak" : "off") : st.magnet;
               const snapped = magnet === "off" ? want : snapAt(want, magnet);
               const cursorPoint =
                 e.shiftKey && pending.points.length === 1
@@ -287,7 +300,8 @@ export function useDrawingGestures(ctx: HostContext, kit: ChartHostKit, props: P
         let points: { time: number; price: number }[];
         if (cur.handle >= 0) {
           const want = { time: conv.time, price: conv.price };
-          const effectiveMagnet = e.ctrlKey || e.metaKey ? (st.magnet === "off" ? "weak" : "off") : st.magnet;
+          const effectiveMagnet =
+            e.ctrlKey || e.metaKey ? (st.magnet === "off" ? "weak" : "off") : st.magnet;
           let snapped = effectiveMagnet === "off" ? want : snapAt(want, effectiveMagnet);
           // Position anatomy: entry/stop/target keep their bar, the width handle
           // keeps its price. Only the axis each one means is draggable.
@@ -297,12 +311,22 @@ export function useDrawingGestures(ctx: HostContext, kit: ChartHostKit, props: P
             snapped = { time: snapped.time, price: target.points[3]!.price };
           }
           points = setAnchor(target, cur.handle, snapped).points;
-          if (e.shiftKey && points.length === 2 && (target.tool === "trend_line" || target.tool === "ray" || target.tool === "extended_line")) {
+          if (
+            e.shiftKey &&
+            points.length === 2 &&
+            (target.tool === "trend_line" ||
+              target.tool === "ray" ||
+              target.tool === "extended_line")
+          ) {
             const otherIdx = cur.handle === 0 ? 1 : 0;
             points[cur.handle] = { time: snapped.time, price: points[otherIdx]!.price };
           }
         } else {
-          points = translateDrawing(target, conv.time - cur.startPoint.time, conv.price - cur.startPoint.price).points;
+          points = translateDrawing(
+            target,
+            conv.time - cur.startPoint.time,
+            conv.price - cur.startPoint.price,
+          ).points;
         }
         st.previewDrawing(id, { points }, chartIndex);
       }
@@ -343,11 +367,15 @@ export function useDrawingGestures(ctx: HostContext, kit: ChartHostKit, props: P
       } else if (cur.kind === "level") {
         if (cur.preview !== null) {
           // One amend carrying only the dragged level, so the other one stays put.
-          onLevelCommit?.(cur.symbol, cur.id === "SL" ? { stopLoss: cur.preview } : { takeProfit: cur.preview });
+          onLevelCommit?.(
+            cur.symbol,
+            cur.id === "SL" ? { stopLoss: cur.preview } : { takeProfit: cur.preview },
+          );
         }
       } else if (cur.kind === "brush") {
         const pending = pendingRef.current;
-        if (pending && pending.points.length >= 2) finishDrawing("brush", pending.points, cur.chartIndex);
+        if (pending && pending.points.length >= 2)
+          finishDrawing("brush", pending.points, cur.chartIndex);
         pendingRef.current = null;
         chartRef.current?.setPreview(null);
         setGhost(null);

@@ -30,7 +30,12 @@ beforeEach(() => {
   useWorkspace.getState().setDrawings([drawing]);
   useWorkspace.getState().selectDrawing("d1");
   useWorkspace.getState().setHideAllDrawings(false);
-  useDrawingUi.setState({ settingsId: null, settingsTab: "style", textEditId: null, miniBarPinned: null });
+  useDrawingUi.setState({
+    settingsId: null,
+    settingsTab: "style",
+    textEditId: null,
+    miniBarPinned: null,
+  });
 });
 
 afterEach(() => {
@@ -103,7 +108,9 @@ describe("FloatingDrawingBar", () => {
     fireEvent.click(screen.getByRole("button", { name: "Drawing settings" }));
     fireEvent.click(screen.getByRole("tab", { name: "Coordinates" }));
 
-    fireEvent.change(screen.getByRole("spinbutton", { name: "Point 2 price" }), { target: { value: "123.45" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Point 2 price" }), {
+      target: { value: "123.45" },
+    });
     expect(useWorkspace.getState().activeChart().drawings[0]?.points[1]?.price).toBe(123.45);
 
     fireEvent.click(screen.getByRole("button", { name: "OK" }));

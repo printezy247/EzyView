@@ -32,7 +32,14 @@ interface Row {
 export type JournalTabId = "feed" | "plans" | "calendar" | "stats" | "reviews";
 
 /** Account-aware filter options: every capture source plus "any". */
-const SOURCES: readonly (JournalEntry["source"] | "any")[] = ["any", "manual", "mt5", "ccxt", "alpaca", "paper"];
+const SOURCES: readonly (JournalEntry["source"] | "any")[] = [
+  "any",
+  "manual",
+  "mt5",
+  "ccxt",
+  "alpaca",
+  "paper",
+];
 
 const TABS: readonly { id: JournalTabId; label: string }[] = [
   { id: "feed", label: "Feed" },
@@ -42,19 +49,22 @@ const TABS: readonly { id: JournalTabId; label: string }[] = [
   { id: "reviews", label: "Reviews" },
 ];
 
-const clock = (epoch: number): string => new Date(epoch * 1000).toLocaleString(undefined, {
-  month: "short",
-  day: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
+const clock = (epoch: number): string =>
+  new Date(epoch * 1000).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
 const money = (value: number): string =>
   value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /** Download every entry as a CSV blob; revoke the object URL right after the click. */
 function exportCsv(): void {
-  const blob = new Blob([entriesToCsv(useJournal.getState().entries)], { type: "text/csv;charset=utf-8" });
+  const blob = new Blob([entriesToCsv(useJournal.getState().entries)], {
+    type: "text/csv;charset=utf-8",
+  });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
@@ -128,7 +138,9 @@ export function JournalPanel({ onClose, tab, onTabChange }: Props) {
           bulk={bulkMode}
           checked={checked.has(entry.id)}
           onCheck={() =>
-            setBulkIds((ids) => (ids.includes(entry.id) ? ids.filter((id) => id !== entry.id) : [...ids, entry.id]))
+            setBulkIds((ids) =>
+              ids.includes(entry.id) ? ids.filter((id) => id !== entry.id) : [...ids, entry.id],
+            )
           }
         />
       ),
@@ -179,7 +191,8 @@ export function JournalPanel({ onClose, tab, onTabChange }: Props) {
     if (filteredEntries.length - bulkIds.length === 0) setBulkMode(false);
   };
 
-  const allTradesChecked = filteredEntries.length > 0 && filteredEntries.every((entry) => checked.has(entry.id));
+  const allTradesChecked =
+    filteredEntries.length > 0 && filteredEntries.every((entry) => checked.has(entry.id));
   const toggleAllTrades = () => {
     setBulkIds(allTradesChecked ? [] : filteredEntries.map((entry) => entry.id));
   };
@@ -187,21 +200,41 @@ export function JournalPanel({ onClose, tab, onTabChange }: Props) {
   const chip = chipClass({ tone: "neutral" });
 
   return (
-    <section aria-label="Trading journal" className="flex min-h-0 flex-1 flex-col border-t border-ev-raised bg-ev-bg">
+    <section
+      aria-label="Trading journal"
+      className="flex min-h-0 flex-1 flex-col border-t border-ev-raised bg-ev-bg"
+    >
       <header className="flex h-8 shrink-0 items-center gap-3 border-b border-ev-raised px-3 text-dense">
         <span className="font-semibold uppercase tracking-wider text-ev-muted">Journal</span>
 
-        <Tabs label="Journal views" items={TABS} value={tab} onChange={(v) => onTabChange(v as JournalTabId)} />
+        <Tabs
+          label="Journal views"
+          items={TABS}
+          value={tab}
+          onChange={(v) => onTabChange(v as JournalTabId)}
+        />
 
         <dl className="flex items-center gap-3 num">
-          <Fact label="Net" value={money(stats.netPnl)} tone={stats.netPnl >= 0 ? "text-ev-up-text" : "text-ev-down-text"} />
+          <Fact
+            label="Net"
+            value={money(stats.netPnl)}
+            tone={stats.netPnl >= 0 ? "text-ev-up-text" : "text-ev-down-text"}
+          />
           <Fact label="Trades" value={String(stats.trades)} />
-          <Fact label="Win rate" value={stats.trades === 0 ? "—" : `${Math.round(stats.winRate * 100)}%`} />
+          <Fact
+            label="Win rate"
+            value={stats.trades === 0 ? "—" : `${Math.round(stats.winRate * 100)}%`}
+          />
           <Fact label="Max DD" value={money(stats.maxDrawdown)} tone="text-ev-down-text" />
         </dl>
 
         <div className="ml-auto flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={importNow} title="Turn closed deals into journal trades">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={importNow}
+            title="Turn closed deals into journal trades"
+          >
             Import history
           </Button>
           {lastImport !== null && (
@@ -214,7 +247,12 @@ export function JournalPanel({ onClose, tab, onTabChange }: Props) {
               <Button variant="ghost" size="sm" onClick={() => setDialogOpen(true)}>
                 + Manual entry
               </Button>
-              <Button variant="ghost" size="sm" onClick={exportCsv} title="Download all entries as CSV">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={exportCsv}
+                title="Download all entries as CSV"
+              >
                 Export CSV
               </Button>
             </>
@@ -232,7 +270,9 @@ export function JournalPanel({ onClose, tab, onTabChange }: Props) {
           role="status"
           className="flex items-center gap-2 rounded border border-ev-down/40 bg-ev-down/10 mx-3 mt-2 px-3 py-1.5 text-dense text-ev-down-text"
         >
-          <span className="flex-1">Journal storage is full — recent screenshots and edits may not survive a restart.</span>
+          <span className="flex-1">
+            Journal storage is full — recent screenshots and edits may not survive a restart.
+          </span>
           <Button variant="ghost" size="sm" onClick={dismissStorageIssue}>
             Dismiss
           </Button>
@@ -264,7 +304,13 @@ export function JournalPanel({ onClose, tab, onTabChange }: Props) {
                 <Camera size={13} aria-hidden />
                 {shot ? "Chart attached" : "Chart"}
               </Button>
-              <Button size="sm" variant="solid" onClick={submit} disabled={!text.trim() && !shot} className="ml-auto">
+              <Button
+                size="sm"
+                variant="solid"
+                onClick={submit}
+                disabled={!text.trim() && !shot}
+                className="ml-auto"
+              >
                 Add note
               </Button>
             </div>
@@ -280,7 +326,11 @@ export function JournalPanel({ onClose, tab, onTabChange }: Props) {
                 className="w-64"
               />
               {/* Account-aware filter: chip per capture source, any = all. */}
-              <div role="group" aria-label="Filter by account source" className="flex items-center gap-1">
+              <div
+                role="group"
+                aria-label="Filter by account source"
+                className="flex items-center gap-1"
+              >
                 {SOURCES.map((opt) => (
                   <Button
                     key={opt}
@@ -322,10 +372,20 @@ export function JournalPanel({ onClose, tab, onTabChange }: Props) {
                   aria-label="Bulk tag"
                   className="w-40"
                 />
-                <Button size="sm" variant="outline" onClick={applyBulkTag} disabled={bulkTag.trim() === "" || bulkIds.length === 0}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={applyBulkTag}
+                  disabled={bulkTag.trim() === "" || bulkIds.length === 0}
+                >
                   Add tag
                 </Button>
-                <Button size="sm" variant="danger" onClick={deleteSelected} disabled={bulkIds.length === 0}>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  onClick={deleteSelected}
+                  disabled={bulkIds.length === 0}
+                >
                   Delete selected
                 </Button>
               </div>
@@ -345,7 +405,9 @@ export function JournalPanel({ onClose, tab, onTabChange }: Props) {
                 className="min-h-0 flex-1 overflow-auto"
                 ariaLabel="Journal entries"
                 renderItem={(row) => (
-                  <div className="border-b border-ev-panel px-3 py-1.5 hover:bg-ev-panel/60">{row.node}</div>
+                  <div className="border-b border-ev-panel px-3 py-1.5 hover:bg-ev-panel/60">
+                    {row.node}
+                  </div>
                 )}
               />
             )}
@@ -354,10 +416,17 @@ export function JournalPanel({ onClose, tab, onTabChange }: Props) {
       )}
 
       {tab === "plans" && <JournalPlans />}
-      {tab === "calendar" && <JournalCalendar entries={entries} selectedDay={selectedDay} onSelectDay={setSelectedDay} />}
+      {tab === "calendar" && (
+        <JournalCalendar entries={entries} selectedDay={selectedDay} onSelectDay={setSelectedDay} />
+      )}
       {tab === "stats" && <JournalStatsView entries={entries} />}
       {tab === "reviews" && (
-        <JournalReviews entries={entries} notes={notes} selectedDay={selectedDay} onSelectDay={setSelectedDay} />
+        <JournalReviews
+          entries={entries}
+          notes={notes}
+          selectedDay={selectedDay}
+          onSelectDay={setSelectedDay}
+        />
       )}
 
       {dialogOpen && <JournalEntryDialog onClose={() => setDialogOpen(false)} />}
@@ -371,7 +440,11 @@ export function JournalPanel({ onClose, tab, onTabChange }: Props) {
           className="fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-black/80 p-8"
           aria-label="Dismiss screenshot"
         >
-          <img src={preview} alt="Chart screenshot" className="max-h-full max-w-full rounded border border-ev-line" />
+          <img
+            src={preview}
+            alt="Chart screenshot"
+            className="max-h-full max-w-full rounded border border-ev-line"
+          />
         </button>
       )}
     </section>
@@ -404,9 +477,16 @@ function TradeRow({
   return (
     <div className="flex items-center gap-3 text-dense">
       {bulk && (
-        <input type="checkbox" checked={checked} onChange={onCheck} aria-label={`Select trade ${entry.symbol}`} />
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={onCheck}
+          aria-label={`Select trade ${entry.symbol}`}
+        />
       )}
-      <span className="w-32 shrink-0 text-ev-muted">{clock(entry.exitTime ?? entry.entryTime)}</span>
+      <span className="w-32 shrink-0 text-ev-muted">
+        {clock(entry.exitTime ?? entry.entryTime)}
+      </span>
       <span className="w-20 shrink-0 font-medium text-ev-strong">{entry.symbol}</span>
       <span className={entry.side === "long" ? "w-12 text-ev-up-text" : "w-12 text-ev-down-text"}>
         {entry.side.toUpperCase()}
@@ -417,15 +497,25 @@ function TradeRow({
         {entry.exitPrice !== undefined ? ` → ${entry.exitPrice}` : ""}
       </span>
       {pnl === undefined ? (
-        <span className="rounded border border-ev-dim px-1.5 py-0.5 text-dense text-ev-muted">open</span>
+        <span className="rounded border border-ev-dim px-1.5 py-0.5 text-dense text-ev-muted">
+          open
+        </span>
       ) : (
         <span className={`num ${pnl >= 0 ? "text-ev-up-text" : "text-ev-down-text"}`}>
           {pnl >= 0 ? "+" : ""}
           {money(pnl)}
         </span>
       )}
-      {entry.emotion && <span className="rounded bg-ev-raised px-1.5 py-0.5 text-dense text-ev-muted">{entry.emotion}</span>}
-      {entry.source && <span className="rounded bg-ev-raised px-1.5 py-0.5 text-dense text-ev-muted">{entry.source}</span>}
+      {entry.emotion && (
+        <span className="rounded bg-ev-raised px-1.5 py-0.5 text-dense text-ev-muted">
+          {entry.emotion}
+        </span>
+      )}
+      {entry.source && (
+        <span className="rounded bg-ev-raised px-1.5 py-0.5 text-dense text-ev-muted">
+          {entry.source}
+        </span>
+      )}
       <IconButton
         size="sm"
         label={`Delete trade ${entry.symbol}`}

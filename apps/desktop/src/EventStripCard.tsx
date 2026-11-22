@@ -13,13 +13,23 @@ const fmtTime = (epoch: number): string =>
   });
 
 const fmtMoney = (n: number): string =>
-  n >= 1_000_000_000 ? `$${(n / 1_000_000_000).toFixed(1)}B` : `$${Math.round(n / 1_000_000).toFixed(0)}M`;
+  n >= 1_000_000_000
+    ? `$${(n / 1_000_000_000).toFixed(1)}B`
+    : `$${Math.round(n / 1_000_000).toFixed(0)}M`;
 
 function DetailRow({ label, value, tone }: { label: string; value: string; tone?: "up" | "down" }) {
   return (
     <div className="flex items-baseline justify-between gap-3 text-dense">
       <span className="text-ev-faint">{label}</span>
-      <span className={tone === "up" ? "num text-ev-up-text" : tone === "down" ? "num text-ev-down-text" : "num text-ev-strong"}>
+      <span
+        className={
+          tone === "up"
+            ? "num text-ev-up-text"
+            : tone === "down"
+              ? "num text-ev-down-text"
+              : "num text-ev-strong"
+        }
+      >
         {value}
       </span>
     </div>
@@ -35,10 +45,18 @@ function EventDetail({ m }: { m: EventStripMarker }) {
           <span className="text-micro text-ev-faint">{fmtTime(m.time)}</span>
         </div>
         {m.eps !== undefined && m.eps !== null && (
-          <DetailRow label="EPS" value={m.eps.toFixed(2)} tone={m.estimate != null ? (m.eps >= m.estimate ? "up" : "down") : undefined} />
+          <DetailRow
+            label="EPS"
+            value={m.eps.toFixed(2)}
+            tone={m.estimate != null ? (m.eps >= m.estimate ? "up" : "down") : undefined}
+          />
         )}
-        {m.estimate !== undefined && m.estimate !== null && <DetailRow label="Estimate" value={m.estimate.toFixed(2)} />}
-        {m.revenue !== undefined && m.revenue !== null && <DetailRow label="Revenue" value={fmtMoney(m.revenue)} />}
+        {m.estimate !== undefined && m.estimate !== null && (
+          <DetailRow label="Estimate" value={m.estimate.toFixed(2)} />
+        )}
+        {m.revenue !== undefined && m.revenue !== null && (
+          <DetailRow label="Revenue" value={fmtMoney(m.revenue)} />
+        )}
         {m.source && <p className="text-micro text-ev-faint">via {m.source}</p>}
       </div>
     );
@@ -59,7 +77,12 @@ function EventDetail({ m }: { m: EventStripMarker }) {
           {m.url && (
             <>
               {" · "}
-              <a href={safeHref(m.url) ?? "#"} target="_blank" rel="noreferrer" className="underline hover:text-ev-strong">
+              <a
+                href={safeHref(m.url) ?? "#"}
+                target="_blank"
+                rel="noreferrer"
+                className="underline hover:text-ev-strong"
+              >
                 source
               </a>
             </>
@@ -83,13 +106,18 @@ export function EventStripCard({ hit }: { hit: EventStripHit }) {
       </p>
       <ul className="max-h-48 space-y-1 overflow-y-auto">
         {hit.markers.slice(0, 8).map((m, i) => (
-          <li key={`${m.time}-${m.title}-${i}`} className="border-t border-ev-raised pt-1 first:border-0 first:pt-0">
+          <li
+            key={`${m.time}-${m.title}-${i}`}
+            className="border-t border-ev-raised pt-1 first:border-0 first:pt-0"
+          >
             <p className="text-dense font-medium text-ev-strong">{m.title}</p>
             <EventDetail m={m} />
           </li>
         ))}
       </ul>
-      {hit.count > 8 && <p className="text-micro text-ev-faint">+{hit.count - 8} more — zoom in to separate them</p>}
+      {hit.count > 8 && (
+        <p className="text-micro text-ev-faint">+{hit.count - 8} more — zoom in to separate them</p>
+      )}
     </div>
   );
 }

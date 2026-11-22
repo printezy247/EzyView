@@ -12,7 +12,8 @@ export interface TableRow {
 }
 
 /** `2026-10-21 12:00` in UTC (the same clock the CSV export uses). */
-const stamp = (seconds: number): string => new Date(seconds * 1000).toISOString().slice(0, 16).replace("T", " ");
+const stamp = (seconds: number): string =>
+  new Date(seconds * 1000).toISOString().slice(0, 16).replace("T", " ");
 
 /** The newest `MAX_TABLE_ROWS` bars, newest first, formatted for display. */
 export function tableRows(bars: readonly Candle[], precision: number): TableRow[] {

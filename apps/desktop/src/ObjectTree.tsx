@@ -1,30 +1,41 @@
 import { useRef, useState } from "react";
 import type { MouseEvent, ReactNode } from "react";
-import { ChevronDown, ChevronRight, Eye, EyeOff, Lock, LockOpen, Pencil, Search, Trash2, Upload, Download, X } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Eye,
+  EyeOff,
+  Lock,
+  LockOpen,
+  Pencil,
+  Search,
+  Trash2,
+  Upload,
+  Download,
+  X,
+} from "lucide-react";
 import type { Drawing } from "@ezyview/drawing-tools";
 import { useWorkspace } from "./store";
 import { useActiveChart } from "./store/selectors";
-import type { ActiveIndicator } from "./store";
 import { DrawingProperties } from "./DrawingProperties";
 import { parseDrawings, serializeDrawings } from "./drawingsIO";
 import { saveBlob } from "./exportUi";
+import { drawingLabel, indicatorLabel, toolName } from "./drawingLabels";
 import { Button, Checkbox, IconButton, Input, Select } from "./ui";
+
+// Re-exported for existing importers; the implementations live in drawingLabels.ts
+// so DrawingProperties can use them without importing this component (cycle).
+export { drawingLabel, indicatorLabel, toolName };
 
 interface Props {
   onClose: () => void;
 }
 
 /** Price sources an indicator's string parameter can be computed from. */
-const SOURCE_OPTIONS = ["close", "open", "high", "low", "hl2", "hlc3", "ohlc4"].map((src) => ({ value: src, label: src }));
-
-/** "trend_line" → "Trend line". */
-export const toolName = (tool: string): string => {
-  const words = tool.replace(/_/g, " ");
-  return words.charAt(0).toUpperCase() + words.slice(1);
-};
-
-export const drawingLabel = (d: Drawing): string => d.name ?? toolName(d.tool);
-export const indicatorLabel = (i: ActiveIndicator): string => i.name ?? i.def.name;
+const SOURCE_OPTIONS = ["close", "open", "high", "low", "hl2", "hlc3", "ohlc4"].map((src) => ({
+  value: src,
+  label: src,
+}));
 
 /**
  * Everything placed on the focused chart: indicators first, then drawings in
@@ -99,19 +110,26 @@ export function ObjectTree({ onClose }: Props) {
   return (
     <aside aria-label="Object tree" className="flex w-full min-w-0 flex-1 flex-col bg-ev-bg">
       <div className="flex items-center justify-between border-b border-ev-raised px-3 py-2">
-        <h2 className="text-base font-semibold uppercase tracking-wider text-ev-muted">Object tree</h2>
+        <h2 className="text-base font-semibold uppercase tracking-wider text-ev-muted">
+          Object tree
+        </h2>
         <IconButton label="Close object tree" size="sm" onClick={onClose}>
           <X size={13} aria-hidden />
         </IconButton>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto py-1 text-base" role="tree" aria-label="Chart objects">
+      <div
+        className="min-h-0 flex-1 overflow-y-auto py-1 text-base"
+        role="tree"
+        aria-label="Chart objects"
+      >
         <p className="truncate px-3 pb-1 text-dense text-ev-muted">
           {symbol} · {resolution}
         </p>
         {empty && (
           <p className="px-3 py-4 text-dense leading-relaxed text-ev-muted">
-            Nothing on this chart yet. Add an indicator from Studies, or pick a tool on the left rail.
+            Nothing on this chart yet. Add an indicator from Studies, or pick a tool on the left
+            rail.
           </p>
         )}
 
@@ -131,7 +149,10 @@ export function ObjectTree({ onClose }: Props) {
                 {expandedInd === i.uid && i.def.params.length > 0 && (
                   <div className="space-y-1 border-b border-ev-raised bg-ev-panel px-3 py-1.5 text-dense">
                     {i.def.params.map((p) => (
-                      <div key={p.id} className="flex items-center justify-between gap-2 text-ev-muted">
+                      <div
+                        key={p.id}
+                        className="flex items-center justify-between gap-2 text-ev-muted"
+                      >
                         <span>{p.label}</span>
                         {p.type === "int" || p.type === "float" ? (
                           <Input
@@ -142,7 +163,8 @@ export function ObjectTree({ onClose }: Props) {
                             step={p.type === "float" ? 0.1 : 1}
                             onChange={(e) => {
                               const val = Number(e.target.value);
-                              if (Number.isFinite(val)) updateIndicatorParams(i.uid, { ...i.params, [p.id]: val });
+                              if (Number.isFinite(val))
+                                updateIndicatorParams(i.uid, { ...i.params, [p.id]: val });
                             }}
                             aria-label={p.label}
                             className="w-16 text-right num"
@@ -151,14 +173,18 @@ export function ObjectTree({ onClose }: Props) {
                           <Checkbox
                             label={p.label}
                             checked={Boolean(i.params[p.id] ?? p.default)}
-                            onChange={(checked) => updateIndicatorParams(i.uid, { ...i.params, [p.id]: checked })}
+                            onChange={(checked) =>
+                              updateIndicatorParams(i.uid, { ...i.params, [p.id]: checked })
+                            }
                           />
                         ) : (
                           <Select
                             label={p.label}
                             size="sm"
                             value={String(i.params[p.id] ?? p.default)}
-                            onChange={(value) => updateIndicatorParams(i.uid, { ...i.params, [p.id]: value })}
+                            onChange={(value) =>
+                              updateIndicatorParams(i.uid, { ...i.params, [p.id]: value })
+                            }
                             options={SOURCE_OPTIONS}
                             className="shrink-0"
                           />
@@ -193,19 +219,48 @@ export function ObjectTree({ onClose }: Props) {
                 <Button variant="ghost" size="sm" onClick={() => ungroupSelectedDrawings()}>
                   Ungroup
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => updateDrawings(selectedIds, { hidden: true })}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => updateDrawings(selectedIds, { hidden: true })}
+                >
                   Hide
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => updateDrawings(selectedIds, { locked: true })}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => updateDrawings(selectedIds, { locked: true })}
+                >
                   Lock
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => updateDrawings(selectedIds, { zIndex: Math.max(0, ...drawings.map((d) => d.zIndex ?? 0)) + 1 })}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    updateDrawings(selectedIds, {
+                      zIndex: Math.max(0, ...drawings.map((d) => d.zIndex ?? 0)) + 1,
+                    })
+                  }
+                >
                   Front
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => updateDrawings(selectedIds, { zIndex: Math.min(0, ...drawings.map((d) => d.zIndex ?? 0)) - 1 })}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    updateDrawings(selectedIds, {
+                      zIndex: Math.min(0, ...drawings.map((d) => d.zIndex ?? 0)) - 1,
+                    })
+                  }
+                >
                   Back
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => deleteDrawings(selectedIds)} className="text-ev-down-text">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => deleteDrawings(selectedIds)}
+                  className="text-ev-down-text"
+                >
                   Delete
                 </Button>
               </div>
@@ -225,18 +280,46 @@ export function ObjectTree({ onClose }: Props) {
                       onClick={() => setCollapsedGroups((prev) => ({ ...prev, [groupId]: open }))}
                       className="size-5"
                     >
-                      {open ? <ChevronDown size={12} aria-hidden /> : <ChevronRight size={12} aria-hidden />}
+                      {open ? (
+                        <ChevronDown size={12} aria-hidden />
+                      ) : (
+                        <ChevronRight size={12} aria-hidden />
+                      )}
                     </IconButton>
-                    <Button variant="ghost" size="sm" onClick={() => setDrawingSelection(ids)} className="min-w-0 flex-1 justify-start truncate font-medium">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDrawingSelection(ids)}
+                      className="min-w-0 flex-1 justify-start truncate font-medium"
+                    >
                       Group · {list.length}
                     </Button>
-                    <IconButton label="Toggle group visibility" size="sm" onClick={() => updateDrawings(ids, { hidden: !anyHidden })} className="size-5">
+                    <IconButton
+                      label="Toggle group visibility"
+                      size="sm"
+                      onClick={() => updateDrawings(ids, { hidden: !anyHidden })}
+                      className="size-5"
+                    >
                       {anyHidden ? <EyeOff size={11} aria-hidden /> : <Eye size={11} aria-hidden />}
                     </IconButton>
-                    <IconButton label="Toggle group lock" size="sm" onClick={() => updateDrawings(ids, { locked: !anyLocked })} className="size-5">
-                      {anyLocked ? <Lock size={11} aria-hidden /> : <LockOpen size={11} aria-hidden />}
+                    <IconButton
+                      label="Toggle group lock"
+                      size="sm"
+                      onClick={() => updateDrawings(ids, { locked: !anyLocked })}
+                      className="size-5"
+                    >
+                      {anyLocked ? (
+                        <Lock size={11} aria-hidden />
+                      ) : (
+                        <LockOpen size={11} aria-hidden />
+                      )}
                     </IconButton>
-                    <IconButton label="Delete group" size="sm" onClick={() => deleteDrawings(ids)} className="size-5 hover:text-ev-down-text">
+                    <IconButton
+                      label="Delete group"
+                      size="sm"
+                      onClick={() => deleteDrawings(ids)}
+                      className="size-5 hover:text-ev-down-text"
+                    >
                       <Trash2 size={11} aria-hidden />
                     </IconButton>
                   </div>
@@ -250,7 +333,9 @@ export function ObjectTree({ onClose }: Props) {
                         selected={selectedIds.includes(d.id)}
                         locked={!!d.locked}
                         grouped
-                        onSelect={(e) => (e?.shiftKey ? toggleDrawingSelection(d.id) : selectDrawing(d.id))}
+                        onSelect={(e) =>
+                          e?.shiftKey ? toggleDrawingSelection(d.id) : selectDrawing(d.id)
+                        }
                         onToggle={() => updateDrawing(d.id, { hidden: !d.hidden })}
                         onLock={() => updateDrawing(d.id, { locked: !d.locked })}
                         onRename={(name) => updateDrawing(d.id, { name: name || undefined })}
@@ -283,11 +368,22 @@ export function ObjectTree({ onClose }: Props) {
 
       <div className="border-t border-ev-raised px-3 py-2 text-dense">
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" disabled={drawings.length === 0} onClick={exportDrawings} className="flex-1">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={drawings.length === 0}
+            onClick={exportDrawings}
+            className="flex-1"
+          >
             <Download size={12} aria-hidden />
             Export
           </Button>
-          <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} className="flex-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileRef.current?.click()}
+            className="flex-1"
+          >
             <Upload size={12} aria-hidden />
             Import
           </Button>
@@ -317,7 +413,9 @@ export function ObjectTree({ onClose }: Props) {
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="mt-1">
-      <h3 className="px-3 py-1 text-dense font-semibold uppercase tracking-wider text-ev-faint">{title}</h3>
+      <h3 className="px-3 py-1 text-dense font-semibold uppercase tracking-wider text-ev-faint">
+        {title}
+      </h3>
       <ul>{children}</ul>
     </section>
   );
@@ -339,7 +437,19 @@ interface RowProps {
   onDelete: () => void;
 }
 
-function Row({ label, swatch, hidden, selected, locked, grouped, onSelect, onToggle, onLock, onRename, onDelete }: RowProps) {
+function Row({
+  label,
+  swatch,
+  hidden,
+  selected,
+  locked,
+  grouped,
+  onSelect,
+  onToggle,
+  onLock,
+  onRename,
+  onDelete,
+}: RowProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(label);
 
@@ -368,7 +478,9 @@ function Row({ label, swatch, hidden, selected, locked, grouped, onSelect, onTog
         selected ? "bg-ev-raised ring-1 ring-inset ring-ev-accent" : ""
       }`}
     >
-      {swatch && <span className="size-2 shrink-0 rounded-full" style={{ background: swatch }} aria-hidden />}
+      {swatch && (
+        <span className="size-2 shrink-0 rounded-full" style={{ background: swatch }} aria-hidden />
+      )}
       {editing ? (
         <Input
           aria-label={`Rename ${label}`}
@@ -433,7 +545,7 @@ function Row({ label, swatch, hidden, selected, locked, grouped, onSelect, onTog
           setEditing(true);
         }}
         size="sm"
-          className="size-6"
+        className="size-6"
       >
         <Pencil size={12} aria-hidden />
       </IconButton>
@@ -444,7 +556,7 @@ function Row({ label, swatch, hidden, selected, locked, grouped, onSelect, onTog
           onDelete();
         }}
         size="sm"
-          className="size-6"
+        className="size-6"
       >
         <Trash2 size={12} aria-hidden />
       </IconButton>

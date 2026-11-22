@@ -7,10 +7,14 @@ export type EffectiveSource = Exclude<DataSourceChoice, "auto">;
 
 const CHOICES = new Set<string>(["auto", "demo", "mt5", "binance", "kraken", "twelvedata"]);
 
-export const isDataSourceChoice = (v: unknown): v is DataSourceChoice => typeof v === "string" && CHOICES.has(v);
+export const isDataSourceChoice = (v: unknown): v is DataSourceChoice =>
+  typeof v === "string" && CHOICES.has(v);
 
 /** `auto` = today's behaviour: the global MT5 switch, else the demo/public feed. */
-export function effectiveSource(choice: DataSourceChoice | undefined, globalFeed: "mt5" | "ezyview"): EffectiveSource {
+export function effectiveSource(
+  choice: DataSourceChoice | undefined,
+  globalFeed: "mt5" | "ezyview",
+): EffectiveSource {
   if (!choice || choice === "auto") return globalFeed === "mt5" ? "mt5" : "demo";
   return choice;
 }
@@ -44,11 +48,18 @@ export function sourceOptions(
   symbol: string,
   deps: { supports: (id: LiveSourceId, symbol: string) => boolean; hasTwelveKey: boolean },
 ): SourceOption[] {
-  const out: SourceOption[] = (["auto", "demo", "mt5"] as const).map((id) => ({ id, label: sourceLabel(id) }));
+  const out: SourceOption[] = (["auto", "demo", "mt5"] as const).map((id) => ({
+    id,
+    label: sourceLabel(id),
+  }));
   for (const id of ["binance", "kraken", "twelvedata"] as const) {
     if (!deps.supports(id, symbol)) continue;
     const noKey = id === "twelvedata" && !deps.hasTwelveKey;
-    out.push({ id, label: sourceLabel(id), ...(noKey ? { disabled: true, hint: "Add a key in API keys" } : {}) });
+    out.push({
+      id,
+      label: sourceLabel(id),
+      ...(noKey ? { disabled: true, hint: "Add a key in API keys" } : {}),
+    });
   }
   return out;
 }

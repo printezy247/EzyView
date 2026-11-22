@@ -19,7 +19,11 @@ const withAlpha = (hex: string, alpha: number): string => {
   return `rgba(${r}, ${g}, ${b}, ${Math.max(0, Math.min(1, alpha))})`;
 };
 
-function strokePolyline(ctx: CanvasRenderingContext2D, points: readonly ScreenPoint[], close = false): void {
+function strokePolyline(
+  ctx: CanvasRenderingContext2D,
+  points: readonly ScreenPoint[],
+  close = false,
+): void {
   if (points.length < 2) return;
   ctx.beginPath();
   ctx.moveTo(points[0]!.x, points[0]!.y);
@@ -115,8 +119,14 @@ export function paintAdvanced(
       const size = 10;
       ctx.beginPath();
       ctx.moveTo(b.x, b.y);
-      ctx.lineTo(b.x - size * Math.cos(angle - Math.PI / 6), b.y - size * Math.sin(angle - Math.PI / 6));
-      ctx.lineTo(b.x - size * Math.cos(angle + Math.PI / 6), b.y - size * Math.sin(angle + Math.PI / 6));
+      ctx.lineTo(
+        b.x - size * Math.cos(angle - Math.PI / 6),
+        b.y - size * Math.sin(angle - Math.PI / 6),
+      );
+      ctx.lineTo(
+        b.x - size * Math.cos(angle + Math.PI / 6),
+        b.y - size * Math.sin(angle + Math.PI / 6),
+      );
       ctx.closePath();
       ctx.fillStyle = stroke;
       ctx.fill();
@@ -135,12 +145,18 @@ export function paintAdvanced(
   ctx.font = `${style.fontWeight === "bold" ? "600 " : ""}${fontSize}px Inter, system-ui, sans-serif`;
   ctx.textBaseline = "alphabetic";
   for (const label of figure.labels) {
-    if (label.at.x < -40 || label.at.x > width + 40 || label.at.y < -20 || label.at.y > height + 20) continue;
+    if (label.at.x < -40 || label.at.x > width + 40 || label.at.y < -20 || label.at.y > height + 20)
+      continue;
     ctx.textAlign = label.align ?? "left";
     const metrics = ctx.measureText(label.text);
     const padX = 3;
     const boxW = metrics.width + padX * 2;
-    const x = label.align === "center" ? label.at.x - boxW / 2 : label.align === "right" ? label.at.x - boxW : label.at.x;
+    const x =
+      label.align === "center"
+        ? label.at.x - boxW / 2
+        : label.align === "right"
+          ? label.at.x - boxW
+          : label.at.x;
     const y = label.above ? label.at.y - 14 : label.at.y;
     ctx.fillStyle = withAlpha("#0b0e14", 0.72);
     ctx.fillRect(x, y - fontSize, boxW, fontSize + 4);

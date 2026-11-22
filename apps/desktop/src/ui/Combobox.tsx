@@ -63,7 +63,11 @@ export function Combobox({
   const text = query ?? value;
   const needle = text.trim().toLowerCase();
   const filtered =
-    needle === "" ? options : options.filter((o) => o.label.toLowerCase().includes(needle) || o.value.toLowerCase().includes(needle));
+    needle === ""
+      ? options
+      : options.filter(
+          (o) => o.label.toLowerCase().includes(needle) || o.value.toLowerCase().includes(needle),
+        );
 
   usePopupDismiss(open, () => {
     setOpen(false);
@@ -130,7 +134,10 @@ export function Combobox({
     }
   };
 
-  const placement = popupPosition(inputRef.current, { minWidth: 200, width: inputRef.current?.getBoundingClientRect().width });
+  const placement = popupPosition(inputRef.current, {
+    minWidth: 200,
+    width: inputRef.current?.getBoundingClientRect().width,
+  });
 
   return (
     <>
@@ -147,7 +154,9 @@ export function Combobox({
           aria-expanded={open}
           aria-controls={open ? listId : undefined}
           aria-autocomplete="list"
-          aria-activedescendant={open && activeIndex >= 0 ? `${listId}-option-${activeIndex}` : undefined}
+          aria-activedescendant={
+            open && activeIndex >= 0 ? `${listId}-option-${activeIndex}` : undefined
+          }
           placeholder={placeholder}
           value={text}
           onChange={(e) => {
@@ -178,12 +187,19 @@ export function Combobox({
             tabIndex={-1}
             aria-activedescendant={activeIndex >= 0 ? `${listId}-option-${activeIndex}` : undefined}
             className={LISTBOX_CLASS}
-            style={{ top: placement.top, left: placement.left, minWidth: placement.minWidth, maxHeight: placement.maxHeight }}
+            style={{
+              top: placement.top,
+              left: placement.left,
+              minWidth: placement.minWidth,
+              maxHeight: placement.maxHeight,
+            }}
           >
             {loading ? (
               <div className="px-2 py-1.5 text-dense text-ev-faint">Searching…</div>
             ) : filtered.length === 0 ? (
-              <div className="px-2 py-1.5 text-dense text-ev-faint">{allowCustom ? "Press Enter to use this value" : emptyLabel}</div>
+              <div className="px-2 py-1.5 text-dense text-ev-faint">
+                {allowCustom ? "Press Enter to use this value" : emptyLabel}
+              </div>
             ) : (
               filtered.map((option, index) => (
                 <div
@@ -195,10 +211,19 @@ export function Combobox({
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => pick(index)}
                   onMouseEnter={() => !option.disabled && setActiveIndex(index)}
-                  className={cn(optionClass({ active: index === activeIndex, selected: option.value === value, disabled: option.disabled }), "cursor-pointer")}
+                  className={cn(
+                    optionClass({
+                      active: index === activeIndex,
+                      selected: option.value === value,
+                      disabled: option.disabled,
+                    }),
+                    "cursor-pointer",
+                  )}
                 >
                   <span className="flex-1 truncate">{option.label}</span>
-                  {option.hint !== undefined && <span className="text-dense text-ev-faint">{option.hint}</span>}
+                  {option.hint !== undefined && (
+                    <span className="text-dense text-ev-faint">{option.hint}</span>
+                  )}
                 </div>
               ))
             )}

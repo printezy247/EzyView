@@ -44,7 +44,12 @@ export interface ProvenanceInput {
  * quote is, and the demo feed is `demo` whatever its quotes look like — it is
  * not a delayed live feed, it is not live at all.
  */
-export function provenanceOf({ source, status, ageSeconds, feedFailed }: ProvenanceInput): Provenance {
+export function provenanceOf({
+  source,
+  status,
+  ageSeconds,
+  feedFailed,
+}: ProvenanceInput): Provenance {
   if (source !== "mt5") return "demo";
   // The provider answered with an error: nothing is arriving, so the price on
   // screen is the last one that did — even if the bridge itself is up.

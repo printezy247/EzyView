@@ -55,7 +55,9 @@ export function StrategyTester({
           variant="ghost"
           title="Toggle commission units"
           aria-pressed={costs.commissionType === "percent"}
-          onClick={() => onCostsChange({ commissionType: costs.commissionType === "cash" ? "percent" : "cash" })}
+          onClick={() =>
+            onCostsChange({ commissionType: costs.commissionType === "cash" ? "percent" : "cash" })
+          }
         >
           {costs.commissionType === "cash" ? "$" : "%"}
         </Button>
@@ -81,7 +83,9 @@ export function StrategyTester({
         />
       </div>
       <div className="mb-1.5 flex items-center gap-4 text-ev-muted">
-        <span className="font-semibold uppercase tracking-wider text-ev-faint">Strategy Tester</span>
+        <span className="font-semibold uppercase tracking-wider text-ev-faint">
+          Strategy Tester
+        </span>
         <Metric label="Trades" value={String(result.trades.length)} />
         <Metric
           label="Net PnL"
@@ -100,9 +104,7 @@ export function StrategyTester({
         {result.sortinoRatio !== null && (
           <Metric label="Sortino" value={result.sortinoRatio.toFixed(2)} />
         )}
-        {result.sqn !== null && (
-          <Metric label="SQN" value={result.sqn.toFixed(2)} />
-        )}
+        {result.sqn !== null && <Metric label="SQN" value={result.sqn.toFixed(2)} />}
         <Metric label="Final equity" value={result.finalEquity.toFixed(2)} />
       </div>
       {inputEntries.length > 0 && (
@@ -118,11 +120,21 @@ export function StrategyTester({
       <table className="w-full text-left num">
         <thead>
           <tr className="text-dense uppercase tracking-wider text-ev-faint">
-            <th scope="col" className="py-0.5 font-semibold">Side</th>
-            <th scope="col" className="py-0.5 font-semibold">Entry</th>
-            <th scope="col" className="py-0.5 font-semibold">Exit</th>
-            <th scope="col" className="py-0.5 font-semibold">PnL</th>
-            <th scope="col" className="py-0.5 font-semibold">Return</th>
+            <th scope="col" className="py-0.5 font-semibold">
+              Side
+            </th>
+            <th scope="col" className="py-0.5 font-semibold">
+              Entry
+            </th>
+            <th scope="col" className="py-0.5 font-semibold">
+              Exit
+            </th>
+            <th scope="col" className="py-0.5 font-semibold">
+              PnL
+            </th>
+            <th scope="col" className="py-0.5 font-semibold">
+              Return
+            </th>
           </tr>
         </thead>
         <tbody className="text-ev-muted">
@@ -135,8 +147,12 @@ export function StrategyTester({
               <td className="py-0.5">
                 #{t.exitBar} @ {t.exitPrice.toFixed(2)}
               </td>
-              <td className={`py-0.5 ${t.pnl >= 0 ? "text-ev-up-text" : "text-ev-down-text"}`}>{t.pnl.toFixed(2)}</td>
-              <td className={`py-0.5 ${t.returnPct >= 0 ? "text-ev-up-text" : "text-ev-down-text"}`}>
+              <td className={`py-0.5 ${t.pnl >= 0 ? "text-ev-up-text" : "text-ev-down-text"}`}>
+                {t.pnl.toFixed(2)}
+              </td>
+              <td
+                className={`py-0.5 ${t.returnPct >= 0 ? "text-ev-up-text" : "text-ev-down-text"}`}
+              >
                 {(t.returnPct * 100).toFixed(2)}%
               </td>
             </tr>
@@ -146,4 +162,3 @@ export function StrategyTester({
     </div>
   );
 }
-

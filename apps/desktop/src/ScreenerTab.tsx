@@ -8,7 +8,14 @@ import { VirtualTableBody } from "./VirtualList";
 
 type SortKey = "ticker" | "price" | "change";
 
-export type ScreenerPreset = "all" | "gainers" | "losers" | "contraction" | "expansion" | "forex" | "crypto";
+export type ScreenerPreset =
+  | "all"
+  | "gainers"
+  | "losers"
+  | "contraction"
+  | "expansion"
+  | "forex"
+  | "crypto";
 
 const PRESETS: { id: ScreenerPreset; label: string }[] = [
   { id: "all", label: "All Symbols" },
@@ -51,12 +58,14 @@ export function ScreenerTab() {
       const rows = useWorkspace.getState().watchlist;
       // `quoteOf` already resolves a provider outage to null; the catch is
       // only here so one bad row cannot reject the whole batch.
-      void Promise.all(rows.map((row) => quoteOf(row.symbol, row.source).catch(() => null))).then((quotes) => {
-        if (cancelled) return;
-        quotes.forEach((q) => {
-          if (q) updateWatchPrice(q.symbol, q.last, q.changePercent ?? null);
-        });
-      });
+      void Promise.all(rows.map((row) => quoteOf(row.symbol, row.source).catch(() => null))).then(
+        (quotes) => {
+          if (cancelled) return;
+          quotes.forEach((q) => {
+            if (q) updateWatchPrice(q.symbol, q.last, q.changePercent ?? null);
+          });
+        },
+      );
     };
     tick();
     const t = setInterval(tick, 5000);
@@ -70,18 +79,36 @@ export function ScreenerTab() {
     const floor = minChange.trim() === "" ? null : Number(minChange);
     const needle = query.trim().toLowerCase();
     const filtered = watchlist.filter((w) => {
-      if (needle && !w.ticker.toLowerCase().includes(needle) && !w.description.toLowerCase().includes(needle)) {
+      if (
+        needle &&
+        !w.ticker.toLowerCase().includes(needle) &&
+        !w.description.toLowerCase().includes(needle)
+      ) {
         return false;
       }
-      if (floor !== null && Number.isFinite(floor) && (w.changePct ?? -Infinity) < floor) return false;
+      if (floor !== null && Number.isFinite(floor) && (w.changePct ?? -Infinity) < floor)
+        return false;
 
       const change = w.changePct ?? 0;
       if (preset === "gainers" && change < 1.5) return false;
       if (preset === "losers" && change > -1.5) return false;
       if (preset === "contraction" && Math.abs(change) > 0.5) return false;
       if (preset === "expansion" && Math.abs(change) < 2.0) return false;
-      if (preset === "forex" && w.assetClass !== "forex" && w.assetClass !== "commodity" && !w.ticker.includes("XAU") && !w.ticker.includes("USD")) return false;
-      if (preset === "crypto" && w.assetClass !== "crypto" && !w.ticker.includes("BTC") && !w.ticker.includes("ETH")) return false;
+      if (
+        preset === "forex" &&
+        w.assetClass !== "forex" &&
+        w.assetClass !== "commodity" &&
+        !w.ticker.includes("XAU") &&
+        !w.ticker.includes("USD")
+      )
+        return false;
+      if (
+        preset === "crypto" &&
+        w.assetClass !== "crypto" &&
+        !w.ticker.includes("BTC") &&
+        !w.ticker.includes("ETH")
+      )
+        return false;
 
       return true;
     });
@@ -165,10 +192,16 @@ export function ScreenerTab() {
                 {header("ticker", "Symbol", "left")}
                 {header("price", "Last")}
                 {header("change", "Change %")}
-                <th scope="col" className="text-left text-micro font-semibold uppercase tracking-wider text-ev-faint">
+                <th
+                  scope="col"
+                  className="text-left text-micro font-semibold uppercase tracking-wider text-ev-faint"
+                >
                   Signal
                 </th>
-                <th scope="col" className="text-left text-micro font-semibold uppercase tracking-wider text-ev-faint">
+                <th
+                  scope="col"
+                  className="text-left text-micro font-semibold uppercase tracking-wider text-ev-faint"
+                >
                   Type
                 </th>
               </tr>
@@ -188,7 +221,13 @@ export function ScreenerTab() {
   );
 }
 
-const ScreenerRow = memo(function ScreenerRow({ row: w, onOpen }: { row: WatchEntry; onOpen: (symbol: string) => void }) {
+const ScreenerRow = memo(function ScreenerRow({
+  row: w,
+  onOpen,
+}: {
+  row: WatchEntry;
+  onOpen: (symbol: string) => void;
+}) {
   const change = w.changePct ?? 0;
   let signalBadge = null;
   if (change >= 2.0) {
@@ -226,7 +265,9 @@ const ScreenerRow = memo(function ScreenerRow({ row: w, onOpen }: { row: WatchEn
       title={`Open ${w.description} on the chart`}
     >
       <td className="font-medium text-ev-strong">{w.ticker}</td>
-      <td className="text-right text-ev-text">{w.price === null ? "—" : w.price.toFixed(w.precision)}</td>
+      <td className="text-right text-ev-text">
+        {w.price === null ? "—" : w.price.toFixed(w.precision)}
+      </td>
       <td
         className={
           w.changePct === null

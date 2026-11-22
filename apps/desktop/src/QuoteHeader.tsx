@@ -4,7 +4,7 @@ import { Star } from "lucide-react";
 import { Chip, IconButton } from "./ui";
 import { effectiveSource, isLiveSourceChoice } from "./chartSource";
 import type { DataSourceChoice } from "./chartSource";
-import { isLivePublicSymbol } from "./data";
+import { isLivePublicSymbol, publicProxyOf, tickerOf } from "./data";
 import { precisionForSymbol } from "./pricePrecision";
 import { useQuote } from "./quotePoller";
 import { useFeedHealth } from "./useFeedHealth";
@@ -23,7 +23,13 @@ import { provenanceLabel, provenanceOf, provenanceTitle, provenanceTone } from "
  * The quote comes from the shared per-symbol poller, so the header, legend and
  * ticket on the same chart cost one request between them.
  */
-export function QuoteHeader({ symbol, dataSource }: { symbol: string; dataSource?: DataSourceChoice }) {
+export function QuoteHeader({
+  symbol,
+  dataSource,
+}: {
+  symbol: string;
+  dataSource?: DataSourceChoice;
+}) {
   const source = useMt5((s) => s.source);
   const status = useMt5((s) => s.status);
   // Replay pauses only the replaying symbol; every other header keeps ticking.
@@ -90,6 +96,10 @@ export function QuoteHeader({ symbol, dataSource }: { symbol: string; dataSource
         : baseProvenance;
   const digits = precisionForSymbol(symbol, quote?.last ?? null);
   const up = (quote?.changePercent ?? 0) >= 0;
+  // Only when the public Binance feed is the one actually answering (a demo
+  // fallback or the broker feed makes the proxy note wrong).
+  const publicProxy =
+    effective === "demo" && isLivePublicSymbol(symbol) ? publicProxyOf(symbol) : null;
 
   return (
     <div className="flex items-center gap-2">
@@ -100,18 +110,32 @@ export function QuoteHeader({ symbol, dataSource }: { symbol: string; dataSource
       >
         <Star size={13} aria-hidden fill={watched ? "currentColor" : "none"} />
       </IconButton>
-      <div className={`flex items-baseline gap-1.5 rounded px-1 transition-colors ${flash === "up" ? "flash-up" : flash === "down" ? "flash-down" : ""}`}>
+      <div
+        className={`flex items-baseline gap-1.5 rounded px-1 transition-colors ${flash === "up" ? "flash-up" : flash === "down" ? "flash-down" : ""}`}
+      >
         <span className="num text-body font-semibold text-ev-strong" data-volatile="price">
           {quote ? quote.last.toFixed(digits) : "—"}
         </span>
         {quote && quote.changePercent !== undefined && (
-          <span className={`num text-dense font-medium ${up ? "text-ev-up-text" : "text-ev-down-text"}`} data-volatile="price">
+          <span
+            className={`num text-dense font-medium ${up ? "text-ev-up-text" : "text-ev-down-text"}`}
+            data-volatile="price"
+          >
             {up ? "+" : ""}
             {quote.changePercent.toFixed(2)}%
           </span>
         )}
       </div>
-      <Chip tone={provenanceTone(provenance)} title={feedMessage ? `${provenanceTitle(provenance)} — ${feedMessage}` : provenanceTitle(provenance)}>
+      <Chip
+        tone={provenanceTone(provenance)}
+        title={
+          feedMessage
+            ? `${provenanceTitle(provenance)} — ${feedMessage}`
+            : publicProxy
+              ? `${provenanceTitle(provenance)} Price is ${publicProxy}, a proxy instrument, not the spot ${tickerOf(symbol)}.`
+              : provenanceTitle(provenance)
+        }
+      >
         {provenanceLabel(provenance)}
       </Chip>
     </div>

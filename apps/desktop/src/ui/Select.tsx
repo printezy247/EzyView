@@ -108,7 +108,13 @@ export function Select({
   const onTriggerKey = (e: ReactKeyboardEvent<HTMLButtonElement>) => {
     if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter" || e.key === " ") {
       e.preventDefault();
-      openWith(e.key === "ArrowUp" ? (selectedIndex === -1 ? options.length - 1 : selectedIndex) : selectedIndex);
+      openWith(
+        e.key === "ArrowUp"
+          ? selectedIndex === -1
+            ? options.length - 1
+            : selectedIndex
+          : selectedIndex,
+      );
     }
   };
 
@@ -155,7 +161,11 @@ export function Select({
   options.forEach((option, index) => {
     if (option.group !== undefined && option.group !== lastGroup) {
       rows.push(
-        <div key={`g-${option.group}`} role="presentation" className="px-2 pb-0.5 pt-1.5 text-dense font-medium uppercase tracking-wider text-ev-faint">
+        <div
+          key={`g-${option.group}`}
+          role="presentation"
+          className="px-2 pb-0.5 pt-1.5 text-dense font-medium uppercase tracking-wider text-ev-faint"
+        >
           {option.group}
         </div>,
       );
@@ -171,13 +181,22 @@ export function Select({
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => commit(index)}
         onMouseEnter={() => !option.disabled && setActiveIndex(index)}
-        className={cn(optionClass({ active: index === activeIndex, selected: option.value === value, disabled: option.disabled }), "cursor-pointer")}
+        className={cn(
+          optionClass({
+            active: index === activeIndex,
+            selected: option.value === value,
+            disabled: option.disabled,
+          }),
+          "cursor-pointer",
+        )}
       >
         <span className="flex w-3 shrink-0 justify-center" aria-hidden>
           {option.value === value && <Check size={12} />}
         </span>
         <span className="flex-1 truncate">{option.label}</span>
-        {option.hint !== undefined && <span className="text-dense text-ev-faint">{option.hint}</span>}
+        {option.hint !== undefined && (
+          <span className="text-dense text-ev-faint">{option.hint}</span>
+        )}
       </div>,
     );
   });
@@ -211,12 +230,23 @@ export function Select({
             role="listbox"
             aria-label={label}
             tabIndex={-1}
-            aria-activedescendant={activeIndex === -1 ? undefined : `${listId}-option-${activeIndex}`}
+            aria-activedescendant={
+              activeIndex === -1 ? undefined : `${listId}-option-${activeIndex}`
+            }
             onKeyDown={onListKey}
             className={LISTBOX_CLASS}
-            style={{ top: placement.top, left: placement.left, minWidth: placement.minWidth, maxHeight: placement.maxHeight }}
+            style={{
+              top: placement.top,
+              left: placement.left,
+              minWidth: placement.minWidth,
+              maxHeight: placement.maxHeight,
+            }}
           >
-            {rows.length === 0 ? <div className="px-2 py-1.5 text-dense text-ev-faint">No options</div> : rows}
+            {rows.length === 0 ? (
+              <div className="px-2 py-1.5 text-dense text-ev-faint">No options</div>
+            ) : (
+              rows
+            )}
           </div>,
           document.body,
         )}

@@ -30,13 +30,27 @@ describe("DemoMarketAdapter", () => {
     // The workspace seeds charts with BINANCE:BTCUSDT, an instrument this feed
     // does not list. It has to resolve by ticker instead of returning no bars,
     // which would leave the chart blank forever.
-    await expect(adapter.getSymbol("BINANCE:BTCUSDT")).resolves.toMatchObject({ ticker: "BTCUSDT" });
-    const bars = await adapter.getHistory({ symbol: "BINANCE:BTCUSDT", resolution: "1m", from: 0, to: 0, limit: 10 });
+    await expect(adapter.getSymbol("BINANCE:BTCUSDT")).resolves.toMatchObject({
+      ticker: "BTCUSDT",
+    });
+    const bars = await adapter.getHistory({
+      symbol: "BINANCE:BTCUSDT",
+      resolution: "1m",
+      from: 0,
+      to: 0,
+      limit: 10,
+    });
     expect(bars).toHaveLength(10);
   });
 
   it("produces deterministic, oldest-first OHLCV", async () => {
-    const req = { symbol: "DEMO:BTCUSDT", resolution: "5m" as const, from: 1_700_000_000, to: 1_700_100_000, limit: 120 };
+    const req = {
+      symbol: "DEMO:BTCUSDT",
+      resolution: "5m" as const,
+      from: 1_700_000_000,
+      to: 1_700_100_000,
+      limit: 120,
+    };
     const a = await adapter.getHistory(req);
     const b = await adapter.getHistory(req);
 
@@ -60,7 +74,13 @@ describe("DemoMarketAdapter", () => {
   it("never returns candles outside the requested window", async () => {
     const from = 1_700_000_000;
     const to = 1_700_036_000;
-    const candles = await adapter.getHistory({ symbol: "DEMO:EURUSD", resolution: "1h", from, to, limit: 10_000 });
+    const candles = await adapter.getHistory({
+      symbol: "DEMO:EURUSD",
+      resolution: "1h",
+      from,
+      to,
+      limit: 10_000,
+    });
     expect(candles.length).toBeGreaterThan(0);
     for (const c of candles) {
       expect(c.time).toBeGreaterThanOrEqual(from);

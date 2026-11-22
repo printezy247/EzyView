@@ -1,6 +1,13 @@
 import { useState, type ReactNode } from "react";
 import { Activity, BookOpen, Columns, Layers, List, PanelRightClose } from "lucide-react";
-import { Button, IconButton, SHELL_BAR_HEIGHT, SHELL_BAR_ICON, SHELL_RAIL_ICON, SHELL_RAIL_WIDTH } from "./ui";
+import {
+  Button,
+  IconButton,
+  SHELL_BAR_HEIGHT,
+  SHELL_BAR_ICON,
+  SHELL_RAIL_ICON,
+  SHELL_RAIL_WIDTH,
+} from "./ui";
 
 /**
  * The right-dock tabs. Declared here rather than in the toolbar so every
@@ -93,7 +100,8 @@ export function RightDock({ tabs, active, onSelect, width }: Props) {
           if (index === -1) return;
           let next = index;
           if (e.key === "ArrowRight" || e.key === "ArrowDown") next = (index + 1) % ids.length;
-          else if (e.key === "ArrowLeft" || e.key === "ArrowUp") next = (index - 1 + ids.length) % ids.length;
+          else if (e.key === "ArrowLeft" || e.key === "ArrowUp")
+            next = (index - 1 + ids.length) % ids.length;
           else if (e.key === "Home") next = 0;
           else if (e.key === "End") next = ids.length - 1;
           else return;
@@ -117,16 +125,14 @@ export function RightDock({ tabs, active, onSelect, width }: Props) {
               aria-selected={on}
               title={tab.hint ?? tab.label}
               onClick={() => onSelect(on ? null : tab.id)}
-              className={
-                on
-                  ? "bg-ev-panel font-medium text-ev-strong shadow-xs"
-                  : "text-ev-muted"
-              }
+              className={on ? "bg-ev-panel font-medium text-ev-strong shadow-xs" : "text-ev-muted"}
             >
               {TAB_ICON[tab.id]}
               <span>{tab.label}</span>
               {tab.badge !== undefined && tab.badge > 0 && (
-                <span className="num rounded bg-ev-accent px-1 text-micro text-ev-accent-ink">{tab.badge}</span>
+                <span className="num rounded bg-ev-accent px-1 text-micro text-ev-accent-ink">
+                  {tab.badge}
+                </span>
               )}
             </Button>
           );
@@ -145,7 +151,12 @@ export function RightDock({ tabs, active, onSelect, width }: Props) {
         </div>
       </div>
 
-      <div key={active} role="tabpanel" aria-label={tabs.find((t) => t.id === active)?.label ?? "Panel"} className="flex min-h-0 flex-1 flex-col">
+      <div
+        key={active}
+        role="tabpanel"
+        aria-label={tabs.find((t) => t.id === active)?.label ?? "Panel"}
+        className="flex min-h-0 flex-1 flex-col"
+      >
         {tabs.find((t) => t.id === active)?.render() ?? null}
       </div>
     </aside>

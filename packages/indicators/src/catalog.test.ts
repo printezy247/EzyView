@@ -78,7 +78,12 @@ describe("oscillators", () => {
 
   it("macd equals fast EMA minus slow EMA", () => {
     const d = make({ close: Array.from({ length: 60 }, (_, i) => 100 + i * 0.5 + Math.sin(i)) });
-    const out = getIndicator("macd")!.compute(d, { fast: 12, slow: 26, signal: 9, source: "close" });
+    const out = getIndicator("macd")!.compute(d, {
+      fast: 12,
+      slow: 26,
+      signal: 9,
+      source: "close",
+    });
     expect(out.values[24]).toBeNull(); // slow EMA (26) warms at index 25
     expect(out.values[25]).not.toBeNull();
     expect(out.plots?.hist).toBeDefined();
@@ -145,7 +150,8 @@ describe("catalog", () => {
       const params = Object.fromEntries(def.params.map((p) => [p.id, p.default]));
       const out = def.compute(d, params as Record<string, number | boolean | string>);
       expect(out.values, def.id).toHaveLength(d.close.length);
-      for (const plot of Object.values(out.plots ?? {})) expect(plot, def.id).toHaveLength(d.close.length);
+      for (const plot of Object.values(out.plots ?? {}))
+        expect(plot, def.id).toHaveLength(d.close.length);
     }
   });
 

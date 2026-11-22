@@ -215,7 +215,6 @@
   font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-
 html,
 body,
 #root {
@@ -240,7 +239,11 @@ body {
  */
 #root {
   background:
-    radial-gradient(1100px 320px at 50% -8%, color-mix(in srgb, var(--ev-accent) 5%, transparent), transparent 65%),
+    radial-gradient(
+      1100px 320px at 50% -8%,
+      color-mix(in srgb, var(--ev-accent) 5%, transparent),
+      transparent 65%
+    ),
     var(--ev-bg);
 }
 

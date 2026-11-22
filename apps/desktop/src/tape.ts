@@ -36,8 +36,20 @@ let nextId = 1;
  * and an unchanged price carries the previous direction forward (a flat print
  * is not a trade direction).
  */
-export function tapeEntry(print: RawPrint, prevPrice: number | null, prevSide: TapeSide, id = nextId++): TapeEntry {
-  const side: TapeSide = prevPrice === null ? prevSide : print.price > prevPrice ? "buy" : print.price < prevPrice ? "sell" : prevSide;
+export function tapeEntry(
+  print: RawPrint,
+  prevPrice: number | null,
+  prevSide: TapeSide,
+  id = nextId++,
+): TapeEntry {
+  const side: TapeSide =
+    prevPrice === null
+      ? prevSide
+      : print.price > prevPrice
+        ? "buy"
+        : print.price < prevPrice
+          ? "sell"
+          : prevSide;
   return { ...print, id, side };
 }
 
@@ -60,7 +72,8 @@ export class TapeBuffer {
     this.lastPrice = print.price;
     this.lastSide = entry.side;
     this.entries.push(entry);
-    if (this.entries.length > this.capacity) this.entries.splice(0, this.entries.length - this.capacity);
+    if (this.entries.length > this.capacity)
+      this.entries.splice(0, this.entries.length - this.capacity);
   }
 
   /** Newest first, as a fresh array the caller cannot use to mutate the tape. */

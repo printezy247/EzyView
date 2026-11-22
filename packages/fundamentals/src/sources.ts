@@ -1,7 +1,22 @@
-import type { CalendarAdapter, CorporateCalendarAdapter, FundamentalsAdapter, NewsAdapter } from "@ezyview/data-adapters";
+import type {
+  CalendarAdapter,
+  CorporateCalendarAdapter,
+  FundamentalsAdapter,
+  NewsAdapter,
+} from "@ezyview/data-adapters";
 import { AlphaVantageClient, AlphaVantageFundamentalsAdapter } from "./alphavantage.js";
-import { DemoCalendarAdapter, DemoCorporateCalendarAdapter, DemoFundamentalsAdapter, DemoNewsAdapter } from "./demo.js";
-import { FinnhubClient, FinnhubCorporateCalendarAdapter, FinnhubEarningsAdapter, FinnhubNewsAdapter } from "./finnhub.js";
+import {
+  DemoCalendarAdapter,
+  DemoCorporateCalendarAdapter,
+  DemoFundamentalsAdapter,
+  DemoNewsAdapter,
+} from "./demo.js";
+import {
+  FinnhubClient,
+  FinnhubCorporateCalendarAdapter,
+  FinnhubEarningsAdapter,
+  FinnhubNewsAdapter,
+} from "./finnhub.js";
 import type { FetchLike } from "./http.js";
 
 export type ApiKeyName = "finnhub" | "alphavantage";
@@ -27,13 +42,18 @@ export interface FundamentalsSources {
  */
 export function buildSources(keys: ApiKeys, fetchFn?: FetchLike): FundamentalsSources {
   const fh = keys.finnhub?.trim() ? new FinnhubClient(keys.finnhub.trim(), fetchFn) : null;
-  const av = keys.alphavantage?.trim() ? new AlphaVantageFundamentalsAdapter(new AlphaVantageClient(keys.alphavantage.trim(), fetchFn)) : null;
+  const av = keys.alphavantage?.trim()
+    ? new AlphaVantageFundamentalsAdapter(new AlphaVantageClient(keys.alphavantage.trim(), fetchFn))
+    : null;
   const demoFundamentals = new DemoFundamentalsAdapter();
   const demoCorporate = new DemoCorporateCalendarAdapter();
 
   const ipos = fh ? new FinnhubCorporateCalendarAdapter(fh) : demoCorporate;
   const dividends = fh
-    ? new FinnhubCorporateCalendarAdapter(fh, av ? (s, f, t) => av.getDividends(s, f, t) : undefined)
+    ? new FinnhubCorporateCalendarAdapter(
+        fh,
+        av ? (s, f, t) => av.getDividends(s, f, t) : undefined,
+      )
     : (av ?? demoCorporate);
 
   return {

@@ -9,10 +9,10 @@
     ".": "./src/index.ts",
     "./*": "./src/*.ts"
   },
-  "dependencies": {
-    "@ezyview/brand": "*"
-  },
   "scripts": {
     "test": "vitest run src"
+  },
+  "dependencies": {
+    "@ezyview/brand": "*"
   }
 }

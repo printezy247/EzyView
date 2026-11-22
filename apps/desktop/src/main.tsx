@@ -44,13 +44,13 @@ if (!detached) {
 createRoot(container).render(
   <StrictMode>
     <ErrorBoundary>
-    {detached ? (
-      <DetachedChart symbol={detached.symbol} resolution={detached.resolution} />
-    ) : (
-      <HashRouter>
-        <App />
-      </HashRouter>
-    )}
+      {detached ? (
+        <DetachedChart symbol={detached.symbol} resolution={detached.resolution} />
+      ) : (
+        <HashRouter>
+          <App />
+        </HashRouter>
+      )}
     </ErrorBoundary>
   </StrictMode>,
 );

@@ -8,6 +8,8 @@ import type { Drawing } from "@ezyview/drawing-tools";
  */
 export function pasteAt(source: Drawing, at: { time: number; price: number }, id: string): Drawing {
   const first = source.points[0];
-  const moved = first ? translateDrawing(source, at.time - first.time, at.price - first.price) : source;
+  const moved = first
+    ? translateDrawing(source, at.time - first.time, at.price - first.price)
+    : source;
   return { ...structuredClone(moved), id, locked: false };
 }

@@ -32,7 +32,8 @@ export function JournalPropFirmBar({ drawdown }: { drawdown: number }) {
   );
   const [editing, setEditing] = useState(false);
 
-  const hasLimits = propFirm.dailyLossLimit !== undefined || propFirm.maxDrawdownLimit !== undefined;
+  const hasLimits =
+    propFirm.dailyLossLimit !== undefined || propFirm.maxDrawdownLimit !== undefined;
   const showForm = !hasLimits || editing;
 
   const todayNet = dayNetOn(entries, Math.floor(Date.now() / 1000));
@@ -47,7 +48,6 @@ export function JournalPropFirmBar({ drawdown }: { drawdown: number }) {
     });
     setEditing(false);
   };
-
 
   if (showForm) {
     return (
@@ -88,21 +88,27 @@ export function JournalPropFirmBar({ drawdown }: { drawdown: number }) {
   return (
     <div
       className={`flex shrink-0 items-center gap-4 border-b px-3 py-1 text-dense ${
-        breached ? "border-ev-down bg-ev-down/10 text-ev-down-text" : "border-ev-raised text-ev-muted"
+        breached
+          ? "border-ev-down bg-ev-down/10 text-ev-down-text"
+          : "border-ev-raised text-ev-muted"
       }`}
       role={breached ? "alert" : undefined}
     >
       <span className="font-semibold uppercase tracking-wider">Prop firm</span>
       {propFirm.dailyLossLimit !== undefined && (
         <span className="num">
-          Daily <span className={dailyBreached ? "font-semibold" : "text-ev-text"}>{money(todayNet)}</span> / −
-          {money(propFirm.dailyLossLimit)}
+          Daily{" "}
+          <span className={dailyBreached ? "font-semibold" : "text-ev-text"}>
+            {money(todayNet)}
+          </span>{" "}
+          / −{money(propFirm.dailyLossLimit)}
           {dailyBreached && " · BREACH"}
         </span>
       )}
       {propFirm.maxDrawdownLimit !== undefined && (
         <span className="num">
-          Max DD <span className={ddBreached ? "font-semibold" : "text-ev-text"}>{money(drawdown)}</span> /{" "}
+          Max DD{" "}
+          <span className={ddBreached ? "font-semibold" : "text-ev-text"}>{money(drawdown)}</span> /{" "}
           {money(propFirm.maxDrawdownLimit)}
           {ddBreached && " · BREACH"}
         </span>
@@ -111,8 +117,12 @@ export function JournalPropFirmBar({ drawdown }: { drawdown: number }) {
         size="sm"
         variant="ghost"
         onClick={() => {
-          setDailyInput(propFirm.dailyLossLimit === undefined ? "" : String(propFirm.dailyLossLimit));
-          setDdInput(propFirm.maxDrawdownLimit === undefined ? "" : String(propFirm.maxDrawdownLimit));
+          setDailyInput(
+            propFirm.dailyLossLimit === undefined ? "" : String(propFirm.dailyLossLimit),
+          );
+          setDdInput(
+            propFirm.maxDrawdownLimit === undefined ? "" : String(propFirm.maxDrawdownLimit),
+          );
           setEditing(true);
         }}
         className="ml-auto"

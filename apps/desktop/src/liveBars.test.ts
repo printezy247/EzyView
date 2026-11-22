@@ -3,7 +3,14 @@ import type { Candle } from "@ezyview/data-adapters";
 import { hasBarGap, mergeQuote } from "./liveBars";
 
 const STEP = 60;
-const bar = (time: number, o: number, h: number, l: number, c: number, v = 10): Candle => ({ time, open: o, high: h, low: l, close: c, volume: v });
+const bar = (time: number, o: number, h: number, l: number, c: number, v = 10): Candle => ({
+  time,
+  open: o,
+  high: h,
+  low: l,
+  close: c,
+  volume: v,
+});
 const BARS = [bar(0, 1, 2, 0.5, 1.5), bar(60, 1.5, 3, 1, 2)];
 
 describe("mergeQuote", () => {

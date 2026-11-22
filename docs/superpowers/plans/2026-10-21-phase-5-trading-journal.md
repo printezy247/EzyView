@@ -27,27 +27,36 @@
 ## Tasks
 
 ### Task 1: Model + stats extensions
+
 **Files:** `packages/journal/src/model.ts`, `stats.ts`, `stats.test.ts`
+
 - `JournalEntry` adds `emotion?`, `rules?: Rule[]` (`{label, done}`), `stopPrice?`, `targetPrice?`.
 - `JournalStats` adds `equitySeries: {time, equity}[]`, `rMultiples: number[]`, `rDistribution` (6 fixed buckets), `bySetup`, `byTag`, `byTimeOfDay` (Asia/London/Overlap/US by UTC entry hour).
 - Tests for each new aggregator + empty behaviour.
 
 ### Task 2: Review composer
+
 **Files:** `packages/journal/src/review.ts`, `review.test.ts`
+
 - `composeReview(entries, notes, dayStart)` → deterministic template text: trade count, net, win rate, best/worst, rule adherence %, note count.
 - `dateKey(epochSeconds)` → local `YYYY-MM-DD`.
 
 ### Task 3: Store + CSV
+
 **Files:** `apps/desktop/src/journal.ts`, `journalCsv.ts` + `journalCsv.test.ts`
+
 - Store: `addEntry`, `toggleRule`, reviews (`savedReviews: Review[]`, `saveReview`, `removeReview`), `propFirm: {dailyLossLimit?, maxDrawdownLimit?}` + `setPropFirm`, restore validation.
 - `entriesToCsv(entries)` with RFC-4180 quoting.
 
 ### Task 4: UI
+
 **Files:** `JournalPanel.tsx` (+ small `JournalCalendar.tsx`, `JournalStatsView.tsx` extracted for readability)
+
 - View tabs: Feed (existing) / Calendar (month heatmap) / Stats (cards + SVG equity polyline + R histogram + breakdown tables) / Reviews (pick day, generate/edit/save).
 - Manual entry dialog (symbol, side, qty, entry/exit price+time, SL/TP, fees, planned risk, setup, tags, emotion, rules textarea, rating, note, screenshot file).
 - Prop-firm bar: daily net vs limit, max DD vs limit; warn colours on breach.
 - CSV export button on the Feed header.
 
 ### Task 5: Gates + git ops
+
 - Full gates, commit `feat: Phase 5 trading journal`, push (sandbox bypass), PR via GitHub MCP, CI green, merge, MASTERPLAN → done (PR #).

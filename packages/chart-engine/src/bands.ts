@@ -102,8 +102,10 @@ export class BgBandsPrimitive implements IPanePrimitive<Time> {
     const here = scale.timeToCoordinate(this.times[index]!);
     if (here === null) return null;
     const before = index > 0 ? scale.timeToCoordinate(this.times[index - 1]!) : null;
-    const after = index + 1 < this.times.length ? scale.timeToCoordinate(this.times[index + 1]!) : null;
-    const gap = before !== null ? Math.abs(here - before) : after !== null ? Math.abs(after - here) : 6;
+    const after =
+      index + 1 < this.times.length ? scale.timeToCoordinate(this.times[index + 1]!) : null;
+    const gap =
+      before !== null ? Math.abs(here - before) : after !== null ? Math.abs(after - here) : 6;
     const width = Math.max(1, gap);
     return { left: here - width / 2, width };
   }

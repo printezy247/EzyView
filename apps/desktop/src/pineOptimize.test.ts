@@ -14,7 +14,9 @@ describe("parseParamValues", () => {
   });
 
   it("keeps a fractional step free of float drift", () => {
-    expect(parseParamValues("0..1 step 0.1")).toEqual([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]);
+    expect(parseParamValues("0..1 step 0.1")).toEqual([
+      0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1,
+    ]);
   });
 
   it("rejects a non-positive step", () => {

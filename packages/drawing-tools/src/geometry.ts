@@ -264,7 +264,10 @@ export function getDrawingLevels(drawing: Drawing, time?: number): DrawingLevel[
  * Ramer-Douglas-Peucker simplification for 2D points (screen or chart coordinates).
  * Drops redundant points within `epsilon` perpendicular distance.
  */
-export function simplifyRdp<T extends { x: number; y: number }>(points: readonly T[], epsilon = 1.75): T[] {
+export function simplifyRdp<T extends { x: number; y: number }>(
+  points: readonly T[],
+  epsilon = 1.75,
+): T[] {
   if (points.length <= 2) return [...points];
 
   let dmax = 0;

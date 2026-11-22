@@ -34,7 +34,18 @@ import type { DrawingBox } from "./ChartHost";
 import { Button, ColorInput, IconButton, Input, Select, Slider } from "./ui";
 
 /** TradingView's stroke palette, plus white for dark themes. */
-const PALETTE = ["#2962ff", "#089981", "#f23645", "#ff9800", "#e91e63", "#9c27b0", "#00bcd4", "#ffeb3b", "#ffffff", "#787b86"];
+const PALETTE = [
+  "#2962ff",
+  "#089981",
+  "#f23645",
+  "#ff9800",
+  "#e91e63",
+  "#9c27b0",
+  "#00bcd4",
+  "#ffeb3b",
+  "#ffffff",
+  "#787b86",
+];
 const WIDTHS = [1, 2, 3, 4] as const;
 const LINE_STYLES = [
   { id: "solid", label: "Solid", dash: "" },
@@ -100,7 +111,9 @@ export function FloatingDrawingBar({ anchor }: Props) {
     const nextBox = { w: bar.offsetWidth, h: bar.offsetHeight };
     const nextContainer = { w: wrap.clientWidth, h: wrap.clientHeight };
     setBox((prev) => (prev.w === nextBox.w && prev.h === nextBox.h ? prev : nextBox));
-    setContainer((prev) => (prev.w === nextContainer.w && prev.h === nextContainer.h ? prev : nextContainer));
+    setContainer((prev) =>
+      prev.w === nextContainer.w && prev.h === nextContainer.h ? prev : nextContainer,
+    );
   });
 
   // Escape closes the open submenu and returns focus to the toolbar; Tab
@@ -116,9 +129,11 @@ export function FloatingDrawingBar({ anchor }: Props) {
         return;
       }
       if (e.key !== "Tab" || !menuRef.current) return;
-      const items = [...menuRef.current.querySelectorAll<HTMLElement>("button:not([disabled]), input:not([disabled])")].filter(
-        (el) => getComputedStyle(el).display !== "none",
-      );
+      const items = [
+        ...menuRef.current.querySelectorAll<HTMLElement>(
+          "button:not([disabled]), input:not([disabled])",
+        ),
+      ].filter((el) => getComputedStyle(el).display !== "none");
       if (items.length === 0) return;
       const first = items[0]!;
       const last = items[items.length - 1]!;
@@ -139,16 +154,21 @@ export function FloatingDrawingBar({ anchor }: Props) {
   const style = drawing.style;
   const spec = toolSpec(drawing.tool);
   const level = drawing.points[0]?.price;
-  const canAlert = (drawing.tool === "horizontal_line" || drawing.tool === "horizontal_ray") && level !== undefined;
+  const canAlert =
+    (drawing.tool === "horizontal_line" || drawing.tool === "horizontal_ray") &&
+    level !== undefined;
   const alertBound = alerts.some((a) => a.drawingId === drawing.id);
 
   const clampX = (x: number) => Math.max(8, Math.min(x, Math.max(8, container.w - box.w - 8)));
   const clampY = (y: number) => Math.max(8, Math.min(y, Math.max(8, container.h - box.h - 8)));
   const autoX = anchor ? anchor.x + anchor.w / 2 - box.w / 2 : container.w / 2 - box.w / 2;
   const autoY = anchor ? anchor.y - box.h - 10 : 12;
-  const pos = pinned ? { x: clampX(pinned.x), y: clampY(pinned.y) } : { x: clampX(autoX), y: clampY(autoY) };
+  const pos = pinned
+    ? { x: clampX(pinned.x), y: clampY(pinned.y) }
+    : { x: clampX(autoX), y: clampY(autoY) };
 
-  const patchStyle = (patch: Partial<DrawingStyle>) => update(drawing.id, { style: { ...style, ...patch } });
+  const patchStyle = (patch: Partial<DrawingStyle>) =>
+    update(drawing.id, { style: { ...style, ...patch } });
 
   const startDrag = (e: React.PointerEvent<HTMLButtonElement>) => {
     dragRef.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y };
@@ -198,19 +218,30 @@ export function FloatingDrawingBar({ anchor }: Props) {
           <GripVertical size={14} aria-hidden />
         </IconButton>
 
-        <BarButton label="Drawing templates" active={menu === "template"} onClick={() => toggle("template")}>
+        <BarButton
+          label="Drawing templates"
+          active={menu === "template"}
+          onClick={() => toggle("template")}
+        >
           <Bookmark size={13} aria-hidden />
         </BarButton>
 
         <BarButton label="Line colour" active={menu === "color"} onClick={() => toggle("color")}>
-          <span className="size-3.5 rounded ring-1 ring-ev-line" style={{ background: style.color }} aria-hidden />
+          <span
+            className="size-3.5 rounded ring-1 ring-ev-line"
+            style={{ background: style.color }}
+            aria-hidden
+          />
         </BarButton>
 
         {toolHasFill(drawing.tool) && (
           <BarButton label="Fill colour" active={menu === "fill"} onClick={() => toggle("fill")}>
             <span
               className="size-3.5 rounded ring-1 ring-ev-line"
-              style={{ background: style.fill ?? style.color, opacity: Math.max(0.25, (style.fillOpacity ?? 20) / 100) }}
+              style={{
+                background: style.fill ?? style.color,
+                opacity: Math.max(0.25, (style.fillOpacity ?? 20) / 100),
+              }}
               aria-hidden
             />
           </BarButton>
@@ -222,7 +253,11 @@ export function FloatingDrawingBar({ anchor }: Props) {
           </BarButton>
         )}
 
-        <BarButton label="Line width and style" active={menu === "line"} onClick={() => toggle("line")}>
+        <BarButton
+          label="Line width and style"
+          active={menu === "line"}
+          onClick={() => toggle("line")}
+        >
           <SlidersHorizontal size={13} aria-hidden />
         </BarButton>
 
@@ -291,8 +326,12 @@ export function FloatingDrawingBar({ anchor }: Props) {
           >
             {menu === "template" && (
               <div className="space-y-1">
-                <p className="text-dense font-medium uppercase tracking-wider text-ev-faint">Template</p>
-                {templates.length === 0 && <p className="text-dense text-ev-muted">No templates saved yet.</p>}
+                <p className="text-dense font-medium uppercase tracking-wider text-ev-faint">
+                  Template
+                </p>
+                {templates.length === 0 && (
+                  <p className="text-dense text-ev-muted">No templates saved yet.</p>
+                )}
                 {templates.map((t) => (
                   <Button
                     key={t.id}
@@ -334,17 +373,32 @@ export function FloatingDrawingBar({ anchor }: Props) {
 
             {menu === "color" && (
               <div>
-                <p className="mb-1 text-dense font-medium uppercase tracking-wider text-ev-faint">Line colour</p>
+                <p className="mb-1 text-dense font-medium uppercase tracking-wider text-ev-faint">
+                  Line colour
+                </p>
                 <Palette value={style.color} onPick={(c) => patchStyle({ color: c })} />
-                <Slider label="Opacity" value={style.opacity ?? 100} min={0} max={100} step={5} onChange={(v) => patchStyle({ opacity: v })} format={(v) => `${Math.round(v)}%`} />
+                <Slider
+                  label="Opacity"
+                  value={style.opacity ?? 100}
+                  min={0}
+                  max={100}
+                  step={5}
+                  onChange={(v) => patchStyle({ opacity: v })}
+                  format={(v) => `${Math.round(v)}%`}
+                />
                 <HexInput value={style.color} onCommit={(c) => patchStyle({ color: c })} />
               </div>
             )}
 
             {menu === "fill" && (
               <div>
-                <p className="mb-1 text-dense font-medium uppercase tracking-wider text-ev-faint">Background</p>
-                <Palette value={style.fill ?? style.color} onPick={(c) => patchStyle({ fill: c })} />
+                <p className="mb-1 text-dense font-medium uppercase tracking-wider text-ev-faint">
+                  Background
+                </p>
+                <Palette
+                  value={style.fill ?? style.color}
+                  onPick={(c) => patchStyle({ fill: c })}
+                />
                 <Slider
                   label="Fill opacity"
                   value={style.fillOpacity ?? 20}
@@ -359,7 +413,9 @@ export function FloatingDrawingBar({ anchor }: Props) {
 
             {menu === "text" && (
               <div className="space-y-2">
-                <p className="text-dense font-medium uppercase tracking-wider text-ev-faint">Text</p>
+                <p className="text-dense font-medium uppercase tracking-wider text-ev-faint">
+                  Text
+                </p>
                 <div className="flex items-center justify-between gap-2 text-dense text-ev-muted">
                   <span>Size</span>
                   <Select
@@ -368,7 +424,10 @@ export function FloatingDrawingBar({ anchor }: Props) {
                     className="w-20"
                     value={String(style.fontSize ?? 13)}
                     onChange={(v) => patchStyle({ fontSize: Number(v) })}
-                    options={[10, 12, 13, 14, 16, 20, 24, 32].map((s) => ({ value: String(s), label: `${s}px` }))}
+                    options={[10, 12, 13, 14, 16, 20, 24, 32].map((s) => ({
+                      value: String(s),
+                      label: `${s}px`,
+                    }))}
                   />
                 </div>
                 <div className="flex gap-1">
@@ -377,8 +436,14 @@ export function FloatingDrawingBar({ anchor }: Props) {
                     size="sm"
                     aria-label="Bold text"
                     aria-pressed={style.fontWeight === "bold"}
-                    onClick={() => patchStyle({ fontWeight: style.fontWeight === "bold" ? "normal" : "bold" })}
-                    className={style.fontWeight === "bold" ? "bg-ev-raised font-bold text-ev-strong" : "font-bold"}
+                    onClick={() =>
+                      patchStyle({ fontWeight: style.fontWeight === "bold" ? "normal" : "bold" })
+                    }
+                    className={
+                      style.fontWeight === "bold"
+                        ? "bg-ev-raised font-bold text-ev-strong"
+                        : "font-bold"
+                    }
                   >
                     B
                   </Button>
@@ -387,19 +452,28 @@ export function FloatingDrawingBar({ anchor }: Props) {
                     size="sm"
                     aria-label="Italic text"
                     aria-pressed={style.fontStyle === "italic"}
-                    onClick={() => patchStyle({ fontStyle: style.fontStyle === "italic" ? "normal" : "italic" })}
-                    className={style.fontStyle === "italic" ? "bg-ev-raised text-ev-strong italic" : "italic"}
+                    onClick={() =>
+                      patchStyle({ fontStyle: style.fontStyle === "italic" ? "normal" : "italic" })
+                    }
+                    className={
+                      style.fontStyle === "italic" ? "bg-ev-raised text-ev-strong italic" : "italic"
+                    }
                   >
                     I
                   </Button>
                 </div>
-                <Palette value={style.textColor ?? style.color} onPick={(c) => patchStyle({ textColor: c })} />
+                <Palette
+                  value={style.textColor ?? style.color}
+                  onPick={(c) => patchStyle({ textColor: c })}
+                />
               </div>
             )}
 
             {menu === "line" && (
               <div>
-                <p className="mb-1 text-dense font-medium uppercase tracking-wider text-ev-faint">Line</p>
+                <p className="mb-1 text-dense font-medium uppercase tracking-wider text-ev-faint">
+                  Line
+                </p>
                 <div className="mb-1 flex gap-1">
                   {WIDTHS.map((w) => (
                     <Button
@@ -444,7 +518,9 @@ export function FloatingDrawingBar({ anchor }: Props) {
 
             {menu === "layers" && (
               <div className="space-y-0.5">
-                <p className="text-dense font-medium uppercase tracking-wider text-ev-faint">Visual order</p>
+                <p className="text-dense font-medium uppercase tracking-wider text-ev-faint">
+                  Visual order
+                </p>
                 {(
                   [
                     ["front", "Bring to front"],
@@ -566,7 +642,12 @@ function HexInput({ value, onCommit }: { value: string; onCommit: (color: string
   useEffect(() => setDraft(value), [value]);
   return (
     <div className="flex items-center gap-1">
-      <ColorInput label="Custom colour picker" value={normaliseHex(value)} onChange={(picked) => onCommit(picked)} className="h-6 w-8 cursor-pointer rounded border border-ev-line bg-ev-bg" />
+      <ColorInput
+        label="Custom colour picker"
+        value={normaliseHex(value)}
+        onChange={(picked) => onCommit(picked)}
+        className="h-6 w-8 cursor-pointer rounded border border-ev-line bg-ev-bg"
+      />
       <Input
         value={draft}
         onChange={(e) => setDraft(e.target.value)}

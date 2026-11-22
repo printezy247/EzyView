@@ -22,7 +22,15 @@ import {
   serializeWorkspaceBackup,
 } from "./workspaceBackup";
 
-type Tab = "connection" | "broker" | "safety" | "audit" | "data" | "appearance" | "desktop" | "diagnostics";
+type Tab =
+  | "connection"
+  | "broker"
+  | "safety"
+  | "audit"
+  | "data"
+  | "appearance"
+  | "desktop"
+  | "diagnostics";
 
 const { defaultTab, tabs: TABS } = SECTION_TABS.settings!;
 
@@ -44,7 +52,10 @@ export function BackupsSection() {
   const exportNow = (): void => {
     const backup = readWorkspaceBackup();
     const filename = `ezyview-backup-${new Date(backup.createdAt * 1000).toISOString().slice(0, 10)}.json`;
-    downloadBlob(new Blob([serializeWorkspaceBackup(backup)], { type: "application/json" }), filename);
+    downloadBlob(
+      new Blob([serializeWorkspaceBackup(backup)], { type: "application/json" }),
+      filename,
+    );
     setNotice("Backup downloaded.");
   };
 
@@ -66,17 +77,21 @@ export function BackupsSection() {
     const result = applyWorkspaceBackup(parsed.backup);
     setNotice(
       `Restored ${result.applied.length} namespace${result.absent.length === 1 ? "" : "s"}` +
-        (result.absent.length > 0 ? ` (${result.absent.length} not present in this backup kept their data)` : "") +
+        (result.absent.length > 0
+          ? ` (${result.absent.length} not present in this backup kept their data)`
+          : "") +
         " — restart EzyView to see everything.",
     );
   };
 
   return (
     <div className="mt-6 border-t border-ev-raised pt-4">
-      <h2 className="mb-1 text-dense font-medium uppercase tracking-wider text-ev-faint">Backups</h2>
+      <h2 className="mb-1 text-dense font-medium uppercase tracking-wider text-ev-faint">
+        Backups
+      </h2>
       <p className="mb-3 text-dense text-ev-muted">
-        Exports and restores workspace layouts, drawings, journal, MT5 settings, paper account and shell settings as a
-        single JSON file. Secrets (API keys, bridge tokens) are never included.
+        Exports and restores workspace layouts, drawings, journal, MT5 settings, paper account and
+        shell settings as a single JSON file. Secrets (API keys, bridge tokens) are never included.
       </p>
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" size="md" onClick={exportNow}>
@@ -98,12 +113,18 @@ export function BackupsSection() {
         />
       </div>
       {notice && (
-        <p role="status" className="mt-2 rounded border border-ev-up/40 bg-ev-up/10 px-2 py-1.5 text-dense text-ev-up-text">
+        <p
+          role="status"
+          className="mt-2 rounded border border-ev-up/40 bg-ev-up/10 px-2 py-1.5 text-dense text-ev-up-text"
+        >
           {notice}
         </p>
       )}
       {error && (
-        <p role="alert" className="mt-2 rounded border border-ev-down/40 bg-ev-down/10 px-2 py-1.5 text-dense text-ev-down-text">
+        <p
+          role="alert"
+          className="mt-2 rounded border border-ev-down/40 bg-ev-down/10 px-2 py-1.5 text-dense text-ev-down-text"
+        >
           {error}
         </p>
       )}
@@ -114,8 +135,8 @@ export function BackupsSection() {
             Parked corrupt data
           </h3>
           <p className="mb-2 text-dense text-ev-muted">
-            These storage payloads could not be read and were parked instead of deleted. Download them if you want to
-            try to recover anything by hand.
+            These storage payloads could not be read and were parked instead of deleted. Download
+            them if you want to try to recover anything by hand.
           </p>
           <ul className="space-y-1.5">
             {parked.map((key) => (
@@ -123,18 +144,28 @@ export function BackupsSection() {
                 <code className="flex-1 text-dense text-ev-text">{key}</code>
                 {["export", "dismiss"].map((action) =>
                   action === "export" ? (
-                    <Button key="export" variant="outline" size="sm" onClick={() => {
+                    <Button
+                      key="export"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
                         const raw = downloadCorruptBackup(key);
                         if (raw === null) return;
                         downloadBlob(new Blob([raw], { type: "application/json" }), `${key}.json`);
-                      }}>
+                      }}
+                    >
                       Download
                     </Button>
                   ) : (
-                    <Button key="dismiss" variant="ghost" size="sm" onClick={() => {
+                    <Button
+                      key="dismiss"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
                         dismissParkedCorrupt(key);
                         setCorruptVersion((v) => v + 1);
-                      }}>
+                      }}
+                    >
                       Discard
                     </Button>
                   ),
@@ -166,12 +197,20 @@ export function SettingsPage() {
   const openDialog = useApiKeys((s) => s.openDialog);
   // `?tab=appearance` deep-links a section (the chart's right-click "Settings…").
   const [params, setParams] = useSearchParams();
-  const tab = resolveTabParam(params.get("tab"), TABS.map((t) => t.id), defaultTab) as Tab;
-  const setTab = (next: string) => setParams(next === defaultTab ? {} : { tab: next }, { replace: true });
+  const tab = resolveTabParam(
+    params.get("tab"),
+    TABS.map((t) => t.id),
+    defaultTab,
+  ) as Tab;
+  const setTab = (next: string) =>
+    setParams(next === defaultTab ? {} : { tab: next }, { replace: true });
   const [busy, setBusy] = useState(false);
 
   return (
-    <section aria-label="Settings" className="flex min-h-0 flex-1 flex-col overflow-y-auto text-base">
+    <section
+      aria-label="Settings"
+      className="flex min-h-0 flex-1 flex-col overflow-y-auto text-base"
+    >
       <div className="flex items-center gap-2 border-b border-ev-raised px-4 py-3">
         <h1 className="text-body font-semibold text-ev-strong">Settings</h1>
       </div>
@@ -181,15 +220,17 @@ export function SettingsPage() {
       </div>
 
       <div className="max-w-2xl p-4">
-        {tab === "connection" && <ConnectionTab settings={settings} save={save} busy={busy} setBusy={setBusy} />}
+        {tab === "connection" && (
+          <ConnectionTab settings={settings} save={save} busy={busy} setBusy={setBusy} />
+        )}
         {tab === "broker" && <BrokerTab />}
         {tab === "safety" && <SafetyTab />}
         {tab === "audit" && <AuditTab />}
         {tab === "data" && (
           <>
             <p className="mb-3 text-dense text-ev-muted">
-              Provider API keys (Finnhub, Alpha Vantage) for fundamentals data. Keys live in the OS keyring only —
-              never in a file or localStorage.
+              Provider API keys (Finnhub, Alpha Vantage) for fundamentals data. Keys live in the OS
+              keyring only — never in a file or localStorage.
             </p>
             <Button variant="outline" size="md" onClick={openDialog}>
               Manage API keys
@@ -201,21 +242,50 @@ export function SettingsPage() {
         {tab === "diagnostics" && <DiagnosticsTab />}
         {tab === "appearance" && (
           <>
-            <p className="mb-3 text-dense text-ev-muted">Colour theme for the shell and the active chart.</p>
-            <RadioGroup label="App theme" value={appTheme} onChange={(v) => setAppTheme(v as typeof appTheme)} options={["auto", "dark", "light", "tokyo"].map((v) => ({ value: v, label: v }))} inline />
-            <p className="mb-3 mt-1.5 text-dense text-ev-faint">
-              Auto follows the focused chart. Pin a theme to keep the chrome still across a mixed grid.
+            <p className="mb-3 text-dense text-ev-muted">
+              Colour theme for the shell and the active chart.
             </p>
-            <h2 className="mb-1 text-dense font-medium uppercase tracking-wider text-ev-faint">Chart theme</h2>
+            <RadioGroup
+              label="App theme"
+              value={appTheme}
+              onChange={(v) => setAppTheme(v as typeof appTheme)}
+              options={["auto", "dark", "light", "tokyo"].map((v) => ({ value: v, label: v }))}
+              inline
+            />
+            <p className="mb-3 mt-1.5 text-dense text-ev-faint">
+              Auto follows the focused chart. Pin a theme to keep the chrome still across a mixed
+              grid.
+            </p>
+            <h2 className="mb-1 text-dense font-medium uppercase tracking-wider text-ev-faint">
+              Chart theme
+            </h2>
             <p className="mb-3 text-dense text-ev-muted">Palette for this chart cell only.</p>
-            <RadioGroup label="Theme" value={theme} onChange={(v) => updateActive({ theme: v as typeof theme })} options={["dark", "light", "tokyo"].map((v) => ({ value: v, label: v }))} inline />
-            <h2 className="mb-1 mt-5 text-dense font-medium uppercase tracking-wider text-ev-faint">Density</h2>
-            <p className="mb-3 text-dense text-ev-muted">Row height for tables, blotter and lists.</p>
-            <RadioGroup label="Density" value={density} onChange={(v) => setDensity(v as typeof density)} options={["compact", "comfortable"].map((v) => ({ value: v, label: v }))} inline />
+            <RadioGroup
+              label="Theme"
+              value={theme}
+              onChange={(v) => updateActive({ theme: v as typeof theme })}
+              options={["dark", "light", "tokyo"].map((v) => ({ value: v, label: v }))}
+              inline
+            />
+            <h2 className="mb-1 mt-5 text-dense font-medium uppercase tracking-wider text-ev-faint">
+              Density
+            </h2>
+            <p className="mb-3 text-dense text-ev-muted">
+              Row height for tables, blotter and lists.
+            </p>
+            <RadioGroup
+              label="Density"
+              value={density}
+              onChange={(v) => setDensity(v as typeof density)}
+              options={["compact", "comfortable"].map((v) => ({ value: v, label: v }))}
+              inline
+            />
             <p className="mb-3 mt-1.5 text-dense text-ev-faint">
               Comfortable gives each row a full line of breathing room for long table reading.
             </p>
-            <h2 className="mb-1 mt-5 text-dense font-medium uppercase tracking-wider text-ev-faint">Chart events</h2>
+            <h2 className="mb-1 mt-5 text-dense font-medium uppercase tracking-wider text-ev-faint">
+              Chart events
+            </h2>
             <p className="mb-2 text-dense text-ev-muted">
               What to draw on the chart. The same switches sit in the bar under the chart.
             </p>

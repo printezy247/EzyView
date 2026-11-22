@@ -42,7 +42,9 @@ describe("lexer", () => {
   });
 
   it("prefers multi-character operators over single ones", () => {
-    const ops = lex("a := b >= c && d != e").filter((t) => t.type === "op").map((t) => t.value);
+    const ops = lex("a := b >= c && d != e")
+      .filter((t) => t.type === "op")
+      .map((t) => t.value);
     expect(ops).toEqual([":=", ">=", "&&", "!="]);
   });
 
@@ -61,7 +63,11 @@ describe("lexer", () => {
   });
 
   it("tracks line numbers", () => {
-    expect(lex("a\nb\nc").filter((t) => t.type === "ident").map((t) => t.line)).toEqual([1, 2, 3]);
+    expect(
+      lex("a\nb\nc")
+        .filter((t) => t.type === "ident")
+        .map((t) => t.line),
+    ).toEqual([1, 2, 3]);
   });
 });
 
@@ -148,7 +154,7 @@ describe("evaluate", () => {
 
   it("broadcasts arithmetic and keeps the series shape", () => {
     const ctx = makeContext(4);
-    const out = runPine('plot(close * 2)', ctx);
+    const out = runPine("plot(close * 2)", ctx);
     expect(values(out.plots[0]!.values)).toEqual([201, 203, 205, 207]);
   });
 
@@ -327,7 +333,10 @@ describe("evaluate", () => {
 
   it("supports plotshape as a marker series", () => {
     const ctx = makeContext(5);
-    const out = runPine('plotshape(close > 101, "up", shape.triangleup, location.belowbar, color.green)', ctx);
+    const out = runPine(
+      'plotshape(close > 101, "up", shape.triangleup, location.belowbar, color.green)',
+      ctx,
+    );
     const vals = values(out.plots[0]!.values);
     expect(vals[0]).toBeUndefined();
     expect(vals[2]).toBeDefined();
@@ -358,7 +367,7 @@ describe("keyword arguments", () => {
   });
 
   it("takes input defaults written as keywords", () => {
-    const out = runPine("plot(input.int(defval=20, title=\"Len\"))", makeContext(3));
+    const out = runPine('plot(input.int(defval=20, title="Len"))', makeContext(3));
     expect(values(out.plots[0]!.values)).toEqual([20, 20, 20]);
   });
 
@@ -444,14 +453,43 @@ describe("derived series and bare cross helpers", () => {
 describe("sandbox (Phase A)", () => {
   it("rejects dangerous global identifiers", () => {
     for (const name of [
-      "globalThis", "window", "document", "fetch", "XMLHttpRequest", "WebSocket",
-      "Function", "eval", "constructor", "process", "require", "module", "exports",
-      "setTimeout", "setInterval", "Promise", "Reflect", "Proxy",
+      "globalThis",
+      "window",
+      "document",
+      "fetch",
+      "XMLHttpRequest",
+      "WebSocket",
+      "Function",
+      "eval",
+      "constructor",
+      "process",
+      "require",
+      "module",
+      "exports",
+      "setTimeout",
+      "setInterval",
+      "Promise",
+      "Reflect",
+      "Proxy",
       // The window's other names: any one of them is the same object.
       // `location` is not here: it is a Pine namespace (location.abovebar).
-      "self", "top", "parent", "navigator", "localStorage",
-      "sessionStorage", "crypto", "Worker", "atob", "btoa", "caches", "history",
-      "screen", "WebAssembly", "importScripts", "EventSource", "Notification",
+      "self",
+      "top",
+      "parent",
+      "navigator",
+      "localStorage",
+      "sessionStorage",
+      "crypto",
+      "Worker",
+      "atob",
+      "btoa",
+      "caches",
+      "history",
+      "screen",
+      "WebAssembly",
+      "importScripts",
+      "EventSource",
+      "Notification",
     ]) {
       expect(() => transpile(name)).toThrow(PineUnsupportedError);
     }
@@ -460,7 +498,9 @@ describe("sandbox (Phase A)", () => {
   it("rejects a script that reaches the host through self", () => {
     // `self` is `window` inside a webview, so this used to compile and gave a
     // shared script the whole host realm.
-    expect(() => transpile('plot(self.fetch("http://127.0.0.1:8765/order"))')).toThrow(PineUnsupportedError);
+    expect(() => transpile('plot(self.fetch("http://127.0.0.1:8765/order"))')).toThrow(
+      PineUnsupportedError,
+    );
     expect(() => transpile("x = self.document")).toThrow(PineUnsupportedError);
   });
 
@@ -483,7 +523,17 @@ describe("sandbox (Phase A)", () => {
   });
 
   it("rejects dangerous member access", () => {
-    for (const m of ["constructor", "__proto__", "prototype", "then", "call", "apply", "bind", "toString", "valueOf"]) {
+    for (const m of [
+      "constructor",
+      "__proto__",
+      "prototype",
+      "then",
+      "call",
+      "apply",
+      "bind",
+      "toString",
+      "valueOf",
+    ]) {
       expect(() => transpile(`close.${m}`)).toThrow(PineUnsupportedError);
     }
   });
@@ -503,7 +553,9 @@ describe("sandbox (Phase A)", () => {
   });
 
   it("validates the run context", () => {
-    expect(() => runPine("plot(close)", { ...makeContext(3), close: [] } as Context)).toThrow(/non-empty/);
+    expect(() => runPine("plot(close)", { ...makeContext(3), close: [] } as Context)).toThrow(
+      /non-empty/,
+    );
     const mismatched = makeContext(3);
     mismatched.high = [1, 2];
     expect(() => runPine("plot(close)", mismatched)).toThrow(/equal length/);
@@ -547,7 +599,10 @@ describe("regressions", () => {
 
   it("parses and evaluates the word operators and/or/not", () => {
     const ctx = makeContext(3);
-    const out = runPine("plot(close > open and close > 0 ? 1 : 0)\nplot(close < open or close > 0 ? 1 : 0)\nplot(not close < open ? 1 : 0)", ctx);
+    const out = runPine(
+      "plot(close > open and close > 0 ? 1 : 0)\nplot(close < open or close > 0 ? 1 : 0)\nplot(not close < open ? 1 : 0)",
+      ctx,
+    );
     expect(values(out.plots[0]!.values)).toEqual([1, 1, 1]);
     expect(values(out.plots[1]!.values)).toEqual([1, 1, 1]);
     expect(values(out.plots[2]!.values)).toEqual([1, 1, 1]);
@@ -577,7 +632,10 @@ describe("regressions", () => {
   });
 
   it("runs a descending for loop with the step sign inferred", () => {
-    const out = runPine("float total = 0\nfor i = 3 to 0\n  total := total + i\nplot(total)", makeContext(1));
+    const out = runPine(
+      "float total = 0\nfor i = 3 to 0\n  total := total + i\nplot(total)",
+      makeContext(1),
+    );
     expect(values(out.plots[0]!.values)).toEqual([6]);
   });
 
@@ -597,8 +655,12 @@ describe("regressions", () => {
   });
 
   it("rejects request.security at transpile time", () => {
-    expect(() => transpile('x = request.security(syminfo.tickerid, "D", close)')).toThrow(PineUnsupportedError);
-    expect(() => transpile('x = security(syminfo.tickerid, "D", close)')).toThrow(PineUnsupportedError);
+    expect(() => transpile('x = request.security(syminfo.tickerid, "D", close)')).toThrow(
+      PineUnsupportedError,
+    );
+    expect(() => transpile('x = security(syminfo.tickerid, "D", close)')).toThrow(
+      PineUnsupportedError,
+    );
   });
 
   it("propagates na through division and modulo by zero", () => {

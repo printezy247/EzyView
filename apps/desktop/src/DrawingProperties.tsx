@@ -1,8 +1,12 @@
 import { useRef, useState } from "react";
 import { ArrowRightLeft, Bell, Eye, EyeOff, Lock, LockOpen, Settings, Trash2 } from "lucide-react";
 import { useWorkspace } from "./store";
-import { drawingLabel } from "./ObjectTree";
-import { applyDrawingTemplate, listDrawingTemplates, saveDrawingTemplate } from "./drawingTemplates";
+import { drawingLabel } from "./drawingLabels";
+import {
+  applyDrawingTemplate,
+  listDrawingTemplates,
+  saveDrawingTemplate,
+} from "./drawingTemplates";
 import type { DrawingTemplate } from "./drawingTemplates";
 import { syncPositionDrawingToOrderTicket } from "./orderDraft";
 import { useDrawingUi } from "./drawingUi";
@@ -10,7 +14,16 @@ import { newAssetId, putImageAsset, readImageSize } from "./imageAssets";
 import { Button, IconButton, Input } from "./ui";
 import { Select } from "./ui";
 
-const COLORS = ["#ef4444", "#22c55e", "#fbbf24", "#60a5fa", "#a78bfa", "#22d3ee", "#ffd700", "#ffffff"];
+const COLORS = [
+  "#ef4444",
+  "#22c55e",
+  "#fbbf24",
+  "#60a5fa",
+  "#a78bfa",
+  "#22d3ee",
+  "#ffd700",
+  "#ffffff",
+];
 const WIDTHS = [1, 2, 3, 4];
 const LINE_STYLES = ["solid", "dashed", "dotted"] as const;
 
@@ -42,9 +55,12 @@ export function DrawingProperties() {
   const style = d.style;
   const level = d.points[0]?.price;
   const canAlert =
-    (d.tool === "horizontal_line" || d.tool === "horizontal_ray") && level !== undefined && Number.isFinite(level);
+    (d.tool === "horizontal_line" || d.tool === "horizontal_ray") &&
+    level !== undefined &&
+    Number.isFinite(level);
   const alertBound = alerts.some((a) => a.drawingId === d.id);
-  const isPositionTool = (d.tool === "long_position" || d.tool === "short_position") && d.points.length >= 3;
+  const isPositionTool =
+    (d.tool === "long_position" || d.tool === "short_position") && d.points.length >= 3;
   const activeSymbol = useWorkspace.getState().activeChart().symbol;
 
   const reorder = (to: "front" | "back") => {
@@ -62,7 +78,9 @@ export function DrawingProperties() {
   return (
     <div className="border-t border-ev-raised px-3 py-2 text-base" aria-label="Drawing properties">
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-dense font-semibold uppercase tracking-wider text-ev-faint">Properties</h3>
+        <h3 className="text-dense font-semibold uppercase tracking-wider text-ev-faint">
+          Properties
+        </h3>
         <div className="flex min-w-0 items-center gap-1">
           <span className="truncate text-dense text-ev-muted">{drawingLabel(d)}</span>
           <IconButton
@@ -168,7 +186,10 @@ export function DrawingProperties() {
               }
             }}
             placeholder="Apply…"
-            options={[{ value: "", label: "Apply…" }, ...templates.map((t) => ({ value: t.id, label: t.name }))]}
+            options={[
+              { value: "", label: "Apply…" },
+              ...templates.map((t) => ({ value: t.id, label: t.name })),
+            ]}
             className="shrink-0"
           />
           <Input
@@ -219,7 +240,9 @@ export function DrawingProperties() {
                     }
                     const size = await readImageSize(file);
                     setImageError(null);
-                    update(d.id, { image: { assetId, width: size.width, height: size.height, lockAspect: true } });
+                    update(d.id, {
+                      image: { assetId, width: size.width, height: size.height, lockAspect: true },
+                    });
                   })
                   .catch(() => setImageError("Could not read that image."));
               }}

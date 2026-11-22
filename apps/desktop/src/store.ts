@@ -143,7 +143,10 @@ export const useWorkspace = create<WorkspaceStore>()(
       removeCompare: (id) =>
         set((s) =>
           editActive(s, (l) =>
-            updateChart(l, l.activeChart, (c) => ({ ...c, compare: (c.compare ?? []).filter((x) => x.id !== id) })),
+            updateChart(l, l.activeChart, (c) => ({
+              ...c,
+              compare: (c.compare ?? []).filter((x) => x.id !== id),
+            })),
           ),
         ),
 
@@ -152,7 +155,9 @@ export const useWorkspace = create<WorkspaceStore>()(
           editActive(s, (l) =>
             updateChart(l, l.activeChart, (c) => ({
               ...c,
-              compare: (c.compare ?? []).map((x) => (x.id === id ? Object.assign({}, x, patch) : x)),
+              compare: (c.compare ?? []).map((x) =>
+                x.id === id ? Object.assign({}, x, patch) : x,
+              ),
             })),
           ),
         ),
@@ -173,10 +178,15 @@ export const useWorkspace = create<WorkspaceStore>()(
       // The focused cell's symbol, and every cell in its link group. A feed
       // travels with the symbol when the caller knows it (watchlist rows do).
       setSymbol: (symbol, source) =>
-        set((s) => editActive(s, (l) => applyToGroup(l, source ? { symbol, dataSource: source } : { symbol }))),
+        set((s) =>
+          editActive(s, (l) =>
+            applyToGroup(l, source ? { symbol, dataSource: source } : { symbol }),
+          ),
+        ),
 
       // The focused cell's interval, and every cell in its link group.
-      setResolution: (resolution) => set((s) => editActive(s, (l) => applyToGroup(l, { resolution }))),
+      setResolution: (resolution) =>
+        set((s) => editActive(s, (l) => applyToGroup(l, { resolution }))),
 
       // Putting a cell into a group, or taking it out.
       setLinkGroup: (group) =>
@@ -186,7 +196,10 @@ export const useWorkspace = create<WorkspaceStore>()(
           const name = group?.trim() ? group.trim() : undefined;
           const charts = layout.charts.map((c, i) => (i === index ? { ...c, linkGroup: name } : c));
           const next = { ...layout, charts };
-          return { layouts: s.layouts.map((l) => (l.id === layout.id ? next : l)), dirty: { ...s.dirty, [layout.id]: true } };
+          return {
+            layouts: s.layouts.map((l) => (l.id === layout.id ? next : l)),
+            dirty: { ...s.dirty, [layout.id]: true },
+          };
         }),
 
       setGrid: (grid) => set((s) => editActive(s, (l) => setGrid(l, grid))),
@@ -271,19 +284,26 @@ export const useWorkspace = create<WorkspaceStore>()(
       },
 
       removeIndicator: (target) =>
-        set((s) => editChart(s, (c) => ({ ...c, indicators: c.indicators.filter((i) => i.uid !== target) }))),
+        set((s) =>
+          editChart(s, (c) => ({ ...c, indicators: c.indicators.filter((i) => i.uid !== target) })),
+        ),
 
       updateIndicatorParams: (target, params) =>
         set((s) =>
           editChart(s, (c) => ({
             ...c,
-            indicators: c.indicators.map((i) => (i.uid === target ? { ...i, params: { ...i.params, ...params } } : i)),
+            indicators: c.indicators.map((i) =>
+              i.uid === target ? { ...i, params: { ...i.params, ...params } } : i,
+            ),
           })),
         ),
 
       updateIndicator: (target, patch) =>
         set((s) =>
-          editChart(s, (c) => ({ ...c, indicators: c.indicators.map((i) => (i.uid === target ? { ...i, ...patch } : i)) })),
+          editChart(s, (c) => ({
+            ...c,
+            indicators: c.indicators.map((i) => (i.uid === target ? { ...i, ...patch } : i)),
+          })),
         ),
 
       setDrawings: (drawings, chartIndex) =>
@@ -329,7 +349,9 @@ export const useWorkspace = create<WorkspaceStore>()(
           }
 
           const key = `${targetLayoutId}:${targetIdx}`;
-          const undoStack = s.drawingUndoStacks[key] ?? (targetLayoutId === layout.id && targetIdx === layout.activeChart ? s.drawingUndo : []);
+          const undoStack =
+            s.drawingUndoStacks[key] ??
+            (targetLayoutId === layout.id && targetIdx === layout.activeChart ? s.drawingUndo : []);
           if (undoStack.length === 0) return s;
 
           const previous = undoStack[undoStack.length - 1]!;
@@ -337,7 +359,9 @@ export const useWorkspace = create<WorkspaceStore>()(
 
           const targetLayout = s.layouts.find((l) => l.id === targetLayoutId) ?? layout;
           const currentDrawings = targetLayout.charts[targetIdx]?.drawings ?? [];
-          const currentRedo = s.drawingRedoStacks[key] ?? (targetLayoutId === layout.id && targetIdx === layout.activeChart ? s.drawingRedo : []);
+          const currentRedo =
+            s.drawingRedoStacks[key] ??
+            (targetLayoutId === layout.id && targetIdx === layout.activeChart ? s.drawingRedo : []);
           const nextRedo = pushUndo(currentRedo, currentDrawings);
 
           const nextLayouts = s.layouts.map((l) =>
@@ -393,7 +417,9 @@ export const useWorkspace = create<WorkspaceStore>()(
           }
 
           const key = `${targetLayoutId}:${targetIdx}`;
-          const redoStack = s.drawingRedoStacks[key] ?? (targetLayoutId === layout.id && targetIdx === layout.activeChart ? s.drawingRedo : []);
+          const redoStack =
+            s.drawingRedoStacks[key] ??
+            (targetLayoutId === layout.id && targetIdx === layout.activeChart ? s.drawingRedo : []);
           if (redoStack.length === 0) return s;
 
           const nextArr = redoStack[redoStack.length - 1]!;
@@ -401,7 +427,9 @@ export const useWorkspace = create<WorkspaceStore>()(
 
           const targetLayout = s.layouts.find((l) => l.id === targetLayoutId) ?? layout;
           const currentDrawings = targetLayout.charts[targetIdx]?.drawings ?? [];
-          const currentUndo = s.drawingUndoStacks[key] ?? (targetLayoutId === layout.id && targetIdx === layout.activeChart ? s.drawingUndo : []);
+          const currentUndo =
+            s.drawingUndoStacks[key] ??
+            (targetLayoutId === layout.id && targetIdx === layout.activeChart ? s.drawingUndo : []);
           const nextUndo = pushUndo(currentUndo, currentDrawings);
 
           const nextLayouts = s.layouts.map((l) =>
@@ -457,7 +485,10 @@ export const useWorkspace = create<WorkspaceStore>()(
           const target = prev.find((d) => d.id === id);
           if (!target) return s;
           const edited = editActive(s, (l) =>
-            updateChart(l, idx, (c) => ({ ...c, drawings: c.drawings.map((d) => (d.id === id ? { ...d, ...patch } : d)) })),
+            updateChart(l, idx, (c) => ({
+              ...c,
+              drawings: c.drawings.map((d) => (d.id === id ? { ...d, ...patch } : d)),
+            })),
           );
           return syncBoundAlert({ ...edited, alerts: s.alerts }, id, target, patch);
         }),
@@ -478,7 +509,9 @@ export const useWorkspace = create<WorkspaceStore>()(
           const remaining = s.selectedDrawingIds.filter((x) => x !== id);
           const selection = remaining.at(-1) ?? null;
           if (drawings.length === prev.length) {
-            return selection === s.selectedDrawingId ? s : { selectedDrawingId: selection, selectedDrawingIds: remaining };
+            return selection === s.selectedDrawingId
+              ? s
+              : { selectedDrawingId: selection, selectedDrawingIds: remaining };
           }
           const next = editActive(s, (l) => updateChart(l, idx, (c) => ({ ...c, drawings })));
           const alerts = s.alerts.filter((a) => a.drawingId !== id);
@@ -520,7 +553,9 @@ export const useWorkspace = create<WorkspaceStore>()(
       toggleDrawingSelection: (id) =>
         set((s) => {
           const has = s.selectedDrawingIds.includes(id);
-          const next = has ? s.selectedDrawingIds.filter((x) => x !== id) : [...s.selectedDrawingIds, id];
+          const next = has
+            ? s.selectedDrawingIds.filter((x) => x !== id)
+            : [...s.selectedDrawingIds, id];
           return { selectedDrawingIds: next, selectedDrawingId: next.at(-1) ?? null };
         }),
 
@@ -564,8 +599,7 @@ export const useWorkspace = create<WorkspaceStore>()(
           return { ...next, ...history };
         }),
 
-      updateSelectedDrawings: (patch) =>
-        get().updateDrawings(get().selectedDrawingIds, patch),
+      updateSelectedDrawings: (patch) => get().updateDrawings(get().selectedDrawingIds, patch),
 
       updateDrawings: (ids, patch, chartIndex) =>
         set((s) => {
@@ -591,7 +625,10 @@ export const useWorkspace = create<WorkspaceStore>()(
           if (!prev.some((d) => selected.has(d.id) && !d.locked)) return s;
           const drawings = prev.map((d) =>
             selected.has(d.id) && !d.locked
-              ? { ...d, points: d.points.map((p) => ({ time: p.time + dTime, price: p.price + dPrice })) }
+              ? {
+                  ...d,
+                  points: d.points.map((p) => ({ time: p.time + dTime, price: p.price + dPrice })),
+                }
               : d,
           );
           const next = editActive(s, (l) => updateChart(l, idx, (c) => ({ ...c, drawings })));
@@ -671,14 +708,20 @@ export const useWorkspace = create<WorkspaceStore>()(
           const next = editActive(s, (l) => updateChart(l, idx, (c) => ({ ...c, drawings })));
           const history = pushChartHistory(s, layout.id, idx, prev);
           const ids = clones.map((d) => d.id);
-          return { ...next, selectedDrawingIds: ids, selectedDrawingId: ids.at(-1) ?? null, ...history };
+          return {
+            ...next,
+            selectedDrawingIds: ids,
+            selectedDrawingId: ids.at(-1) ?? null,
+            ...history,
+          };
         }),
 
       setActiveTool: (tool) => set({ activeTool: tool, ...(tool ? { eraserMode: false } : {}) }),
       setStayInDrawingMode: (on) => set({ stayInDrawingMode: on }),
       setLockAllDrawings: (on) => set({ lockAllDrawings: on }),
       setHideAllDrawings: (on) => set({ hideAllDrawings: on }),
-      setEraserMode: (on) => set({ eraserMode: on, ...(on ? { activeTool: null, selectedDrawingId: null } : {}) }),
+      setEraserMode: (on) =>
+        set({ eraserMode: on, ...(on ? { activeTool: null, selectedDrawingId: null } : {}) }),
       toggleFavoriteTool: (tool) =>
         set((s) => ({
           favoriteTools: s.favoriteTools.includes(tool)
@@ -723,9 +766,13 @@ export const useWorkspace = create<WorkspaceStore>()(
         const anchor = clipboard[0]!.points[0];
         const pasted = clipboard.map((drawing) => {
           const first = drawing.points[0];
-          const point = first && anchor
-            ? { time: at.time + (first.time - anchor.time), price: at.price + (first.price - anchor.price) }
-            : at;
+          const point =
+            first && anchor
+              ? {
+                  time: at.time + (first.time - anchor.time),
+                  price: at.price + (first.price - anchor.price),
+                }
+              : at;
           return pasteAt(drawing, point, uid());
         });
         s.setDrawings([...activeChartOf(s.activeLayout()).drawings, ...pasted]);
@@ -778,7 +825,9 @@ export const useWorkspace = create<WorkspaceStore>()(
                   ? Math.min(rest.length, from + 1)
                   : Math.max(0, from - 1);
           const ordered = [...rest.slice(0, at), drawings[from]!, ...rest.slice(at)];
-          const next = editActive(s, (l) => updateChart(l, idx, (c) => ({ ...c, drawings: ordered })));
+          const next = editActive(s, (l) =>
+            updateChart(l, idx, (c) => ({ ...c, drawings: ordered })),
+          );
           const history = pushChartHistory(s, layout.id, idx, drawings);
           return { ...next, ...history };
         }),
@@ -802,9 +851,7 @@ export const useWorkspace = create<WorkspaceStore>()(
       sortLayouts: (by) =>
         set((s) => {
           const layouts = [...s.layouts].sort((a, b) =>
-            by === "name"
-              ? a.name.localeCompare(b.name)
-              : (a.createdAt ?? 0) - (b.createdAt ?? 0),
+            by === "name" ? a.name.localeCompare(b.name) : (a.createdAt ?? 0) - (b.createdAt ?? 0),
           );
           return { layouts };
         }),
@@ -854,20 +901,31 @@ export const useWorkspace = create<WorkspaceStore>()(
           alerts: "alerts" in raw ? restoreAlerts(raw.alerts, current.alerts) : current.alerts,
           alertHistory:
             "alertHistory" in raw ? restoreAlertHistory(raw.alertHistory) : current.alertHistory,
-          watchlist: "watchlist" in raw ? restoreWatchlist(raw.watchlist, current.watchlist) : current.watchlist,
+          watchlist:
+            "watchlist" in raw
+              ? restoreWatchlist(raw.watchlist, current.watchlist)
+              : current.watchlist,
           watchlistSymbolKey:
             "watchlist" in raw
-              ? restoreWatchlist(raw.watchlist, current.watchlist).map((w) => w.symbol).join(",")
+              ? restoreWatchlist(raw.watchlist, current.watchlist)
+                  .map((w) => w.symbol)
+                  .join(",")
               : current.watchlist.map((w) => w.symbol).join(","),
           watchlistQuoteKey: watchlistQuoteKeys(
-            "watchlist" in raw ? restoreWatchlist(raw.watchlist, current.watchlist) : current.watchlist,
+            "watchlist" in raw
+              ? restoreWatchlist(raw.watchlist, current.watchlist)
+              : current.watchlist,
           ),
           favoriteTools: restoreFavoriteTools(raw.favoriteTools, current.favoriteTools),
           drawingToolStyles: restoreToolStyles(raw.drawingToolStyles, current.drawingToolStyles),
           stayInDrawingMode:
-            typeof raw.stayInDrawingMode === "boolean" ? raw.stayInDrawingMode : current.stayInDrawingMode,
+            typeof raw.stayInDrawingMode === "boolean"
+              ? raw.stayInDrawingMode
+              : current.stayInDrawingMode,
           lockAllDrawings:
-            typeof raw.lockAllDrawings === "boolean" ? raw.lockAllDrawings : current.lockAllDrawings,
+            typeof raw.lockAllDrawings === "boolean"
+              ? raw.lockAllDrawings
+              : current.lockAllDrawings,
         };
       },
     },

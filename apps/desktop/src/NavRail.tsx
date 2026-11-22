@@ -78,11 +78,15 @@ export function NavRail() {
       {/* Brand block: wordmark when expanded, bare mark when collapsed. The
           collapse/expand control rides the same row so the rail header is one
           consistent strip in both states. */}
-      <div className={`flex shrink-0 items-center ${expanded ? "justify-between px-2 pb-1" : "flex-col gap-1.5 pb-1"}`}>
+      <div
+        className={`flex shrink-0 items-center ${expanded ? "justify-between px-2 pb-1" : "flex-col gap-1.5 pb-1"}`}
+      >
         {expanded && (
           <span className="flex min-w-0 items-center gap-2">
             <BrandMark />
-            <span className="truncate text-body font-semibold tracking-tight text-ev-strong">EzyView</span>
+            <span className="truncate text-body font-semibold tracking-tight text-ev-strong">
+              EzyView
+            </span>
           </span>
         )}
         {!expanded && <BrandMark className="size-7 rounded-lg [&_svg]:size-3.5" />}
@@ -91,15 +95,27 @@ export function NavRail() {
           aria-expanded={expanded}
           aria-controls="nav-rail-sections"
           aria-label={expanded ? "Collapse the navigation rail" : "Expand the navigation rail"}
-          title={expanded ? "Collapse the navigation rail (Ctrl+\\)" : "Expand the navigation rail (Ctrl+\\)"}
+          title={
+            expanded
+              ? "Collapse the navigation rail (Ctrl+\\)"
+              : "Expand the navigation rail (Ctrl+\\)"
+          }
           onClick={() => setExpanded(!expanded)}
           className={shellToolClass({ className: "size-8" })}
         >
-          {expanded ? <PanelLeftClose size={SHELL_RAIL_ICON} aria-hidden /> : <PanelLeftOpen size={SHELL_RAIL_ICON} aria-hidden />}
+          {expanded ? (
+            <PanelLeftClose size={SHELL_RAIL_ICON} aria-hidden />
+          ) : (
+            <PanelLeftOpen size={SHELL_RAIL_ICON} aria-hidden />
+          )}
         </button>
       </div>
 
-      <div id="nav-rail-sections" role="list" className="flex min-h-0 flex-1 flex-col items-stretch gap-1 overflow-y-auto">
+      <div
+        id="nav-rail-sections"
+        role="list"
+        className="flex min-h-0 flex-1 flex-col items-stretch gap-1 overflow-y-auto"
+      >
         {NAV_SECTIONS.map((item) => {
           const badge = badgeFor(item.to);
           return (
@@ -141,7 +157,10 @@ export function NavRail() {
                     <span className="sr-only">{item.label}</span>
                     {isActive &&
                       (reduceMotion ? (
-                        <span className="absolute left-0 top-1.5 h-5 w-0.5 rounded bg-ev-accent" aria-hidden />
+                        <span
+                          className="absolute left-0 top-1.5 h-5 w-0.5 rounded bg-ev-accent"
+                          aria-hidden
+                        />
                       ) : (
                         <motion.span
                           layoutId="nav-rail-active"
@@ -158,7 +177,9 @@ export function NavRail() {
                         role="tooltip"
                         className="pointer-events-none absolute left-full z-[var(--z-dropdown)] ml-1.5 hidden w-52 rounded border border-ev-line bg-ev-panel px-2 py-1.5 text-left shadow-xl group-hover:block group-focus-visible:block"
                       >
-                        <span className="block text-base font-medium text-ev-strong">{item.label}</span>
+                        <span className="block text-base font-medium text-ev-strong">
+                          {item.label}
+                        </span>
                         <span className="block text-dense text-ev-muted">{item.description}</span>
                       </span>
                     )}

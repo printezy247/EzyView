@@ -30,11 +30,14 @@
 ## Tasks
 
 ### Task 1: Completion catalog + lint rules (pine-transpiler)
+
 **Files:**
+
 - Create: `packages/pine-transpiler/src/completion.ts`, `packages/pine-transpiler/src/completion.test.ts`, `packages/pine-transpiler/src/lint.ts`, `packages/pine-transpiler/src/lint.test.ts`
 - Modify: `packages/pine-transpiler/src/index.ts` (barrel)
 
 **Interfaces (Task 2 consumes):**
+
 - `export interface PineCompletion { label: string; kind: "keyword" | "builtin" | "namespace" | "function"; detail: string; insertText?: string }`
 - `export function pineCompletions(): PineCompletion[]` — catalog covering: keywords (`if/else/for/to/by/while/var/return/and/or/not/true/false/na` + type keywords), builtins (`open/high/low/close/volume/hl2/hlc3/ohlc4/bar_index`), namespaces (`ta/math/color/input/strategy/shape/location/size`), functions actually supported by the emitter (`plot/plotshape/bgcolor/indicator/strategy/nz/na/crossover/crossunder` + `ta.*`/`math.*` members present in `runtime.ts`; `input.int/float/bool/string`; `strategy.entry/close/exit/close_all` as supported). Stable order, no duplicates. Static array — no runtime introspection.
 - `export interface PineLintIssue { line: number; column: number; message: string; severity: "error" | "warning" }`
@@ -43,7 +46,7 @@
   2. no `//@version=` anywhere → warning "Missing //@version= comment" (line 1 col 1).
   3. both `indicator(` and `strategy(` declaration calls present → error "Script declares both indicator() and strategy()" at the second occurrence's line.
   4. no `plot(`/`plotshape(`/`strategy.` call at all → warning "Script has no plot or strategy call".
-  Implementation: line-based scan with indexOf-per-line; no full parse (transpile errors are a separate channel in Task 2).
+     Implementation: line-based scan with indexOf-per-line; no full parse (transpile errors are a separate channel in Task 2).
 
 - [ ] Step 1: Write failing tests first (catalog contains ta.sma? — only what runtime actually supports; includes namespaces; no dupes; lint rules 1–4 with exact lines/columns; empty source; version present → no warning).
 - [ ] Step 2: `npx vitest run --configLoader runner packages/pine-transpiler/src/completion.test.ts packages/pine-transpiler/src/lint.test.ts` — FAIL (module not found).
@@ -52,11 +55,14 @@
 - [ ] Step 5: Commit `feat(pine): completion catalog + static lint rules`.
 
 ### Task 2: Monaco autocomplete + markers
+
 **Files:**
+
 - Modify: `apps/desktop/src/PineEditor.tsx` (language registration + run/error path)
 - Test: none for Monaco wiring (untestable headless) — Task 1 covers the pure inputs; report notes why.
 
 **Interfaces:**
+
 - Consumes: `pineCompletions`, `lintPine` (Task 1); existing `PineSyntaxError` from `transpile` (line info: verify actual error shape in parser; map line/column onto `monaco.editor.setModelMarkers`).
 - Produces: none.
 
@@ -66,13 +72,16 @@
 - [ ] Step 4: Commit `feat(desktop): pine autocomplete + lint markers`.
 
 ### Task 3: Equity sparkline + inputs snapshot
+
 **Files:**
+
 - Modify: `apps/desktop/src/PineEditor.tsx` (StrategyTester + run())
 - Modify: `apps/desktop/src/store.ts` (`PineScriptRecord.inputs?: Record<string, number | string | boolean>` — snapshot only scalar inputs; persist via existing partial-merge `setPineResult`)
 - Modify: `apps/desktop/src/store.test.ts` if present, else new small test for inputs round-trip through save/restore
 - Test: store inputs backward-compat (old blob without `inputs` restores; new record persists scalar map)
 
 **Interfaces:**
+
 - Consumes: `ctx.inputs` after `runPine` (mutated in place); existing `StrategyTester` result prop.
 - Produces: `PineScriptRecord.inputs?: Record<string, number | string | boolean>` — Task 4 optimizer keys off this.
 
@@ -83,13 +92,16 @@
 - [ ] Step 5: Commit `feat(desktop): strategy tester equity curve + inputs snapshot`.
 
 ### Task 4: Parameter optimization
+
 **Files:**
+
 - Create: `packages/pine-transpiler/src/optimize.ts`, `packages/pine-transpiler/src/optimize.test.ts`
 - Modify: `packages/pine-transpiler/src/index.ts` (barrel)
 - Modify: `apps/desktop/src/PineEditor.tsx` (Optimize panel)
 - Test: `optimize.test.ts` pure coverage; optional UI-light helper test if extracted (e.g. step-range parser)
 
 **Interfaces:**
+
 - Consumes: `backtest` (existing), `runPine` (desktop side), `record.inputs` (Task 3).
 - Produces:
   - `export interface ParamSpec { key: string; values: number[] }`
@@ -104,13 +116,16 @@
 - [ ] Step 5: Commit `feat(pine): parameter optimization grid`.
 
 ### Task 5: Script library versioning + share
+
 **Files:**
+
 - Modify: `apps/desktop/src/store.ts` (`PineScriptRecord.versions?: PineScriptVersion[]`; `PineScriptVersion { source: string; savedAt: number }` epoch seconds; `savePineScript` prepends a version when source differs from current head, cap 20; new `restorePineScriptVersion(id, index)` replaces `source` in record; backward-compatible restore)
 - Modify: `apps/desktop/src/store.test.ts` (version spam guard, cap, restore, old-blob compat)
 - Modify: `apps/desktop/src/PineEditor.tsx` (Versions dropdown + Export/Import)
 - Create: `apps/desktop/src/pineShare.ts` + `pineShare.test.ts` (pure serializers)
 
 **Interfaces:**
+
 - Consumes: existing `savePineScript`, `deletePineScript`, scripts map.
 - Produces:
   - `pineShare.ts`: `exportScriptJson(record: {name: string; source: string}): string` (pretty JSON `{format: "ezyview-pine", version: 1, name, source}`); `parseScriptJson(text: string): { name: string; source: string }` — throws `Error("Not an EzyView Pine script")` on wrong format/version/shape.
@@ -124,6 +139,7 @@
 - [ ] Step 5: Commit `feat(desktop): pine script versioning + share import/export`.
 
 ### Task 6: Gates + docs
+
 - Full gates: `npm run lint`, `npm run typecheck`, `npx vitest run --configLoader runner`, `npm run build:web`.
 - MASTERPLAN: §7 row 7 → **done (PR #17)**; §8 add Phase 7 closed line (autocomplete, lint markers, equity curve, optimizer grid, versioned library + JSON share; deferred: walk-forward optimization, publish marketplace, v6); §12 Phase 7 → Done with deviations; known-gaps refresh.
 - (Controller runs git usual ops separately.)

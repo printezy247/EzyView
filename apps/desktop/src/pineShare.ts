@@ -38,6 +38,7 @@ export function parseScriptJson(text: string): SharedScript {
   if (typeof data !== "object" || data === null) throw new Error(NOT_OURS);
   const envelope = data as Record<string, unknown>;
   if (envelope.format !== FORMAT || envelope.version !== FORMAT_VERSION) throw new Error(NOT_OURS);
-  if (typeof envelope.name !== "string" || typeof envelope.source !== "string") throw new Error(NOT_OURS);
+  if (typeof envelope.name !== "string" || typeof envelope.source !== "string")
+    throw new Error(NOT_OURS);
   return { name: envelope.name, source: envelope.source };
 }

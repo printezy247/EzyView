@@ -59,7 +59,10 @@ export const CHORD_LETTERS: Record<string, RoutePath> = {
 export type ChordState = "idle" | "pending";
 
 /** The chord state machine, as a pure function over the last key pressed. */
-export function nextChordState(state: ChordState, key: string): { state: ChordState; target?: RoutePath } {
+export function nextChordState(
+  state: ChordState,
+  key: string,
+): { state: ChordState; target?: RoutePath } {
   if (state === "pending") {
     const target = CHORD_LETTERS[key.toLowerCase()];
     return target ? { state: "idle", target } : { state: "idle" };

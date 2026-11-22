@@ -22,7 +22,11 @@ const RETRACEMENT = [
 ];
 
 /** Linear interpolation between two anchor prices at each Fibonacci ratio. */
-export function fibLevels(priceA: number, priceB: number, ratios: readonly { ratio: number; label: string }[] = RETRACEMENT): FibLevel[] {
+export function fibLevels(
+  priceA: number,
+  priceB: number,
+  ratios: readonly { ratio: number; label: string }[] = RETRACEMENT,
+): FibLevel[] {
   const delta = priceB - priceA;
   return ratios.map(({ ratio, label }) => ({ ratio, label, price: priceA + delta * ratio }));
 }
@@ -30,7 +34,10 @@ export function fibLevels(priceA: number, priceB: number, ratios: readonly { rat
 export const FIB_RETRACEMENT_LEVELS = RETRACEMENT;
 export const FIB_EXTENSION_RATIOS = [0, 0.618, 1, 1.618, 2.618, 4.236] as const;
 
-const EXTENSION = FIB_EXTENSION_RATIOS.map((ratio) => ({ ratio, label: `${(ratio * 100).toFixed(1)}%` }));
+const EXTENSION = FIB_EXTENSION_RATIOS.map((ratio) => ({
+  ratio,
+  label: `${(ratio * 100).toFixed(1)}%`,
+}));
 
 /**
  * Extension levels: the third anchor is the projection start, and each level
@@ -45,9 +52,10 @@ export function resolvedFibExtensionLevels(
   const p1 = points[1]?.price;
   const p2 = points[2]?.price;
   if (p0 === undefined || p1 === undefined || p2 === undefined) return [];
-  const rows: readonly FibLevelStyle[] = style.fibLevels && style.fibLevels.length > 0
-    ? style.fibLevels
-    : EXTENSION.map((level) => ({ ratio: level.ratio, label: level.label, enabled: true }));
+  const rows: readonly FibLevelStyle[] =
+    style.fibLevels && style.fibLevels.length > 0
+      ? style.fibLevels
+      : EXTENSION.map((level) => ({ ratio: level.ratio, label: level.label, enabled: true }));
   return rows
     .filter((level) => level.enabled && Number.isFinite(level.ratio))
     .map((level) => {
@@ -72,7 +80,11 @@ export function resolvedFibExtensionLevels(
 export function resolvedFibLevels(
   points: readonly Point[],
   style: Pick<DrawingStyle, "fibLevels" | "reverse">,
-  ratios: readonly FibLevelStyle[] = RETRACEMENT.map((r) => ({ ratio: r.ratio, label: r.label, enabled: true })),
+  ratios: readonly FibLevelStyle[] = RETRACEMENT.map((r) => ({
+    ratio: r.ratio,
+    label: r.label,
+    enabled: true,
+  })),
 ): FibLevel[] {
   const a = points[0]?.price;
   const b = points[1]?.price;

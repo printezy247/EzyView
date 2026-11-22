@@ -51,7 +51,13 @@ export function IntervalDialog({ open, onClose, onPick }: Props) {
           <Button type="button" variant="ghost" size="lg" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" form="interval-form" variant="solid" size="lg" disabled={result === null || !result.ok}>
+          <Button
+            type="submit"
+            form="interval-form"
+            variant="solid"
+            size="lg"
+            disabled={result === null || !result.ok}
+          >
             Apply
           </Button>
         </>

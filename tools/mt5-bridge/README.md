@@ -10,10 +10,10 @@ path EzyView is developed on).
 EzyView's renderer needs broker candles, quotes, account, positions and order
 placement. Two transports provide that:
 
-| Transport | Needs | Notes |
-| --- | --- | --- |
-| **Local bridge** (this file) | Windows Python + `pip install MetaTrader5` | Works wherever the terminal runs, including Wine |
-| **Built-in MCP** | Nothing extra | `127.0.0.1:22346/mcp` + key from *Tools → Options → MCP*; MT5 builds where the generated key is rejected fall back to the bridge |
+| Transport                    | Needs                                      | Notes                                                                                                                            |
+| ---------------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| **Local bridge** (this file) | Windows Python + `pip install MetaTrader5` | Works wherever the terminal runs, including Wine                                                                                 |
+| **Built-in MCP**             | Nothing extra                              | `127.0.0.1:22346/mcp` + key from _Tools → Options → MCP_; MT5 builds where the generated key is rejected fall back to the bridge |
 
 Pick the transport in-app: **MT5 setup** (status bar) → Local bridge / Built-in MCP.
 
@@ -57,15 +57,15 @@ wine "$WINEPREFIX/drive_c/ezyview-py/python.exe" Z:/path/to/tools/mt5-bridge/bri
 
 ### Environment
 
-| Variable | Default | Meaning |
-| --- | --- | --- |
-| `EZYVIEW_MT5_PORT` | `8765` | Listen port (127.0.0.1 only) |
-| `EZYVIEW_MT5_TOKEN` | — | Shared secret every request must carry (header `X-Bridge-Token` or `?token=`) |
-| `EZYVIEW_MT5_ALLOW_INSECURE` | — | Allow POST/write endpoints when no token is set (development only) |
-| `MT5_PATH` | auto-detected | `terminal64.exe` path |
-| `MT5_LOGIN` / `MT5_SERVER` / `MT5_PASSWORD` | — | Optional explicit login |
-| `EZYVIEW_MT5_DEVIATION` | `20` | Slippage points on market orders |
-| `EZYVIEW_MT5_VERBOSE` | — | Log every request |
+| Variable                                    | Default       | Meaning                                                                       |
+| ------------------------------------------- | ------------- | ----------------------------------------------------------------------------- |
+| `EZYVIEW_MT5_PORT`                          | `8765`        | Listen port (127.0.0.1 only)                                                  |
+| `EZYVIEW_MT5_TOKEN`                         | —             | Shared secret every request must carry (header `X-Bridge-Token` or `?token=`) |
+| `EZYVIEW_MT5_ALLOW_INSECURE`                | —             | Allow POST/write endpoints when no token is set (development only)            |
+| `MT5_PATH`                                  | auto-detected | `terminal64.exe` path                                                         |
+| `MT5_LOGIN` / `MT5_SERVER` / `MT5_PASSWORD` | —             | Optional explicit login                                                       |
+| `EZYVIEW_MT5_DEVIATION`                     | `20`          | Slippage points on market orders                                              |
+| `EZYVIEW_MT5_VERBOSE`                       | —             | Log every request                                                             |
 
 ### Locking the bridge down
 
@@ -75,7 +75,7 @@ The bridge can place real orders, so two things protect it:
   on port 1420) may talk to it. Any other page on this machine is refused.
 - **Token** — set `EZYVIEW_MT5_TOKEN` and every request must carry it. The
   packaged launcher generates one and the app reads it automatically; a token
-  pasted in *MT5 setup → Bridge token* is kept in your OS keyring, never in
+  pasted in _MT5 setup → Bridge token_ is kept in your OS keyring, never in
   `localStorage`.
 
 Without a token the bridge still answers reads on `127.0.0.1`, but **refuses

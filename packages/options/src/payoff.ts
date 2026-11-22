@@ -13,7 +13,8 @@ export interface Leg {
 /** Profit/loss at expiry for a multi-leg position, per unit of underlying. */
 export function expiryPnl(legs: Leg[], spot: number): number {
   return legs.reduce((sum, leg) => {
-    const payoff = leg.right === "call" ? Math.max(spot - leg.strike, 0) : Math.max(leg.strike - spot, 0);
+    const payoff =
+      leg.right === "call" ? Math.max(spot - leg.strike, 0) : Math.max(leg.strike - spot, 0);
     return sum + leg.qty * (payoff - leg.premium);
   }, 0);
 }
@@ -39,7 +40,9 @@ export function breakevens(legs: Leg[], lo: number, hi: number, steps = 2000): n
       if (i === 0 || Math.abs(ys[i - 1]!) >= 1e-9) out.push(xs[i]!);
     } else if (i > 0 && ys[i - 1]! * y < 0) {
       const prev = ys[i - 1]!;
-      out.push(xs[i - 1]! + ((xs[i]! - xs[i - 1]!) * Math.abs(prev)) / (Math.abs(prev) + Math.abs(y)));
+      out.push(
+        xs[i - 1]! + ((xs[i]! - xs[i - 1]!) * Math.abs(prev)) / (Math.abs(prev) + Math.abs(y)),
+      );
     }
   }
   return out;
@@ -50,5 +53,9 @@ export function positionValue(
   legs: Leg[],
   at: { spot: number; years: number; vol: number; rate?: number; div?: number },
 ): number {
-  return legs.reduce((sum, leg) => sum + leg.qty * (price({ ...at, right: leg.right, strike: leg.strike }) - leg.premium), 0);
+  return legs.reduce(
+    (sum, leg) =>
+      sum + leg.qty * (price({ ...at, right: leg.right, strike: leg.strike }) - leg.premium),
+    0,
+  );
 }

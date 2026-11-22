@@ -1,5 +1,10 @@
 import type { Candle } from "@ezyview/data-adapters";
-import type { AlertCondition, AlertFrequency, AlertHistory, PriceAlert } from "@ezyview/data-adapters";
+import type {
+  AlertCondition,
+  AlertFrequency,
+  AlertHistory,
+  PriceAlert,
+} from "@ezyview/data-adapters";
 import type { Drawing, DrawingStyle, DrawingToolId, MagnetMode } from "@ezyview/drawing-tools";
 import type { PineOrder, PinePlot, ScriptOptions } from "@ezyview/pine-transpiler";
 import type { CompareMode } from "@ezyview/chart-engine";
@@ -225,7 +230,9 @@ export interface WorkspaceStore {
   setActiveTool(tool: DrawingToolId | null): void;
   setMagnet(mode: MagnetMode): void;
   setCrosshairSync(on: boolean): void;
-  setEventOptions(patch: Partial<Omit<EventOptions, "impacts">> & { impacts?: Partial<EventOptions["impacts"]> }): void;
+  setEventOptions(
+    patch: Partial<Omit<EventOptions, "impacts">> & { impacts?: Partial<EventOptions["impacts"]> },
+  ): void;
   setReplaySpeed(speed: ReplaySpeed): void;
   /** Save the focused chart's look and indicators as a named template. */
   saveChartTemplate(name: string): void;

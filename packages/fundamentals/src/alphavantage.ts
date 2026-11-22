@@ -1,4 +1,9 @@
-import type { DividendEvent, EarningsReport, EpochSeconds, FundamentalsAdapter } from "@ezyview/data-adapters";
+import type {
+  DividendEvent,
+  EarningsReport,
+  EpochSeconds,
+  FundamentalsAdapter,
+} from "@ezyview/data-adapters";
 import { classify, getJson, num, parseYmd, ProviderError } from "./http.js";
 import type { FetchLike } from "./http.js";
 
@@ -22,8 +27,12 @@ export class AlphaVantageClient {
     this.nextAt = Math.max(now, this.nextAt) + MIN_GAP_MS;
     if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
     const query = new URLSearchParams({ function: fn, ...params, apikey: this.apiKey });
-    const body = (await getJson(this.fetchFn, "Alpha Vantage", `${BASE}?${query}`)) as Record<string, unknown> | null;
-    if (!body || typeof body !== "object") throw new ProviderError("Alpha Vantage", 0, "unexpected response");
+    const body = (await getJson(this.fetchFn, "Alpha Vantage", `${BASE}?${query}`)) as Record<
+      string,
+      unknown
+    > | null;
+    if (!body || typeof body !== "object")
+      throw new ProviderError("Alpha Vantage", 0, "unexpected response");
     const error = body["Error Message"];
     if (typeof error === "string") throw new ProviderError("Alpha Vantage", 400, error);
     const note = body["Note"] ?? body["Information"];
@@ -32,7 +41,9 @@ export class AlphaVantageClient {
       throw new ProviderError(
         "Alpha Vantage",
         limited ? 429 : 401,
-        limited ? "request limit reached (free plan: 25 per day, about 1 per second); try again later" : note,
+        limited
+          ? "request limit reached (free plan: 25 per day, about 1 per second); try again later"
+          : note,
       );
     }
     return body;
@@ -47,7 +58,8 @@ const percent = (v: unknown): number | null => {
   const n = num(v);
   return n === null ? null : Number((n * 100).toFixed(2));
 };
-const text = (v: unknown): string | null => (typeof v === "string" && v !== "None" && v !== "-" && v !== "" ? v : null);
+const text = (v: unknown): string | null =>
+  typeof v === "string" && v !== "None" && v !== "-" && v !== "" ? v : null;
 
 /** Company overview (OVERVIEW) and quarterly earnings (EARNINGS). */
 export class AlphaVantageFundamentalsAdapter implements FundamentalsAdapter {
@@ -76,11 +88,17 @@ export class AlphaVantageFundamentalsAdapter implements FundamentalsAdapter {
     };
   }
 
-  async getEarnings(symbol: string, from?: EpochSeconds, to?: EpochSeconds): Promise<EarningsReport[]> {
+  async getEarnings(
+    symbol: string,
+    from?: EpochSeconds,
+    to?: EpochSeconds,
+  ): Promise<EarningsReport[]> {
     const { ticker, kind } = classify(symbol);
     if (kind !== "stock") return [];
     const body = await this.client.get("EARNINGS", { symbol: ticker });
-    const rows = Array.isArray(body["quarterlyEarnings"]) ? (body["quarterlyEarnings"] as Record<string, unknown>[]) : [];
+    const rows = Array.isArray(body["quarterlyEarnings"])
+      ? (body["quarterlyEarnings"] as Record<string, unknown>[])
+      : [];
     const out: EarningsReport[] = [];
     for (const r of rows.slice(0, 12)) {
       const time = parseYmd(r["reportedDate"]) ?? parseYmd(r["fiscalDateEnding"]);
@@ -91,7 +109,9 @@ export class AlphaVantageFundamentalsAdapter implements FundamentalsAdapter {
         time,
         eps: num(r["reportedEPS"]),
         estimate: num(r["estimatedEPS"]),
-        quarter: Number.isNaN(end.getTime()) ? String(r["fiscalDateEnding"]) : `Q${Math.floor(end.getUTCMonth() / 3) + 1} ${end.getUTCFullYear()}`,
+        quarter: Number.isNaN(end.getTime())
+          ? String(r["fiscalDateEnding"])
+          : `Q${Math.floor(end.getUTCMonth() / 3) + 1} ${end.getUTCFullYear()}`,
         source: "alphavantage",
       });
     }
@@ -99,7 +119,11 @@ export class AlphaVantageFundamentalsAdapter implements FundamentalsAdapter {
   }
 
   /** Dividend history (DIVIDENDS), newest first. */
-  async getDividends(symbol: string, from: EpochSeconds, to: EpochSeconds): Promise<DividendEvent[]> {
+  async getDividends(
+    symbol: string,
+    from: EpochSeconds,
+    to: EpochSeconds,
+  ): Promise<DividendEvent[]> {
     const { ticker, kind } = classify(symbol);
     if (kind !== "stock") return [];
     const body = await this.client.get("DIVIDENDS", { symbol: ticker });
@@ -109,7 +133,14 @@ export class AlphaVantageFundamentalsAdapter implements FundamentalsAdapter {
       const exDate = parseYmd(r["ex_dividend_date"]);
       const amount = num(r["amount"]);
       if (exDate === null || amount === null || exDate < from || exDate > to) continue;
-      out.push({ symbol, exDate, payDate: parseYmd(r["payment_date"]), amount, currency: null, source: "alphavantage" });
+      out.push({
+        symbol,
+        exDate,
+        payDate: parseYmd(r["payment_date"]),
+        amount,
+        currency: null,
+        source: "alphavantage",
+      });
     }
     return [...out].sort((a, b) => b.exDate - a.exDate);
   }

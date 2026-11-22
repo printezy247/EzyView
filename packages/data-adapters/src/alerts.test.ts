@@ -61,8 +61,12 @@ describe("shouldTrigger — threshold", () => {
 
 describe("shouldTrigger — trend conditions", () => {
   it("moving_up needs every bar in the window higher", () => {
-    expect(shouldTrigger({ kind: "moving_up", bars: 3 }, 110, 109, [100, 103, 106, 110])).toBe(true);
-    expect(shouldTrigger({ kind: "moving_up", bars: 3 }, 104, 106, [100, 103, 106, 104])).toBe(false);
+    expect(shouldTrigger({ kind: "moving_up", bars: 3 }, 110, 109, [100, 103, 106, 110])).toBe(
+      true,
+    );
+    expect(shouldTrigger({ kind: "moving_up", bars: 3 }, 104, 106, [100, 103, 106, 104])).toBe(
+      false,
+    );
   });
 
   it("moving_down needs every bar in the window lower", () => {
@@ -116,7 +120,11 @@ describe("evaluateAlert", () => {
   });
 
   it("a `once` alert stays triggered and never re-fires", () => {
-    const a = { ...alert({ kind: "greater", value: 100 }), state: "triggered" as const, triggeredAt: 5 };
+    const a = {
+      ...alert({ kind: "greater", value: 100 }),
+      state: "triggered" as const,
+      triggeredAt: 5,
+    };
     expect(evaluateAlert(a, [], candle(200), true)).toBeNull();
   });
 

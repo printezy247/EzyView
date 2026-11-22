@@ -104,7 +104,10 @@ function fallingFor(history: readonly number[], bars: number): boolean {
 }
 
 /** Mean ± `mult` standard deviations over the supplied closes. */
-function channelBounds(history: readonly number[], mult: number): { upper: number; lower: number } | null {
+function channelBounds(
+  history: readonly number[],
+  mult: number,
+): { upper: number; lower: number } | null {
   if (history.length < 2) return null;
   const mean = history.reduce((a, b) => a + b, 0) / history.length;
   const variance = history.reduce((a, b) => a + (b - mean) ** 2, 0) / history.length;
@@ -150,7 +153,8 @@ export function evaluateAlert(
   const price = candle.close;
   const fired = shouldTrigger(alert.condition, price, alert.lastPrice, history);
 
-  const shouldHoldLastPrice = alert.frequency === "once_per_bar_close" && !barClosed && alert.lastPrice !== undefined;
+  const shouldHoldLastPrice =
+    alert.frequency === "once_per_bar_close" && !barClosed && alert.lastPrice !== undefined;
   const nextPrice = shouldHoldLastPrice ? alert.lastPrice : price;
 
   const next: PriceAlert = {
@@ -179,7 +183,12 @@ export function evaluateAlert(
 }
 
 /** Append a close to an alert's history, trimming to the window we need. */
-export function pushHistory(history: AlertHistory, alertId: string, close: number, keep = 200): AlertHistory {
+export function pushHistory(
+  history: AlertHistory,
+  alertId: string,
+  close: number,
+  keep = 200,
+): AlertHistory {
   const prior = history[alertId] ?? [];
   const next = [...prior, close];
   return { ...history, [alertId]: next.length > keep ? next.slice(-keep) : next };

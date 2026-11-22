@@ -30,7 +30,9 @@ lines.on("line", (line) => {
   try {
     msg = JSON.parse(line);
   } catch {
-    safeWrite(`${JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } })}\n`);
+    safeWrite(
+      `${JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } })}\n`,
+    );
     return;
   }
   void handleMessage(msg)

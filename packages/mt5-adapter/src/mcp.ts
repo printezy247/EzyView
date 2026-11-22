@@ -141,7 +141,9 @@ export class McpClient {
   private async request(message: JsonRpcMessage): Promise<JsonRpcMessage> {
     const url = this.cfg.url;
     if (this.cfg.key && !isLoopbackUrl(url)) {
-      throw new McpError("Refusing to send the MT5 key to a non-local host. The built-in MCP server runs on this machine.");
+      throw new McpError(
+        "Refusing to send the MT5 key to a non-local host. The built-in MCP server runs on this machine.",
+      );
     }
     const headers: Record<string, string> = {
       "content-type": "application/json",

@@ -116,7 +116,9 @@ export function comboMatches(combo: string, event: KeyboardEvent): boolean {
 }
 
 const comboMatchesAny = (combo: ShortcutCombo, event: KeyboardEvent): boolean =>
-  typeof combo === "string" ? comboMatches(combo, event) : combo.some((c) => comboMatches(c, event));
+  typeof combo === "string"
+    ? comboMatches(combo, event)
+    : combo.some((c) => comboMatches(c, event));
 
 export interface ShortcutRegistry {
   register(binding: ShortcutBinding): () => void;

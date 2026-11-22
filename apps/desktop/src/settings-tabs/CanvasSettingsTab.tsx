@@ -33,45 +33,75 @@ export function CanvasSettingsTab({ draft, setDraft }: Props) {
                 { value: "gradient", label: "Gradient" },
               ]}
             />
-            <ColorInput label="Background colour" value={draft.canvas.backgroundColor} onChange={(value) =>
+            <ColorInput
+              label="Background colour"
+              value={draft.canvas.backgroundColor}
+              onChange={(value) =>
                 setDraft((d) => ({
                   ...d,
                   canvas: { ...d.canvas, backgroundColor: value },
-                }))} />
+                }))
+              }
+            />
             {draft.canvas.backgroundType === "gradient" && (
-              <ColorInput label="Gradient colour" value={draft.canvas.backgroundGradientColor} onChange={(value) =>
+              <ColorInput
+                label="Gradient colour"
+                value={draft.canvas.backgroundGradientColor}
+                onChange={(value) =>
                   setDraft((d) => ({
                     ...d,
                     canvas: { ...d.canvas, backgroundGradientColor: value },
-                  }))} />
+                  }))
+                }
+              />
             )}
           </div>
         </div>
 
         <div className="flex items-center justify-between">
-          <Checkbox label="Vert grid lines" checked={draft.canvas.vertGridLines} onChange={(checked) =>
-                setDraft((d) => ({
-                  ...d,
-                  canvas: { ...d.canvas, vertGridLines: checked },
-                }))} />
-          <ColorInput label="Vertical grid colour" value={draft.canvas.vertGridColor} onChange={(value) =>
+          <Checkbox
+            label="Vert grid lines"
+            checked={draft.canvas.vertGridLines}
+            onChange={(checked) =>
+              setDraft((d) => ({
+                ...d,
+                canvas: { ...d.canvas, vertGridLines: checked },
+              }))
+            }
+          />
+          <ColorInput
+            label="Vertical grid colour"
+            value={draft.canvas.vertGridColor}
+            onChange={(value) =>
               setDraft((d) => ({
                 ...d,
                 canvas: { ...d.canvas, vertGridColor: value },
-              }))} />
+              }))
+            }
+          />
         </div>
 
         <div className="flex items-center justify-between">
-          <Checkbox label="Horz grid lines" checked={draft.canvas.horzGridLines} onChange={(checked) =>
-                setDraft((d) => ({
-                  ...d,
-                  canvas: { ...d.canvas, horzGridLines: checked },
-                }))} />
-          <ColorInput label="Horizontal grid colour" value={draft.canvas.horzGridColor} onChange={(value) =>
+          <Checkbox
+            label="Horz grid lines"
+            checked={draft.canvas.horzGridLines}
+            onChange={(checked) =>
+              setDraft((d) => ({
+                ...d,
+                canvas: { ...d.canvas, horzGridLines: checked },
+              }))
+            }
+          />
+          <ColorInput
+            label="Horizontal grid colour"
+            value={draft.canvas.horzGridColor}
+            onChange={(value) =>
               setDraft((d) => ({
                 ...d,
                 canvas: { ...d.canvas, horzGridColor: value },
-              }))} />
+              }))
+            }
+          />
         </div>
 
         <div className="flex items-center justify-between">
@@ -96,19 +126,29 @@ export function CanvasSettingsTab({ draft, setDraft }: Props) {
                 { value: "solid", label: "Solid" },
               ]}
             />
-            <ColorInput label="Crosshair colour" value={draft.canvas.crosshairColor} onChange={(value) =>
+            <ColorInput
+              label="Crosshair colour"
+              value={draft.canvas.crosshairColor}
+              onChange={(value) =>
                 setDraft((d) => ({
                   ...d,
                   canvas: { ...d.canvas, crosshairColor: value },
-                }))} />
+                }))
+              }
+            />
           </div>
         </div>
 
-        <Checkbox label="Watermark (Symbol & interval)" checked={draft.canvas.watermark} onChange={(checked) =>
-              setDraft((d) => ({
-                ...d,
-                canvas: { ...d.canvas, watermark: checked },
-              }))} />
+        <Checkbox
+          label="Watermark (Symbol & interval)"
+          checked={draft.canvas.watermark}
+          onChange={(checked) =>
+            setDraft((d) => ({
+              ...d,
+              canvas: { ...d.canvas, watermark: checked },
+            }))
+          }
+        />
 
         <div className="flex items-center justify-between">
           <span>Scales font size</span>
@@ -136,21 +176,27 @@ export function CanvasSettingsTab({ draft, setDraft }: Props) {
           min={0}
           max={50}
           value={draft.canvas.topMarginPct}
-          onValueChange={(v) => setDraft((d) => ({ ...d, canvas: { ...d.canvas, topMarginPct: v ?? 0 } }))}
+          onValueChange={(v) =>
+            setDraft((d) => ({ ...d, canvas: { ...d.canvas, topMarginPct: v ?? 0 } }))
+          }
         />
         <NumberInput
           label="Bottom (%)"
           min={0}
           max={50}
           value={draft.canvas.bottomMarginPct}
-          onValueChange={(v) => setDraft((d) => ({ ...d, canvas: { ...d.canvas, bottomMarginPct: v ?? 0 } }))}
+          onValueChange={(v) =>
+            setDraft((d) => ({ ...d, canvas: { ...d.canvas, bottomMarginPct: v ?? 0 } }))
+          }
         />
         <NumberInput
           label="Right (bars)"
           min={0}
           max={100}
           value={draft.canvas.rightMarginBars}
-          onValueChange={(v) => setDraft((d) => ({ ...d, canvas: { ...d.canvas, rightMarginBars: v ?? 0 } }))}
+          onValueChange={(v) =>
+            setDraft((d) => ({ ...d, canvas: { ...d.canvas, rightMarginBars: v ?? 0 } }))
+          }
         />
       </div>
     </div>

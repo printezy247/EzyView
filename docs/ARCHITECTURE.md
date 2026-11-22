@@ -40,7 +40,7 @@ never call Tauri APIs. Consequences:
 ## Why an adapter registry
 
 TradingView's power is that one chart can show anything. We get the same flexibility by making the
-symbol universe a *union of providers* rather than a hard-coded feed. A symbol string is
+symbol universe a _union of providers_ rather than a hard-coded feed. A symbol string is
 `PROVIDER:LOCAL` (`BINANCE:BTCUSDT`, `DEMO:EURUSD`); `resolveProvider()` maps it back to the adapter.
 Adding a broker is one file that implements `MarketDataAdapter` / `TradingAdapter` plus a
 registration call — no chart code changes.

@@ -66,7 +66,9 @@ export class FundamentalLinesPrimitive implements IPanePrimitive<Time> {
       const bottom = Math.max(0, height - EVENT_STRIP_HEIGHT);
       for (const line of this.lines) {
         // Out-of-range times have no coordinate; skip rather than crash.
-        const x = this.timeToX ? this.timeToX(line.time) : scale.timeToCoordinate(line.time as Time);
+        const x = this.timeToX
+          ? this.timeToX(line.time)
+          : scale.timeToCoordinate(line.time as Time);
         if (x === null) continue;
         ctx.strokeStyle = line.color;
         ctx.beginPath();

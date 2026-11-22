@@ -41,13 +41,7 @@ describe("control scale is uniform", () => {
   });
 
   it("uses the type ramp, never an arbitrary pixel size", () => {
-    const all = [
-      buttonClass(),
-      iconButtonClass(),
-      inputClass(),
-      chipClass(),
-      rowClass(),
-    ].join(" ");
+    const all = [buttonClass(), iconButtonClass(), inputClass(), chipClass(), rowClass()].join(" ");
     expect(all).not.toMatch(/text-\[\d+px\]/);
     expect(all).toMatch(/text-base|text-dense|text-micro/);
   });

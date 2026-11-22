@@ -94,7 +94,10 @@ export function CommandPalette({ open, onClose, groups }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-[var(--z-palette)] flex items-start justify-center bg-black/40 pt-[12vh]" onMouseDown={onClose}>
+    <div
+      className="fixed inset-0 z-[var(--z-palette)] flex items-start justify-center bg-black/40 pt-[12vh]"
+      onMouseDown={onClose}
+    >
       <div
         ref={dialogRef}
         role="dialog"
@@ -120,8 +123,15 @@ export function CommandPalette({ open, onClose, groups }: Props) {
           />
           <kbd className="rounded border border-ev-line px-1.5 text-dense text-ev-muted">Esc</kbd>
         </div>
-        <ul id={listId} role="listbox" aria-label="Features" className="max-h-[50vh] overflow-y-auto py-1">
-          {results.length === 0 && <li className="px-4 py-3 text-base text-ev-muted">No feature matches “{query}”.</li>}
+        <ul
+          id={listId}
+          role="listbox"
+          aria-label="Features"
+          className="max-h-[50vh] overflow-y-auto py-1"
+        >
+          {results.length === 0 && (
+            <li className="px-4 py-3 text-base text-ev-muted">No feature matches “{query}”.</li>
+          )}
           {results.map((c, i) => (
             <li
               key={c.key}
@@ -134,7 +144,9 @@ export function CommandPalette({ open, onClose, groups }: Props) {
                 i === active ? "bg-ev-raised text-ev-strong" : "text-ev-muted"
               }`}
             >
-              <span className="w-20 shrink-0 text-dense uppercase tracking-wider text-ev-faint">{c.group}</span>
+              <span className="w-20 shrink-0 text-dense uppercase tracking-wider text-ev-faint">
+                {c.group}
+              </span>
               <span className="flex-1">{c.label}</span>
               {c.on && <Check size={12} aria-label="on" className="text-ev-accent-text" />}
               {c.hint && <kbd className="text-dense text-ev-faint">{c.hint}</kbd>}

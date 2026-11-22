@@ -20,22 +20,34 @@ describe("lintPine", () => {
   });
 
   it("errors when both indicator() and strategy() are declared, at the second occurrence's line", () => {
-    const src = ['//@version=5', 'indicator("T")', "x = 1", 'strategy("S")', "plot(close)"].join("\n");
+    const src = ["//@version=5", 'indicator("T")', "x = 1", 'strategy("S")', "plot(close)"].join(
+      "\n",
+    );
     expect(lintPine(src)).toEqual([
-      { line: 4, column: 1, message: "Script declares both indicator() and strategy()", severity: "error" },
+      {
+        line: 4,
+        column: 1,
+        message: "Script declares both indicator() and strategy()",
+        severity: "error",
+      },
     ]);
   });
 
   it("points at whichever declaration comes second, in source order", () => {
     const src = [
-      '//@version=5',
+      "//@version=5",
       'strategy("S")',
       'strategy.entry("L", strategy.long)',
       'indicator("T")',
       "plot(close)",
     ].join("\n");
     expect(lintPine(src)).toEqual([
-      { line: 4, column: 1, message: "Script declares both indicator() and strategy()", severity: "error" },
+      {
+        line: 4,
+        column: 1,
+        message: "Script declares both indicator() and strategy()",
+        severity: "error",
+      },
     ]);
   });
 
@@ -46,13 +58,13 @@ describe("lintPine", () => {
   });
 
   it("accepts a strategy order call as satisfying the plot warning", () => {
-    const src = ['//@version=5', 'strategy("S")', 'strategy.entry("L", strategy.long)'].join("\n");
+    const src = ["//@version=5", 'strategy("S")', 'strategy.entry("L", strategy.long)'].join("\n");
     expect(lintPine(src)).toEqual([]);
   });
 
   it("ignores plot( and strategy( mentions inside line comments", () => {
     const src = [
-      '//@version=5',
+      "//@version=5",
       'indicator("T")',
       "// plot(close) and strategy.entry were considered",
       "x = close",
@@ -63,7 +75,12 @@ describe("lintPine", () => {
   });
 
   it("ignores declarations mentioned only in comments", () => {
-    const src = ['//@version=5', 'indicator("T")', '// strategy("S") was considered', "plot(close)"].join("\n");
+    const src = [
+      "//@version=5",
+      'indicator("T")',
+      '// strategy("S") was considered',
+      "plot(close)",
+    ].join("\n");
     expect(lintPine(src)).toEqual([]);
   });
 

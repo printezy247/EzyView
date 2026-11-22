@@ -30,7 +30,10 @@ export function JournalReviews({ entries, notes, selectedDay, onSelectDay }: Pro
   const [draft, setDraft] = useState<string>("");
 
   const win = useMemo(() => reviewWindow(selectedDay, period), [selectedDay, period]);
-  const composed = useMemo(() => composeReview(entries, notes, win.start, win.end), [entries, notes, win]);
+  const composed = useMemo(
+    () => composeReview(entries, notes, win.start, win.end),
+    [entries, notes, win],
+  );
 
   const key = `${selectedDay}|${period}`;
   const editor = draftKey === key ? draft : composed;
@@ -98,14 +101,20 @@ export function JournalReviews({ entries, notes, selectedDay, onSelectDay }: Pro
           className={inputClass("h-6 w-auto")}
         />
         <span className="text-ev-faint num">
-          {new Date(win.start * 1000).toLocaleString()} → {new Date(win.end * 1000).toLocaleString()}
+          {new Date(win.start * 1000).toLocaleString()} →{" "}
+          {new Date(win.end * 1000).toLocaleString()}
         </span>
       </div>
 
       <div className="grid min-h-0 flex-1 grid-cols-2 gap-3">
         <div className="flex min-h-0 flex-col">
           <span className="mb-1 text-micro uppercase tracking-wider text-ev-faint">Preview</span>
-          <textarea readOnly value={composed} aria-label="Composed review preview" className={`${textarea} min-h-40 flex-1`} />
+          <textarea
+            readOnly
+            value={composed}
+            aria-label="Composed review preview"
+            className={`${textarea} min-h-40 flex-1`}
+          />
         </div>
         <div className="flex min-h-0 flex-col">
           <span className="mb-1 text-micro uppercase tracking-wider text-ev-faint">Editor</span>
@@ -125,7 +134,12 @@ export function JournalReviews({ entries, notes, selectedDay, onSelectDay }: Pro
               <Sparkles size={12} aria-hidden />
               Generate review
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setDraftKey("")} disabled={draftKey !== key}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setDraftKey("")}
+              disabled={draftKey !== key}
+            >
               Reset to preview
             </Button>
             <Button
@@ -142,7 +156,9 @@ export function JournalReviews({ entries, notes, selectedDay, onSelectDay }: Pro
       </div>
 
       <section>
-        <h3 className="mb-1 text-dense font-semibold uppercase tracking-wider text-ev-faint">Saved reviews</h3>
+        <h3 className="mb-1 text-dense font-semibold uppercase tracking-wider text-ev-faint">
+          Saved reviews
+        </h3>
         {savedReviews.length === 0 ? (
           <p className="text-base text-ev-faint">Nothing saved yet — compose above and hit Save.</p>
         ) : (
@@ -160,7 +176,11 @@ export function JournalReviews({ entries, notes, selectedDay, onSelectDay }: Pro
                 <span className="ml-auto shrink-0 text-ev-faint">
                   saved {new Date(review.savedAt * 1000).toLocaleString()}
                 </span>
-                <Button size="sm" variant="outline" onClick={() => load(review.text, review.key, review.period)}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => load(review.text, review.key, review.period)}
+                >
                   Load
                 </Button>
                 <IconButton

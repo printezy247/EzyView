@@ -52,10 +52,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": [
-      "deb",
-      "appimage"
-    ],
+    "targets": ["deb", "appimage"],
     "category": "Finance",
     "shortDescription": "Open-source trading terminal",
     "icon": [
@@ -79,13 +76,8 @@
     "linux": {
       "deb": {
         "section": "utils",
-        "depends": [
-          "libc6 (>= 2.39)"
-        ],
-        "recommends": [
-          "nodejs",
-          "gnome-keyring"
-        ],
+        "depends": ["libc6 (>= 2.39)"],
+        "recommends": ["nodejs", "gnome-keyring"],
         "desktopTemplate": "../../../packaging/EzyView.desktop.hbs",
         "files": {
           "/usr/share/doc/ezy-view/copyright": "../../../packaging/copyright",

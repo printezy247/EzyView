@@ -41,7 +41,14 @@ export function layoutHeatmap(items: HeatmapItem[], width: number, height: numbe
     const row: typeof queue = [];
     while (queue.length > 0) {
       const candidate = [...row.map((r) => r.area), queue[0]!.area];
-      if (row.length === 0 || worst(candidate, side) <= worst(row.map((r) => r.area), side)) {
+      if (
+        row.length === 0 ||
+        worst(candidate, side) <=
+          worst(
+            row.map((r) => r.area),
+            side,
+          )
+      ) {
         row.push(queue.shift()!);
       } else break;
     }

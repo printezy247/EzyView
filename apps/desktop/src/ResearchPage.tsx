@@ -6,8 +6,12 @@ import { Button, Tabs } from "./ui";
 import { SECTION_TABS } from "./sectionTabs";
 import { resolveTabParam } from "./tabUrl";
 
-const FundamentalsPanel = lazy(() => import("./FundamentalsPanel").then((m) => ({ default: m.FundamentalsPanel })));
-const OptionsPanel = lazy(() => import("./OptionsPanel").then((m) => ({ default: m.OptionsPanel })));
+const FundamentalsPanel = lazy(() =>
+  import("./FundamentalsPanel").then((m) => ({ default: m.FundamentalsPanel })),
+);
+const OptionsPanel = lazy(() =>
+  import("./OptionsPanel").then((m) => ({ default: m.OptionsPanel })),
+);
 
 type Tab = "fundamentals" | "options" | "calendar" | "news";
 
@@ -25,7 +29,11 @@ export function ResearchPage() {
   const state = activeChartOf(layout);
   const setSymbol = useWorkspace((s) => s.setSymbol);
   const [params, setParams] = useSearchParams();
-  const tab = resolveTabParam(params.get("tab"), TABS.map((t) => t.id), defaultTab) as Tab;
+  const tab = resolveTabParam(
+    params.get("tab"),
+    TABS.map((t) => t.id),
+    defaultTab,
+  ) as Tab;
 
   return (
     <section aria-label="Research" className="flex min-h-0 flex-1 flex-col text-base">
@@ -45,7 +53,13 @@ export function ResearchPage() {
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col">
-        <Suspense fallback={<div role="status" className="p-6 text-base text-ev-muted">Loading…</div>}>
+        <Suspense
+          fallback={
+            <div role="status" className="p-6 text-base text-ev-muted">
+              Loading…
+            </div>
+          }
+        >
           {tab === "fundamentals" && (
             <FundamentalsPanel
               symbol={state.symbol}
@@ -53,7 +67,9 @@ export function ResearchPage() {
               onPickSymbol={(symbol) => setSymbol(symbol)}
             />
           )}
-          {tab === "options" && <OptionsPanel symbol={state.symbol} onClose={() => navigate("/chart")} />}
+          {tab === "options" && (
+            <OptionsPanel symbol={state.symbol} onClose={() => navigate("/chart")} />
+          )}
           {tab === "calendar" && <ResearchCalendar symbol={state.symbol} />}
           {tab === "news" && <ResearchNews symbol={state.symbol} />}
         </Suspense>
@@ -62,5 +78,9 @@ export function ResearchPage() {
   );
 }
 
-const ResearchCalendar = lazy(() => import("./ResearchCalendar").then((m) => ({ default: m.ResearchCalendar })));
-const ResearchNews = lazy(() => import("./ResearchNews").then((m) => ({ default: m.ResearchNews })));
+const ResearchCalendar = lazy(() =>
+  import("./ResearchCalendar").then((m) => ({ default: m.ResearchCalendar })),
+);
+const ResearchNews = lazy(() =>
+  import("./ResearchNews").then((m) => ({ default: m.ResearchNews })),
+);

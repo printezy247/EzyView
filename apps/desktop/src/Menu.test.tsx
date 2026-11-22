@@ -33,7 +33,9 @@ const entries: MenuEntry[] = [
 describe("Menu", () => {
   it("starts closed and shows the trigger's label", () => {
     render(<Menu label="Interval" entries={entries} />);
-    expect(screen.getByRole("button", { name: /Interval/ }).getAttribute("aria-expanded")).toBe("false");
+    expect(screen.getByRole("button", { name: /Interval/ }).getAttribute("aria-expanded")).toBe(
+      "false",
+    );
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
@@ -50,14 +52,20 @@ describe("Menu", () => {
     const user = userEvent.setup();
     render(<Menu label="Interval" entries={entries} />);
     await user.click(screen.getByRole("button", { name: /Interval/ }));
-    expect(screen.getByRole("menuitemradio", { name: "First" }).getAttribute("aria-checked")).toBe("true");
-    expect(screen.getByRole("menuitemradio", { name: "Second" }).getAttribute("aria-checked")).toBe("false");
+    expect(screen.getByRole("menuitemradio", { name: "First" }).getAttribute("aria-checked")).toBe(
+      "true",
+    );
+    expect(screen.getByRole("menuitemradio", { name: "Second" }).getAttribute("aria-checked")).toBe(
+      "false",
+    );
   });
 
   it("runs an action's handler and closes", async () => {
     const user = userEvent.setup();
     const onSelect = vi.fn();
-    render(<Menu label="Interval" entries={[{ kind: "action", id: "a1", label: "Do it", onSelect }]} />);
+    render(
+      <Menu label="Interval" entries={[{ kind: "action", id: "a1", label: "Do it", onSelect }]} />,
+    );
     await user.click(screen.getByRole("button", { name: /Interval/ }));
     await user.click(screen.getByRole("menuitem", { name: "Do it" }));
     expect(onSelect).toHaveBeenCalledOnce();

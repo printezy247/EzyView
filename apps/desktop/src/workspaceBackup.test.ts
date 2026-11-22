@@ -74,7 +74,11 @@ describe("parseWorkspaceBackup", () => {
     expect(parseWorkspaceBackup(JSON.stringify({ app: "other" }))).toEqual({
       error: "Not an EzyView workspace backup",
     });
-    expect(parseWorkspaceBackup(JSON.stringify({ app: "ezyview", kind: "workspace-backup", version: 2, state: {} }))).toEqual({
+    expect(
+      parseWorkspaceBackup(
+        JSON.stringify({ app: "ezyview", kind: "workspace-backup", version: 2, state: {} }),
+      ),
+    ).toEqual({
       error: "Unsupported backup version: 2",
     });
   });

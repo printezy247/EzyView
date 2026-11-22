@@ -19,7 +19,9 @@ describe("getJson retries", () => {
       .fn<FetchLike>()
       .mockRejectedValueOnce(new Error("socket hang up"))
       .mockResolvedValueOnce(ok({ value: 42 }));
-    const body = await getJson(fetchFn, "Finnhub", "https://example.test/x", { sleep: async () => {} });
+    const body = await getJson(fetchFn, "Finnhub", "https://example.test/x", {
+      sleep: async () => {},
+    });
     expect(body).toEqual({ value: 42 });
     expect(fetchFn).toHaveBeenCalledTimes(2);
   });
@@ -34,20 +36,27 @@ describe("getJson retries", () => {
   });
 
   it("retries a 5xx", async () => {
-    const fetchFn = vi.fn<FetchLike>().mockResolvedValueOnce(fail(503)).mockResolvedValueOnce(ok({ ok: 1 }));
+    const fetchFn = vi
+      .fn<FetchLike>()
+      .mockResolvedValueOnce(fail(503))
+      .mockResolvedValueOnce(ok({ ok: 1 }));
     await getJson(fetchFn, "Finnhub", "https://example.test/x", { sleep: async () => {} });
     expect(fetchFn).toHaveBeenCalledTimes(2);
   });
 
   it("does not retry a rejected key", async () => {
     const fetchFn = vi.fn<FetchLike>().mockResolvedValue(fail(401));
-    await expect(getJson(fetchFn, "Finnhub", "https://example.test/x", { sleep: async () => {} })).rejects.toThrow(/API key rejected/);
+    await expect(
+      getJson(fetchFn, "Finnhub", "https://example.test/x", { sleep: async () => {} }),
+    ).rejects.toThrow(/API key rejected/);
     expect(fetchFn).toHaveBeenCalledTimes(1);
   });
 
   it("does not retry a 404", async () => {
     const fetchFn = vi.fn<FetchLike>().mockResolvedValue(fail(404));
-    await expect(getJson(fetchFn, "Finnhub", "https://example.test/x", { sleep: async () => {} })).rejects.toThrow(/HTTP 404/);
+    await expect(
+      getJson(fetchFn, "Finnhub", "https://example.test/x", { sleep: async () => {} }),
+    ).rejects.toThrow(/HTTP 404/);
     expect(fetchFn).toHaveBeenCalledTimes(1);
   });
 
@@ -62,7 +71,10 @@ describe("getJson retries", () => {
   it("keeps the rate-limit hint on the final failure", async () => {
     const fetchFn = vi.fn<FetchLike>().mockResolvedValue(fail(429));
     await expect(
-      getJson(fetchFn, "Alpha Vantage", "https://example.test/x", { attempts: 2, sleep: async () => {} }),
+      getJson(fetchFn, "Alpha Vantage", "https://example.test/x", {
+        attempts: 2,
+        sleep: async () => {},
+      }),
     ).rejects.toThrow(/rate limit/);
   });
 

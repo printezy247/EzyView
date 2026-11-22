@@ -14,7 +14,17 @@ import {
   type FibLevelStyle,
   type Point,
 } from "@ezyview/drawing-tools";
-import { Button, Checkbox, ColorInput, Dialog, Input, NumberInput, Select, Slider, Tabs } from "./ui";
+import {
+  Button,
+  Checkbox,
+  ColorInput,
+  Dialog,
+  Input,
+  NumberInput,
+  Select,
+  Slider,
+  Tabs,
+} from "./ui";
 import { useWorkspace } from "./store";
 import { useDrawingUi } from "./drawingUi";
 import type { DrawingSettingsTab } from "./drawingUi";
@@ -22,12 +32,30 @@ import { listDrawingTemplates, saveDrawingTemplate } from "./drawingTemplates";
 import { drawingLabel } from "./ObjectTree";
 import { syncPositionDrawingToOrderTicket } from "./orderDraft";
 
-const COLORS = ["#2962ff", "#089981", "#f23645", "#ff9800", "#e91e63", "#9c27b0", "#00bcd4", "#ffeb3b", "#ffffff", "#787b86"];
+const COLORS = [
+  "#2962ff",
+  "#089981",
+  "#f23645",
+  "#ff9800",
+  "#e91e63",
+  "#9c27b0",
+  "#00bcd4",
+  "#ffeb3b",
+  "#ffffff",
+  "#787b86",
+];
 const WIDTHS = [1, 2, 3, 4] as const;
 const FONT_SIZES = [10, 12, 14, 16, 20, 24, 32] as const;
 
 /** Straight tools whose ends can become arrows. */
-const ARROW_END_TOOLS = new Set<Drawing["tool"]>(["trend_line", "ray", "extended_line", "horizontal_line", "horizontal_ray", "info_line"]);
+const ARROW_END_TOOLS = new Set<Drawing["tool"]>([
+  "trend_line",
+  "ray",
+  "extended_line",
+  "horizontal_line",
+  "horizontal_ray",
+  "info_line",
+]);
 
 const TABS: { id: DrawingSettingsTab; label: string }[] = [
   { id: "style", label: "Style" },
@@ -131,12 +159,15 @@ export function DrawingSettingsModal() {
 
   const ok = () => {
     const st = useWorkspace.getState();
-    const changed = originalRef.current !== null && JSON.stringify(draft) !== JSON.stringify({
-      style: originalRef.current.style,
-      text: originalRef.current.text ?? "",
-      points: originalRef.current.points,
-      ...(originalRef.current.visibility ? { visibility: originalRef.current.visibility } : {}),
-    });
+    const changed =
+      originalRef.current !== null &&
+      JSON.stringify(draft) !==
+        JSON.stringify({
+          style: originalRef.current.style,
+          text: originalRef.current.text ?? "",
+          points: originalRef.current.points,
+          ...(originalRef.current.visibility ? { visibility: originalRef.current.visibility } : {}),
+        });
     if (changed && previousRef.current) st.commitDrawingHistory(previousRef.current);
     if (changed) st.rememberDrawingStyle(drawing.tool, draft.style);
     setDraft(null);
@@ -171,8 +202,6 @@ export function DrawingSettingsModal() {
         />
       }
     >
-
-
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 text-base">
         {settingsTab === "style" && (
           <StyleTab
@@ -187,8 +216,12 @@ export function DrawingSettingsModal() {
             }
           />
         )}
-        {settingsTab === "text" && <TextTab text={draft.text} style={style} onText={applyText} onStyle={applyStyle} />}
-        {settingsTab === "coordinates" && <CoordinatesTab points={draft.points} onPoints={applyPoints} />}
+        {settingsTab === "text" && (
+          <TextTab text={draft.text} style={style} onText={applyText} onStyle={applyStyle} />
+        )}
+        {settingsTab === "coordinates" && (
+          <CoordinatesTab points={draft.points} onPoints={applyPoints} />
+        )}
         {settingsTab === "visibility" && (
           <VisibilityTab visibility={draft.visibility} onChange={applyVisibility} />
         )}
@@ -229,11 +262,24 @@ function StyleTab({
     <div className="space-y-4">
       <Section title={fib ? "Levels" : "Line"}>
         <ColorRow label="Colour" value={style.color} onChange={(color) => onStyle({ color })} />
-        <Slider label="Opacity" min={0} max={100} step={5} value={style.opacity ?? 100} format={(v) => `${Math.round(v)}%`} onChange={(opacity) => onStyle({ opacity })} />
+        <Slider
+          label="Opacity"
+          min={0}
+          max={100}
+          step={5}
+          value={style.opacity ?? 100}
+          format={(v) => `${Math.round(v)}%`}
+          onChange={(opacity) => onStyle({ opacity })}
+        />
         <div className="flex items-center gap-2">
           <span className="w-28 text-dense text-ev-muted">Thickness</span>
           {WIDTHS.map((w) => (
-            <Choice key={w} label={`${w}px`} active={style.width === w} onClick={() => onStyle({ width: w })}>
+            <Choice
+              key={w}
+              label={`${w}px`}
+              active={style.width === w}
+              onClick={() => onStyle({ width: w })}
+            >
               {w}
             </Choice>
           ))}
@@ -241,7 +287,12 @@ function StyleTab({
         <div className="flex items-center gap-2">
           <span className="w-28 text-dense text-ev-muted">Style</span>
           {(["solid", "dashed", "dotted"] as const).map((ls) => (
-            <Choice key={ls} label={ls} active={style.lineStyle === ls} onClick={() => onStyle({ lineStyle: ls })}>
+            <Choice
+              key={ls}
+              label={ls}
+              active={style.lineStyle === ls}
+              onClick={() => onStyle({ lineStyle: ls })}
+            >
               {ls === "solid" ? "───" : ls === "dashed" ? "– –" : "···"}
             </Choice>
           ))}
@@ -267,26 +318,74 @@ function StyleTab({
               />
             ))}
           </div>
-          <Checkbox label="Reverse" checked={style.reverse === true} onChange={(reverse) => onStyle({ reverse })} />
-          <Checkbox label="Extend lines left" checked={style.extendLeft === true} onChange={(extendLeft) => onStyle({ extendLeft })} />
-          <Checkbox label="Extend lines right" checked={style.extendRight === true} onChange={(extendRight) => onStyle({ extendRight })} />
-          <Checkbox label="Show prices" checked={style.showPriceLabels !== false} onChange={(on) => onStyle({ showPriceLabels: on })} />
-          <Slider label="Background fill" min={0} max={100} step={5} value={style.fillOpacity ?? 20} format={(v) => `${Math.round(v)}%`} onChange={(fillOpacity) => onStyle({ fillOpacity })} />
+          <Checkbox
+            label="Reverse"
+            checked={style.reverse === true}
+            onChange={(reverse) => onStyle({ reverse })}
+          />
+          <Checkbox
+            label="Extend lines left"
+            checked={style.extendLeft === true}
+            onChange={(extendLeft) => onStyle({ extendLeft })}
+          />
+          <Checkbox
+            label="Extend lines right"
+            checked={style.extendRight === true}
+            onChange={(extendRight) => onStyle({ extendRight })}
+          />
+          <Checkbox
+            label="Show prices"
+            checked={style.showPriceLabels !== false}
+            onChange={(on) => onStyle({ showPriceLabels: on })}
+          />
+          <Slider
+            label="Background fill"
+            min={0}
+            max={100}
+            step={5}
+            value={style.fillOpacity ?? 20}
+            format={(v) => `${Math.round(v)}%`}
+            onChange={(fillOpacity) => onStyle({ fillOpacity })}
+          />
         </Section>
       )}
 
       {!fib && toolHasFill(tool) && (
         <Section title="Background">
-          <ColorRow label="Fill" value={style.fill ?? style.color} onChange={(fill) => onStyle({ fill })} />
-          <Slider label="Fill opacity" min={0} max={100} step={5} value={style.fillOpacity ?? 20} format={(v) => `${Math.round(v)}%`} onChange={(fillOpacity) => onStyle({ fillOpacity })} />
-          <Checkbox label="Middle line" checked={style.showMiddleLine === true} onChange={(showMiddleLine) => onStyle({ showMiddleLine })} />
+          <ColorRow
+            label="Fill"
+            value={style.fill ?? style.color}
+            onChange={(fill) => onStyle({ fill })}
+          />
+          <Slider
+            label="Fill opacity"
+            min={0}
+            max={100}
+            step={5}
+            value={style.fillOpacity ?? 20}
+            format={(v) => `${Math.round(v)}%`}
+            onChange={(fillOpacity) => onStyle({ fillOpacity })}
+          />
+          <Checkbox
+            label="Middle line"
+            checked={style.showMiddleLine === true}
+            onChange={(showMiddleLine) => onStyle({ showMiddleLine })}
+          />
         </Section>
       )}
 
       {toolSupportsExtend(tool) && !fib && (
         <Section title="Extension">
-          <Checkbox label="Extend left" checked={style.extendLeft === true} onChange={(extendLeft) => onStyle({ extendLeft })} />
-          <Checkbox label="Extend right" checked={style.extendRight === true} onChange={(extendRight) => onStyle({ extendRight })} />
+          <Checkbox
+            label="Extend left"
+            checked={style.extendLeft === true}
+            onChange={(extendLeft) => onStyle({ extendLeft })}
+          />
+          <Checkbox
+            label="Extend right"
+            checked={style.extendRight === true}
+            onChange={(extendRight) => onStyle({ extendRight })}
+          />
         </Section>
       )}
 
@@ -315,7 +414,11 @@ function StyleTab({
 
       {toolShowsStats(tool) && (
         <Section title="Stats">
-          <Checkbox label="Show price" checked={style.showPriceLabels !== false} onChange={(on) => onStyle({ showPriceLabels: on })} />
+          <Checkbox
+            label="Show price"
+            checked={style.showPriceLabels !== false}
+            onChange={(on) => onStyle({ showPriceLabels: on })}
+          />
           <Checkbox
             label="Show stats (Δ, %, bars, angle)"
             checked={style.showStats === true}
@@ -354,22 +457,39 @@ function StyleTab({
               onValueChange={(v) => onStyle({ riskSize: v ?? undefined })}
               className="w-16 text-right"
             />
-              <Select
-                label="Risk mode"
-                size="sm"
-                value={style.riskMode ?? "percent"}
-                onChange={(v) => onStyle({ riskMode: v as "percent" | "currency" })}
-                options={[
-                  { value: "percent", label: "%" },
-                  { value: "currency", label: "$" },
-                ]}
-                className="w-16"
-              />
+            <Select
+              label="Risk mode"
+              size="sm"
+              value={style.riskMode ?? "percent"}
+              onChange={(v) => onStyle({ riskMode: v as "percent" | "currency" })}
+              options={[
+                { value: "percent", label: "%" },
+                { value: "currency", label: "$" },
+              ]}
+              className="w-16"
+            />
           </div>
-          <ColorRow label="Stop colour" value={style.stopColor ?? "#ef5350"} onChange={(stopColor) => onStyle({ stopColor })} />
-          <ColorRow label="Target colour" value={style.targetColor ?? "#26a69a"} onChange={(targetColor) => onStyle({ targetColor })} />
-          <Checkbox label="Show price labels" checked={style.showPriceLabels !== false} onChange={(on) => onStyle({ showPriceLabels: on })} />
-          <Button size="sm" variant="outline" onClick={onApplyToOrder} className="border-ev-accent/60 bg-ev-accent/20 text-ev-accent-text hover:bg-ev-accent hover:text-ev-accent-ink">
+          <ColorRow
+            label="Stop colour"
+            value={style.stopColor ?? "#ef5350"}
+            onChange={(stopColor) => onStyle({ stopColor })}
+          />
+          <ColorRow
+            label="Target colour"
+            value={style.targetColor ?? "#26a69a"}
+            onChange={(targetColor) => onStyle({ targetColor })}
+          />
+          <Checkbox
+            label="Show price labels"
+            checked={style.showPriceLabels !== false}
+            onChange={(on) => onStyle({ showPriceLabels: on })}
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onApplyToOrder}
+            className="border-ev-accent/60 bg-ev-accent/20 text-ev-accent-text hover:bg-ev-accent hover:text-ev-accent-ink"
+          >
             Apply to Order Ticket
           </Button>
         </Section>
@@ -392,7 +512,11 @@ function TextTab({
   const enabled = text.length > 0;
   return (
     <div className="space-y-3">
-      <Checkbox label="Show text" checked={enabled} onChange={(on) => onText(on ? (text || "Text") : "")} />
+      <Checkbox
+        label="Show text"
+        checked={enabled}
+        onChange={(on) => onText(on ? text || "Text" : "")}
+      />
       <textarea
         value={text}
         onChange={(e) => onText(e.target.value)}
@@ -432,11 +556,20 @@ function TextTab({
           I
         </Button>
       </div>
-      <ColorRow label="Text colour" value={style.textColor ?? style.color} onChange={(textColor) => onStyle({ textColor })} />
+      <ColorRow
+        label="Text colour"
+        value={style.textColor ?? style.color}
+        onChange={(textColor) => onStyle({ textColor })}
+      />
       <div className="flex items-center gap-2">
         <span className="w-24 text-dense text-ev-muted">Align</span>
         {(["left", "center", "right"] as const).map((align) => (
-          <Choice key={align} label={`Align ${align}`} active={(style.textAlign ?? "left") === align} onClick={() => onStyle({ textAlign: align })}>
+          <Choice
+            key={align}
+            label={`Align ${align}`}
+            active={(style.textAlign ?? "left") === align}
+            onClick={() => onStyle({ textAlign: align })}
+          >
             {align[0]!.toUpperCase()}
           </Choice>
         ))}
@@ -456,10 +589,18 @@ function TextTab({
   );
 }
 
-function CoordinatesTab({ points, onPoints }: { points: Point[]; onPoints: (points: Point[]) => void }) {
+function CoordinatesTab({
+  points,
+  onPoints,
+}: {
+  points: Point[];
+  onPoints: (points: Point[]) => void;
+}) {
   return (
     <div className="space-y-2">
-      <p className="text-dense text-ev-muted">Exact anchors, for when a drag is not precise enough.</p>
+      <p className="text-dense text-ev-muted">
+        Exact anchors, for when a drag is not precise enough.
+      </p>
       {points.map((point, i) => (
         <div key={i} className="grid grid-cols-[62px_1fr_1fr] items-center gap-2">
           <span className="text-dense text-ev-faint">Point {i + 1}</span>
@@ -580,7 +721,6 @@ function TemplateFooter({
           </Button>
         )}
       </div>
-
     </div>
   );
 }
@@ -596,15 +736,24 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-
-
-
-
-function ColorRow({ label, value, onChange }: { label: string; value: string; onChange: (color: string) => void }) {
+function ColorRow({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (color: string) => void;
+}) {
   return (
     <div className="flex items-center gap-2">
       <span className="w-28 text-dense text-ev-muted">{label}</span>
-      <ColorInput label={label} value={/^#[0-9a-f]{6}$/i.test(value) ? value : "#2962ff"} onChange={(picked) => onChange(picked)} className="h-6 w-9 cursor-pointer rounded border border-ev-line bg-ev-bg" />
+      <ColorInput
+        label={label}
+        value={/^#[0-9a-f]{6}$/i.test(value) ? value : "#2962ff"}
+        onChange={(picked) => onChange(picked)}
+        className="h-6 w-9 cursor-pointer rounded border border-ev-line bg-ev-bg"
+      />
       <div className="flex flex-wrap gap-1">
         {COLORS.slice(0, 6).map((c) => (
           <button
@@ -641,7 +790,17 @@ function SelectRow({
   );
 }
 
-function Choice({ label, active, onClick, children }: { label: string; active: boolean; onClick: () => void; children: ReactNode }) {
+function Choice({
+  label,
+  active,
+  onClick,
+  children,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
   return (
     <Button
       size="sm"
@@ -656,7 +815,13 @@ function Choice({ label, active, onClick, children }: { label: string; active: b
   );
 }
 
-function FibRow({ level, onChange }: { level: FibLevelStyle; onChange: (level: FibLevelStyle) => void }) {
+function FibRow({
+  level,
+  onChange,
+}: {
+  level: FibLevelStyle;
+  onChange: (level: FibLevelStyle) => void;
+}) {
   return (
     <div className="grid grid-cols-[24px_72px_1fr] items-center gap-1">
       <input
@@ -679,7 +844,12 @@ function FibRow({ level, onChange }: { level: FibLevelStyle; onChange: (level: F
         className="w-full rounded border border-ev-line bg-ev-bg px-1 py-0.5 text-right num text-ev-strong"
       />
       <div className="flex items-center gap-1">
-        <ColorInput label={`Colour ${level.label}`} value={level.color ?? "#2962ff"} onChange={(value) => onChange({ ...level, color: value })} className="h-5 w-7 cursor-pointer rounded border border-ev-line bg-ev-bg" />
+        <ColorInput
+          label={`Colour ${level.label}`}
+          value={level.color ?? "#2962ff"}
+          onChange={(value) => onChange({ ...level, color: value })}
+          className="h-5 w-7 cursor-pointer rounded border border-ev-line bg-ev-bg"
+        />
         <span className="text-dense text-ev-faint">{level.label}</span>
       </div>
     </div>

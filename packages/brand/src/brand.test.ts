@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { CHART_THEMES, DARK_THEME, INDICATOR_COLORS, LIGHT_THEME, colorAt } from "@ezyview/chart-engine";
+import {
+  CHART_THEMES,
+  DARK_THEME,
+  INDICATOR_COLORS,
+  LIGHT_THEME,
+  colorAt,
+} from "@ezyview/chart-engine";
 import {
   TERMINAL_DARK,
   WARM_LIGHT,

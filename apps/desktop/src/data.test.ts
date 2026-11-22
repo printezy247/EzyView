@@ -1,5 +1,14 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { MAX_DEMO_TICKERS, demoTickerCount, loadHistory, releaseTicker, retainTicker, stopTicking, safeQuote } from "./data";
+import {
+  MAX_DEMO_TICKERS,
+  demoTickerCount,
+  loadHistory,
+  publicProxyOf,
+  releaseTicker,
+  retainTicker,
+  stopTicking,
+  safeQuote,
+} from "./data";
 
 /** Wait two macrotasks so the microtasks around `market.subscribe(...)` have settled. */
 const flushSubscribes = async (): Promise<void> => {
@@ -57,6 +66,16 @@ describe("demo ticker leases", () => {
 
   it("release without retain is a no-op", () => {
     expect(() => releaseTicker("LEASETEST:S4")).not.toThrow();
+  });
+});
+
+describe("publicProxyOf", () => {
+  it("names the proxy pair for mapped tickers and null otherwise", () => {
+    expect(publicProxyOf("XAUUSD")).toBe("PAXGUSDT");
+    expect(publicProxyOf("OANDA:XAUUSD")).toBe("PAXGUSDT");
+    expect(publicProxyOf("BTCUSDT")).toBeNull(); // maps to itself
+    expect(publicProxyOf("FX:EURUSD")).toBeNull();
+    expect(publicProxyOf("DEMO:BTCUSDT")).toBeNull();
   });
 });
 

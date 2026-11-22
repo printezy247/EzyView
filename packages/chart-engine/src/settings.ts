@@ -27,7 +27,11 @@ export function crosshairLineStyleOf(style: CrosshairStyleName | undefined): Lin
  * colour, otherwise the theme's. Kept pure so Canvas settings can be pinned by
  * a test without a canvas.
  */
-export function gridLineColor(visible: boolean, custom: string | null | undefined, fallback: string): string {
+export function gridLineColor(
+  visible: boolean,
+  custom: string | null | undefined,
+  fallback: string,
+): string {
   if (!visible) return "transparent";
   return custom && custom.trim().length > 0 ? custom : fallback;
 }
@@ -70,7 +74,9 @@ const pad2 = (n: number): string => String(n).padStart(2, "0");
  */
 function defaultTimeLabel(time: Time): string {
   const d = timeToDate(time);
-  const month = new Date(d.getUTCFullYear(), d.getUTCMonth(), 1).toLocaleString(undefined, { month: "short" });
+  const month = new Date(d.getUTCFullYear(), d.getUTCMonth(), 1).toLocaleString(undefined, {
+    month: "short",
+  });
   return `${pad2(d.getUTCDate())} ${month} '${pad2(d.getUTCFullYear() % 100)}   ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
 }
 
@@ -97,7 +103,12 @@ export function timezoneFormatters(tz: string | null | undefined): TimezoneForma
       new Intl.DateTimeFormat("en-US", { timeZone: tz, year: "numeric" }),
       new Intl.DateTimeFormat("en-US", { timeZone: tz, month: "short", year: "numeric" }),
       new Intl.DateTimeFormat("en-US", { timeZone: tz, day: "2-digit", month: "short" }),
-      new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false }),
+      new Intl.DateTimeFormat("en-US", {
+        timeZone: tz,
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }),
       new Intl.DateTimeFormat("en-US", {
         timeZone: tz,
         hour: "2-digit",

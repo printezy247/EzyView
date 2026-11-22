@@ -67,39 +67,40 @@ export function HeatmapTab() {
         setLoading(false);
         setLoadError(null);
 
-      // Fetch live/sim quotes for universe symbols
-      void Promise.all(
-        symbols.map((s) =>
-          quoteOf(s.symbol)
-            .then((q: Quote | null) => {
-              if (cancelled || !q) return null;
-              return { symbol: s.symbol, last: q.last, changePercent: q.changePercent ?? 0 };
-            })
-            .catch(() => null),
-        ),
-      ).then((quotes) => {
-        if (cancelled) return;
-        // A lookup table, not a scan: the old find-in-map was O(n^2) over the
-        // whole universe on every refresh.
-        const bySymbol = new Map<string, { last: number; changePercent: number }>();
-        for (const q of quotes) {
-          if (q) bySymbol.set(q.symbol, { last: q.last, changePercent: q.changePercent });
-        }
-        setUniverseTiles((prev) =>
-          prev.map((tile) => {
-            const found = bySymbol.get(tile.symbol);
-            if (!found) return tile;
-            return { ...tile, price: found.last, changePct: found.changePercent };
-          }),
-        );
+        // Fetch live/sim quotes for universe symbols
+        void Promise.all(
+          symbols.map((s) =>
+            quoteOf(s.symbol)
+              .then((q: Quote | null) => {
+                if (cancelled || !q) return null;
+                return { symbol: s.symbol, last: q.last, changePercent: q.changePercent ?? 0 };
+              })
+              .catch(() => null),
+          ),
+        )
+          .then((quotes) => {
+            if (cancelled) return;
+            // A lookup table, not a scan: the old find-in-map was O(n^2) over the
+            // whole universe on every refresh.
+            const bySymbol = new Map<string, { last: number; changePercent: number }>();
+            for (const q of quotes) {
+              if (q) bySymbol.set(q.symbol, { last: q.last, changePercent: q.changePercent });
+            }
+            setUniverseTiles((prev) =>
+              prev.map((tile) => {
+                const found = bySymbol.get(tile.symbol);
+                if (!found) return tile;
+                return { ...tile, price: found.last, changePct: found.changePercent };
+              }),
+            );
+          })
+          .catch((err: unknown) => {
+            // Without this the panel stayed on "Loading market heatmap…" for ever.
+            if (cancelled) return;
+            setLoading(false);
+            setLoadError(err instanceof Error ? err.message : String(err));
+          });
       })
-        .catch((err: unknown) => {
-          // Without this the panel stayed on "Loading market heatmap…" for ever.
-          if (cancelled) return;
-          setLoading(false);
-          setLoadError(err instanceof Error ? err.message : String(err));
-        });
-    })
       .catch((err: unknown) => {
         // A failed universe load must end the "Loading…" state, not hang it.
         if (cancelled) return;
@@ -118,12 +119,14 @@ export function HeatmapTab() {
     let cancelled = false;
     const tick = () => {
       const rows = useWorkspace.getState().watchlist;
-      void Promise.all(rows.map((row) => quoteOf(row.symbol, row.source).catch(() => null))).then((quotes) => {
-        if (cancelled) return;
-        quotes.forEach((q) => {
-          if (q) updateWatchPrice(q.symbol, q.last, q.changePercent ?? null);
-        });
-      });
+      void Promise.all(rows.map((row) => quoteOf(row.symbol, row.source).catch(() => null))).then(
+        (quotes) => {
+          if (cancelled) return;
+          quotes.forEach((q) => {
+            if (q) updateWatchPrice(q.symbol, q.last, q.changePercent ?? null);
+          });
+        },
+      );
     };
     tick();
     const t = setInterval(tick, 4000);
@@ -152,7 +155,8 @@ export function HeatmapTab() {
     if (filter === "all") return rawTiles;
     return rawTiles.filter((t) => {
       const cls = t.assetClass.toLowerCase();
-      if (filter === "commodity") return cls.includes("commodity") || cls.includes("metal") || t.ticker.includes("XAU");
+      if (filter === "commodity")
+        return cls.includes("commodity") || cls.includes("metal") || t.ticker.includes("XAU");
       if (filter === "stock") return cls.includes("stock") || cls.includes("equity");
       return cls.includes(filter);
     });
@@ -205,7 +209,10 @@ export function HeatmapTab() {
       {/* Heatmap visualization grid */}
       <div className="flex min-h-0 flex-1 flex-wrap content-start gap-2 overflow-y-auto p-4">
         {loading && universeTiles.length === 0 ? (
-          <div role="status" className="flex flex-1 items-center justify-center p-8 text-base text-ev-muted">
+          <div
+            role="status"
+            className="flex flex-1 items-center justify-center p-8 text-base text-ev-muted"
+          >
             Loading market heatmap…
           </div>
         ) : loadError ? (
@@ -215,7 +222,9 @@ export function HeatmapTab() {
             </p>
           </div>
         ) : filteredTiles.length === 0 ? (
-          <p className="p-4 text-base text-ev-faint">No market instruments match the active filter.</p>
+          <p className="p-4 text-base text-ev-faint">
+            No market instruments match the active filter.
+          </p>
         ) : (
           filteredTiles.map((tile) => {
             const pct = tile.changePct ?? 0;

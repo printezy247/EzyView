@@ -45,7 +45,10 @@ export function resolveNavIntent(
 
   // Ctrl+Tab cycles the sections, forward or backward.
   if (event.ctrl && !event.alt && !event.meta && event.key.toLowerCase() === "tab") {
-    return { intent: { kind: "cycle", step: event.shift ? -1 : 1 }, state: { chordPending: false } };
+    return {
+      intent: { kind: "cycle", step: event.shift ? -1 : 1 },
+      state: { chordPending: false },
+    };
   }
 
   // Ctrl+\ toggles the rail's width.

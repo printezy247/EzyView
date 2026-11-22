@@ -21,7 +21,9 @@ const news = (over: Partial<NewsItem> & Pick<NewsItem, "headline">): NewsItem =>
   ...over,
 });
 
-const earning = (over: Partial<EarningsReport> & Pick<EarningsReport, "symbol">): EarningsReport => ({
+const earning = (
+  over: Partial<EarningsReport> & Pick<EarningsReport, "symbol">,
+): EarningsReport => ({
   time: T0,
   quarter: "Q1",
   source: "demo",
@@ -37,15 +39,26 @@ describe("filterEvents", () => {
   ];
 
   it("ANDs impact, currency, search and range filters", () => {
-    const out = filterEvents(events, { impact: "high", currency: "usd", search: "nfp", from: T0, to: T0 + 500 });
+    const out = filterEvents(events, {
+      impact: "high",
+      currency: "usd",
+      search: "nfp",
+      from: T0,
+      to: T0 + 500,
+    });
     expect(out.map((e) => e.id)).toEqual(["a"]);
 
     expect(filterEvents(events, { impact: "medium", currency: "EUR" })).toEqual([]);
-    expect(filterEvents(events, { currency: "eur", from: T0 + 250 }).map((e) => e.id)).toEqual(["c"]);
+    expect(filterEvents(events, { currency: "eur", from: T0 + 250 }).map((e) => e.id)).toEqual([
+      "c",
+    ]);
   });
 
   it("treats from as inclusive and to as exclusive", () => {
-    expect(filterEvents(events, { from: T0 + 100, to: T0 + 300 }).map((e) => e.id)).toEqual(["a", "b"]);
+    expect(filterEvents(events, { from: T0 + 100, to: T0 + 300 }).map((e) => e.id)).toEqual([
+      "a",
+      "b",
+    ]);
   });
 
   it("skips impact filtering when omitted or 'all' and matches search case-insensitively", () => {
@@ -103,7 +116,14 @@ describe("fundamentalOverlays", () => {
     ];
     const out = fundamentalOverlays([], events, {});
     expect(out.markers).toEqual([
-      { time: T0 + 300, title: "NFP", kind: "event", impact: "high", currency: "USD", source: "demo" },
+      {
+        time: T0 + 300,
+        title: "NFP",
+        kind: "event",
+        impact: "high",
+        currency: "USD",
+        source: "demo",
+      },
     ]);
     expect(out.lines).toEqual([T0 + 300]);
 
@@ -190,7 +210,9 @@ describe("fundamentalOverlays", () => {
       earning({ symbol: "NASDAQ:AAPL", time: Number.NaN }),
       earning({ symbol: "NASDAQ:MSFT", time: T0 }),
     ];
-    expect(fundamentalOverlays(earnings, [], {}).markers.map((m) => m.title)).toEqual(["NASDAQ:MSFT"]);
+    expect(fundamentalOverlays(earnings, [], {}).markers.map((m) => m.title)).toEqual([
+      "NASDAQ:MSFT",
+    ]);
   });
 
   it("dedupes markers by (time, title) and sorts lines ascending with unique times", () => {
@@ -204,10 +226,31 @@ describe("fundamentalOverlays", () => {
     ];
     const out = fundamentalOverlays(earnings, events, {});
     expect(out.markers).toEqual([
-      { time: T0 + 100, title: "CPI", kind: "event", impact: "high", currency: "USD", source: "demo" },
-      { time: T0 + 200, title: "GDP", kind: "event", impact: "high", currency: "USD", source: "demo" },
+      {
+        time: T0 + 100,
+        title: "CPI",
+        kind: "event",
+        impact: "high",
+        currency: "USD",
+        source: "demo",
+      },
+      {
+        time: T0 + 200,
+        title: "GDP",
+        kind: "event",
+        impact: "high",
+        currency: "USD",
+        source: "demo",
+      },
       { time: T0 + 400, title: "NASDAQ:AAPL", kind: "earnings", quarter: "Q1", source: "demo" },
-      { time: T0 + 400, title: "NFP", kind: "event", impact: "high", currency: "USD", source: "demo" },
+      {
+        time: T0 + 400,
+        title: "NFP",
+        kind: "event",
+        impact: "high",
+        currency: "USD",
+        source: "demo",
+      },
     ]);
     expect(out.lines).toEqual([T0 + 100, T0 + 200, T0 + 400]);
   });

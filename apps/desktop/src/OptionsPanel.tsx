@@ -58,17 +58,27 @@ export function OptionsPanel({ symbol, onClose }: Props) {
     };
   }, [symbol]);
 
-  const expiry = useMemo(() => (spot === null ? null : buildChain({ spot, baseVol, expiries: [days] })[0]!), [spot, baseVol, days]);
+  const expiry = useMemo(
+    () => (spot === null ? null : buildChain({ spot, baseVol, expiries: [days] })[0]!),
+    [spot, baseVol, days],
+  );
 
   return (
-    <section aria-label="Options" className="flex min-h-0 flex-1 flex-col border-t border-ev-raised bg-ev-bg text-dense">
+    <section
+      aria-label="Options"
+      className="flex min-h-0 flex-1 flex-col border-t border-ev-raised bg-ev-bg text-dense"
+    >
       <header className="flex h-8 shrink-0 items-center gap-2 border-b border-ev-raised px-3">
         <span className="font-medium text-ev-strong">
-          {tickerOf(symbol)} options{spot !== null && <span className="ml-1 font-normal text-ev-muted">spot {f(spot)}</span>}
+          {tickerOf(symbol)} options
+          {spot !== null && <span className="ml-1 font-normal text-ev-muted">spot {f(spot)}</span>}
         </span>
         <Tabs
           label="Options view"
-          items={(["chain", "smile", "payoff"] as View[]).map((v) => ({ id: v, label: v[0]!.toUpperCase() + v.slice(1) }))}
+          items={(["chain", "smile", "payoff"] as View[]).map((v) => ({
+            id: v,
+            label: v[0]!.toUpperCase() + v.slice(1),
+          }))}
           value={view}
           onChange={(id) => setView(id as View)}
           className="ml-2"
@@ -117,18 +127,42 @@ function Chain({ rows, spot }: { rows: ChainRow[]; spot: number }) {
     <table className="w-full text-right">
       <thead className="sticky top-0 bg-ev-bg text-ev-muted">
         <tr>
-          <th scope="col" className="px-2 py-1 font-normal">Δ</th>
-          <th scope="col" className="font-normal">IV</th>
-          <th scope="col" className="font-normal">Bid</th>
-          <th scope="col" className="font-normal">Ask</th>
-          <th scope="col" className="bg-ev-panel px-3 font-medium text-ev-strong">Strike</th>
-          <th scope="col" className="font-normal">Bid</th>
-          <th scope="col" className="font-normal">Ask</th>
-          <th scope="col" className="font-normal">IV</th>
-          <th scope="col" className="font-normal">Δ</th>
-          <th scope="col" className="px-2 font-normal">Γ</th>
-          <th scope="col" className="font-normal">Θ/day</th>
-          <th scope="col" className="pr-3 font-normal">Vega</th>
+          <th scope="col" className="px-2 py-1 font-normal">
+            Δ
+          </th>
+          <th scope="col" className="font-normal">
+            IV
+          </th>
+          <th scope="col" className="font-normal">
+            Bid
+          </th>
+          <th scope="col" className="font-normal">
+            Ask
+          </th>
+          <th scope="col" className="bg-ev-panel px-3 font-medium text-ev-strong">
+            Strike
+          </th>
+          <th scope="col" className="font-normal">
+            Bid
+          </th>
+          <th scope="col" className="font-normal">
+            Ask
+          </th>
+          <th scope="col" className="font-normal">
+            IV
+          </th>
+          <th scope="col" className="font-normal">
+            Δ
+          </th>
+          <th scope="col" className="px-2 font-normal">
+            Γ
+          </th>
+          <th scope="col" className="font-normal">
+            Θ/day
+          </th>
+          <th scope="col" className="pr-3 font-normal">
+            Vega
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -157,7 +191,17 @@ function Chain({ rows, spot }: { rows: ChainRow[]; spot: number }) {
 }
 
 /** Minimal line plot: points in data space, auto-fit to the viewBox. */
-function Plot({ points, markers, label, zero }: { points: [number, number][]; markers?: number[]; label: string; zero?: boolean }) {
+function Plot({
+  points,
+  markers,
+  label,
+  zero,
+}: {
+  points: [number, number][];
+  markers?: number[];
+  label: string;
+  zero?: boolean;
+}) {
   const W = 600;
   const H = 160;
   const pad = 24;
@@ -167,14 +211,32 @@ function Plot({ points, markers, label, zero }: { points: [number, number][]; ma
   const [y0, y1] = [Math.min(...ys, zero ? 0 : Infinity), Math.max(...ys, zero ? 0 : -Infinity)];
   const sx = (x: number) => pad + ((x - x0) / (x1 - x0 || 1)) * (W - 2 * pad);
   const sy = (y: number) => H - pad - ((y - y0) / (y1 - y0 || 1)) * (H - 2 * pad);
-  const d = points.map(([x, y], i) => `${i ? "L" : "M"}${sx(x).toFixed(1)},${sy(y).toFixed(1)}`).join(" ");
+  const d = points
+    .map(([x, y], i) => `${i ? "L" : "M"}${sx(x).toFixed(1)},${sy(y).toFixed(1)}`)
+    .join(" ");
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full" role="img" aria-label={label}>
-      {zero && <line x1={pad} x2={W - pad} y1={sy(0)} y2={sy(0)} className="stroke-ev-dim" strokeDasharray="4 3" />}
+      {zero && (
+        <line
+          x1={pad}
+          x2={W - pad}
+          y1={sy(0)}
+          y2={sy(0)}
+          className="stroke-ev-dim"
+          strokeDasharray="4 3"
+        />
+      )}
       <path d={d} fill="none" className="stroke-ev-accent" strokeWidth={2} />
       {markers?.map((m) => (
         <g key={m}>
-          <line x1={sx(m)} x2={sx(m)} y1={pad / 2} y2={H - pad} className="stroke-ev-warn" strokeDasharray="3 3" />
+          <line
+            x1={sx(m)}
+            x2={sx(m)}
+            y1={pad / 2}
+            y2={H - pad}
+            className="stroke-ev-warn"
+            strokeDasharray="3 3"
+          />
           <text x={sx(m)} y={H - 8} textAnchor="middle" className="fill-ev-warn" fontSize={11}>
             {m.toFixed(2)}
           </text>
@@ -193,12 +255,26 @@ function Plot({ points, markers, label, zero }: { points: [number, number][]; ma
 function Smile({ rows, spot }: { rows: ChainRow[]; spot: number }) {
   return (
     <div className="h-full p-2">
-      <Plot points={rows.map((r) => [r.strike, r.call.iv * 100])} markers={[spot]} label="Implied volatility by strike, percent" />
+      <Plot
+        points={rows.map((r) => [r.strike, r.call.iv * 100])}
+        markers={[spot]}
+        label="Implied volatility by strike, percent"
+      />
     </div>
   );
 }
 
-function Payoff({ rows, spot, strategy, onStrategy }: { rows: ChainRow[]; spot: number; strategy: string; onStrategy: (s: string) => void }) {
+function Payoff({
+  rows,
+  spot,
+  strategy,
+  onStrategy,
+}: {
+  rows: ChainRow[];
+  spot: number;
+  strategy: string;
+  onStrategy: (s: string) => void;
+}) {
   const mid = Math.floor(rows.length / 2);
   const legs = STRATEGIES[strategy]!(rows[mid]!, rows[Math.min(mid + 2, rows.length - 1)]!);
   const lo = spot * 0.7;
@@ -222,9 +298,15 @@ function Payoff({ rows, spot, strategy, onStrategy }: { rows: ChainRow[]; spot: 
           onChange={onStrategy}
           options={Object.keys(STRATEGIES).map((s) => ({ value: s, label: s }))}
         />
-        <p className="text-ev-muted">Max profit in range: <span className="text-ev-up-text">{f(Math.max(...pnls))}</span></p>
-        <p className="text-ev-muted">Max loss in range: <span className="text-ev-down-text">{f(Math.min(...pnls))}</span></p>
-        <p className="text-ev-muted">Break-even: {be.length ? be.map((b) => f(b)).join(" / ") : "none in range"}</p>
+        <p className="text-ev-muted">
+          Max profit in range: <span className="text-ev-up-text">{f(Math.max(...pnls))}</span>
+        </p>
+        <p className="text-ev-muted">
+          Max loss in range: <span className="text-ev-down-text">{f(Math.min(...pnls))}</span>
+        </p>
+        <p className="text-ev-muted">
+          Break-even: {be.length ? be.map((b) => f(b)).join(" / ") : "none in range"}
+        </p>
         <p className="text-ev-muted">Per 1 unit of underlying, premiums from the model.</p>
       </div>
     </div>

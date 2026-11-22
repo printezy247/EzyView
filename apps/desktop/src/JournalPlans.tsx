@@ -63,7 +63,12 @@ export function JournalPlans() {
       <div className="grid shrink-0 grid-cols-[9rem_7rem_repeat(3,7rem)_minmax(8rem,1fr)_5rem] items-end gap-2 border-b border-ev-raised px-3 py-2">
         <label className="text-dense text-ev-muted">
           Symbol
-          <Input value={symbol} onChange={(e) => setSymbol(e.target.value)} placeholder="EURUSD" aria-label="Plan symbol" />
+          <Input
+            value={symbol}
+            onChange={(e) => setSymbol(e.target.value)}
+            placeholder="EURUSD"
+            aria-label="Plan symbol"
+          />
         </label>
         <div className="flex flex-col gap-0.5 text-dense text-ev-muted">
           <span>Side</span>
@@ -80,19 +85,39 @@ export function JournalPlans() {
         </div>
         <label className="text-dense text-ev-muted">
           Entry
-          <Input value={entry} onChange={(e) => setEntry(e.target.value)} inputMode="decimal" aria-label="Plan entry" />
+          <Input
+            value={entry}
+            onChange={(e) => setEntry(e.target.value)}
+            inputMode="decimal"
+            aria-label="Plan entry"
+          />
         </label>
         <label className="text-dense text-ev-muted">
           Stop
-          <Input value={stop} onChange={(e) => setStop(e.target.value)} inputMode="decimal" aria-label="Plan stop" />
+          <Input
+            value={stop}
+            onChange={(e) => setStop(e.target.value)}
+            inputMode="decimal"
+            aria-label="Plan stop"
+          />
         </label>
         <label className="text-dense text-ev-muted">
           Target
-          <Input value={target} onChange={(e) => setTarget(e.target.value)} inputMode="decimal" aria-label="Plan target" />
+          <Input
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+            inputMode="decimal"
+            aria-label="Plan target"
+          />
         </label>
         <label className="text-dense text-ev-muted">
           Thesis
-          <Input value={thesis} onChange={(e) => setThesis(e.target.value)} placeholder="Why this trade?" aria-label="Plan thesis" />
+          <Input
+            value={thesis}
+            onChange={(e) => setThesis(e.target.value)}
+            placeholder="Why this trade?"
+            aria-label="Plan thesis"
+          />
         </label>
         <Button variant="solid" onClick={submit} disabled={!symbol.trim()}>
           Add plan
@@ -110,15 +135,27 @@ export function JournalPlans() {
               const rr = planRewardRisk(plan);
               const digits = precisionForSymbol(plan.symbol, plan.entry ?? null);
               return (
-                <li key={plan.id} className="flex items-start gap-3 border-b border-ev-panel px-3 py-2">
+                <li
+                  key={plan.id}
+                  className="flex items-start gap-3 border-b border-ev-panel px-3 py-2"
+                >
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-baseline gap-2">
                       <span className="font-semibold text-ev-strong">{plan.symbol}</span>
-                      <span className={plan.side === "long" ? "text-dense text-ev-up-text" : "text-dense text-ev-down-text"}>
+                      <span
+                        className={
+                          plan.side === "long"
+                            ? "text-dense text-ev-up-text"
+                            : "text-dense text-ev-down-text"
+                        }
+                      >
                         {plan.side === "long" ? "Long" : "Short"}
                       </span>
                       {rr && (
-                        <span className="num rounded bg-ev-raised px-1 text-dense text-ev-muted" title={`Risk ${rr.risk.toFixed(digits)} / reward ${rr.reward.toFixed(digits)}`}>
+                        <span
+                          className="num rounded bg-ev-raised px-1 text-dense text-ev-muted"
+                          title={`Risk ${rr.risk.toFixed(digits)} / reward ${rr.reward.toFixed(digits)}`}
+                        >
                           {rr.ratio.toFixed(2)}R
                         </span>
                       )}
@@ -132,9 +169,13 @@ export function JournalPlans() {
                       </span>
                     </div>
                     <div className="num mt-0.5 flex flex-wrap gap-3 text-dense text-ev-muted">
-                      <span>Entry {plan.entry === undefined ? "—" : plan.entry.toFixed(digits)}</span>
+                      <span>
+                        Entry {plan.entry === undefined ? "—" : plan.entry.toFixed(digits)}
+                      </span>
                       <span>Stop {plan.stop === undefined ? "—" : plan.stop.toFixed(digits)}</span>
-                      <span>Target {plan.target === undefined ? "—" : plan.target.toFixed(digits)}</span>
+                      <span>
+                        Target {plan.target === undefined ? "—" : plan.target.toFixed(digits)}
+                      </span>
                     </div>
                     {plan.thesis && <p className="mt-1 text-base text-ev-muted">{plan.thesis}</p>}
                   </div>
@@ -144,7 +185,10 @@ export function JournalPlans() {
                     label={`Plan status for ${plan.symbol}`}
                     value={plan.status}
                     onChange={(v) => updatePlan(plan.id, { status: v as TradePlanStatus })}
-                    options={STATUSES.map((status) => ({ value: status, label: STATUS_LABEL[status] }))}
+                    options={STATUSES.map((status) => ({
+                      value: status,
+                      label: STATUS_LABEL[status],
+                    }))}
                   />
                   <Button
                     size="sm"

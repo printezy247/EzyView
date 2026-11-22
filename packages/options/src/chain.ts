@@ -47,7 +47,8 @@ export function strikeStep(spot: number): number {
 
 /** Volatility smile: a parabola in log-moneyness, with a slight put skew. */
 export function smileVol(baseVol: number, spot: number, strike: number, years: number): number {
-  if (spot <= 0 || strike <= 0 || !Number.isFinite(spot) || !Number.isFinite(strike)) return Math.max(0.02, baseVol);
+  if (spot <= 0 || strike <= 0 || !Number.isFinite(spot) || !Number.isFinite(strike))
+    return Math.max(0.02, baseVol);
   const m = Math.log(strike / spot) / Math.sqrt(Math.max(years, 1 / 365));
   return Math.max(0.02, baseVol * (1 + 1.2 * m * m - 0.4 * m));
 }

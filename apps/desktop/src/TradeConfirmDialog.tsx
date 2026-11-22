@@ -30,7 +30,10 @@ function describe(action: PendingAction): { title: string; lines: string[] } {
         action.stopLoss !== undefined ? `SL ${action.stopLoss ?? "none"}` : null,
         action.takeProfit !== undefined ? `TP ${action.takeProfit ?? "none"}` : null,
       ].filter((v): v is string => v !== null);
-      return { title: `Amend ${action.symbol} levels`, lines: changes.length > 0 ? changes : ["no change"] };
+      return {
+        title: `Amend ${action.symbol} levels`,
+        lines: changes.length > 0 ? changes : ["no change"],
+      };
     }
     case "close-all":
       return {
@@ -85,13 +88,14 @@ export function TradeConfirmDialog() {
           <Button variant="ghost" size="md" onClick={decline}>
             Discard
           </Button>
-          <Button
-            variant="solid"
-            size="md"
-            onClick={send}
-            disabled={!canSend}
-          >
-            {sending ? "Sending…" : pending.gate.dryRun ? "Validate (dry-run)" : real ? "Send to real account" : "Send"}
+          <Button variant="solid" size="md" onClick={send} disabled={!canSend}>
+            {sending
+              ? "Sending…"
+              : pending.gate.dryRun
+                ? "Validate (dry-run)"
+                : real
+                  ? "Send to real account"
+                  : "Send"}
           </Button>
         </>
       }
@@ -128,7 +132,8 @@ export function TradeConfirmDialog() {
         </div>
       )}
       <p className="mt-2 text-dense text-ev-faint">
-        This confirmation can be used once. Anything changed since the ticket was filled must be re-confirmed.
+        This confirmation can be used once. Anything changed since the ticket was filled must be
+        re-confirmed.
       </p>
     </Dialog>
   );

@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { IndicatorDef } from "@ezyview/indicators";
-import { activeChartOf, cellCount, restoreLayout, restoreWorkspace, setActiveChart, setGrid, updateChart } from "./layout";
+import {
+  activeChartOf,
+  cellCount,
+  restoreLayout,
+  restoreWorkspace,
+  setActiveChart,
+  setGrid,
+  updateChart,
+} from "./layout";
 import type { ChartState, Layout, PersistedWorkspace } from "./layout";
 
 const chart = (symbol: string, extra: Partial<ChartState> = {}): ChartState => ({
@@ -42,19 +50,32 @@ describe("cellCount", () => {
 
 describe("setGrid", () => {
   it("adds blank cells that copy the active chart's symbol and interval", () => {
-    const drawing = { id: "d", tool: "trend_line" as const, points: [], style: { color: "#fff", width: 1, lineStyle: "solid" as const } };
+    const drawing = {
+      id: "d",
+      tool: "trend_line" as const,
+      points: [],
+      style: { color: "#fff", width: 1, lineStyle: "solid" as const },
+    };
     const base = layout([chart("AAPL", { resolution: "1h", drawings: [drawing] })]);
     const next = setGrid(base, "4");
     expect(next.grid).toBe("4");
     expect(next.charts).toHaveLength(4);
-    expect(next.charts[3]).toMatchObject({ symbol: "AAPL", resolution: "1h", drawings: [], indicators: [] });
+    expect(next.charts[3]).toMatchObject({
+      symbol: "AAPL",
+      resolution: "1h",
+      drawings: [],
+      indicators: [],
+    });
     // The original cell keeps its drawings.
     expect(next.charts[0]!.drawings).toHaveLength(1);
     expect(base.charts).toHaveLength(1); // not mutated
   });
 
   it("keeps hidden cells when shrinking so growing back restores them", () => {
-    const four = layout([chart("A"), chart("B"), chart("C"), chart("D")], { grid: "4", activeChart: 3 });
+    const four = layout([chart("A"), chart("B"), chart("C"), chart("D")], {
+      grid: "4",
+      activeChart: 3,
+    });
     const one = setGrid(four, "1");
     expect(one.charts.map((c) => c.symbol)).toEqual(["A", "B", "C", "D"]);
     expect(one.activeChart).toBe(0); // clamped onto the only visible cell
@@ -62,7 +83,10 @@ describe("setGrid", () => {
   });
 
   it("clamps the active cell when going from 4 to 2", () => {
-    const four = layout([chart("A"), chart("B"), chart("C"), chart("D")], { grid: "4", activeChart: 2 });
+    const four = layout([chart("A"), chart("B"), chart("C"), chart("D")], {
+      grid: "4",
+      activeChart: 2,
+    });
     expect(setGrid(four, "2v").activeChart).toBe(1);
   });
 });
@@ -98,7 +122,8 @@ describe("updateChart", () => {
 });
 
 const load = (dataSource: unknown) =>
-  restoreLayout({ id: "x", charts: [{ ...chart("A"), dataSource }] }, chart("DEF"), resolveDef)!.charts[0]!.dataSource;
+  restoreLayout({ id: "x", charts: [{ ...chart("A"), dataSource }] }, chart("DEF"), resolveDef)!
+    .charts[0]!.dataSource;
 
 describe("restoreLayout", () => {
   it("re-resolves indicator definitions and drops unknown ones", () => {
@@ -107,7 +132,14 @@ describe("restoreLayout", () => {
         layout([
           chart("A", {
             indicators: [
-              { uid: "1", def: SMA, params: { length: 20 }, colorIndex: 0, hidden: true, name: "Fast" },
+              {
+                uid: "1",
+                def: SMA,
+                params: { length: 20 },
+                colorIndex: 0,
+                hidden: true,
+                name: "Fast",
+              },
               { uid: "2", def: { ...SMA, id: "gone" }, params: {}, colorIndex: 1 },
             ],
           }),
@@ -130,7 +162,11 @@ describe("restoreLayout", () => {
   });
 
   it("fills missing cells for the saved grid and clamps a bad active index", () => {
-    const restored = restoreLayout({ id: "x", grid: "4", charts: [chart("A")], activeChart: 9 }, chart("DEF"), resolveDef)!;
+    const restored = restoreLayout(
+      { id: "x", grid: "4", charts: [chart("A")], activeChart: 9 },
+      chart("DEF"),
+      resolveDef,
+    )!;
     expect(restored.charts).toHaveLength(4);
     expect(restored.activeChart).toBe(0);
   });
@@ -138,7 +174,9 @@ describe("restoreLayout", () => {
   it("rejects garbage", () => {
     expect(restoreLayout(null, chart("D"), resolveDef)).toBeNull();
     expect(restoreLayout({ id: "x", charts: [] }, chart("D"), resolveDef)).toBeNull();
-    expect(restoreLayout({ id: "x", grid: "3", charts: [{}] }, chart("D"), resolveDef)!.grid).toBe("1");
+    expect(restoreLayout({ id: "x", grid: "3", charts: [{}] }, chart("D"), resolveDef)!.grid).toBe(
+      "1",
+    );
   });
 });
 
@@ -162,7 +200,12 @@ describe("restoreWorkspace", () => {
       crosshairSync: true,
       replaySpeed: 2,
     };
-    const restored = restoreWorkspace(JSON.parse(JSON.stringify(saved)), current, chart("D"), resolveDef);
+    const restored = restoreWorkspace(
+      JSON.parse(JSON.stringify(saved)),
+      current,
+      chart("D"),
+      resolveDef,
+    );
     expect(restored).toEqual(saved);
   });
 

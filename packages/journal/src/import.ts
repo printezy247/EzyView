@@ -16,7 +16,10 @@ interface Group {
 const isSound = (d: Deal): boolean =>
   [d.qty, d.price, d.pnl, d.time].every((n) => typeof n === "number" && Number.isFinite(n));
 
-export function entriesFromDeals(deals: readonly Deal[], source?: JournalEntry["source"]): JournalEntry[] {
+export function entriesFromDeals(
+  deals: readonly Deal[],
+  source?: JournalEntry["source"],
+): JournalEntry[] {
   const ordered = deals.filter(isSound).sort((a, b) => a.time - b.time);
   const groups = new Map<string, Group>();
   const ungrouped: Deal[] = [];
@@ -66,7 +69,10 @@ function fromGroup(group: Group, source?: JournalEntry["source"]): JournalEntry 
   const head = first as Deal;
   const tail = last as Deal;
 
-  const fees = group.deals.reduce((sum, deal) => sum + (deal.commission ?? 0) + (deal.swap ?? 0), 0);
+  const fees = group.deals.reduce(
+    (sum, deal) => sum + (deal.commission ?? 0) + (deal.swap ?? 0),
+    0,
+  );
   const pnl = group.deals.reduce((sum, deal) => sum + deal.pnl, 0);
   // A lone deal that already carries P&L is a complete round trip (paper feed
   // without position ids); a lone entry leg with no P&L is still open.
@@ -76,8 +82,12 @@ function fromGroup(group: Group, source?: JournalEntry["source"]): JournalEntry 
   // selling closes a long position; buying closes a short position.
   const isLoneClosingDeal = rest.length === 0 && head.pnl !== 0;
   const side = isLoneClosingDeal
-    ? (head.side === "sell" ? "long" : "short")
-    : (head.side === "buy" ? "long" : "short");
+    ? head.side === "sell"
+      ? "long"
+      : "short"
+    : head.side === "buy"
+      ? "long"
+      : "short";
 
   // Opening legs are the deals before the first opposite-side deal. With
   // partial closes every exit deal shares the opener's side *and* carries

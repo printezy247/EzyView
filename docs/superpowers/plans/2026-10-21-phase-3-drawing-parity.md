@@ -33,11 +33,13 @@
 ### Task 1: Pure drawing edit helpers
 
 **Files:**
+
 - Create: `packages/drawing-tools/src/edit.ts`
 - Create: `packages/drawing-tools/src/edit.test.ts`
 - Modify: `packages/drawing-tools/src/index.ts` (export the two helpers)
 
 **Interfaces:**
+
 - Consumes: `Drawing`, `Point` from `./types.js`.
 - Produces (used by Task 4's drag logic):
   - `setAnchor(d: Drawing, index: number, pt: Point): Drawing` — returns a copy with `points[index]` replaced; out-of-range index returns `d` unchanged.
@@ -54,14 +56,20 @@ import { DEFAULT_DRAWING_STYLE, type Drawing, type Point } from "./types.js";
 const base: Drawing = {
   id: "d1",
   tool: "trend_line",
-  points: [{ time: 100, price: 10 }, { time: 200, price: 20 }],
+  points: [
+    { time: 100, price: 10 },
+    { time: 200, price: 20 },
+  ],
   style: { ...DEFAULT_DRAWING_STYLE },
 };
 
 describe("setAnchor", () => {
   it("replaces one point and leaves the rest", () => {
     const next = setAnchor(base, 1, { time: 210, price: 25 });
-    expect(next.points).toEqual([{ time: 100, price: 10 }, { time: 210, price: 25 }]);
+    expect(next.points).toEqual([
+      { time: 100, price: 10 },
+      { time: 210, price: 25 },
+    ]);
     expect(base.points[1]).toEqual({ time: 200, price: 20 }); // original untouched
     expect(next.id).toBe(base.id);
     expect(next.tool).toBe(base.tool);
@@ -74,7 +82,10 @@ describe("setAnchor", () => {
 describe("translateDrawing", () => {
   it("shifts every point by the deltas", () => {
     const next = translateDrawing(base, 50, -3);
-    expect(next.points).toEqual([{ time: 150, price: 7 }, { time: 250, price: 17 }]);
+    expect(next.points).toEqual([
+      { time: 150, price: 7 },
+      { time: 250, price: 17 },
+    ]);
     expect(base.points[0]).toEqual({ time: 100, price: 10 });
   });
   it("keeps style, text, lock and name", () => {
@@ -116,10 +127,12 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ### Task 2: Store — selection, undo model, delete, alert binding, import
 
 **Files:**
+
 - Modify: `apps/desktop/src/store.ts`
 - Test: `apps/desktop/src/store.test.ts`
 
 **Interfaces:**
+
 - Consumes: `setDrawings` undo shape at store.ts:281–288 (`drawingUndo` entries `{drawings, chartIndex}`), `addAlert`/`removeAlert` actions, `Drawing` from `@ezyview/drawing-tools`.
 - Produces (used by Tasks 3–5):
   - `selectedDrawingId: string | null` (view state, **not** persisted)
@@ -242,10 +255,12 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ### Task 3: Engine — selection handles + pan control
 
 **Files:**
+
 - Modify: `packages/chart-engine/src/drawings.ts` (`DrawingsPrimitive`)
 - Modify: `packages/chart-engine/src/host.ts` (`EzyChart`)
 
 **Interfaces:**
+
 - Consumes: `DrawingsPrimitive.project()/render()` internals; `EzyChart` private `chart: IChartApi`, `panes`/primitive registration for drawings.
 - Produces (used by Task 4):
   - `EzyChart.setSelection(id: string | null): void` — forwards to the drawings primitive
@@ -281,16 +296,19 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ### Task 4: Interaction — click-select, pointer drag, Delete key
 
 **Files:**
+
 - Modify: `apps/desktop/src/ChartHost.tsx`
 - Modify: `apps/desktop/src/ChartPage.tsx` (keydown)
 
 **Interfaces:**
+
 - Consumes: `hitTestAll(layers, click, tol?)` (`@ezyview/drawing-tools`), `setAnchor`/`translateDrawing` (Task 1), store actions (Task 2), `EzyChart.setSelection/setPanEnabled` + `projectDrawing`/`screenToTimePrice` (Task 3, host.ts:639–656), `snapToOhlc` when `magnet !== "off"`.
 - Produces: user-visible select-on-click, drag anchors/body, Delete removes selection — Task 5 smoke verifies.
 
 - [ ] **Step 1: Extend the `onClick` handler (ChartHost.tsx:75–116)**
 
 When `activeTool === null` and `chartIndex !== undefined`:
+
 - project every drawing (`chart.projectDrawing(d)`), `hitTestAll` with the click `{x, y}`.
 - hit → `selectDrawing(hit.id)`; miss → `selectDrawing(null)`.
 - Replace the "Select a drawing tool first" flash for this case (flash stays for armed-tool degenerate clicks only if it still applies — with a tool armed the placement path runs, so the no-tool flash becomes the select path).
@@ -300,7 +318,7 @@ When `activeTool === null` and `chartIndex !== undefined`:
 
 Attach with `useEffect` on `containerRef` (capture `true`):
 
-- `pointerdown`: guard `chartIndex === undefined || activeTool !== null` → return. Compute pixel point from `getBoundingClientRect`; if magnet mode on, snap the *hit test* point? No — hit test uses raw pixel; snap applies to resulting time/price after `screenToTimePrice`. Hit-test via `hitTestAll`. Miss → return (let LWC handle pan/zoom and the later click deselect). Hit → `e.stopPropagation()` (LWC never sees down → no pan), `selectDrawing(id)`, `chart.setSelection(id)`; if drawing `locked` → select only, no drag state. Else start drag ref: `{ id, handle, snapshot: [...activeChart().drawings], startPoint: screenToTimePrice(pt), moved: false }`, `containerRef.setPointerCapture(e.pointerId)`, `chart.setPanEnabled(false)`.
+- `pointerdown`: guard `chartIndex === undefined || activeTool !== null` → return. Compute pixel point from `getBoundingClientRect`; if magnet mode on, snap the _hit test_ point? No — hit test uses raw pixel; snap applies to resulting time/price after `screenToTimePrice`. Hit-test via `hitTestAll`. Miss → return (let LWC handle pan/zoom and the later click deselect). Hit → `e.stopPropagation()` (LWC never sees down → no pan), `selectDrawing(id)`, `chart.setSelection(id)`; if drawing `locked` → select only, no drag state. Else start drag ref: `{ id, handle, snapshot: [...activeChart().drawings], startPoint: screenToTimePrice(pt), moved: false }`, `containerRef.setPointerCapture(e.pointerId)`, `chart.setPanEnabled(false)`.
 - `pointermove`: if no drag ref → return. Compute pt = `screenToTimePrice`; magnet on → `snapToOhlc(pt, bars, magnet)` for anchor moves. If `handle >= 0` → `setAnchor(d, handle, snappedPt)`; else → `translateDrawing(d, pt.time - startPoint.time, pt.price - startPoint.price)` applied to the **snapshot** copy (avoids compounding). `previewDrawing(id, { points: next.points })`, `moved = true`, `e.preventDefault()`.
 - `pointerup`/`pointercancel`: if drag ref → `setPanEnabled(true)`; if `moved` → `commitDrawingHistory(snapshot, chartIndex)`; clear ref. (`handle` here is the hit-test handle: `0..n-1` anchor, `-1` body.)
 
@@ -329,6 +347,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ### Task 5: UI — object tree select/lock, properties panel, import/export
 
 **Files:**
+
 - Create: `apps/desktop/src/DrawingProperties.tsx`
 - Create: `apps/desktop/src/drawingsIO.ts`
 - Create: `apps/desktop/src/drawingsIO.test.ts`
@@ -336,6 +355,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 - Modify: `apps/desktop/src/RightRail.tsx` (only if ObjectTree is mounted there — wire whichever host renders ObjectTree)
 
 **Interfaces:**
+
 - Consumes: store actions (Task 2), `toolName`/`drawingLabel` (ObjectTree.tsx:13–18), `addAlert` for the alert button, `newId` from store for ids.
 - Produces:
   - `serializeDrawings(drawings: readonly Drawing[]): string` — `{ version: 1, drawings }` JSON, pretty-printed
@@ -351,9 +371,12 @@ import { parseDrawings, serializeDrawings } from "./drawingsIO";
 import { DEFAULT_DRAWING_STYLE, type Drawing } from "@ezyview/drawing-tools";
 
 const d: Drawing = {
-  id: "x", tool: "horizontal_line",
-  points: [{ time: 1, price: 2 }], style: { ...DEFAULT_DRAWING_STYLE },
-  locked: true, name: "Level",
+  id: "x",
+  tool: "horizontal_line",
+  points: [{ time: 1, price: 2 }],
+  style: { ...DEFAULT_DRAWING_STYLE },
+  locked: true,
+  name: "Level",
 };
 
 describe("drawingsIO", () => {
@@ -365,7 +388,11 @@ describe("drawingsIO", () => {
     expect(parseDrawings("not json").ok).toBe(false);
     expect(parseDrawings('{"drawings": 1}').ok).toBe(false);
     expect(parseDrawings('{"drawings":[{"id":1}]}').ok).toBe(false);
-    expect(parseDrawings('{"drawings":[{"id":"a","tool":"trend_line","points":[{"time":"x","price":1}],"style":{}}]}').ok).toBe(false);
+    expect(
+      parseDrawings(
+        '{"drawings":[{"id":"a","tool":"trend_line","points":[{"time":"x","price":1}],"style":{}}]}',
+      ).ok,
+    ).toBe(false);
   });
 });
 ```
@@ -384,13 +411,14 @@ Expected: FAIL then PASS. Validation mirrors `TOOL_ANCHORS` membership if that c
 - [ ] **Step 4: `DrawingProperties.tsx`**
 
 Sections (store-driven, every edit via `updateDrawing` so undo works):
+
 - Rename input (bound to `d.name`).
 - Colour swatches: `["#2962ff","#f23645","#ff9800","#4caf50","#9c27b0","#00bcd4","#ffd700","#ffffff"]` → `style.color`.
 - Width: buttons 1/2/3/4 → `style.width`. Line style: solid/dashed/dotted → `style.lineStyle`.
 - Text field when `d.tool === "text"` or `d.text !== undefined` → `d.text`.
 - Lock checkbox (mirrors row lock), hidden toggle (mirrors row eye).
 - Z-order: "Bring to front" / "Send to back" — reorder via `setDrawings` (front: move to end; back: move to start) so undo works.
-- "Alert at level" — enabled when `d.points[0]` finite and tool is `horizontal_line`: `addAlert({ symbol: activeChart().symbol, message: \`${drawingLabel(d)} @ ${price}\`, condition: { kind: "crossing", value: price }, frequency: "once_per_bar_close", drawingId: d.id })` (field names to match `PriceAlert`/`addAlert` exactly; read store + AlertDialog usage at implementation time).
+- "Alert at level" — enabled when `d.points[0]` finite and tool is `horizontal_line`: `addAlert({ symbol: activeChart().symbol, message: \`${drawingLabel(d)} @ ${price}\`, condition: { kind: "crossing", value: price }, frequency: "once_per_bar_close", drawingId: d.id })`(field names to match`PriceAlert`/`addAlert` exactly; read store + AlertDialog usage at implementation time).
 - Delete button → `deleteDrawing(d.id)`.
 
 - [ ] **Step 5: Import/export footer in ObjectTree**

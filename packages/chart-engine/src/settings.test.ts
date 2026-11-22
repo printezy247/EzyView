@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { CrosshairMode, LineStyle, PriceScaleMode, TickMarkType, type UTCTimestamp } from "lightweight-charts";
+import {
+  CrosshairMode,
+  LineStyle,
+  PriceScaleMode,
+  TickMarkType,
+  type UTCTimestamp,
+} from "lightweight-charts";
 import {
   crosshairLineStyleOf,
   crosshairModeOf,

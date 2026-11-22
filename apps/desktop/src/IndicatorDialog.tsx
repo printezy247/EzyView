@@ -18,7 +18,9 @@ export function IndicatorDialog({ open, onClose }: Props) {
   if (!open) return null;
 
   const q = query.trim().toLowerCase();
-  const matches = catalog().filter((d) => !q || d.name.toLowerCase().includes(q) || d.id.includes(q));
+  const matches = catalog().filter(
+    (d) => !q || d.name.toLowerCase().includes(q) || d.id.includes(q),
+  );
   const groups = groupByFamily(matches);
   const activeIds = new Set(active.map((i) => i.def.id));
 
@@ -65,9 +67,13 @@ export function IndicatorDialog({ open, onClose }: Props) {
                     className="w-full justify-start"
                   >
                     <span className="text-body text-ev-strong">{def.name}</span>
-                    <span className="text-dense text-ev-faint">{def.pane === "overlay" ? "overlay" : "pane"}</span>
+                    <span className="text-dense text-ev-faint">
+                      {def.pane === "overlay" ? "overlay" : "pane"}
+                    </span>
                     {activeIds.has(def.id) && (
-                      <span className="ml-auto rounded bg-ev-raised px-1.5 text-dense text-ev-muted">on chart</span>
+                      <span className="ml-auto rounded bg-ev-raised px-1.5 text-dense text-ev-muted">
+                        on chart
+                      </span>
                     )}
                   </Button>
                 </li>
@@ -75,7 +81,9 @@ export function IndicatorDialog({ open, onClose }: Props) {
             </ul>
           </section>
         ))}
-        {matches.length === 0 && <p className="px-2 py-4 text-body text-ev-muted">No indicators match “{query}”.</p>}
+        {matches.length === 0 && (
+          <p className="px-2 py-4 text-body text-ev-muted">No indicators match “{query}”.</p>
+        )}
       </div>
     </Dialog>
   );

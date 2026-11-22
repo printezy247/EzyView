@@ -16,7 +16,14 @@ const h = vi.hoisted(() => {
     close: vi.fn(async () => ({ ok: true })),
     cancel: vi.fn(async () => ({ ok: true })),
     modify: vi.fn(async () => ({ ok: true })),
-    connect: vi.fn(async () => ({ ok: true, session: "sess-1", login: 4123, server: "S", demo: true, balance: 10000 })),
+    connect: vi.fn(async () => ({
+      ok: true,
+      session: "sess-1",
+      login: 4123,
+      server: "S",
+      demo: true,
+      balance: 10000,
+    })),
     disconnect: vi.fn(async () => ({ ok: true })),
     audit: vi.fn(async () => [{ event: "order", result: "done" }]),
   };
@@ -81,7 +88,9 @@ describe("addAccount", () => {
     expect(h.keyring.get("mt5:4123@S")).toBe("hunter2");
     const blob = h.storage.get("ezyview.mt5.accounts.v1") ?? "";
     expect(blob).not.toContain("hunter2");
-    expect(JSON.parse(blob)).toEqual([{ server: "S", login: "4123", demo: false, label: undefined, addedAt: expect.any(Number) }]);
+    expect(JSON.parse(blob)).toEqual([
+      { server: "S", login: "4123", demo: false, label: undefined, addedAt: expect.any(Number) },
+    ]);
   });
 
   it("refuses names outside the keyring charset", async () => {
@@ -105,8 +114,14 @@ describe("connect", () => {
   });
 
   it("mints a session from the bridge and switches the chart source", async () => {
-    const session = await useMt5Accounts.getState().connect({ server: "S", login: "4123", password: "hunter2" });
-    expect(h.transport.connect).toHaveBeenCalledWith({ server: "S", login: "4123", password: "hunter2" });
+    const session = await useMt5Accounts
+      .getState()
+      .connect({ server: "S", login: "4123", password: "hunter2" });
+    expect(h.transport.connect).toHaveBeenCalledWith({
+      server: "S",
+      login: "4123",
+      password: "hunter2",
+    });
     expect(session.demo).toBe(true);
     expect(useMt5Accounts.getState().session).toMatchObject({ login: "4123", server: "S" });
     expect(useMt5.getState().source).toBe("mt5");
@@ -117,12 +132,20 @@ describe("connect", () => {
   it("reads the saved password back from the keyring", async () => {
     h.keyring.set("mt5:4123@S", "saved");
     await useMt5Accounts.getState().connect({ server: "S", login: "4123" });
-    expect(h.transport.connect).toHaveBeenCalledWith({ server: "S", login: "4123", password: "saved" });
+    expect(h.transport.connect).toHaveBeenCalledWith({
+      server: "S",
+      login: "4123",
+      password: "saved",
+    });
   });
 
   it("logs straight back out when a real account declines the risk dialog", async () => {
     mockOf("connect").mockImplementationOnce(async () => ({
-      ok: true, session: "sess-r", login: 999, server: "RealCo", demo: false,
+      ok: true,
+      session: "sess-r",
+      login: 999,
+      server: "RealCo",
+      demo: false,
     }));
     await expect(
       useMt5Accounts.getState().connect({ server: "RealCo", login: "999", password: "p" }),
@@ -134,16 +157,24 @@ describe("connect", () => {
 
   it("keeps a real account connected once the risk is accepted", async () => {
     mockOf("connect").mockImplementationOnce(async () => ({
-      ok: true, session: "sess-r", login: 999, server: "RealCo", demo: false,
+      ok: true,
+      session: "sess-r",
+      login: 999,
+      server: "RealCo",
+      demo: false,
     }));
-    const session = await useMt5Accounts.getState().connect({ server: "RealCo", login: "999", password: "p", riskAccepted: true });
+    const session = await useMt5Accounts
+      .getState()
+      .connect({ server: "RealCo", login: "999", password: "p", riskAccepted: true });
     expect(session.demo).toBe(false);
     expect(accountKindOf(session)).toBe("real");
     expect(h.transport.disconnect).not.toHaveBeenCalled();
   });
 
   it("surfaces a bridge error text and stores nothing", async () => {
-    mockOf("connect").mockImplementationOnce(async () => ({ error: "authorization failed (4001)" }));
+    mockOf("connect").mockImplementationOnce(async () => ({
+      error: "authorization failed (4001)",
+    }));
     await expect(
       useMt5Accounts.getState().connect({ server: "S", login: "1", password: "p" }),
     ).rejects.toThrow(/authorization failed/);
@@ -192,7 +223,9 @@ describe("fetchAudit", () => {
   });
 
   it("returns rows newest-first and swallows transport errors", async () => {
-    expect(await useMt5Accounts.getState().fetchAudit()).toEqual([{ event: "order", result: "done" }]);
+    expect(await useMt5Accounts.getState().fetchAudit()).toEqual([
+      { event: "order", result: "done" },
+    ]);
     mockOf("audit").mockImplementationOnce(async () => {
       throw new Error("bridge down");
     });

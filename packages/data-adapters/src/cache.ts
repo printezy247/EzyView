@@ -78,5 +78,9 @@ export class CandleCache {
 export const sharedCandleCache = new CandleCache();
 
 /** Cache key for a history request. */
-export const historyKey = (source: string, symbol: string, interval: string, limit: number): string =>
-  `${source}:${symbol}:${interval}:${limit}`;
+export const historyKey = (
+  source: string,
+  symbol: string,
+  interval: string,
+  limit: number,
+): string => `${source}:${symbol}:${interval}:${limit}`;

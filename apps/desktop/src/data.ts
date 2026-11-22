@@ -1,5 +1,19 @@
-import { createLiveSources, DemoMarketAdapter } from "@ezyview/data-adapters";
-import type { Candle, LiveSource, LiveSourceId, Quote, Resolution, SymbolInfo, UnsubscribeFn } from "@ezyview/data-adapters";
+import {
+  createLiveSources,
+  DemoMarketAdapter,
+  BINANCE_INTERVAL,
+  KRAKEN_INTERVAL,
+  TD_INTERVAL,
+} from "@ezyview/data-adapters";
+import type {
+  Candle,
+  LiveSource,
+  LiveSourceId,
+  Quote,
+  Resolution,
+  SymbolInfo,
+  UnsubscribeFn,
+} from "@ezyview/data-adapters";
 import { CircuitBreaker, CircuitOpenError, withRetry } from "./netRetry";
 import { readApiKey, useApiKeys } from "./apiKeys";
 import { effectiveSource, isLiveSourceChoice } from "./chartSource";
@@ -43,7 +57,15 @@ export const RESOLUTION_GROUPS: { label: string; items: Resolution[] }[] = [
   { label: "Days", items: ["1D", "1W", "1M"] },
 ];
 
-const UNIT_NAME: Record<string, string> = { t: "tick", s: "second", m: "minute", h: "hour", D: "day", W: "week", M: "month" };
+const UNIT_NAME: Record<string, string> = {
+  t: "tick",
+  s: "second",
+  m: "minute",
+  h: "hour",
+  D: "day",
+  W: "week",
+  M: "month",
+};
 
 /** Long name for an interval, e.g. "15m" → "15 minutes", "1D" → "1 day". */
 export function resolutionName(r: Resolution): string {
@@ -74,8 +96,20 @@ export function precisionFor(price: number | null): number {
 /** True while the chart/ticket are reading the broker's feed. */
 export const brokerFeed = (): boolean => useMt5.getState().source === "mt5";
 
+/**
+ * The exchange symbol the public feed actually serves for `symbol`, when it
+ * differs (e.g. XAUUSD -> PAXGUSDT). Null when the ticker maps to itself or
+ * has no public pair. Lets the UI say "≈ proxy" instead of implying spot.
+ */
+export function publicProxyOf(symbol: string): string | null {
+  const ticker = tickerOf(symbol).toUpperCase();
+  const pair = PUBLIC_PAIR_MAP[ticker];
+  return pair && pair !== ticker ? pair : null;
+}
+
 /** The source a chart really reads from: its own choice, or the global feed switch for `auto`. */
-export const resolveSource = (choice?: DataSourceChoice): EffectiveSource => effectiveSource(choice, useMt5.getState().source);
+export const resolveSource = (choice?: DataSourceChoice): EffectiveSource =>
+  effectiveSource(choice, useMt5.getState().source);
 
 let liveSources: Record<LiveSourceId, LiveSource> | null = null;
 
@@ -89,7 +123,14 @@ let liveSources: Record<LiveSourceId, LiveSource> | null = null;
  */
 export function getLiveSources(): Record<LiveSourceId, LiveSource> {
   liveSources ??= createLiveSources({
-    onRateLimit: (id, ms) => recordFeedFailure(id, `rate limited, retrying in ${Math.ceil(ms / 1000)}s`),
+    onRateLimit: (id, ms) =>
+      recordFeedFailure(id, `rate limited, retrying in ${Math.ceil(ms / 1000)}s`),
+    // A dead socket falls back to polling inside the adapter; without this the
+    // chart would keep showing the last pushed price as if it were live.
+    onHealth: (id, ok, reason) => {
+      if (ok) recordFeedSuccess(id);
+      else recordFeedFailure(id, reason ?? "stream unavailable");
+    },
     getKey: async (name) => {
       if (name !== "twelvedata") return null;
       return useApiKeys.getState().keys.twelvedata || (await readApiKey(name));
@@ -124,36 +165,35 @@ const PUBLIC_PAIR_MAP: Record<string, string> = {
   SOLUSDT: "SOLUSDT",
 };
 
-const BINANCE_INTERVAL_MAP: Partial<Record<Resolution, string>> = {
-  "1s": "1s",
-  "1m": "1m",
-  "3m": "3m",
-  "5m": "5m",
-  "15m": "15m",
-  "30m": "30m",
-  "1h": "1h",
-  "2h": "2h",
-  "4h": "4h",
-  "6h": "6h",
-  "8h": "8h",
-  "12h": "12h",
-  "1D": "1d",
-  "1W": "1w",
-  "1M": "1M",
-};
+/** The public-feed interval map lives in the adapter; re-exported shape kept local. */
+const BINANCE_INTERVAL_MAP = BINANCE_INTERVAL;
 
-/** Intervals each live provider can serve (mirrors the adapters' interval maps). */
+/** Intervals each live provider can serve, derived from the adapters' own maps. */
 const LIVE_RESOLUTIONS: Record<LiveSourceId, ReadonlySet<Resolution>> = {
-  binance: new Set(Object.keys(BINANCE_INTERVAL_MAP) as Resolution[]),
-  kraken: new Set<Resolution>(["1m", "5m", "15m", "30m", "1h", "4h", "1D", "1W"]),
-  twelvedata: new Set<Resolution>(["1m", "5m", "15m", "30m", "1h", "2h", "4h", "1D", "1W", "1M"]),
+  binance: new Set(Object.keys(BINANCE_INTERVAL) as Resolution[]),
+  kraken: new Set(Object.keys(KRAKEN_INTERVAL) as Resolution[]),
+  twelvedata: new Set(Object.keys(TD_INTERVAL) as Resolution[]),
 };
 
 const isTestEnv = (): boolean =>
-  typeof process !== "undefined" && Boolean(process.env?.VITEST || process.env?.NODE_ENV === "test");
+  typeof process !== "undefined" &&
+  Boolean(process.env?.VITEST || process.env?.NODE_ENV === "test");
 
 const liveQuoteCache = new Map<string, { quote: Quote; fetchedAt: number }>();
+/** Quote-cache bound: every distinct ticker ever polled would otherwise stay forever. */
+const LIVE_QUOTE_CACHE_MAX = 200;
 const livePublicTickers = new Set<string>();
+/** Provenance tickers are re-added on the next quote; cap the set so it cannot grow forever. */
+const LIVE_PUBLIC_TICKERS_MAX = 1000;
+
+/** Insert into the quote cache, evicting the oldest entry past the cap. */
+function cacheLiveQuote(ticker: string, quote: Quote, fetchedAt: number): void {
+  if (liveQuoteCache.size >= LIVE_QUOTE_CACHE_MAX) {
+    const oldest = liveQuoteCache.keys().next().value;
+    if (oldest !== undefined) liveQuoteCache.delete(oldest);
+  }
+  liveQuoteCache.set(ticker, { quote, fetchedAt });
+}
 
 /**
  * One circuit breaker for the public Binance feed. When it is down we stop
@@ -231,7 +271,8 @@ async function fetchPublicQuote(symbol: string): Promise<Quote | null> {
       changePercent: Number.isFinite(changePercent) ? changePercent : 0,
       time: Math.floor((data.closeTime ?? nowMs) / 1000),
     };
-    liveQuoteCache.set(ticker, { quote, fetchedAt: nowMs });
+    cacheLiveQuote(ticker, quote, nowMs);
+    if (livePublicTickers.size >= LIVE_PUBLIC_TICKERS_MAX) livePublicTickers.clear();
     livePublicTickers.add(ticker);
     return quote;
   } catch (err) {
@@ -300,24 +341,29 @@ async function fetchPublicHistory(
         Number.isFinite(low) &&
         Number.isFinite(close)
       ) {
-        candles.push({ time, open, high, low, close, volume: Number.isFinite(volume) ? volume : 0 });
+        candles.push({
+          time,
+          open,
+          high,
+          low,
+          close,
+          volume: Number.isFinite(volume) ? volume : 0,
+        });
       }
     }
     if (candles.length === 0) return null;
+    if (livePublicTickers.size >= LIVE_PUBLIC_TICKERS_MAX) livePublicTickers.clear();
     livePublicTickers.add(ticker);
     const newest = candles[candles.length - 1]!;
-    const first = candles[0]!;
     if (endTimeSec === undefined && !liveQuoteCache.has(ticker)) {
-      liveQuoteCache.set(ticker, {
-        fetchedAt: Date.now(),
-        quote: {
-          symbol,
-          last: newest.close,
-          change: newest.close - first.open,
-          changePercent: first.open > 0 ? ((newest.close - first.open) / first.open) * 100 : 0,
-          time: Math.floor(Date.now() / 1000),
-        },
-      });
+      // Seed a quote from the newest close — price and time only. A change
+      // computed over the loaded window is NOT the quote's change and must
+      // not be shown as one.
+      cacheLiveQuote(
+        ticker,
+        { symbol, last: newest.close, time: Math.floor(Date.now() / 1000) },
+        Date.now(),
+      );
     }
     return candles;
   } catch {
@@ -334,7 +380,10 @@ export async function searchSymbols(query: string): Promise<SymbolInfo[]> {
 }
 
 /** Symbol search against one specific feed, regardless of the global switch. */
-export async function searchSymbolsForSource(query: string, source: EffectiveSource): Promise<SymbolInfo[]> {
+export async function searchSymbolsForSource(
+  query: string,
+  source: EffectiveSource,
+): Promise<SymbolInfo[]> {
   if (source === "mt5") return getMt5().data.searchSymbols(query);
   if (isLiveSourceChoice(source)) return getLiveSources()[source].searchSymbols(query);
   return market.searchSymbols(query);
@@ -487,6 +536,20 @@ export async function safeQuote(symbol: string, source?: DataSourceChoice): Prom
  */
 const historyCache = new Map<string, { at: number; candles: Candle[] }>();
 const HISTORY_TTL_MS = 15_000;
+/**
+ * Bound the cache: the key carries the scroll-back `before`, so every older
+ * page would otherwise be a permanent entry. Past the cap the oldest insert
+ * goes first (Map iterates in insertion order).
+ */
+const HISTORY_CACHE_MAX = 60;
+
+function cacheHistory(key: string, candles: Candle[]): void {
+  if (historyCache.size >= HISTORY_CACHE_MAX) {
+    const oldest = historyCache.keys().next().value;
+    if (oldest !== undefined) historyCache.delete(oldest);
+  }
+  historyCache.set(key, { at: Date.now(), candles });
+}
 
 export async function loadHistory(
   symbol: string,
@@ -516,18 +579,25 @@ export async function loadHistory(
         // An empty answer for an interval the provider never serves is a clear
         // error, not a blank chart with no explanation.
         if (candles.length === 0 && !LIVE_RESOLUTIONS[feed].has(resolution)) {
-          throw new Error(`${getLiveSources()[feed].label} has no ${resolutionName(resolution)} bars. Pick another interval or feed.`);
+          throw new Error(
+            `${getLiveSources()[feed].label} has no ${resolutionName(resolution)} bars. Pick another interval or feed.`,
+          );
         }
         return candles;
       }
       if (feed === "mt5") return await getMt5().data.getHistory(request);
-      const live = await fetchPublicHistory(symbol, resolution, limit, before !== undefined ? to : undefined);
+      const live = await fetchPublicHistory(
+        symbol,
+        resolution,
+        limit,
+        before !== undefined ? to : undefined,
+      );
       if (live && live.length > 0) {
-        historyCache.set(key, { at: Date.now(), candles: live });
+        cacheHistory(key, live);
         return live;
       }
       const demo = await market.getHistory(request);
-      historyCache.set(key, { at: Date.now(), candles: demo });
+      cacheHistory(key, demo);
       return demo;
     } finally {
       inFlightHistory.delete(key);

@@ -7,7 +7,14 @@ interface Props {
   onClose: () => void;
 }
 
-const EMOTIONS: readonly TradeEmotion[] = ["calm", "confident", "anxious", "fomo", "revenge", "tired"];
+const EMOTIONS: readonly TradeEmotion[] = [
+  "calm",
+  "confident",
+  "anxious",
+  "fomo",
+  "revenge",
+  "tired",
+];
 
 const pad2 = (n: number): string => String(n).padStart(2, "0");
 
@@ -94,7 +101,9 @@ export function JournalEntryDialog({ onClose }: Props) {
       return;
     }
     const reader = new FileReader();
-    reader.addEventListener("load", () => setShot(typeof reader.result === "string" ? reader.result : null));
+    reader.addEventListener("load", () =>
+      setShot(typeof reader.result === "string" ? reader.result : null),
+    );
     reader.readAsDataURL(file);
   };
 
@@ -105,7 +114,11 @@ export function JournalEntryDialog({ onClose }: Props) {
       size="lg"
       actions={
         <>
-          {!valid && <span className="mr-auto text-dense text-ev-faint">Symbol, qty &gt; 0 and entry price &gt; 0 are required.</span>}
+          {!valid && (
+            <span className="mr-auto text-dense text-ev-faint">
+              Symbol, qty &gt; 0 and entry price &gt; 0 are required.
+            </span>
+          )}
           <Button variant="ghost" size="md" onClick={onClose}>
             Cancel
           </Button>
@@ -118,7 +131,15 @@ export function JournalEntryDialog({ onClose }: Props) {
       <div className="grid grid-cols-3 gap-3">
         <Field label="Symbol" required>
           {({ controlId, describedBy, invalid }) => (
-            <Input id={controlId} autoFocus value={symbol} onChange={(e) => setSymbol(e.target.value)} aria-describedby={describedBy} aria-invalid={invalid || undefined} block />
+            <Input
+              id={controlId}
+              autoFocus
+              value={symbol}
+              onChange={(e) => setSymbol(e.target.value)}
+              aria-describedby={describedBy}
+              aria-invalid={invalid || undefined}
+              block
+            />
           )}
         </Field>
         <Select
@@ -132,36 +153,71 @@ export function JournalEntryDialog({ onClose }: Props) {
           className="w-full"
         />
         <NumberInput label="Qty" required value={qty} min={0} onValueChange={setQty} />
-        <NumberInput label="Entry price" required value={entryPrice} min={0} onValueChange={setEntryPrice} />
+        <NumberInput
+          label="Entry price"
+          required
+          value={entryPrice}
+          min={0}
+          onValueChange={setEntryPrice}
+        />
         <Field label="Entry time">
           {({ controlId }) => (
-            <Input id={controlId} type="datetime-local" value={entryTime} onChange={(e) => setEntryTime(e.target.value)} block />
+            <Input
+              id={controlId}
+              type="datetime-local"
+              value={entryTime}
+              onChange={(e) => setEntryTime(e.target.value)}
+              block
+            />
           )}
         </Field>
         <NumberInput label="Exit price" value={exitPrice} min={0} onValueChange={setExitPrice} />
         <Field label="Exit time">
           {({ controlId }) => (
-            <Input id={controlId} type="datetime-local" value={exitTime} onChange={(e) => setExitTime(e.target.value)} block />
+            <Input
+              id={controlId}
+              type="datetime-local"
+              value={exitTime}
+              onChange={(e) => setExitTime(e.target.value)}
+              block
+            />
           )}
         </Field>
         <NumberInput label="P&L" value={pnl} onValueChange={setPnl} />
         <NumberInput label="Fees" value={fees} min={0} onValueChange={setFees} />
         <NumberInput label="Stop" value={stopPrice} min={0} onValueChange={setStopPrice} />
         <NumberInput label="Target" value={targetPrice} min={0} onValueChange={setTargetPrice} />
-        <NumberInput label="Planned risk" value={plannedRisk} min={0} onValueChange={setPlannedRisk} />
+        <NumberInput
+          label="Planned risk"
+          value={plannedRisk}
+          min={0}
+          onValueChange={setPlannedRisk}
+        />
         <Field label="Setup">
-          {({ controlId }) => <Input id={controlId} value={setup} onChange={(e) => setSetup(e.target.value)} block />}
+          {({ controlId }) => (
+            <Input id={controlId} value={setup} onChange={(e) => setSetup(e.target.value)} block />
+          )}
         </Field>
         <Field label="Tags" hint="Comma separated">
           {({ controlId, describedBy }) => (
-            <Input id={controlId} placeholder="breakout, A+ setup" value={tags} onChange={(e) => setTags(e.target.value)} aria-describedby={describedBy} block />
+            <Input
+              id={controlId}
+              placeholder="breakout, A+ setup"
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              aria-describedby={describedBy}
+              block
+            />
           )}
         </Field>
         <Select
           label="Emotion"
           value={emotion}
           onChange={(v) => setEmotion(v as TradeEmotion | "")}
-          options={[{ value: "", label: "—" }, ...EMOTIONS.map((option) => ({ value: option, label: option }))]}
+          options={[
+            { value: "", label: "—" },
+            ...EMOTIONS.map((option) => ({ value: option, label: option })),
+          ]}
           className="w-full"
         />
         <Select
@@ -190,12 +246,24 @@ export function JournalEntryDialog({ onClose }: Props) {
       <div className="mt-3 grid grid-cols-2 gap-3">
         <Field label="Rules (one per line)">
           {({ controlId }) => (
-            <textarea id={controlId} rows={3} value={rulesText} onChange={(e) => setRulesText(e.target.value)} className="w-full resize-none rounded border border-ev-line bg-ev-bg px-2 py-1 text-base text-ev-text focus:border-ev-accent" />
+            <textarea
+              id={controlId}
+              rows={3}
+              value={rulesText}
+              onChange={(e) => setRulesText(e.target.value)}
+              className="w-full resize-none rounded border border-ev-line bg-ev-bg px-2 py-1 text-base text-ev-text focus:border-ev-accent"
+            />
           )}
         </Field>
         <Field label="Notes">
           {({ controlId }) => (
-            <textarea id={controlId} rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full resize-none rounded border border-ev-line bg-ev-bg px-2 py-1 text-base text-ev-text focus:border-ev-accent" />
+            <textarea
+              id={controlId}
+              rows={3}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="w-full resize-none rounded border border-ev-line bg-ev-bg px-2 py-1 text-base text-ev-text focus:border-ev-accent"
+            />
           )}
         </Field>
       </div>

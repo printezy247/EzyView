@@ -41,7 +41,10 @@ for (const full of files) {
   const selects = count(text, /<select[\s>]/g);
   const inputs = count(text, /<input[\s>]/g);
   const arbitrary = count(text, /\b(?:h|w|text|gap|p|px|py|m|mx|my|rounded)-\[\d/g);
-  const literalColour = count(text, /\b(?:text|bg|border)-(?:red|green|blue|yellow|slate|gray|zinc)-/g);
+  const literalColour = count(
+    text,
+    /\b(?:text|bg|border)-(?:red|green|blue|yellow|slate|gray|zinc)-/g,
+  );
   const usesKit = /from "\.\/ui"|from "\.\.\/ui"|from "\.\/ui\/|from "\.\.\/ui\//.test(text);
   if (buttons + selects + inputs === 0 && literalColour === 0) continue;
   rows.push({ file: rel, buttons, selects, inputs, arbitrary, literalColour, usesKit });
@@ -118,7 +121,8 @@ if (process.argv.includes("--check")) {
   const offenders = rows.filter((r) => r.selects > 0 || r.literalColour > 0);
   if (offenders.length > 0) {
     console.error("UI budget exceeded (native <select> or literal colour):");
-    for (const r of offenders) console.error(`  ${r.file}: ${r.selects} selects, ${r.literalColour} literal colours`);
+    for (const r of offenders)
+      console.error(`  ${r.file}: ${r.selects} selects, ${r.literalColour} literal colours`);
     process.exit(1);
   }
   process.stdout.write("UI budget is clean.\n");

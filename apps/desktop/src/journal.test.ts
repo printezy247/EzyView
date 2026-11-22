@@ -70,7 +70,9 @@ beforeEach(() => {
 
 describe("backward-compatible restore", () => {
   it("restores an old {entries, notes}-only blob with zero data loss", async () => {
-    const oldEntries = [{ id: "e1", symbol: "XAUUSD", side: "short", qty: 2, entryPrice: 1900, entryTime: 1 }];
+    const oldEntries = [
+      { id: "e1", symbol: "XAUUSD", side: "short", qty: 2, entryPrice: 1900, entryTime: 1 },
+    ];
     const oldNotes = [{ id: "n1", time: 2, text: "watch London open" }];
     h.storage.set(KEY, JSON.stringify({ entries: oldEntries, notes: oldNotes }));
 
@@ -191,7 +193,9 @@ describe("addEntry", () => {
 
   it("trims, drops empties and dedupes tags preserving first-seen order", async () => {
     const { useJournal } = await loadStore();
-    useJournal.getState().addEntry(entry({ tags: [" trend ", "trend", "breakout", "", "  ", "breakout"] }));
+    useJournal
+      .getState()
+      .addEntry(entry({ tags: [" trend ", "trend", "breakout", "", "  ", "breakout"] }));
     expect(useJournal.getState().entries[0]?.tags).toEqual(["trend", "breakout"]);
   });
 
@@ -209,7 +213,12 @@ describe("saveReview / removeReview", () => {
     const { useJournal } = await loadStore();
     useJournal.getState().saveReview({ key: "2026-10-20", period: "daily", text: "first" });
     const [review] = useJournal.getState().savedReviews;
-    expect(review).toMatchObject({ key: "2026-10-20", period: "daily", text: "first", savedAt: 1700000000 });
+    expect(review).toMatchObject({
+      key: "2026-10-20",
+      period: "daily",
+      text: "first",
+      savedAt: 1700000000,
+    });
     expect(review?.id.length).toBeGreaterThan(0);
     vi.useRealTimers();
   });
@@ -258,7 +267,9 @@ describe("saveReview / removeReview", () => {
     expect(after).toHaveLength(200);
     const updated = after.find((r) => r.key === "k199");
     expect(updated).toMatchObject({ id: target?.id, text: "replaced" });
-    expect((persisted().savedReviews as Array<{ text: string }>).find((r) => r.text === "replaced")).toBeDefined();
+    expect(
+      (persisted().savedReviews as Array<{ text: string }>).find((r) => r.text === "replaced"),
+    ).toBeDefined();
   });
 
   it("removeReview drops only the matching id", async () => {
@@ -335,7 +346,13 @@ describe("clear", () => {
     expect(after.savedReviews).toEqual([]);
     expect(after.propFirm).toEqual({});
     expect(after.plans).toEqual([]);
-    expect(persisted()).toMatchObject({ entries: [], notes: [], savedReviews: [], propFirm: {}, plans: [] });
+    expect(persisted()).toMatchObject({
+      entries: [],
+      notes: [],
+      savedReviews: [],
+      propFirm: {},
+      plans: [],
+    });
   });
 });
 
@@ -358,7 +375,10 @@ describe("pre-trade plans", () => {
     first.flushJournal();
 
     const second = await loadStore();
-    expect(second.useJournal.getState().plans[0]).toMatchObject({ symbol: "eurusd", status: "executed" });
+    expect(second.useJournal.getState().plans[0]).toMatchObject({
+      symbol: "eurusd",
+      status: "executed",
+    });
 
     second.useJournal.getState().removePlan(plan.id);
     expect(second.useJournal.getState().plans).toEqual([]);

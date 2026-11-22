@@ -61,7 +61,8 @@ export function useSectionNavigation(): void {
           const sections: RoutePath[] = NAV_SECTIONS.map((s) => s.to);
           const current = sections.indexOf(pathRef.current as RoutePath);
           const base = current === -1 ? (intent.step > 0 ? -1 : 0) : current;
-          const nextIndex = (((base + intent.step) % sections.length) + sections.length) % sections.length;
+          const nextIndex =
+            (((base + intent.step) % sections.length) + sections.length) % sections.length;
           navigate(sections[nextIndex]!);
           break;
         }

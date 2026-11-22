@@ -27,7 +27,7 @@ function fakeResult(partial: Partial<BacktestResult> = {}): BacktestResult {
 }
 
 /** Trade stubs — ranking only ever reads `.length`, never the fields. */
-const tradesOf = (n: number): Trade[] => Array.from({ length: n }, () => ({} as Trade));
+const tradesOf = (n: number): Trade[] => Array.from({ length: n }, () => ({}) as Trade);
 
 /** totalPnl prefers a=2; winRate prefers a=1. */
 const pnlVsWinRate = (inputs: Record<string, number>): BacktestResult =>
@@ -55,7 +55,10 @@ describe("optimizePine", () => {
       { key: "a", values: [1, 2] },
       { key: "b", values: [10, 20, 30] },
     ];
-    const out = optimizePine((inputs) => fakeResult({ totalPnl: inputs.a! * 100 + inputs.b! }), specs);
+    const out = optimizePine(
+      (inputs) => fakeResult({ totalPnl: inputs.a! * 100 + inputs.b! }),
+      specs,
+    );
 
     expect(out.runs).toHaveLength(6);
     expect(out.capped).toBe(false);
@@ -125,7 +128,9 @@ describe("optimizePine", () => {
   });
 
   it("ranks by a custom metric when one is given", () => {
-    const out = optimizePine(pnlVsWinRate, [{ key: "a", values: [1, 2] }], { metric: (r) => r.winRate });
+    const out = optimizePine(pnlVsWinRate, [{ key: "a", values: [1, 2] }], {
+      metric: (r) => r.winRate,
+    });
 
     expect(out.best?.inputs).toEqual({ a: 1 });
   });
@@ -179,18 +184,21 @@ len = input.int(2, "Length")
 longCondition = ta.crossover(close, ta.sma(close, len))
 if longCondition
   strategy.entry("Long", strategy.long)`;
-    const out = optimizePine((inputs) => {
-      const ctx: Context = {
-        open: close,
-        high: close,
-        low: close,
-        close,
-        volume: close.map(() => 1000),
-        barIndex: close.length - 1,
-        inputs: { ...inputs },
-      };
-      return backtest(runPine(source, ctx).orders, { close });
-    }, [{ key: "0", values: [2, 3] }]);
+    const out = optimizePine(
+      (inputs) => {
+        const ctx: Context = {
+          open: close,
+          high: close,
+          low: close,
+          close,
+          volume: close.map(() => 1000),
+          barIndex: close.length - 1,
+          inputs: { ...inputs },
+        };
+        return backtest(runPine(source, ctx).orders, { close });
+      },
+      [{ key: "0", values: [2, 3] }],
+    );
 
     expect(out.runs).toHaveLength(2);
     const pnls = out.runs.map((r) => r.result.totalPnl);

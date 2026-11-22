@@ -1,5 +1,12 @@
 import type { Drawing, DrawingToolId, ScreenPoint } from "./types.js";
-import { distToPolyline, distToSegment, distToInfiniteLine, insidePolygon, insideRect, near } from "./geometry.js";
+import {
+  distToPolyline,
+  distToSegment,
+  distToInfiniteLine,
+  insidePolygon,
+  insideRect,
+  near,
+} from "./geometry.js";
 
 /**
  * Geometry for the second generation of drawing tools: pitchforks, Fibonacci
@@ -19,9 +26,21 @@ export const PITCHFORK_TOOLS = [
   "pitchfork_inside",
 ] as const;
 
-export const FIB_PACK_TOOLS = ["fib_fan", "fib_arcs", "fib_channel", "fib_timezones", "fib_wedge"] as const;
+export const FIB_PACK_TOOLS = [
+  "fib_fan",
+  "fib_arcs",
+  "fib_channel",
+  "fib_timezones",
+  "fib_wedge",
+] as const;
 
-export const GANN_PACK_TOOLS = ["gann_fan", "gann_box", "gann_square", "gann_square_from_two", "gann_time"] as const;
+export const GANN_PACK_TOOLS = [
+  "gann_fan",
+  "gann_box",
+  "gann_square",
+  "gann_square_from_two",
+  "gann_time",
+] as const;
 
 export const PATTERN_PACK_TOOLS = [
   "xabcd",
@@ -105,7 +124,10 @@ export interface AdvancedFigure {
   arcs: { centre: ScreenPoint; radius: number; start: number; end: number }[];
 }
 
-const mid = (a: ScreenPoint, b: ScreenPoint): ScreenPoint => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+const mid = (a: ScreenPoint, b: ScreenPoint): ScreenPoint => ({
+  x: (a.x + b.x) / 2,
+  y: (a.y + b.y) / 2,
+});
 const add = (a: ScreenPoint, b: ScreenPoint): ScreenPoint => ({ x: a.x + b.x, y: a.y + b.y });
 const sub = (a: ScreenPoint, b: ScreenPoint): ScreenPoint => ({ x: a.x - b.x, y: a.y - b.y });
 const scale = (a: ScreenPoint, k: number): ScreenPoint => ({ x: a.x * k, y: a.y * k });
@@ -126,7 +148,12 @@ export function pitchforkGeometry(
   a: ScreenPoint,
   b: ScreenPoint,
   c: ScreenPoint,
-): { origin: ScreenPoint; medianEnd: ScreenPoint; upper: [ScreenPoint, ScreenPoint]; lower: [ScreenPoint, ScreenPoint] } {
+): {
+  origin: ScreenPoint;
+  medianEnd: ScreenPoint;
+  upper: [ScreenPoint, ScreenPoint];
+  lower: [ScreenPoint, ScreenPoint];
+} {
   const pivot =
     tool === "pitchfork_schiff"
       ? mid(a, b)
@@ -146,7 +173,11 @@ export function pitchforkGeometry(
 }
 
 /** Parallel offsets for a fib channel: the base AB and the line through C. */
-export function fibChannelGeometry(a: ScreenPoint, b: ScreenPoint, c: ScreenPoint): {
+export function fibChannelGeometry(
+  a: ScreenPoint,
+  b: ScreenPoint,
+  c: ScreenPoint,
+): {
   base: [ScreenPoint, ScreenPoint];
   offset: ScreenPoint;
 } {
@@ -192,8 +223,18 @@ export function smoothCurve(points: readonly ScreenPoint[], samples = 18): Scree
       const t2 = t * t;
       const t3 = t2 * t;
       out.push({
-        x: 0.5 * (2 * p1.x + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
-        y: 0.5 * (2 * p1.y + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3),
+        x:
+          0.5 *
+          (2 * p1.x +
+            (-p0.x + p2.x) * t +
+            (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 +
+            (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
+        y:
+          0.5 *
+          (2 * p1.y +
+            (-p0.y + p2.y) * t +
+            (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 +
+            (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3),
       });
     }
   }
@@ -202,7 +243,11 @@ export function smoothCurve(points: readonly ScreenPoint[], samples = 18): Scree
 }
 
 /** Harmonic/Elliott ratio between two legs, as the label shown on the chart. */
-export function legRatio(from: ScreenPoint, to: ScreenPoint, reference: ScreenPoint[]): number | null {
+export function legRatio(
+  from: ScreenPoint,
+  to: ScreenPoint,
+  reference: ScreenPoint[],
+): number | null {
   const referenceLength = reference.length >= 2 ? Math.abs(reference[1]!.y - reference[0]!.y) : 0;
   if (referenceLength === 0) return null;
   return Math.abs(to.y - from.y) / referenceLength;
@@ -224,7 +269,10 @@ const patternLabels = (tool: string, count: number): string[] => {
  * supplies already-projected anchors; null anchors mean the figure is
  * off-screen, so the figure is empty rather than partially wrong.
  */
-export function advancedFigure(drawing: Drawing, pts: readonly (ScreenPoint | null)[]): AdvancedFigure {
+export function advancedFigure(
+  drawing: Drawing,
+  pts: readonly (ScreenPoint | null)[],
+): AdvancedFigure {
   const figure: AdvancedFigure = { segments: [], polygons: [], labels: [], arcs: [] };
   const p = pts.filter((x): x is ScreenPoint => x !== null);
   if (p.length === 0) return figure;
@@ -281,7 +329,13 @@ export function advancedFigure(drawing: Drawing, pts: readonly (ScreenPoint | nu
       if (!a || !b) break;
       for (const ratio of FIB_RATIOS) {
         const x = lerp(a, b, ratio).x;
-        figure.segments.push({ points: [{ x, y: a.y - 40 }, { x, y: a.y + 40 }], dashed: ratio !== 0 });
+        figure.segments.push({
+          points: [
+            { x, y: a.y - 40 },
+            { x, y: a.y + 40 },
+          ],
+          dashed: ratio !== 0,
+        });
         label({ x, y: a.y - 46 }, `${(ratio * 100).toFixed(0)}%`);
       }
       break;
@@ -299,7 +353,12 @@ export function advancedFigure(drawing: Drawing, pts: readonly (ScreenPoint | nu
       const radius = Math.max(len(sub(b, a)), 12);
       for (const angle of GANN_ANGLES) {
         const theta = (angle * Math.PI) / 180;
-        figure.segments.push({ points: [a, { x: a.x + Math.cos(theta) * radius * 2.2, y: a.y + Math.sin(theta) * radius * 2.2 }] });
+        figure.segments.push({
+          points: [
+            a,
+            { x: a.x + Math.cos(theta) * radius * 2.2, y: a.y + Math.sin(theta) * radius * 2.2 },
+          ],
+        });
       }
       break;
     }
@@ -307,11 +366,23 @@ export function advancedFigure(drawing: Drawing, pts: readonly (ScreenPoint | nu
       if (!a || !b) break;
       figure.polygons.push([a, { x: b.x, y: a.y }, b, { x: a.x, y: b.y }]);
       for (const ratio of [0.25, 0.5, 0.75]) {
-        figure.segments.push({ points: [lerp(a, { x: a.x, y: b.y }, ratio), lerp({ x: b.x, y: a.y }, b, ratio)], dashed: true });
-        figure.segments.push({ points: [lerp(a, { x: b.x, y: a.y }, ratio), lerp({ x: a.x, y: b.y }, b, ratio)], dashed: true });
+        figure.segments.push({
+          points: [lerp(a, { x: a.x, y: b.y }, ratio), lerp({ x: b.x, y: a.y }, b, ratio)],
+          dashed: true,
+        });
+        figure.segments.push({
+          points: [lerp(a, { x: b.x, y: a.y }, ratio), lerp({ x: a.x, y: b.y }, b, ratio)],
+          dashed: true,
+        });
       }
       figure.segments.push({ points: [a, b], dashed: false });
-      figure.segments.push({ points: [{ x: a.x, y: b.y }, { x: b.x, y: a.y }], dashed: false });
+      figure.segments.push({
+        points: [
+          { x: a.x, y: b.y },
+          { x: b.x, y: a.y },
+        ],
+        dashed: false,
+      });
       break;
     }
     case "gann_square":
@@ -320,7 +391,8 @@ export function advancedFigure(drawing: Drawing, pts: readonly (ScreenPoint | nu
       if (drawing.tool === "gann_square_from_two") {
         const corners = squareFromTwo(a, b);
         figure.polygons.push(corners);
-        for (const point of corners) figure.segments.push({ points: [mid(a, b), point], dashed: true });
+        for (const point of corners)
+          figure.segments.push({ points: [mid(a, b), point], dashed: true });
         break;
       }
       const side = Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y));
@@ -329,19 +401,37 @@ export function advancedFigure(drawing: Drawing, pts: readonly (ScreenPoint | nu
       const corners = [a, { x: x1, y: a.y }, { x: x1, y: y1 }, { x: a.x, y: y1 }];
       figure.polygons.push(corners);
       figure.segments.push({ points: [a, { x: x1, y: y1 }], dashed: true });
-      figure.segments.push({ points: [{ x: a.x, y: y1 }, { x: x1, y: a.y }], dashed: true });
+      figure.segments.push({
+        points: [
+          { x: a.x, y: y1 },
+          { x: x1, y: a.y },
+        ],
+        dashed: true,
+      });
       break;
     }
     case "gann_time": {
       if (!a || !b) break;
       for (const ratio of [1 / 3, 2 / 3, 1]) {
         const x = lerp(a, b, ratio).x;
-        figure.segments.push({ points: [{ x, y: a.y }, { x, y: b.y }], dashed: ratio !== 1 });
+        figure.segments.push({
+          points: [
+            { x, y: a.y },
+            { x, y: b.y },
+          ],
+          dashed: ratio !== 1,
+        });
         label({ x, y: b.y }, `${Math.round(ratio * 3)}`);
       }
       for (const ratio of [1 / 3, 2 / 3, 1]) {
         const y = lerp(a, b, ratio).y;
-        figure.segments.push({ points: [{ x: a.x, y }, { x: b.x, y }], dashed: true });
+        figure.segments.push({
+          points: [
+            { x: a.x, y },
+            { x: b.x, y },
+          ],
+          dashed: true,
+        });
       }
       break;
     }
@@ -385,14 +475,25 @@ export function advancedFigure(drawing: Drawing, pts: readonly (ScreenPoint | nu
     }
     case "comment": {
       if (!a || !b) break;
-      figure.polygons.push([b, { x: b.x + 150, y: b.y }, { x: b.x + 150, y: b.y + 52 }, { x: b.x, y: b.y + 52 }]);
+      figure.polygons.push([
+        b,
+        { x: b.x + 150, y: b.y },
+        { x: b.x + 150, y: b.y + 52 },
+        { x: b.x, y: b.y + 52 },
+      ]);
       figure.segments.push({ points: [a, b], dashed: true });
       label({ x: b.x + 8, y: b.y + 8 }, drawing.text || "Comment", false);
       break;
     }
     case "price_note": {
       if (!a) break;
-      figure.segments.push({ points: [{ x: 0, y: a.y }, { x: a.x, y: a.y }], dashed: true });
+      figure.segments.push({
+        points: [
+          { x: 0, y: a.y },
+          { x: a.x, y: a.y },
+        ],
+        dashed: true,
+      });
       label({ x: a.x, y: a.y - 10 }, drawing.text || "Note");
       break;
     }
@@ -409,7 +510,10 @@ export function advancedFigure(drawing: Drawing, pts: readonly (ScreenPoint | nu
     case "price_range":
     case "projected_range": {
       if (!a || !b) break;
-      const box = drawing.tool === "price_range" ? [a, { x: p[p.length - 1]!.x, y: b.y }, b, { x: a.x, y: b.y }] : [a, { x: b.x, y: a.y }, b, { x: a.x, y: b.y }];
+      const box =
+        drawing.tool === "price_range"
+          ? [a, { x: p[p.length - 1]!.x, y: b.y }, b, { x: a.x, y: b.y }]
+          : [a, { x: b.x, y: a.y }, b, { x: a.x, y: b.y }];
       figure.polygons.push(box);
       label(mid(a, b), `${drawing.tool.replace(/_/g, " ")}`, false);
       break;
@@ -423,7 +527,13 @@ export function advancedFigure(drawing: Drawing, pts: readonly (ScreenPoint | nu
         const x = a.x + step * i;
         const wave = 0.25 + Math.abs(Math.sin(i * 1.7)) * 0.75;
         const y = b.y + (height * wave) / 2;
-        figure.segments.push({ points: [{ x, y: b.y - (height * wave) / 2 }, { x, y }], width: Math.max(1, Math.abs(step) * 0.55) });
+        figure.segments.push({
+          points: [
+            { x, y: b.y - (height * wave) / 2 },
+            { x, y },
+          ],
+          width: Math.max(1, Math.abs(step) * 0.55),
+        });
       }
       label({ x: mid(a, b).x, y: Math.min(a.y, b.y) - 8 }, "Bars pattern");
       break;
@@ -456,7 +566,12 @@ export function advancedFigure(drawing: Drawing, pts: readonly (ScreenPoint | nu
     }
     case "arc": {
       if (!a || !b || !c) break;
-      figure.arcs.push({ centre: a, radius: len(sub(b, a)), start: Math.atan2(b.y - a.y, b.x - a.x), end: Math.atan2(c.y - a.y, c.x - a.x) });
+      figure.arcs.push({
+        centre: a,
+        radius: len(sub(b, a)),
+        start: Math.atan2(b.y - a.y, b.x - a.x),
+        end: Math.atan2(c.y - a.y, c.x - a.x),
+      });
       break;
     }
     case "curve": {
@@ -508,11 +623,19 @@ export function advancedHitTest(
     const [a, b] = screen;
     if (a && b && insideRect(click, a, b, tol)) return true;
   }
-  if (drawing.tool === "date_price_range" || drawing.tool === "price_range" || drawing.tool === "projected_range") {
+  if (
+    drawing.tool === "date_price_range" ||
+    drawing.tool === "price_range" ||
+    drawing.tool === "projected_range"
+  ) {
     const [a, b] = screen;
     if (a && b && insideRect(click, a, b, tol)) return true;
   }
-  if (drawing.tool === "gann_box" || drawing.tool === "gann_square" || drawing.tool === "gann_square_from_two") {
+  if (
+    drawing.tool === "gann_box" ||
+    drawing.tool === "gann_square" ||
+    drawing.tool === "gann_square_from_two"
+  ) {
     const [a, b] = screen;
     if (a && b && insideRect(click, a, b, tol)) return true;
   }

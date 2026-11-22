@@ -9,7 +9,14 @@
  * semantics, so tests and every call site share one contract.
  */
 import { backtest, optimizePine, runPine } from "@ezyview/pine-transpiler";
-import type { BacktestOptions, BacktestResult, Context, OptimizationResult, ParamSpec, PineResult } from "@ezyview/pine-transpiler";
+import type {
+  BacktestOptions,
+  BacktestResult,
+  Context,
+  OptimizationResult,
+  ParamSpec,
+  PineResult,
+} from "@ezyview/pine-transpiler";
 import type { PineBars, PineErrorResponse, PineResponse } from "./pine.worker";
 import { logCatch } from "./diagnostics";
 
@@ -47,7 +54,9 @@ const workerCtor = (): typeof Worker | null => {
   return Worker as typeof Worker;
 };
 
-const toScalarInputs = (raw: Record<string, unknown> | undefined): Record<string, PineScalarInput> => {
+const toScalarInputs = (
+  raw: Record<string, unknown> | undefined,
+): Record<string, PineScalarInput> => {
   const inputs: Record<string, PineScalarInput> = {};
   for (const [key, value] of raw ? Object.entries(raw) : []) {
     if (typeof value === "number" || typeof value === "string" || typeof value === "boolean") {
@@ -148,7 +157,11 @@ export interface PineBudgetOptions {
 }
 
 /** Run one Pine script inside the worker; never blocks the caller's thread. */
-export async function runPineWithBudget(source: string, ctx: Context, opts: PineBudgetOptions = {}): Promise<PineRunOutcome> {
+export async function runPineWithBudget(
+  source: string,
+  ctx: Context,
+  opts: PineBudgetOptions = {},
+): Promise<PineRunOutcome> {
   const budgetMs = opts.timeBudgetMs ?? DEFAULT_RUN_BUDGET_MS;
   const backtestOpts: BacktestOptions = {
     close: ctx.close,

@@ -21,9 +21,11 @@ function stubSources(overrides: { calendar?: object; earnings?: object } = {}) {
       ...overrides.calendar,
     },
     earnings: {
-      getEarnings: vi.fn().mockResolvedValue([
-        { symbol: "AAPL", time: NOW - 2 * DAY, quarter: "Q3", source: "demo" },
-      ]),
+      getEarnings: vi
+        .fn()
+        .mockResolvedValue([
+          { symbol: "AAPL", time: NOW - 2 * DAY, quarter: "Q3", source: "demo" },
+        ]),
       ...overrides.earnings,
     },
   };
@@ -35,7 +37,14 @@ describe("fetchFundamentalEvents", () => {
     const overlay = await fetchFundamentalEvents(sources, "AAPL", NOW, DEFAULT_EVENT_OPTIONS);
     expect(overlay.markers).toEqual([
       { time: NOW - 2 * DAY, title: "AAPL", kind: "earnings", quarter: "Q3", source: "demo" },
-      { time: NOW - DAY, title: "CPI y/y", kind: "event", impact: "high", currency: "USD", source: "demo" },
+      {
+        time: NOW - DAY,
+        title: "CPI y/y",
+        kind: "event",
+        impact: "high",
+        currency: "USD",
+        source: "demo",
+      },
     ]);
     expect(overlay.lines).toEqual([NOW - DAY]);
     // Calendar is asked for the ±60 day window around `now`.
@@ -57,17 +66,17 @@ describe("fetchFundamentalEvents", () => {
     const sources = stubSources({
       calendar: { getCalendar: vi.fn().mockRejectedValue(new Error("offline")) },
     });
-    await expect(fetchFundamentalEvents(sources, "AAPL", NOW, DEFAULT_EVENT_OPTIONS)).resolves.toEqual(
-      EMPTY_FUNDAMENTAL_EVENTS,
-    );
+    await expect(
+      fetchFundamentalEvents(sources, "AAPL", NOW, DEFAULT_EVENT_OPTIONS),
+    ).resolves.toEqual(EMPTY_FUNDAMENTAL_EVENTS);
   });
 
   it("degrades to the empty overlay when earnings reject", async () => {
     const sources = stubSources({
       earnings: { getEarnings: vi.fn().mockRejectedValue(new Error("no key")) },
     });
-    await expect(fetchFundamentalEvents(sources, "AAPL", NOW, DEFAULT_EVENT_OPTIONS)).resolves.toEqual(
-      EMPTY_FUNDAMENTAL_EVENTS,
-    );
+    await expect(
+      fetchFundamentalEvents(sources, "AAPL", NOW, DEFAULT_EVENT_OPTIONS),
+    ).resolves.toEqual(EMPTY_FUNDAMENTAL_EVENTS);
   });
 });

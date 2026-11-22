@@ -22,21 +22,27 @@ describe("backoffDelay", () => {
 describe("withRetry", () => {
   it("returns the first success without retrying", async () => {
     let calls = 0;
-    const value = await withRetry(async () => {
-      calls += 1;
-      return "ok";
-    }, { sleep: noSleep });
+    const value = await withRetry(
+      async () => {
+        calls += 1;
+        return "ok";
+      },
+      { sleep: noSleep },
+    );
     expect(value).toBe("ok");
     expect(calls).toBe(1);
   });
 
   it("retries transient failures then succeeds", async () => {
     let calls = 0;
-    const value = await withRetry(async () => {
-      calls += 1;
-      if (calls < 3) throw new Error("blip");
-      return "ok";
-    }, { attempts: 3, sleep: noSleep });
+    const value = await withRetry(
+      async () => {
+        calls += 1;
+        if (calls < 3) throw new Error("blip");
+        return "ok";
+      },
+      { attempts: 3, sleep: noSleep },
+    );
     expect(value).toBe("ok");
     expect(calls).toBe(3);
   });
@@ -44,10 +50,13 @@ describe("withRetry", () => {
   it("rethrows the last error after exhausting attempts", async () => {
     let calls = 0;
     await expect(
-      withRetry(async () => {
-        calls += 1;
-        throw new Error("always");
-      }, { attempts: 3, sleep: noSleep }),
+      withRetry(
+        async () => {
+          calls += 1;
+          throw new Error("always");
+        },
+        { attempts: 3, sleep: noSleep },
+      ),
     ).rejects.toThrow("always");
     expect(calls).toBe(3);
   });
