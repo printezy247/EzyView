@@ -65,13 +65,20 @@ export function TradingPanel({ symbol }: Props) {
   const heightClass = minimized ? "h-8" : expanded ? "h-80" : "h-56";
 
   return (
-    <section aria-label="Trading" className={`flex ${heightClass} shrink-0 flex-col border-t border-ev-raised bg-ev-bg transition-[height] duration-150`}>
-      <header className={`flex ${SHELL_BAR_HEIGHT} shrink-0 items-center gap-3 border-b border-ev-raised bg-ev-chrome px-3 text-dense`}>
+    <section
+      aria-label="Trading"
+      className={`flex ${heightClass} shrink-0 flex-col border-t border-ev-raised bg-ev-bg transition-[height] duration-150`}
+    >
+      <header
+        className={`flex ${SHELL_BAR_HEIGHT} shrink-0 items-center gap-3 border-b border-ev-raised bg-ev-chrome px-3 text-dense`}
+      >
         <Button
           variant="ghost"
           size="sm"
           aria-expanded={!minimized}
-          aria-label={minimized ? "Expand trading panel" : "Minimize trading panel to summary strip"}
+          aria-label={
+            minimized ? "Expand trading panel" : "Minimize trading panel to summary strip"
+          }
           title={minimized ? "Expand trading panel" : "Minimize trading panel to summary strip"}
           onClick={() => setMinimized((v) => !v)}
           className="font-semibold uppercase tracking-wider"
@@ -142,12 +149,16 @@ export function TradingPanel({ symbol }: Props) {
             </Button>
           )}
           {source === "mt5" && (
-            <span className="rounded bg-ev-accent/15 px-1.5 py-0.5 text-dense text-ev-accent-text">broker</span>
+            <span className="rounded bg-ev-accent/15 px-1.5 py-0.5 text-dense text-ev-accent-text">
+              broker
+            </span>
           )}
           <Button
             variant="ghost"
             size="sm"
-            aria-label={expanded ? "Restore standard panel height" : "Maximize trading panel height"}
+            aria-label={
+              expanded ? "Restore standard panel height" : "Maximize trading panel height"
+            }
             title={expanded ? "Restore standard panel height" : "Maximize trading panel height"}
             onClick={() => {
               setMinimized(false);
@@ -169,174 +180,199 @@ export function TradingPanel({ symbol }: Props) {
       </header>
 
       {!minimized && (
-      <div className="flex min-h-0 flex-1">
-        <OrderTicket symbol={symbol} />
+        <div className="flex min-h-0 flex-1">
+          <OrderTicket symbol={symbol} />
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          <nav aria-label="Trading records" className="flex h-7 shrink-0 items-center gap-1 border-b border-ev-raised px-2">
-            {TABS.map((t) => (
-              <Button
-                key={t.id}
-                variant="ghost"
-                size="sm"
-                aria-pressed={tab === t.id}
-                onClick={() => setTab(t.id)}
-                className={
-                  tab === t.id
-                    ? "rounded-none border-b-2 border-ev-accent font-medium text-ev-strong"
-                    : "rounded-none border-b-2 border-transparent text-ev-muted"
-                }
-              >
-                {t.label}
-                {t.id === "positions" && openPositions > 0 && (
-                  <span className="ml-1 rounded bg-ev-accent px-1 text-dense text-ev-accent-ink">{openPositions}</span>
-                )}
-                {t.id === "orders" && orders.length > 0 && (
-                  <span className="ml-1 rounded bg-ev-dim px-1 text-dense text-ev-strong">{orders.length}</span>
-                )}
-              </Button>
-            ))}
-          </nav>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <nav
+              aria-label="Trading records"
+              className="flex h-7 shrink-0 items-center gap-1 border-b border-ev-raised px-2"
+            >
+              {TABS.map((t) => (
+                <Button
+                  key={t.id}
+                  variant="ghost"
+                  size="sm"
+                  aria-pressed={tab === t.id}
+                  onClick={() => setTab(t.id)}
+                  className={
+                    tab === t.id
+                      ? "rounded-none border-b-2 border-ev-accent font-medium text-ev-strong"
+                      : "rounded-none border-b-2 border-transparent text-ev-muted"
+                  }
+                >
+                  {t.label}
+                  {t.id === "positions" && openPositions > 0 && (
+                    <span className="ml-1 rounded bg-ev-accent px-1 text-dense text-ev-accent-ink">
+                      {openPositions}
+                    </span>
+                  )}
+                  {t.id === "orders" && orders.length > 0 && (
+                    <span className="ml-1 rounded bg-ev-dim px-1 text-dense text-ev-strong">
+                      {orders.length}
+                    </span>
+                  )}
+                </Button>
+              ))}
+            </nav>
 
-          <div className="min-h-0 flex-1 overflow-auto">
-            {tab === "positions" && (
-              <Table
-                head={["Symbol", "Side", "Qty", "Entry", "Mark", "P&L", "Margin", ""]}
-                empty="No open positions. Send an order from the ticket."
-                rows={positions.map((p) => ({
-                  key: `${p.symbol}:${p.side}`,
-                  cells: [
-                    <span className="font-medium text-ev-strong">{p.symbol}</span>,
-                    <span className={p.side === "long" ? "text-ev-up-text" : "text-ev-down-text"}>
-                      {p.side.toUpperCase()}
-                    </span>,
-                    <span className="num">{fmtQty(p.qty)}</span>,
-                    <span className="num">{p.entryPrice.toFixed(precision)}</span>,
-                    <span className="num">{p.markPrice.toFixed(precision)}</span>,
-                    <span className={`num ${pnlClass(p.unrealizedPnl)}`}>{signed(p.unrealizedPnl)}</span>,
-                    <span className="num text-ev-muted">
-                      {p.margin === undefined ? "—" : money(p.margin)}
-                    </span>,
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={!canBreakEven({ side: p.side, entry: p.entryPrice, mark: p.markPrice, stopLoss: p.stopLoss })}
-                        aria-label={`Move stop loss to break-even at ${p.entryPrice.toFixed(precision)}`}
-                        title={`Move stop loss to break-even (${p.entryPrice.toFixed(precision)}); available once in profit`}
-                        onClick={() => void amend(p.symbol, { stopLoss: p.entryPrice })}
-                      >
-                        BE
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        aria-label="Close 50% of position"
-                        title="Close 50% of position"
-                        onClick={() => void close(p.symbol, Number((p.qty / 2).toFixed(4)) || p.qty)}
-                      >
-                        50%
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        aria-label="Reverse position direction"
-                        title="Reverse position direction"
-                        onClick={() => {
-                          void (async () => {
-                            // A failed or parked close must not be followed by the
-                            // opposite order: that would double the position.
-                            const closed = await close(p.symbol);
-                            if (!closed) return;
-                            // On MT5 the close parks at the confirmation gate, so
-                            // the reverse has to wait for the trader to confirm
-                            // that close first - otherwise the two orders race
-                            // and the position is doubled instead of reversed.
-                            if (useTrading.getState().pending) return;
-                            await submit({
-                              symbol: p.symbol,
-                              side: p.side === "long" ? "sell" : "buy",
-                              type: "market",
-                              qty: p.qty,
-                            });
-                          })();
-                        }}
-                      >
-                        Rev
-                      </Button>
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        aria-label={`Close ${p.symbol} position`}
-                        onClick={() => void close(p.symbol)}
-                      >
-                        Close
-                      </Button>
-                      {p.stopLoss !== undefined && (
-                        <span className="rounded border border-ev-down/40 px-1.5 py-0.5 text-dense text-ev-down-text">
-                          SL {p.stopLoss.toFixed(precision)}
-                        </span>
-                      )}
-                      {p.takeProfit !== undefined && (
-                        <span className="rounded border border-ev-up/40 px-1.5 py-0.5 text-dense text-ev-up-text">
-                          TP {p.takeProfit.toFixed(precision)}
-                        </span>
-                      )}
-                    </div>,
-                  ],
-                }))}
-              />
-            )}
-
-            {tab === "orders" && (
-              <Table
-                head={["Symbol", "Side", "Type", "Qty", "Price", "Placed", ""]}
-                empty="No working orders."
-                rows={orders.map((o) => ({
-                  key: o.id,
-                  cells: [
-                    <span className="font-medium text-ev-strong">{o.symbol}</span>,
-                    <span className={o.side === "buy" ? "text-ev-up-text" : "text-ev-down-text"}>
-                      {o.side.toUpperCase()}
-                    </span>,
-                    <span className="uppercase text-ev-text">{o.type}</span>,
-                    <span className="num">{fmtQty(o.qty)}</span>,
-                    <span className="num">{o.price?.toFixed(precision) ?? "market"}</span>,
-                    <span className="num text-ev-muted">{clock(o.time)}</span>,
-                    <div className="flex justify-end">
-                      <Button variant="danger" size="sm" aria-label={`Cancel ${o.symbol} order`} onClick={() => void cancel(o.id)}>
-                        Cancel
-                      </Button>
-                    </div>,
-                  ],
-                }))}
-              />
-            )}
-
-            {tab === "history" && (
-              <Table
-                head={["Time", "Symbol", "Side", "Qty", "Price", "Realized P&L"]}
-                empty="Nothing traded yet."
-                rows={[...deals]
-                  .sort((a, b) => b.time - a.time)
-                  .map((d) => ({
-                    key: d.id,
+            <div className="min-h-0 flex-1 overflow-auto">
+              {tab === "positions" && (
+                <Table
+                  head={["Symbol", "Side", "Qty", "Entry", "Mark", "P&L", "Margin", ""]}
+                  empty="No open positions. Send an order from the ticket."
+                  rows={positions.map((p) => ({
+                    key: `${p.symbol}:${p.side}`,
                     cells: [
-                      <span className="num text-ev-muted">{clock(d.time)}</span>,
-                      <span className="font-medium text-ev-strong">{d.symbol}</span>,
-                      <span className={d.side === "buy" ? "text-ev-up-text" : "text-ev-down-text"}>
-                        {d.side.toUpperCase()}
+                      <span className="font-medium text-ev-strong">{p.symbol}</span>,
+                      <span className={p.side === "long" ? "text-ev-up-text" : "text-ev-down-text"}>
+                        {p.side.toUpperCase()}
                       </span>,
-                      <span className="num">{fmtQty(d.qty)}</span>,
-                      <span className="num">{d.price.toFixed(precision)}</span>,
-                      <span className={`num ${pnlClass(d.pnl)}`}>{signed(d.pnl)}</span>,
+                      <span className="num">{fmtQty(p.qty)}</span>,
+                      <span className="num">{p.entryPrice.toFixed(precision)}</span>,
+                      <span className="num">{p.markPrice.toFixed(precision)}</span>,
+                      <span className={`num ${pnlClass(p.unrealizedPnl)}`}>
+                        {signed(p.unrealizedPnl)}
+                      </span>,
+                      <span className="num text-ev-muted">
+                        {p.margin === undefined ? "—" : money(p.margin)}
+                      </span>,
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={
+                            !canBreakEven({
+                              side: p.side,
+                              entry: p.entryPrice,
+                              mark: p.markPrice,
+                              stopLoss: p.stopLoss,
+                            })
+                          }
+                          aria-label={`Move stop loss to break-even at ${p.entryPrice.toFixed(precision)}`}
+                          title={`Move stop loss to break-even (${p.entryPrice.toFixed(precision)}); available once in profit`}
+                          onClick={() => void amend(p.symbol, { stopLoss: p.entryPrice })}
+                        >
+                          BE
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          aria-label="Close 50% of position"
+                          title="Close 50% of position"
+                          onClick={() =>
+                            void close(p.symbol, Number((p.qty / 2).toFixed(4)) || p.qty)
+                          }
+                        >
+                          50%
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          aria-label="Reverse position direction"
+                          title="Reverse position direction"
+                          onClick={() => {
+                            void (async () => {
+                              // A failed or parked close must not be followed by the
+                              // opposite order: that would double the position.
+                              const closed = await close(p.symbol);
+                              if (!closed) return;
+                              // On MT5 the close parks at the confirmation gate, so
+                              // the reverse has to wait for the trader to confirm
+                              // that close first - otherwise the two orders race
+                              // and the position is doubled instead of reversed.
+                              if (useTrading.getState().pending) return;
+                              await submit({
+                                symbol: p.symbol,
+                                side: p.side === "long" ? "sell" : "buy",
+                                type: "market",
+                                qty: p.qty,
+                              });
+                            })();
+                          }}
+                        >
+                          Rev
+                        </Button>
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          aria-label={`Close ${p.symbol} position`}
+                          onClick={() => void close(p.symbol)}
+                        >
+                          Close
+                        </Button>
+                        {p.stopLoss !== undefined && (
+                          <span className="rounded border border-ev-down/40 px-1.5 py-0.5 text-dense text-ev-down-text">
+                            SL {p.stopLoss.toFixed(precision)}
+                          </span>
+                        )}
+                        {p.takeProfit !== undefined && (
+                          <span className="rounded border border-ev-up/40 px-1.5 py-0.5 text-dense text-ev-up-text">
+                            TP {p.takeProfit.toFixed(precision)}
+                          </span>
+                        )}
+                      </div>,
                     ],
                   }))}
-              />
-            )}
+                />
+              )}
+
+              {tab === "orders" && (
+                <Table
+                  head={["Symbol", "Side", "Type", "Qty", "Price", "Placed", ""]}
+                  empty="No working orders."
+                  rows={orders.map((o) => ({
+                    key: o.id,
+                    cells: [
+                      <span className="font-medium text-ev-strong">{o.symbol}</span>,
+                      <span className={o.side === "buy" ? "text-ev-up-text" : "text-ev-down-text"}>
+                        {o.side.toUpperCase()}
+                      </span>,
+                      <span className="uppercase text-ev-text">{o.type}</span>,
+                      <span className="num">{fmtQty(o.qty)}</span>,
+                      <span className="num">{o.price?.toFixed(precision) ?? "market"}</span>,
+                      <span className="num text-ev-muted">{clock(o.time)}</span>,
+                      <div className="flex justify-end">
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          aria-label={`Cancel ${o.symbol} order`}
+                          onClick={() => void cancel(o.id)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>,
+                    ],
+                  }))}
+                />
+              )}
+
+              {tab === "history" && (
+                <Table
+                  head={["Time", "Symbol", "Side", "Qty", "Price", "Realized P&L"]}
+                  empty="Nothing traded yet."
+                  rows={[...deals]
+                    .sort((a, b) => b.time - a.time)
+                    .map((d) => ({
+                      key: d.id,
+                      cells: [
+                        <span className="num text-ev-muted">{clock(d.time)}</span>,
+                        <span className="font-medium text-ev-strong">{d.symbol}</span>,
+                        <span
+                          className={d.side === "buy" ? "text-ev-up-text" : "text-ev-down-text"}
+                        >
+                          {d.side.toUpperCase()}
+                        </span>,
+                        <span className="num">{fmtQty(d.qty)}</span>,
+                        <span className="num">{d.price.toFixed(precision)}</span>,
+                        <span className={`num ${pnlClass(d.pnl)}`}>{signed(d.pnl)}</span>,
+                      ],
+                    }))}
+                />
+              )}
+            </div>
           </div>
         </div>
-      </div>
       )}
     </section>
   );
@@ -370,7 +406,11 @@ function Table({ head, rows, empty }: { head: string[]; rows: Row[]; empty: stri
       <thead className="sticky top-0 bg-ev-bg">
         <tr className="text-dense uppercase tracking-wider text-ev-faint">
           {head.map((label) => (
-            <th scope="col" key={label} className="border-b border-ev-raised px-3 py-1.5 text-left font-medium">
+            <th
+              scope="col"
+              key={label}
+              className="border-b border-ev-raised px-3 py-1.5 text-left font-medium"
+            >
               {label}
             </th>
           ))}

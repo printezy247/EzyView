@@ -9,6 +9,9 @@
     ".": "./src/index.ts",
     "./*": "./src/*.ts"
   },
+  "scripts": {
+    "test": "vitest run src"
+  },
   "dependencies": {
     "@ezyview/brand": "*",
     "@ezyview/data-adapters": "*",
@@ -16,8 +19,5 @@
     "@ezyview/indicators": "*",
     "fancy-canvas": "^2.1.0",
     "lightweight-charts": "^5.3.0"
-  },
-  "scripts": {
-    "test": "vitest run src"
   }
 }

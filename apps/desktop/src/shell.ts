@@ -43,7 +43,8 @@ export async function loadShellSettings(): Promise<ShellSettings> {
 
 /** Resolves with an error message, or null when saved. */
 export async function saveShellSettings(settings: ShellSettings): Promise<string | null> {
-  if (!validateProxy(settings.proxy)) return "Proxy must start with http://, https:// or socks5:// and contain no spaces.";
+  if (!validateProxy(settings.proxy))
+    return "Proxy must start with http://, https:// or socks5:// and contain no spaces.";
   if (!inTauri()) return "Shell settings apply to the desktop app only.";
   try {
     await invoke("set_shell_settings", { settings });
@@ -101,7 +102,8 @@ export function playAlertChime(): void {
   try {
     const AudioCtx =
       typeof window !== "undefined"
-        ? (window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)
+        ? (window.AudioContext ??
+          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)
         : undefined;
     if (!AudioCtx) return;
     const ctx = new AudioCtx();
@@ -154,7 +156,8 @@ export async function notifyNative(title: string, body: string): Promise<boolean
   try {
     if (inTauri()) {
       let granted = await invoke<boolean>("plugin:notification|is_permission_granted");
-      if (!granted) granted = (await invoke<string>("plugin:notification|request_permission")) === "granted";
+      if (!granted)
+        granted = (await invoke<string>("plugin:notification|request_permission")) === "granted";
       if (!granted) return false;
       await invoke("plugin:notification|notify", { options: { title, body } });
       return true;

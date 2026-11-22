@@ -38,7 +38,12 @@ describe("source scoping", () => {
     expect(symbolsForSource(pool, "kraken")).toEqual(["KRAKEN:ETHUSD"]);
   });
   it("keeps decorated symbols for demo charts", () => {
-    expect(symbolsForSource(pool, "demo")).toEqual(["OANDA:EURUSD", "BINANCE:BTCUSDT", "KRAKEN:ETHUSD", "NASDAQ:AAPL"]);
+    expect(symbolsForSource(pool, "demo")).toEqual([
+      "OANDA:EURUSD",
+      "BINANCE:BTCUSDT",
+      "KRAKEN:ETHUSD",
+      "NASDAQ:AAPL",
+    ]);
   });
 });
 

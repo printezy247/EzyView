@@ -28,7 +28,12 @@ describe("linkGroupOf", () => {
 });
 
 describe("linkedIndices", () => {
-  const charts = [cell("BTC/USD", "A"), cell("ETH/USD", "A"), cell("EUR/USD"), cell("LTC/USD", "B")];
+  const charts = [
+    cell("BTC/USD", "A"),
+    cell("ETH/USD", "A"),
+    cell("EUR/USD"),
+    cell("LTC/USD", "B"),
+  ];
 
   it("lists the cells sharing the group", () => {
     expect(linkedIndices(charts, 0)).toEqual([0, 1]);
@@ -49,7 +54,13 @@ describe("linkedIndices", () => {
 });
 
 describe("groupsInUse", () => {
-  const charts = [cell("BTC/USD", "A"), cell("ETH/USD", "A"), cell("EUR/USD"), cell("LTC/USD", "B"), cell("XRP/USD", "  ")];
+  const charts = [
+    cell("BTC/USD", "A"),
+    cell("ETH/USD", "A"),
+    cell("EUR/USD"),
+    cell("LTC/USD", "B"),
+    cell("XRP/USD", "  "),
+  ];
 
   it("lists the distinct groups, in first-appearance order", () => {
     expect(groupsInUse(charts)).toEqual(["A", "B"]);

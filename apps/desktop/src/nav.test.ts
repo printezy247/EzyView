@@ -23,7 +23,17 @@ function disarmLocalStorage(): void {
   delete (globalThis as Record<string, unknown>).localStorage;
 }
 
-import { NAV_ITEMS, NAV_SECTIONS, PANEL_ROUTES, ROUTE_PATHS, isRestorableRoute, normalizePath, readLastRoute, rememberRoute, resolveRoute } from "./nav";
+import {
+  NAV_ITEMS,
+  NAV_SECTIONS,
+  PANEL_ROUTES,
+  ROUTE_PATHS,
+  isRestorableRoute,
+  normalizePath,
+  readLastRoute,
+  rememberRoute,
+  resolveRoute,
+} from "./nav";
 
 beforeEach(() => {
   h.storage.clear();

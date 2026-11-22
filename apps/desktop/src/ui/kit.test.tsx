@@ -52,7 +52,9 @@ describe("Select", () => {
     render(<Select label="Interval" value="4h" onChange={() => {}} options={options} />);
     await user.click(screen.getByRole("button", { name: "Interval" }));
     expect(screen.getByRole("listbox")).toBeTruthy();
-    expect(screen.getByRole("option", { name: /4 hours/ }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("option", { name: /4 hours/ }).getAttribute("aria-selected")).toBe(
+      "true",
+    );
   });
 
   it("walks options with arrows, skipping disabled ones, and commits with Enter", async () => {
@@ -79,7 +81,9 @@ describe("Select", () => {
 
   it("does not render a select element (custom listbox only)", async () => {
     const user = userEvent.setup();
-    const { container } = render(<Select label="Interval" value="1h" onChange={() => {}} options={options} />);
+    const { container } = render(
+      <Select label="Interval" value="1h" onChange={() => {}} options={options} />,
+    );
     expect(container.querySelector("select")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Interval" }));
     expect(screen.getAllByRole("option")).toHaveLength(4);
@@ -91,7 +95,15 @@ describe("Combobox", () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     const onSelect = vi.fn();
-    render(<Combobox label="Symbol" value="" onChange={onChange} onSelect={onSelect} options={options} />);
+    render(
+      <Combobox
+        label="Symbol"
+        value=""
+        onChange={onChange}
+        onSelect={onSelect}
+        options={options}
+      />,
+    );
     const input = screen.getByRole("combobox", { name: "Symbol" });
     await user.click(input);
     await user.type(input, "we");
@@ -227,7 +239,9 @@ describe("Popover and Tooltip", () => {
     await user.tab();
     const tip = await screen.findByRole("tooltip");
     expect(tip.textContent).toBe("Save layout");
-    expect(screen.getByRole("button", { name: "Save" }).getAttribute("aria-describedby")).toBe(tip.id);
+    expect(screen.getByRole("button", { name: "Save" }).getAttribute("aria-describedby")).toBe(
+      tip.id,
+    );
   });
 });
 
@@ -246,14 +260,18 @@ describe("form fields", () => {
   it("clamps a number on commit and reports an empty field as null", async () => {
     const user = userEvent.setup();
     const onValueChange = vi.fn();
-    const { rerender } = render(<NumberInput label="Box size" value={5} min={1} max={10} onValueChange={onValueChange} />);
+    const { rerender } = render(
+      <NumberInput label="Box size" value={5} min={1} max={10} onValueChange={onValueChange} />,
+    );
     const input = screen.getByLabelText("Box size");
     await user.clear(input);
     await user.type(input, "42");
     await user.keyboard("{Enter}");
     expect(onValueChange).toHaveBeenLastCalledWith(10);
 
-    rerender(<NumberInput label="Box size" value={5} min={1} max={10} onValueChange={onValueChange} />);
+    rerender(
+      <NumberInput label="Box size" value={5} min={1} max={10} onValueChange={onValueChange} />,
+    );
     await user.clear(screen.getByLabelText("Box size"));
     await user.tab();
     expect(onValueChange).toHaveBeenLastCalledWith(null);
@@ -276,7 +294,15 @@ describe("form fields", () => {
     render(
       <>
         <Checkbox label="Show volume" checked={false} onChange={onCheck} />
-        <RadioGroup label="Scale" value="linear" onChange={onRadio} options={[{ value: "linear", label: "Linear" }, { value: "log", label: "Log" }]} />
+        <RadioGroup
+          label="Scale"
+          value="linear"
+          onChange={onRadio}
+          options={[
+            { value: "linear", label: "Linear" },
+            { value: "log", label: "Log" },
+          ]}
+        />
         <Toggle label="Grid" checked onChange={onToggle} />
       </>,
     );
@@ -290,7 +316,16 @@ describe("form fields", () => {
   });
 
   it("announces the slider value as text", () => {
-    render(<Slider label="Opacity" value={50} min={0} max={100} onChange={() => {}} format={(v) => `${v}%`} />);
+    render(
+      <Slider
+        label="Opacity"
+        value={50}
+        min={0}
+        max={100}
+        onChange={() => {}}
+        format={(v) => `${v}%`}
+      />,
+    );
     expect(screen.getByLabelText("Opacity").getAttribute("aria-valuetext")).toBe("50%");
   });
 });

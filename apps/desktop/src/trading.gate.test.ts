@@ -6,7 +6,14 @@ import type { OrderRequest } from "@ezyview/data-adapters";
 const h = vi.hoisted(() => {
   const transport: Record<string, Mock> = {
     ping: vi.fn(async () => true),
-    account: vi.fn(async () => ({ login: 4123, trade_mode: 0, balance: 1000, equity: 1000, margin: 0, margin_free: 1000 })),
+    account: vi.fn(async () => ({
+      login: 4123,
+      trade_mode: 0,
+      balance: 1000,
+      equity: 1000,
+      margin: 0,
+      margin_free: 1000,
+    })),
     openPositions: vi.fn(async () => ({ positions: [], orders: [] })),
     deals: vi.fn(async () => ({ deals: [] })),
     marketWatch: vi.fn(async () => ({ symbols: [] })),
@@ -37,9 +44,20 @@ import { paperEngine, useTrading } from "./trading";
 import { useMt5Accounts } from "./mt5Accounts";
 import { useMt5 } from "./mt5";
 
-const marketReq = (qty: number): OrderRequest => ({ symbol: "XAUUSD", side: "buy", type: "market", qty });
+const marketReq = (qty: number): OrderRequest => ({
+  symbol: "XAUUSD",
+  side: "buy",
+  type: "market",
+  qty,
+});
 /** A priced limit order: the paper engine has no market price of its own. */
-const paperReq = (qty: number): OrderRequest => ({ symbol: "XAUUSD", side: "buy", type: "limit", qty, price: 4000 });
+const paperReq = (qty: number): OrderRequest => ({
+  symbol: "XAUUSD",
+  side: "buy",
+  type: "limit",
+  qty,
+  price: 4000,
+});
 
 function demoSession(): void {
   useMt5Accounts.setState({ session: { server: "S", login: "4123", demo: true, summary: {} } });
@@ -48,7 +66,11 @@ function demoSession(): void {
 beforeEach(() => {
   for (const fn of Object.values(h.transport)) fn.mockClear();
   useMt5.setState({ source: "mt5", status: "online", error: null });
-  useMt5Accounts.setState({ session: null, error: null, safety: { maxOrderVolume: 1, symbolAllowList: [], dryRun: false } });
+  useMt5Accounts.setState({
+    session: null,
+    error: null,
+    safety: { maxOrderVolume: 1, symbolAllowList: [], dryRun: false },
+  });
   useTrading.setState({ pending: null, error: null, note: null });
 });
 
@@ -166,7 +188,18 @@ describe("MT5 actions pass the safety gate", () => {
     demoSession();
     useTrading.setState({
       positions: [
-        { id: "77", symbol: "XAUUSD", side: "long", qty: 0.1, entryPrice: 4000, markPrice: 4010, unrealizedPnl: 1, time: 1, stopLoss: 4000, takeProfit: 4100 },
+        {
+          id: "77",
+          symbol: "XAUUSD",
+          side: "long",
+          qty: 0.1,
+          entryPrice: 4000,
+          markPrice: 4010,
+          unrealizedPnl: 1,
+          time: 1,
+          stopLoss: 4000,
+          takeProfit: 4100,
+        },
       ],
     });
     await useTrading.getState().amend("XAUUSD", { takeProfit: null });
@@ -178,7 +211,16 @@ describe("MT5 actions pass the safety gate", () => {
     demoSession();
     useTrading.setState({
       positions: [
-        { symbol: "XAUUSD", side: "long", qty: 0.1, entryPrice: 4000, markPrice: 4010, unrealizedPnl: 1, time: 1, stopLoss: 4000 },
+        {
+          symbol: "XAUUSD",
+          side: "long",
+          qty: 0.1,
+          entryPrice: 4000,
+          markPrice: 4010,
+          unrealizedPnl: 1,
+          time: 1,
+          stopLoss: 4000,
+        },
       ],
     });
     expect(await useTrading.getState().amend("XAUUSD", { stopLoss: 3990 })).toBe(false);
@@ -190,8 +232,28 @@ describe("MT5 actions pass the safety gate", () => {
     demoSession();
     h.transport.openPositions = vi.fn(async () => ({
       positions: [
-        { symbol: "XAUUSD", type: 0, volume: 0.1, price_open: 4000, price_current: 4010, profit: 10, sl: 0, tp: 0, time: 1 },
-        { symbol: "EURUSD", type: 1, volume: 0.2, price_open: 1.1, price_current: 1.09, profit: 5, sl: 0, tp: 0, time: 2 },
+        {
+          symbol: "XAUUSD",
+          type: 0,
+          volume: 0.1,
+          price_open: 4000,
+          price_current: 4010,
+          profit: 10,
+          sl: 0,
+          tp: 0,
+          time: 1,
+        },
+        {
+          symbol: "EURUSD",
+          type: 1,
+          volume: 0.2,
+          price_open: 1.1,
+          price_current: 1.09,
+          profit: 5,
+          sl: 0,
+          tp: 0,
+          time: 2,
+        },
       ],
       orders: [],
     }));
@@ -223,7 +285,13 @@ describe("MT5 actions pass the safety gate", () => {
 describe("paper venue enforces the blocking rails too", () => {
   it("submits and cancels without parking", async () => {
     useMt5.setState({ source: "ezyview" });
-    const request: OrderRequest = { symbol: "XAUUSD", side: "buy", type: "limit", qty: 0.1, price: 4000 };
+    const request: OrderRequest = {
+      symbol: "XAUUSD",
+      side: "buy",
+      type: "limit",
+      qty: 0.1,
+      price: 4000,
+    };
     expect(await useTrading.getState().submit(request)).toBe(true);
     expect(useTrading.getState().pending).toBeNull();
     const orders = useTrading.getState().orders;

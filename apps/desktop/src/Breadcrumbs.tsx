@@ -57,7 +57,10 @@ export function Breadcrumbs() {
         <Fragment key={`${crumb.label}-${index}`}>
           {index > 0 && <ChevronRight size={11} aria-hidden className="shrink-0 text-ev-faint" />}
           {crumb.to ? (
-            <Link to={crumb.to} className="shrink-0 truncate rounded transition hover:text-ev-strong">
+            <Link
+              to={crumb.to}
+              className="shrink-0 truncate rounded transition hover:text-ev-strong"
+            >
               {crumb.label}
             </Link>
           ) : (

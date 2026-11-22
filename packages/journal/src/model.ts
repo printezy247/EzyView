@@ -88,7 +88,9 @@ export interface PlanRiskReward {
 }
 
 /** R:R from the plan's own levels, or null when a level is missing/zero-risk. */
-export function planRewardRisk(plan: Pick<TradePlan, "entry" | "stop" | "target">): PlanRiskReward | null {
+export function planRewardRisk(
+  plan: Pick<TradePlan, "entry" | "stop" | "target">,
+): PlanRiskReward | null {
   const { entry, stop, target } = plan;
   if (entry === undefined || stop === undefined || target === undefined) return null;
   if (![entry, stop, target].every((value) => Number.isFinite(value))) return null;
@@ -103,6 +105,8 @@ export type JournalItem =
   | { kind: "note"; note: JournalNote };
 
 /** Marker for "this trade is closed and counted". */
-export function isClosed(entry: JournalEntry): entry is JournalEntry & { pnl: number; exitTime: number } {
+export function isClosed(
+  entry: JournalEntry,
+): entry is JournalEntry & { pnl: number; exitTime: number } {
   return typeof entry.pnl === "number" && typeof entry.exitTime === "number";
 }

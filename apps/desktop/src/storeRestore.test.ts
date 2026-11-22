@@ -24,19 +24,37 @@ describe("restoreWatchlist", () => {
 });
 
 describe("watchlistQuoteKeys", () => {
-  const row = { ticker: "EURUSD", description: "", assetClass: "forex", precision: 4, price: null, changePct: null };
+  const row = {
+    ticker: "EURUSD",
+    description: "",
+    assetClass: "forex",
+    precision: 4,
+    price: null,
+    changePct: null,
+  };
   it("changes when a row's feed changes, not when its price does", () => {
     const before = watchlistQuoteKeys([{ ...row, symbol: "OANDA:EURUSD" }]);
     const priced = watchlistQuoteKeys([{ ...row, symbol: "OANDA:EURUSD", price: 1.1 }]);
     expect(priced).toBe(before);
-    expect(watchlistQuoteKeys([{ ...row, symbol: "OANDA:EURUSD", source: "mt5" }])).not.toBe(before);
+    expect(watchlistQuoteKeys([{ ...row, symbol: "OANDA:EURUSD", source: "mt5" }])).not.toBe(
+      before,
+    );
   });
 });
 
 describe("restoreAlerts", () => {
-  const good = { id: "a", symbol: "X", condition: { kind: "greater", value: 1 }, frequency: "once", state: "armed" };
+  const good = {
+    id: "a",
+    symbol: "X",
+    condition: { kind: "greater", value: 1 },
+    frequency: "once",
+    state: "armed",
+  };
   it("keeps valid and drops bad state or frequency", () => {
-    const out = restoreAlerts([good, { ...good, id: "b", state: "weird" }, { ...good, id: "c", frequency: "nope" }], []);
+    const out = restoreAlerts(
+      [good, { ...good, id: "b", state: "weird" }, { ...good, id: "c", frequency: "nope" }],
+      [],
+    );
     expect(out.map((a) => a.id)).toEqual(["a"]);
   });
 });

@@ -2,7 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 import { CandleCache, historyKey } from "./cache.js";
 import type { Candle } from "./types.js";
 
-const candle = (time: number): Candle => ({ time: time as Candle["time"], open: 1, high: 2, low: 0.5, close: 1.5, volume: 10 });
+const candle = (time: number): Candle => ({
+  time: time as Candle["time"],
+  open: 1,
+  high: 2,
+  low: 0.5,
+  close: 1.5,
+  volume: 10,
+});
 
 describe("CandleCache", () => {
   it("returns cached candles within TTL and refetches after expiry", async () => {

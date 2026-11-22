@@ -33,11 +33,13 @@
 ### Task 1: Chart settings types + store wiring
 
 **Files:**
+
 - Modify: `apps/desktop/src/layout.ts` (ChartState fields, GridMode 6/9)
 - Modify: `apps/desktop/src/store.ts` (actions, persist)
 - Test: `apps/desktop/src/layout.test.ts`
 
 **Interfaces:**
+
 - Produces: `ChartState.crosshairMode?: "normal" | "magnet" | "hidden"`, `ChartState.priceScale?: "normal" | "log" | "percentage"`, `ChartState.invertScale?: boolean`, `ChartState.timezone?: string`, `ChartState.watermark?: boolean`; `GridMode` includes `"6" | "9"`; store `setChartSetting(patch: Partial<ChartState>)`, `crosshairSync: boolean`, `setCrosshairSync(b: boolean)`, `theme: "dark" | "light" | "tokyo"`, `setTheme(t)`.
 
 - [ ] Extend `ChartState` with optional fields above (default absent = current behaviour).
@@ -48,26 +50,31 @@
 ### Task 2: EzyChart setters
 
 **Files:**
+
 - Modify: `packages/chart-engine/src/host.ts`
 - Modify: `packages/chart-engine/src/theme.ts` (TOKYO_THEME)
 - Test: new `packages/chart-engine/src/settings.test.ts` (applyOptions spies or pure option builders)
 
 **Interfaces:**
+
 - Produces: `setCrosshairMode(mode: "normal"|"magnet"|"hidden")`, `setPriceScaleMode(mode: "normal"|"log"|"percentage")`, `setInvertScale(b: boolean)`, `setTimezone(tz: string | null)`, `setWatermark(text: string | null)`, `subscribeCrosshair(cb)` already exists via onCrosshairTime — add `setCrosshairSyncSource` not needed (host app mediates).
 - `TOKYO_THEME: ChartTheme`
 
 ### Task 3: ChartHost props + effects
 
 **Files:**
+
 - Modify: `apps/desktop/src/ChartHost.tsx`
 - Modify: `apps/desktop/src/ChartPage.tsx` (pass props; crosshair time broadcast)
 
 **Interfaces:**
+
 - ChartPage holds `crosshairTimes: (number|null)[]` or single synced time; when sync on, all cells subscribe and apply same time via `chart.setCrosshairTime(t)` if API exists — else only label sync. LWC has `chart.setCrosshair`? Check: use `subscribeCrosshairMove` + `setCrosshair` if available; else document as visual-only readout sync.
 
 ### Task 4: Toolbar View menu + Layouts UI
 
 **Files:**
+
 - Modify: `apps/desktop/src/Toolbar.tsx` — Crosshair mode radio, Sync crosshair toggle, Price scale radio, Invert scale, Timezone select (UTC/America/New_York/Europe/London/Tokyo), Watermark toggle, Theme adds Tokyo Night, Grid 6/9.
 - Modify: `apps/desktop/src/ReplayBar.tsx` — speed selector 0.5/1/2/4×.
 - Modify: `apps/desktop/src/TabBar.tsx` or layouts menu — sort by name / date.
@@ -75,11 +82,13 @@
 ### Task 5: Drawing templates
 
 **Files:**
+
 - Create: `apps/desktop/src/drawingTemplates.ts`
 - Modify: `DrawingProperties.tsx` — Save as template / Apply template
 - Test: `drawingTemplates.test.ts`
 
 **Interfaces:**
+
 - `saveDrawingTemplate(name, style)`, `listDrawingTemplates()`, `applyDrawingTemplate(id, drawingId)` — localStorage key `ezyview.drawingTemplates`.
 
 ### Task 6: Gates + commit

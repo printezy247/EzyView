@@ -16,7 +16,10 @@ describe("default safety rails", () => {
   });
 
   it("warns that the allow-list is empty rather than pretending it is set", () => {
-    const result = gateAction({ action: "place", symbol: "EURUSD", volume: 0.1, accountKind: "demo" }, rails());
+    const result = gateAction(
+      { action: "place", symbol: "EURUSD", volume: 0.1, accountKind: "demo" },
+      rails(),
+    );
     expect(result.decision).toBe("confirm");
     expect(result.reasons.join(" ")).toMatch(/allow-list empty/);
   });

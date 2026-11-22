@@ -25,7 +25,10 @@ export function EmptyState({ title, body, hint, icon, action }: EmptyStateProps)
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 px-6 py-10 text-center">
       {icon && (
-        <span aria-hidden className="mb-1 flex size-10 items-center justify-center rounded-xl bg-ev-accent/10 text-ev-accent-text">
+        <span
+          aria-hidden
+          className="mb-1 flex size-10 items-center justify-center rounded-xl bg-ev-accent/10 text-ev-accent-text"
+        >
           {icon}
         </span>
       )}

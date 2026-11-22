@@ -34,10 +34,12 @@
 ### Task A1: Reject dangerous identifiers and members in the emitter
 
 **Files:**
+
 - Modify: `packages/pine-transpiler/src/transpile.ts` (`safeName`, `MemberExpr` handling)
 - Test: `packages/pine-transpiler/src/pine.test.ts`
 
 **Interfaces:**
+
 - Consumes: existing `BUILTIN_NAMES` set, `Emitter.expr`.
 - Produces: `PineUnsupportedError` thrown for unsafe identifiers/members.
 
@@ -50,6 +52,7 @@
 ### Task A2: Validate for-loop step != 0 and cap iterations
 
 **Files:**
+
 - Modify: `packages/pine-transpiler/src/transpile.ts` (`ForStmt` emitter)
 - Modify: `packages/pine-transpiler/src/evaluate.ts` (runPine guard)
 - Test: `packages/pine-transpiler/src/pine.test.ts`
@@ -63,6 +66,7 @@
 ### Task A3: Replace `new Function` with a sandboxed evaluator (worker or Function-with-shadowed globals)
 
 **Files:**
+
 - Modify: `packages/pine-transpiler/src/evaluate.ts` (runPine)
 - Modify: `apps/desktop/src-tauri/tauri.conf.json` (CSP `script-src`)
 - Test: `packages/pine-transpiler/src/pine.test.ts`
@@ -80,6 +84,7 @@ Note: full Worker isolation is multi-week; this task shadows globals inside the 
 ### Task B1: Persist alerts, alertHistory, watchlist
 
 **Files:**
+
 - Modify: `apps/desktop/src/store.ts` (partialize + merge)
 - Test: `apps/desktop/src/store.test.ts`
 
@@ -92,6 +97,7 @@ Note: full Worker isolation is multi-week; this task shadows globals inside the 
 ### Task B2: Re-arm once_per_bar alerts on new bar; pass barClosed from feed
 
 **Files:**
+
 - Modify: `packages/data-adapters/src/alerts.ts` (evaluateAlert: track bar time)
 - Modify: `apps/desktop/src/alertFeed.ts` (detect bar boundary, pass barClosed)
 - Test: `packages/data-adapters/src/alerts.test.ts`, `apps/desktop/src/alertFeed.test.ts` (if exists)
@@ -105,6 +111,7 @@ Note: full Worker isolation is multi-week; this task shadows globals inside the 
 ### Task B3: Fix Watchlist/Heatmap/Screener interval reset (stable deps)
 
 **Files:**
+
 - Modify: `apps/desktop/src/Watchlist.tsx`, `HeatmapTab.tsx`, `ScreenerTab.tsx`
 - Test: existing component tests
 
@@ -117,6 +124,7 @@ Note: full Worker isolation is multi-week; this task shadows globals inside the 
 ### Task B4: Store alertFeed disposer; add tick timeout; evict tape buffers; throttle crosshair
 
 **Files:**
+
 - Modify: `apps/desktop/src/main.tsx`, `apps/desktop/src/alertFeed.ts`, `apps/desktop/src/tapeStore.ts`, `apps/desktop/src/crosshairBus.ts`
 - Test: component/store tests
 
@@ -131,6 +139,7 @@ Note: full Worker isolation is multi-week; this task shadows globals inside the 
 ### Task C1: Validate JSON-RPC envelope; wrap dispatch; cap line length; handle write errors
 
 **Files:**
+
 - Modify: `packages/mcp-server/src/stdio.ts`, `packages/mcp-server/src/server.ts` (handleMessage guard)
 - Test: `packages/mcp-server/src/server.test.ts`
 
@@ -143,6 +152,7 @@ Note: full Worker isolation is multi-week; this task shadows globals inside the 
 ### Task C2: journal_review_pack hostile-row guards; input validation; snapshot retry + age
 
 **Files:**
+
 - Modify: `packages/mcp-server/src/server.ts` (journal_review_pack, price_option, option_chain, screen, economic_calendar, str cap)
 - Modify: `packages/mcp-server/src/snapshot.ts` (empty env fallback, ENOENT-only message)
 - Modify: `apps/desktop/src/snapshot.ts` (retry with backoff)
@@ -159,6 +169,7 @@ Note: full Worker isolation is multi-week; this task shadows globals inside the 
 ### Task D1: Bridge token + restrict CORS + rate limit
 
 **Files:**
+
 - Modify: `tools/mt5-bridge/bridge.py`
 - Test: `tools/mt5-bridge/test_bridge.py` (create if missing)
 
@@ -171,6 +182,7 @@ Note: full Worker isolation is multi-week; this task shadows globals inside the 
 ### Task D2: Server-side rails + NaN/Inf volume + account kind + close-all + HTTPS MCP + timeouts + 401 clear
 
 **Files:**
+
 - Modify: `tools/mt5-bridge/bridge.py` (_order, _close, _connect)
 - Modify: `apps/desktop/src/trading.ts` (close-all gate)
 - Modify: `packages/mt5-adapter/src/mcp.ts` (HTTPS check, timeout, session reset)
@@ -188,6 +200,7 @@ Note: full Worker isolation is multi-week; this task shadows globals inside the 
 ### Task E1: Code-split Monaco + heavy panels; rAF batching for live candles
 
 **Files:**
+
 - Modify: `apps/desktop/src/PineEditor.tsx`, `apps/desktop/src/ChartHost.tsx`, `apps/desktop/src/liveBars.ts` (caller side)
 - Test: build + existing tests
 
@@ -200,6 +213,7 @@ Note: full Worker isolation is multi-week; this task shadows globals inside the 
 ### Task F1: cargo test in CI; coverage; E2E journeys
 
 **Files:**
+
 - Modify: `.github/workflows/ci.yml`
 - Add: `e2e/*.spec.ts` (drawing, paper order, alert trigger)
 - Modify: `vitest.config.ts` (coverage)
@@ -213,6 +227,7 @@ Note: full Worker isolation is multi-week; this task shadows globals inside the 
 ### Task G1: AI journal summary trigger (UI button calling MCP pack)
 
 **Files:**
+
 - Modify: `apps/desktop/src/JournalPage.tsx` or `JournalPanel.tsx`
 - Test: component test
 
@@ -229,6 +244,7 @@ Note: defer to next cycle if scope exceeds 1 PR; document reason.
 ### Task H1: SRI/integrity; lock connect-src; factory reset keyring policy; save_file size cap
 
 **Files:**
+
 - Modify: `apps/desktop/src-tauri/tauri.conf.json`, `lib.rs` (factory_reset comment + optional wipe), `crosshairBus.ts`
 - Test: Rust tests
 
@@ -241,6 +257,7 @@ Note: defer to next cycle if scope exceeds 1 PR; document reason.
 ### Task I1: npm audit + cargo audit in CI; release tags
 
 **Files:**
+
 - Modify: `.github/workflows/ci.yml`
 - Add: `.github/dependabot.yml`
 
@@ -252,6 +269,7 @@ Note: defer to next cycle if scope exceeds 1 PR; document reason.
 ### Task J1: Sound controls + global shortcuts + a11y pass + i18n stub
 
 **Files:**
+
 - Modify: `apps/desktop/src/DesktopTab.tsx`, `apps/desktop/src/settings` (shortcuts), `apps/desktop/src/index.css` (focus rings)
 - Add: `react-i18next` config stub
 

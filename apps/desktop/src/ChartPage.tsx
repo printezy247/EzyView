@@ -89,17 +89,24 @@ export function ChartPage({
   const orders = useTrading((s) => s.orders);
 
   const watchlistSymbolKey = useWorkspace((s) => s.watchlistSymbolKey);
-  const symbols = useMemo(() => (watchlistSymbolKey ? watchlistSymbolKey.split(",") : []), [watchlistSymbolKey]);
+  const symbols = useMemo(
+    () => (watchlistSymbolKey ? watchlistSymbolKey.split(",") : []),
+    [watchlistSymbolKey],
+  );
   // The command input offers only symbols this cell's feed can serve, and its
   // recents are kept per feed rather than in one cross-broker list.
   const globalFeed = useMt5((s) => s.source);
   const source = effectiveSource(state.dataSource, globalFeed);
   const allLayouts = useWorkspace((s) => s.layouts);
-  const layoutChoices = useMemo(() => allLayouts.map((l) => ({ id: l.id, name: l.name })), [allLayouts]);
+  const layoutChoices = useMemo(
+    () => allLayouts.map((l) => ({ id: l.id, name: l.name })),
+    [allLayouts],
+  );
   const eventOptions = useWorkspace((s) => s.eventOptions);
   const apiKeys = useApiKeys((s) => s.keys);
   const [commandOpen, setCommandOpen] = useState(false);
-  const [fundamentalEvents, setFundamentalEvents] = useState<FundamentalEventOverlay>(EMPTY_FUNDAMENTAL_EVENTS);
+  const [fundamentalEvents, setFundamentalEvents] =
+    useState<FundamentalEventOverlay>(EMPTY_FUNDAMENTAL_EVENTS);
   const [historyBars, setHistoryBars] = useState(0);
   const [crosshairTime, setCrosshairTime] = useState<number | null>(null);
   const crosshairSync = useWorkspace((s) => s.crosshairSync);
@@ -116,7 +123,12 @@ export function ChartPage({
     hoverRef.current = index;
     setHoverIndex(index);
     const ws = useWorkspace.getState();
-    if (index === null && prev !== null && ws.crosshairSync && prev === ws.activeLayout().activeChart) {
+    if (
+      index === null &&
+      prev !== null &&
+      ws.crosshairSync &&
+      prev === ws.activeLayout().activeChart
+    ) {
       publishCrosshair(ws.activeChart().symbol, null, null);
     }
   }, []);
@@ -132,7 +144,10 @@ export function ChartPage({
   const [linkGroupOpen, setLinkGroupOpen] = useState(false);
   const saveChartTemplate = useWorkspace((s) => s.saveChartTemplate);
   const onCellContextMenu = useCallback(
-    (index: number, info: { clientX: number; clientY: number; time: number; price: number; drawingId?: string }) => {
+    (
+      index: number,
+      info: { clientX: number; clientY: number; time: number; price: number; drawingId?: string },
+    ) => {
       useWorkspace.getState().setActiveChart(index);
       setMenu({
         x: info.clientX,
@@ -201,7 +216,9 @@ export function ChartPage({
       setSyncCross((prev) => (prev === null ? prev : null));
       return;
     }
-    setSyncCross((prev) => (prev && prev.time === t && prev.price === p ? prev : { time: t, price: p }));
+    setSyncCross((prev) =>
+      prev && prev.time === t && prev.price === p ? prev : { time: t, price: p },
+    );
   }, []);
 
   const onCrosshairMove = useCallback(
@@ -249,9 +266,11 @@ export function ChartPage({
     }
     let cancelled = false;
     const sources = buildSources(apiKeys);
-    void fetchFundamentalEvents(sources, state.symbol, Date.now() / 1000, eventOptions).then((overlay) => {
-      if (!cancelled) setFundamentalEvents(overlay);
-    });
+    void fetchFundamentalEvents(sources, state.symbol, Date.now() / 1000, eventOptions).then(
+      (overlay) => {
+        if (!cancelled) setFundamentalEvents(overlay);
+      },
+    );
     return () => {
       cancelled = true;
     };
@@ -293,7 +312,9 @@ export function ChartPage({
     when: () => useWorkspace.getState().selectedDrawingIds.length > 0,
     run: (event) => {
       const ws = useWorkspace.getState();
-      const drawings = [...ws.activeChart().drawings].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0));
+      const drawings = [...ws.activeChart().drawings].sort(
+        (a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0),
+      );
       if (drawings.length === 0) return;
       const current = drawings.findIndex((d) => d.id === ws.selectedDrawingId);
       const delta = event.shiftKey ? -1 : 1;
@@ -394,45 +415,84 @@ export function ChartPage({
   // Entry/stop/target for the position on this chart, as constant price lines.
   // Built once per positions change, so each cell gets a stable array and the
   // chart only redraws its lines when a fill actually changes them.
-  const lineColor = useCallback((role: "accent" | "up" | "down") => themeColors(state.theme)[role], [state.theme]);
+  const lineColor = useCallback(
+    (role: "accent" | "up" | "down") => themeColors(state.theme)[role],
+    [state.theme],
+  );
   const linesBySymbol = useMemo(() => {
     const out = new Map<string, TradingLine[]>();
     for (const position of positions) {
       const lines: TradingLine[] = [
-        { price: position.entryPrice, color: lineColor("accent"), title: position.side === "long" ? "LONG" : "SHORT" },
+        {
+          price: position.entryPrice,
+          color: lineColor("accent"),
+          title: position.side === "long" ? "LONG" : "SHORT",
+        },
       ];
       if (position.stopLoss !== undefined) {
-        lines.push({ price: position.stopLoss, color: lineColor("down"), title: "SL", dashed: true });
+        lines.push({
+          price: position.stopLoss,
+          color: lineColor("down"),
+          title: "SL",
+          dashed: true,
+        });
       }
       if (position.takeProfit !== undefined) {
-        lines.push({ price: position.takeProfit, color: lineColor("up"), title: "TP", dashed: true });
+        lines.push({
+          price: position.takeProfit,
+          color: lineColor("up"),
+          title: "TP",
+          dashed: true,
+        });
       }
       if (!out.has(position.symbol)) out.set(position.symbol, lines);
     }
     return out;
   }, [positions, lineColor]);
-  const linesFor = useCallback((symbol: string) => linesBySymbol.get(symbol) ?? NO_LINES, [linesBySymbol]);
+  const linesFor = useCallback(
+    (symbol: string) => linesBySymbol.get(symbol) ?? NO_LINES,
+    [linesBySymbol],
+  );
 
   // The stop/target a drag may grab, plus the price the line should render at
   // while the drag is live. Kept here rather than in the store: it is a
   // transient pointer preview, not workspace state.
-  const [levelPreview, setLevelPreview] = useState<{ symbol: string; id: string; price: number } | null>(null);
+  const [levelPreview, setLevelPreview] = useState<{
+    symbol: string;
+    id: string;
+    price: number;
+  } | null>(null);
   const draggableLevelsFor = useCallback(
     (symbol: string) => {
       const position = positions.find((p) => p.symbol === symbol);
       if (!position) return undefined;
       const out: { id: string; price: number }[] = [];
       if (position.stopLoss !== undefined) {
-        out.push({ id: "SL", price: levelPreview?.symbol === symbol && levelPreview.id === "SL" ? levelPreview.price : position.stopLoss });
+        out.push({
+          id: "SL",
+          price:
+            levelPreview?.symbol === symbol && levelPreview.id === "SL"
+              ? levelPreview.price
+              : position.stopLoss,
+        });
       }
       if (position.takeProfit !== undefined) {
-        out.push({ id: "TP", price: levelPreview?.symbol === symbol && levelPreview.id === "TP" ? levelPreview.price : position.takeProfit });
+        out.push({
+          id: "TP",
+          price:
+            levelPreview?.symbol === symbol && levelPreview.id === "TP"
+              ? levelPreview.price
+              : position.takeProfit,
+        });
       }
       return out.length > 0 ? out : undefined;
     },
     [positions, levelPreview],
   );
-  const onLevelPreview = useCallback((symbol: string, id: string, price: number) => setLevelPreview({ symbol, id, price }), []);
+  const onLevelPreview = useCallback(
+    (symbol: string, id: string, price: number) => setLevelPreview({ symbol, id, price }),
+    [],
+  );
   const onLevelCommit = useCallback(
     (symbol: string, levels: { stopLoss?: number; takeProfit?: number }) => {
       setLevelPreview(null);
@@ -510,7 +570,9 @@ export function ChartPage({
         />
       )}
       {tableOpen && <BarsTable onClose={() => setTableOpen(false)} />}
-      {nameOpen && <TemplateNameDialog onSave={saveChartTemplate} onClose={() => setNameOpen(false)} />}
+      {nameOpen && (
+        <TemplateNameDialog onSave={saveChartTemplate} onClose={() => setNameOpen(false)} />
+      )}
       {linkGroupOpen && (
         <LinkGroupDialog
           open

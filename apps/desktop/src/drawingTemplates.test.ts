@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { applyDrawingTemplate, listDrawingTemplates, saveDrawingTemplate } from "./drawingTemplates";
+import {
+  applyDrawingTemplate,
+  listDrawingTemplates,
+  saveDrawingTemplate,
+} from "./drawingTemplates";
 import { useWorkspace } from "./store";
 import type { DrawingStyle } from "@ezyview/drawing-tools";
 

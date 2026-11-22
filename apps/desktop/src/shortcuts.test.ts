@@ -39,7 +39,9 @@ describe("comboMatches", () => {
     expect(comboMatches("Mod+K", key({ key: "k", metaKey: true }))).toBe(true);
     expect(comboMatches("Mod+K", key({ key: "k" }))).toBe(false);
     expect(comboMatches("Mod+K", key({ key: "k", ctrlKey: true, shiftKey: true }))).toBe(false);
-    expect(comboMatches("Mod+Shift+K", key({ key: "K", ctrlKey: true, shiftKey: true }))).toBe(true);
+    expect(comboMatches("Mod+Shift+K", key({ key: "K", ctrlKey: true, shiftKey: true }))).toBe(
+      true,
+    );
   });
 
   it("matches shifted symbols only when Shift is part of the combo", () => {
@@ -90,7 +92,13 @@ describe("shortcut registry", () => {
     const normal = vi.fn();
     const allowed = vi.fn();
     registry.register({ id: "normal", combo: "Escape", run: normal });
-    registry.register({ id: "allowed", combo: "Escape", allowInInput: true, priority: 5, run: allowed });
+    registry.register({
+      id: "allowed",
+      combo: "Escape",
+      allowInInput: true,
+      priority: 5,
+      run: allowed,
+    });
 
     const input = document.createElement("input");
     document.body.appendChild(input);

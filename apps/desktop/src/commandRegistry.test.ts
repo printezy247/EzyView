@@ -10,7 +10,10 @@ import type { CommandGroup } from "./commandRegistry";
  * out) and the nav commands.
  */
 
-const group = (title: string, entries: CommandGroup["entries"]): CommandGroup => ({ title, entries });
+const group = (title: string, entries: CommandGroup["entries"]): CommandGroup => ({
+  title,
+  entries,
+});
 
 describe("flattenGroups", () => {
   it("drops labels, separators and disabled actions", () => {
@@ -68,5 +71,13 @@ describe("buildNavCommands", () => {
     const commands = buildNavCommands((to) => seen.push(to));
     commands[0]!.run();
     expect(seen[0]).toBe("/chart");
+  });
+});
+
+describe("palette command keys", () => {
+  it("nav and sub-view commands never share a key", async () => {
+    const { buildSubViewCommands } = await import("./commandRegistry");
+    const keys = [...buildNavCommands(), ...buildSubViewCommands()].map((c) => c.key);
+    expect(new Set(keys).size).toBe(keys.length);
   });
 });

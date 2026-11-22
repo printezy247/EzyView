@@ -28,7 +28,9 @@ interface SnapshotInput {
 }
 
 /** Screenshots are base64 images: useful in the app, dead weight for an agent. */
-const withoutScreenshots = <T extends { screenshots?: string[] }>(item: T): Omit<T, "screenshots"> => {
+const withoutScreenshots = <T extends { screenshots?: string[] }>(
+  item: T,
+): Omit<T, "screenshots"> => {
   const { screenshots: _dropped, ...rest } = item;
   return rest;
 };
@@ -52,10 +54,20 @@ export function buildSnapshot(input: SnapshotInput, now: number = Date.now()) {
       })),
     })),
     alerts: input.alerts,
-    watchlist: input.watchlist.map((w) => ({ symbol: w.symbol, price: w.price, changePct: w.changePct })),
+    watchlist: input.watchlist.map((w) => ({
+      symbol: w.symbol,
+      price: w.price,
+      changePct: w.changePct,
+    })),
     journal: {
-      entries: [...input.entries].sort((a, b) => b.entryTime - a.entryTime).slice(0, MAX_ENTRIES).map(withoutScreenshots),
-      notes: [...input.notes].sort((a, b) => b.time - a.time).slice(0, MAX_NOTES).map(withoutScreenshots),
+      entries: [...input.entries]
+        .sort((a, b) => b.entryTime - a.entryTime)
+        .slice(0, MAX_ENTRIES)
+        .map(withoutScreenshots),
+      notes: [...input.notes]
+        .sort((a, b) => b.time - a.time)
+        .slice(0, MAX_NOTES)
+        .map(withoutScreenshots),
     },
   };
 }

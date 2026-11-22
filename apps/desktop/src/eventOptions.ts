@@ -20,8 +20,16 @@ export const DEFAULT_EVENT_OPTIONS: EventOptions = {
 const IMPACT_ORDER = ["high", "medium", "low"] as const;
 
 /** Options for `fundamentalOverlays` (exact impact list, per-source switches). */
-export function toOverlayOptions(o: EventOptions): { showEarnings: boolean; showEvents: boolean; impacts: Impact[] } {
-  return { showEarnings: o.earnings, showEvents: o.economic, impacts: IMPACT_ORDER.filter((i) => o.impacts[i]) };
+export function toOverlayOptions(o: EventOptions): {
+  showEarnings: boolean;
+  showEvents: boolean;
+  impacts: Impact[];
+} {
+  return {
+    showEarnings: o.earnings,
+    showEvents: o.economic,
+    impacts: IMPACT_ORDER.filter((i) => o.impacts[i]),
+  };
 }
 
 /** False when the overlay would be empty whatever the data, so callers can skip the fetch. */
@@ -35,7 +43,10 @@ const bool = (v: unknown, fallback: boolean): boolean => (typeof v === "boolean"
 export function restoreEventOptions(raw: unknown): EventOptions {
   if (typeof raw !== "object" || raw === null) return DEFAULT_EVENT_OPTIONS;
   const r = raw as Record<string, unknown>;
-  const impacts = typeof r.impacts === "object" && r.impacts !== null ? (r.impacts as Record<string, unknown>) : {};
+  const impacts =
+    typeof r.impacts === "object" && r.impacts !== null
+      ? (r.impacts as Record<string, unknown>)
+      : {};
   const d = DEFAULT_EVENT_OPTIONS;
   return {
     earnings: bool(r.earnings, d.earnings),

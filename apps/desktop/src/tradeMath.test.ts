@@ -127,7 +127,9 @@ describe("calculateRiskReward", () => {
   });
 
   it("returns null ratio when invalid geometry or missing levels", () => {
-    expect(calculateRiskReward({ side: "buy", entry: 100, stop: 105, target: 110 }).ratio).toBeNull();
+    expect(
+      calculateRiskReward({ side: "buy", entry: 100, stop: 105, target: 110 }).ratio,
+    ).toBeNull();
     expect(calculateRiskReward({ side: "buy", entry: 100, stop: 95 }).ratio).toBeNull();
   });
 });

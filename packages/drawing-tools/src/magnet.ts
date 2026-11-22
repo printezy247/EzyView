@@ -27,7 +27,8 @@ export function nearestBarIndex(bars: readonly MagnetBar[], time: number): numbe
     else hi = mid;
   }
   // `lo` is the first bar at or after `time`; the one before may be closer.
-  if (lo > 0 && Math.abs(bars[lo - 1]!.time - time) <= Math.abs(bars[lo]!.time - time)) return lo - 1;
+  if (lo > 0 && Math.abs(bars[lo - 1]!.time - time) <= Math.abs(bars[lo]!.time - time))
+    return lo - 1;
   return lo;
 }
 
@@ -46,7 +47,8 @@ export function snapToOhlc(point: Point, bars: readonly MagnetBar[], mode: Magne
   // where it is instead of pulling it back onto the edge candle.
   if (bars.length > 1) {
     const reach = Math.abs(bars[bars.length - 1]!.time - bars[bars.length - 2]!.time) / 2;
-    if (point.time > bars[bars.length - 1]!.time + reach || point.time < bars[0]!.time - reach) return point;
+    if (point.time > bars[bars.length - 1]!.time + reach || point.time < bars[0]!.time - reach)
+      return point;
   }
   const bar = bars[index]!;
 
@@ -88,7 +90,11 @@ export function objectSnapCandidates(drawings: readonly Drawing[]): ObjectSnap[]
     }
     if (drawing.tool === "fib_retracement" || drawing.tool === "fib_extension") {
       for (const level of resolvedFibLevels(drawing.points, drawing.style)) {
-        out.push({ time: drawing.points[1]?.time ?? drawing.points[0]!.time, price: level.price, priority: 2 });
+        out.push({
+          time: drawing.points[1]?.time ?? drawing.points[0]!.time,
+          price: level.price,
+          priority: 2,
+        });
       }
     }
   }
@@ -100,11 +106,7 @@ export function objectSnapCandidates(drawings: readonly Drawing[]): ObjectSnap[]
  * leave the point for the candle magnet. `strong` always takes the nearest
  * candidate; `weak` only takes one inside a small fraction of the local price.
  */
-export function snapToObjects(
-  point: Point,
-  drawings: readonly Drawing[],
-  mode: MagnetMode,
-): Point {
+export function snapToObjects(point: Point, drawings: readonly Drawing[], mode: MagnetMode): Point {
   if (mode === "off" || drawings.length === 0) return point;
   const candidates = objectSnapCandidates(drawings);
   if (candidates.length === 0) return point;

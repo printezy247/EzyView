@@ -27,7 +27,12 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   override componentDidCatch(error: Error, info: ErrorInfo): void {
-    void appendCrash(formatCrash("render", Object.assign(error, { stack: `${error.stack ?? ""}${info.componentStack ?? ""}` })));
+    void appendCrash(
+      formatCrash(
+        "render",
+        Object.assign(error, { stack: `${error.stack ?? ""}${info.componentStack ?? ""}` }),
+      ),
+    );
   }
 
   reset = (): void => {
@@ -41,9 +46,16 @@ export class ErrorBoundary extends Component<Props, State> {
       return this.props.fallback(this.reset, this.state.error);
     }
     return (
-      <div role="alert" className="flex h-screen flex-col items-center justify-center gap-3 bg-ev-bg text-ev-text">
-        <p className="text-body font-semibold text-ev-strong">{this.props.title ?? "Something went wrong."}</p>
-        <p className="text-base text-ev-muted">The error was saved to the local crash log (Settings → Diagnostics).</p>
+      <div
+        role="alert"
+        className="flex h-screen flex-col items-center justify-center gap-3 bg-ev-bg text-ev-text"
+      >
+        <p className="text-body font-semibold text-ev-strong">
+          {this.props.title ?? "Something went wrong."}
+        </p>
+        <p className="text-base text-ev-muted">
+          The error was saved to the local crash log (Settings → Diagnostics).
+        </p>
         <Button size="sm" onClick={() => window.location.reload()}>
           Reload
         </Button>

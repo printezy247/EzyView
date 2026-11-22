@@ -17,8 +17,24 @@ describe("entriesFromDeals", () => {
   it("groups an MT5 round trip by position id", () => {
     const entries = entriesFromDeals(
       [
-        deal({ id: "10", positionId: "777", side: "buy", price: 100, pnl: 0, commission: -1, time: 1000 }),
-        deal({ id: "11", positionId: "777", side: "sell", price: 120, pnl: 20, commission: -1, time: 1200 }),
+        deal({
+          id: "10",
+          positionId: "777",
+          side: "buy",
+          price: 100,
+          pnl: 0,
+          commission: -1,
+          time: 1000,
+        }),
+        deal({
+          id: "11",
+          positionId: "777",
+          side: "sell",
+          price: 120,
+          pnl: 20,
+          commission: -1,
+          time: 1200,
+        }),
       ],
       "mt5",
     );
@@ -57,7 +73,9 @@ describe("entriesFromDeals", () => {
   });
 
   it("keeps an unclosed position open", () => {
-    const entries = entriesFromDeals([deal({ id: "1", positionId: "10", side: "buy", price: 100, time: 1 })]);
+    const entries = entriesFromDeals([
+      deal({ id: "1", positionId: "10", side: "buy", price: 100, time: 1 }),
+    ]);
     expect(entries[0]).toMatchObject({ entryPrice: 100 });
     expect(entries[0]?.exitTime).toBeUndefined();
     expect(entries[0]?.pnl).toBeUndefined();
@@ -84,7 +102,9 @@ describe("entriesFromDeals", () => {
   });
 
   it("exposes keys for skipping already-imported trades", () => {
-    const entries = entriesFromDeals([deal({ id: "1", positionId: "5", side: "buy", pnl: 0, time: 1 })]);
+    const entries = entriesFromDeals([
+      deal({ id: "1", positionId: "5", side: "buy", pnl: 0, time: 1 }),
+    ]);
     const keys = existingKeys(entries);
     expect(keys.has("pos:5")).toBe(true);
     expect(keys.has("pos:6")).toBe(false);

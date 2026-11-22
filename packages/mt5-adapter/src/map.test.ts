@@ -19,8 +19,17 @@ const rate = (time: number) => ({ time, open: 1, high: 2, low: 0.5, close: 1.5, 
 
 /** Order status reported for a given MT5 state code. */
 const statusOfState = (value: number): string | undefined =>
-  toOrders([{ ticket: 9, symbol: "EURUSD", type: 0, volume_initial: 1, price_open: 1, state: value, time_setup: 1 }])[0]
-    ?.status;
+  toOrders([
+    {
+      ticket: 9,
+      symbol: "EURUSD",
+      type: 0,
+      volume_initial: 1,
+      price_open: 1,
+      state: value,
+      time_setup: 1,
+    },
+  ])[0]?.status;
 
 describe("toTimeframe", () => {
   it("maps every chart resolution to an MT5 timeframe", () => {
@@ -105,15 +114,56 @@ describe("toPositions", () => {
   it("maps type, exits and profit", () => {
     const [position] = toPositions({
       positions: [
-        { ticket: 1, symbol: "XAUUSD", type: 0, volume: 0.1, price_open: 4000, price_current: 4100, sl: 3900, tp: 4200, profit: 100, time: 1792400000 },
-        { ticket: 2, symbol: "XAUUSD", type: 1, volume: 0.2, price_open: 4000, price_current: 3900, sl: 0, tp: 0, profit: 20, time: 1792400100 },
+        {
+          ticket: 1,
+          symbol: "XAUUSD",
+          type: 0,
+          volume: 0.1,
+          price_open: 4000,
+          price_current: 4100,
+          sl: 3900,
+          tp: 4200,
+          profit: 100,
+          time: 1792400000,
+        },
+        {
+          ticket: 2,
+          symbol: "XAUUSD",
+          type: 1,
+          volume: 0.2,
+          price_open: 4000,
+          price_current: 3900,
+          sl: 0,
+          tp: 0,
+          profit: 20,
+          time: 1792400100,
+        },
       ],
     });
-    expect(position).toMatchObject({ side: "long", qty: 0.1, entryPrice: 4000, markPrice: 4100, unrealizedPnl: 100, stopLoss: 3900, takeProfit: 4200 });
+    expect(position).toMatchObject({
+      side: "long",
+      qty: 0.1,
+      entryPrice: 4000,
+      markPrice: 4100,
+      unrealizedPnl: 100,
+      stopLoss: 3900,
+      takeProfit: 4200,
+    });
   });
 
   it("treats sl/tp of 0 as unset", () => {
-    const [position] = toPositions([{ symbol: "EURUSD", type: 1, volume: 1, price_open: 1, price_current: 1, sl: 0, tp: 0, time: 5 }]);
+    const [position] = toPositions([
+      {
+        symbol: "EURUSD",
+        type: 1,
+        volume: 1,
+        price_open: 1,
+        price_current: 1,
+        sl: 0,
+        tp: 0,
+        time: 5,
+      },
+    ]);
     expect(position?.side).toBe("short");
     expect(position?.stopLoss).toBeUndefined();
     expect(position?.takeProfit).toBeUndefined();
@@ -123,10 +173,42 @@ describe("toPositions", () => {
 describe("toOrders", () => {
   it("maps MT5 pending order types to venue types", () => {
     const rows = [
-      { ticket: 1, symbol: "EURUSD", type: 0, volume_initial: 1, price_open: 1.1, state: 1, time_setup: 10 },
-      { ticket: 2, symbol: "EURUSD", type: 1, volume_initial: 1, price_open: 1.2, state: 1, time_setup: 11 },
-      { ticket: 3, symbol: "EURUSD", type: 2, volume_initial: 1, price_open: 1.3, state: 1, time_setup: 12 },
-      { ticket: 4, symbol: "EURUSD", type: 5, volume_initial: 1, price_open: 1.4, state: 1, time_setup: 13 },
+      {
+        ticket: 1,
+        symbol: "EURUSD",
+        type: 0,
+        volume_initial: 1,
+        price_open: 1.1,
+        state: 1,
+        time_setup: 10,
+      },
+      {
+        ticket: 2,
+        symbol: "EURUSD",
+        type: 1,
+        volume_initial: 1,
+        price_open: 1.2,
+        state: 1,
+        time_setup: 11,
+      },
+      {
+        ticket: 3,
+        symbol: "EURUSD",
+        type: 2,
+        volume_initial: 1,
+        price_open: 1.3,
+        state: 1,
+        time_setup: 12,
+      },
+      {
+        ticket: 4,
+        symbol: "EURUSD",
+        type: 5,
+        volume_initial: 1,
+        price_open: 1.4,
+        state: 1,
+        time_setup: 13,
+      },
     ];
     const orders = toOrders({ orders: rows });
     expect(orders.map((o) => [o.side, o.type])).toEqual([
@@ -150,18 +232,40 @@ describe("toDeals", () => {
   it("keeps trades and drops balance entries", () => {
     const deals = toDeals({
       deals: [
-        { ticket: 1, symbol: "XAUUSD", type: 0, volume: 0.1, price: 4000, profit: 10, commission: -1, swap: -0.2, time: 100, position_id: 7, order: 3 },
+        {
+          ticket: 1,
+          symbol: "XAUUSD",
+          type: 0,
+          volume: 0.1,
+          price: 4000,
+          profit: 10,
+          commission: -1,
+          swap: -0.2,
+          time: 100,
+          position_id: 7,
+          order: 3,
+        },
         { ticket: 2, symbol: "", type: 2, volume: 0, price: 0, profit: 3300, time: 101 },
       ],
     });
     expect(deals).toHaveLength(1);
-    expect(deals[0]).toMatchObject({ side: "buy", pnl: 10, commission: -1, swap: -0.2, positionId: "7", orderId: "3" });
+    expect(deals[0]).toMatchObject({
+      side: "buy",
+      pnl: 10,
+      commission: -1,
+      swap: -0.2,
+      positionId: "7",
+      orderId: "3",
+    });
   });
 });
 
 describe("toQuote", () => {
   it("uses the bid as last (MT5 candles are bid-based) and derives change from previous close", () => {
-    const quote = toQuote({ bid: 4148.56, ask: 4148.86, prev_close: 4100, time: 1792430308 }, "XAUUSD");
+    const quote = toQuote(
+      { bid: 4148.56, ask: 4148.86, prev_close: 4100, time: 1792430308 },
+      "XAUUSD",
+    );
     expect(quote?.last).toBe(4148.56);
     expect(quote?.bid).toBe(4148.56);
     expect(quote?.changePercent).toBeCloseTo(1.184, 3);
@@ -180,9 +284,23 @@ describe("toQuote", () => {
 describe("toSymbols", () => {
   it("derives precision from digits and tick size from point", () => {
     const [symbol] = toSymbols({
-      symbols: [{ symbol: "EURUSD", description: "Euro vs US Dollar", digits: 5, point: 0.00001, trade_mode: 4, currency_base: "EUR" }],
+      symbols: [
+        {
+          symbol: "EURUSD",
+          description: "Euro vs US Dollar",
+          digits: 5,
+          point: 0.00001,
+          trade_mode: 4,
+          currency_base: "EUR",
+        },
+      ],
     });
-    expect(symbol).toMatchObject({ precision: 5, tickSize: 0.00001, assetClass: "forex", currency: "EUR" });
+    expect(symbol).toMatchObject({
+      precision: 5,
+      tickSize: 0.00001,
+      assetClass: "forex",
+      currency: "EUR",
+    });
   });
 
   it("marks a symbol untradable only when the broker freezes it", () => {
@@ -194,7 +312,14 @@ describe("toSymbols", () => {
 });
 
 describe("outgoing order arguments", () => {
-  const market = { symbol: "XAUUSD", side: "buy" as const, type: "market" as const, qty: 0.1, stopLoss: 3900, takeProfit: 4200 };
+  const market = {
+    symbol: "XAUUSD",
+    side: "buy" as const,
+    type: "market" as const,
+    qty: 0.1,
+    stopLoss: 3900,
+    takeProfit: 4200,
+  };
 
   it("routes market versus pending", () => {
     expect(isPending(market)).toBe(false);
@@ -202,9 +327,23 @@ describe("outgoing order arguments", () => {
   });
 
   it("carries stops and targets on both shapes", () => {
-    expect(marketOrderArgs(market)).toMatchObject({ symbol: "XAUUSD", side: "buy", volume: 0.1, sl: 3900, tp: 4200 });
-    expect(pendingOrderArgs({ ...market, type: "limit", price: 4000 })).toMatchObject({ type: "limit", price: 4000, sl: 3900, tp: 4200 });
-    expect(pendingOrderArgs({ ...market, type: "stop", price: 4050 })).toMatchObject({ type: "stop", price: 4050 });
+    expect(marketOrderArgs(market)).toMatchObject({
+      symbol: "XAUUSD",
+      side: "buy",
+      volume: 0.1,
+      sl: 3900,
+      tp: 4200,
+    });
+    expect(pendingOrderArgs({ ...market, type: "limit", price: 4000 })).toMatchObject({
+      type: "limit",
+      price: 4000,
+      sl: 3900,
+      tp: 4200,
+    });
+    expect(pendingOrderArgs({ ...market, type: "stop", price: 4050 })).toMatchObject({
+      type: "stop",
+      price: 4050,
+    });
   });
 
   it("closes by symbol, optionally in part", () => {

@@ -20,7 +20,12 @@ export function BarsTable({ onClose }: { onClose: () => void }) {
       size="lg"
       actions={
         <>
-          <Button variant="outline" size="md" disabled={!source} onClick={() => source && saveChartCsv(source)}>
+          <Button
+            variant="outline"
+            size="md"
+            disabled={!source}
+            onClick={() => source && saveChartCsv(source)}
+          >
             Export CSV
           </Button>
           <Button variant="ghost" size="md" onClick={onClose}>
@@ -34,7 +39,11 @@ export function BarsTable({ onClose }: { onClose: () => void }) {
           <thead className="sticky top-0 bg-ev-panel text-ev-muted">
             <tr>
               {["Time", "Open", "High", "Low", "Close", "Volume"].map((h, i) => (
-                <th key={h} scope="col" className={`px-3 py-1.5 font-medium ${i === 0 ? "text-left" : ""}`}>
+                <th
+                  key={h}
+                  scope="col"
+                  className={`px-3 py-1.5 font-medium ${i === 0 ? "text-left" : ""}`}
+                >
                   {h}
                 </th>
               ))}

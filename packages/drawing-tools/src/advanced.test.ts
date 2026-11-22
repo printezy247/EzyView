@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_DRAWING_STYLE, type Drawing, type DrawingToolId } from "./types.js";
-import { advancedFigure, advancedHitTest, isAdvancedTool, isComplete, TOOL_ANCHORS } from "./index.js";
+import {
+  advancedFigure,
+  advancedHitTest,
+  isAdvancedTool,
+  isComplete,
+  TOOL_ANCHORS,
+} from "./index.js";
 
 const at = (x: number, y: number) => ({ x, y });
 
@@ -11,8 +17,10 @@ const drawing = (tool: DrawingToolId, points: { time: number; price: number }[])
   style: { ...DEFAULT_DRAWING_STYLE },
 });
 
-const anchors = (n: number) => Array.from({ length: n }, (_, i) => ({ time: i, price: 100 + i * 10 }));
-const screen = (n: number) => Array.from({ length: n }, (_, i) => at(40 + i * 50, 100 + (i % 2) * 30));
+const anchors = (n: number) =>
+  Array.from({ length: n }, (_, i) => ({ time: i, price: 100 + i * 10 }));
+const screen = (n: number) =>
+  Array.from({ length: n }, (_, i) => at(40 + i * 50, 100 + (i % 2) * 30));
 
 describe("advanced drawing packs", () => {
   it("recognises every new tool and keeps anchors in step with TOOL_ANCHORS", () => {
@@ -65,7 +73,12 @@ describe("advanced drawing packs", () => {
   });
 
   it("builds a median line plus two parallels for every pitchfork variant", () => {
-    for (const tool of ["pitchfork_standard", "pitchfork_schiff", "pitchfork_modified_schiff", "pitchfork_inside"] as const) {
+    for (const tool of [
+      "pitchfork_standard",
+      "pitchfork_schiff",
+      "pitchfork_modified_schiff",
+      "pitchfork_inside",
+    ] as const) {
       const figure = advancedFigure(drawing(tool, anchors(3)), screen(3));
       expect(figure.segments).toHaveLength(3);
       expect(figure.segments[0]!.points).toHaveLength(2);

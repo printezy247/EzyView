@@ -33,7 +33,10 @@ export function registerTrading(registry: AdapterRegistry, adapter: TradingAdapt
 }
 
 /** Resolve a full symbol like "BINANCE:BTCUSDT" to its owning adapter. */
-export function resolveProvider(registry: AdapterRegistry, symbol: string): { adapter: MarketDataAdapter; local: string } | null {
+export function resolveProvider(
+  registry: AdapterRegistry,
+  symbol: string,
+): { adapter: MarketDataAdapter; local: string } | null {
   const colon = symbol.indexOf(":");
   if (colon > 0) {
     const prefix = symbol.slice(0, colon).toLowerCase();

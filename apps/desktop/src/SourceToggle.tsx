@@ -33,7 +33,10 @@ async function realSourceKey(): Promise<string | null> {
           tradeMode: (raw as { trade_mode?: number }).trade_mode,
           login: (raw as { login?: number | string }).login,
         }))
-        .catch((err: unknown) => ({ kind: "error" as const, message: err instanceof Error ? err.message : String(err) }));
+        .catch((err: unknown) => ({
+          kind: "error" as const,
+          message: err instanceof Error ? err.message : String(err),
+        }));
   return describeRealSource(source).key;
 }
 
@@ -61,7 +64,9 @@ export function SourceToggle() {
       const activeCount = useTrading.getState().positions.length;
       const isOnline = useMt5.getState().status === "online";
       if (isOnline && activeCount > 0) {
-        setSwitchWarning(`${activeCount} active position${activeCount > 1 ? "s are" : " is"} currently open on MT5`);
+        setSwitchWarning(
+          `${activeCount} active position${activeCount > 1 ? "s are" : " is"} currently open on MT5`,
+        );
         return;
       }
     }
@@ -127,7 +132,15 @@ export function SourceToggle() {
 }
 
 /** Confirmation when leaving a live MT5 session with positions open. */
-function SwitchWarningDialog({ warning, onStay, onSwitch }: { warning: string; onStay: () => void; onSwitch: () => void }) {
+function SwitchWarningDialog({
+  warning,
+  onStay,
+  onSwitch,
+}: {
+  warning: string;
+  onStay: () => void;
+  onSwitch: () => void;
+}) {
   return (
     <Dialog
       onClose={onStay}
@@ -139,7 +152,12 @@ function SwitchWarningDialog({ warning, onStay, onSwitch }: { warning: string; o
           <Button variant="outline" size="md" autoFocus onClick={onStay}>
             Stay on MT5
           </Button>
-          <Button variant="solid" size="md" onClick={onSwitch} className="bg-ev-warn hover:brightness-110">
+          <Button
+            variant="solid"
+            size="md"
+            onClick={onSwitch}
+            className="bg-ev-warn hover:brightness-110"
+          >
             Switch to Demo anyway
           </Button>
         </>
@@ -151,7 +169,15 @@ function SwitchWarningDialog({ warning, onStay, onSwitch }: { warning: string; o
 }
 
 /** Confirmation before letting a real-money account drive the chart feed. */
-function RealSourceRiskDialog({ maskedLogin, onRefuse, onAccept }: { maskedLogin: string; onRefuse: () => void; onAccept: () => void }) {
+function RealSourceRiskDialog({
+  maskedLogin,
+  onRefuse,
+  onAccept,
+}: {
+  maskedLogin: string;
+  onRefuse: () => void;
+  onAccept: () => void;
+}) {
   return (
     <Dialog
       onClose={onRefuse}
@@ -163,7 +189,12 @@ function RealSourceRiskDialog({ maskedLogin, onRefuse, onAccept }: { maskedLogin
           <Button variant="outline" size="md" autoFocus onClick={onRefuse}>
             Switch back to demo data
           </Button>
-          <Button variant="solid" size="md" onClick={onAccept} className="bg-ev-warn hover:brightness-110">
+          <Button
+            variant="solid"
+            size="md"
+            onClick={onAccept}
+            className="bg-ev-warn hover:brightness-110"
+          >
             I understand — continue
           </Button>
         </>

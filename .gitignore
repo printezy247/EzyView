@@ -40,3 +40,4 @@ rea-out/
 /blob-report/
 /playwright/.cache/
 tools/mt5-bridge/audit.db
+graphify-out/

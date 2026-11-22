@@ -89,7 +89,9 @@ export function TabBar() {
   };
 
   return (
-    <div className={`flex ${SHELL_BAR_HEIGHT} shrink-0 items-center gap-1 ev-bar border-b border-ev-raised bg-ev-chrome px-2`}>
+    <div
+      className={`flex ${SHELL_BAR_HEIGHT} shrink-0 items-center gap-1 ev-bar border-b border-ev-raised bg-ev-chrome px-2`}
+    >
       {/* Browser/Desktop history navigation controls */}
       <div className="mr-1 flex items-center gap-0.5">
         <IconButton label="Go back" size="sm" onClick={() => window.history.back()}>
@@ -184,7 +186,12 @@ export function TabBar() {
         })}
 
         {/* 1-click New Tab button */}
-        <IconButton label="New Tab — Create new layout" size="sm" onClick={addLayout} className="shrink-0">
+        <IconButton
+          label="New Tab — Create new layout"
+          size="sm"
+          onClick={addLayout}
+          className="shrink-0"
+        >
           <Plus size={14} aria-hidden />
         </IconButton>
       </div>
@@ -197,7 +204,12 @@ export function TabBar() {
         entries={
           [
             { kind: "action", id: "new", label: "Create new layout", onSelect: addLayout },
-            { kind: "action", id: "duplicate", label: "Duplicate tab", onSelect: () => copyLayout(activeId) },
+            {
+              kind: "action",
+              id: "duplicate",
+              label: "Duplicate tab",
+              onSelect: () => copyLayout(activeId),
+            },
             {
               kind: "action",
               id: "rename",
@@ -208,8 +220,18 @@ export function TabBar() {
               },
             },
             { kind: "separator", id: "s-sort" },
-            { kind: "action", id: "sort-name", label: "Layout name (A to Z)", onSelect: () => sortLayouts("name") },
-            { kind: "action", id: "sort-date", label: "Date modified (oldest first)", onSelect: () => sortLayouts("date") },
+            {
+              kind: "action",
+              id: "sort-name",
+              label: "Layout name (A to Z)",
+              onSelect: () => sortLayouts("name"),
+            },
+            {
+              kind: "action",
+              id: "sort-date",
+              label: "Date modified (oldest first)",
+              onSelect: () => sortLayouts("date"),
+            },
             { kind: "separator", id: "s" },
             {
               kind: "action",
@@ -238,18 +260,18 @@ export function TabBar() {
         icon={
           <span className="flex items-center gap-1">
             <Link2 size={12} aria-hidden />
-            {currentLink && <span className="size-2 rounded-full" style={{ backgroundColor: linkColorHex }} />}
+            {currentLink && (
+              <span className="size-2 rounded-full" style={{ backgroundColor: linkColorHex }} />
+            )}
           </span>
         }
-        entries={LINK_COLORS.map(
-          (c): MenuEntry => ({
-            kind: "radio",
-            id: `link-${c.id || "none"}`,
-            label: c.label,
-            selected: currentLink === c.id,
-            onSelect: () => setLinkGroup(c.id),
-          }),
-        )}
+        entries={LINK_COLORS.map((c): MenuEntry => ({
+          kind: "radio",
+          id: `link-${c.id || "none"}`,
+          label: c.label,
+          selected: currentLink === c.id,
+          onSelect: () => setLinkGroup(c.id),
+        }))}
       />
 
       {/* Right-hand quick desktop controls */}

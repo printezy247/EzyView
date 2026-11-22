@@ -12,7 +12,14 @@
  * budget; this side just answers.
  */
 import { backtest, optimizePine, runPine } from "@ezyview/pine-transpiler";
-import type { BacktestOptions, Context, OptimizationResult, ParamSpec, PineResult, PineValue } from "@ezyview/pine-transpiler";
+import type {
+  BacktestOptions,
+  Context,
+  OptimizationResult,
+  ParamSpec,
+  PineResult,
+  PineValue,
+} from "@ezyview/pine-transpiler";
 
 export interface PineRunRequest {
   id: number;
@@ -72,7 +79,13 @@ self.addEventListener("message", (event): void => {
     if (req.kind === "run") {
       const ctx: Context = { ...req.ctx, inputs: { ...req.ctx.inputs } };
       const result = runPine(req.source, ctx);
-      const reply: PineRunResponse = { id: req.id, ok: true, kind: "run", result, inputs: ctx.inputs };
+      const reply: PineRunResponse = {
+        id: req.id,
+        ok: true,
+        kind: "run",
+        result,
+        inputs: ctx.inputs,
+      };
       // A dedicated worker has no target origin; the parent is implicit.
       // oxlint-disable-next-line unicorn/require-post-message-target-origin
       self.postMessage(reply);
@@ -101,9 +114,17 @@ self.addEventListener("message", (event): void => {
       return;
     }
     // oxlint-disable-next-line unicorn/require-post-message-target-origin
-    self.postMessage({ id: (req as PineRequest).id, ok: false, message: `unknown job kind` } satisfies PineErrorResponse);
+    self.postMessage({
+      id: (req as PineRequest).id,
+      ok: false,
+      message: `unknown job kind`,
+    } satisfies PineErrorResponse);
   } catch (e) {
     // oxlint-disable-next-line unicorn/require-post-message-target-origin
-    self.postMessage({ id: req.id, ok: false, message: e instanceof Error ? e.message : String(e) } satisfies PineErrorResponse);
+    self.postMessage({
+      id: req.id,
+      ok: false,
+      message: e instanceof Error ? e.message : String(e),
+    } satisfies PineErrorResponse);
   }
 });

@@ -46,7 +46,15 @@ export type Resolution =
   | "1M";
 
 /** Canonical asset classes supported by the symbol universe. */
-export type AssetClass = "crypto" | "forex" | "stock" | "etf" | "index" | "futures" | "bond" | "option";
+export type AssetClass =
+  | "crypto"
+  | "forex"
+  | "stock"
+  | "etf"
+  | "index"
+  | "futures"
+  | "bond"
+  | "option";
 
 export interface SymbolInfo {
   /** Stable unique id, e.g. "BINANCE:BTCUSDT" or "FX:EURUSD". */
@@ -127,7 +135,12 @@ export interface MarketDataAdapter {
 
   getHistory(request: HistoricalRequest): Promise<Candle[]>;
   getQuote(symbol: string): Promise<Quote | null>;
-  subscribe(symbols: string[], onQuote: SubscribeHandler): Promise<UnsubscribeFn>;
+  /**
+   * Push quotes for `symbols`. Resolves to null when the source has no stream
+   * for them (missing key, unsupported symbol) so the caller can poll instead
+   * of staring at a frozen chart.
+   */
+  subscribe(symbols: string[], onQuote: SubscribeHandler): Promise<UnsubscribeFn | null>;
 }
 
 // ---------------------------------------------------------------------------
@@ -137,7 +150,13 @@ export interface MarketDataAdapter {
 export type OrderSide = "buy" | "sell";
 export type OrderType = "market" | "limit" | "stop" | "stop_limit";
 export type TimeInForce = "gtc" | "ioc" | "fok" | "day" | "gtd";
-export type OrderStatus = "pending" | "partially_filled" | "filled" | "canceled" | "rejected" | "expired";
+export type OrderStatus =
+  | "pending"
+  | "partially_filled"
+  | "filled"
+  | "canceled"
+  | "rejected"
+  | "expired";
 export type PositionSide = "long" | "short" | "flat";
 
 export interface OrderRequest {
@@ -289,13 +308,21 @@ export interface EarningsReport {
 export interface CalendarAdapter {
   readonly id: string;
   readonly label: string;
-  getCalendar(from: EpochSeconds, to: EpochSeconds, filter?: { currency?: string; impact?: Impact }): Promise<EconomicEvent[]>;
+  getCalendar(
+    from: EpochSeconds,
+    to: EpochSeconds,
+    filter?: { currency?: string; impact?: Impact },
+  ): Promise<EconomicEvent[]>;
 }
 
 export interface NewsAdapter {
   readonly id: string;
   readonly label: string;
-  getNews(options?: { symbols?: string[]; from?: EpochSeconds; limit?: number }): Promise<NewsItem[]>;
+  getNews(options?: {
+    symbols?: string[];
+    from?: EpochSeconds;
+    limit?: number;
+  }): Promise<NewsItem[]>;
   subscribe?(symbols: string[], onNews: (item: NewsItem) => void): Promise<UnsubscribeFn>;
 }
 

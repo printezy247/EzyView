@@ -61,7 +61,9 @@ export function registerPineLanguage(monaco: typeof Monaco): void {
           label: c.label,
           kind: kinds[c.kind],
           detail: c.detail,
-          insertText: afterDot ? c.label.slice(c.label.lastIndexOf(".") + 1) : (c.insertText ?? c.label),
+          insertText: afterDot
+            ? c.label.slice(c.label.lastIndexOf(".") + 1)
+            : (c.insertText ?? c.label),
           range,
         })),
       };
@@ -70,28 +72,50 @@ export function registerPineLanguage(monaco: typeof Monaco): void {
 
   monaco.languages.setMonarchTokensProvider("pine", {
     keywords: [
-      "if", "else", "for", "to", "by", "while", "var", "return", "and", "or", "not", "true", "false", "na",
+      "if",
+      "else",
+      "for",
+      "to",
+      "by",
+      "while",
+      "var",
+      "return",
+      "and",
+      "or",
+      "not",
+      "true",
+      "false",
+      "na",
     ],
     typeKeywords: ["int", "float", "bool", "string", "color", "series", "simple"],
-    builtins: [
-      "open", "high", "low", "close", "volume", "hl2", "hlc3", "ohlc4", "bar_index",
-    ],
+    builtins: ["open", "high", "low", "close", "volume", "hl2", "hlc3", "ohlc4", "bar_index"],
     namespaces: ["ta", "math", "color", "input", "strategy", "shape", "location", "size"],
     functions: [
-      "plot", "plotshape", "bgcolor", "indicator", "strategy", "nz", "na", "crossover", "crossunder",
+      "plot",
+      "plotshape",
+      "bgcolor",
+      "indicator",
+      "strategy",
+      "nz",
+      "na",
+      "crossover",
+      "crossunder",
     ],
     tokenizer: {
       root: [
-        [/[a-zA-Z_]\w*/, {
-          cases: {
-            "@typeKeywords": "type.identifier",
-            "@namespaces": "namespace",
-            "@keywords": "keyword",
-            "@builtins": "constant",
-            "@functions": "predefined",
-            "@default": "identifier",
+        [
+          /[a-zA-Z_]\w*/,
+          {
+            cases: {
+              "@typeKeywords": "type.identifier",
+              "@namespaces": "namespace",
+              "@keywords": "keyword",
+              "@builtins": "constant",
+              "@functions": "predefined",
+              "@default": "identifier",
+            },
           },
-        }],
+        ],
         { include: "@whitespace" },
         [/[{}()[\]]/, "delimiter.brackets"],
         [/[<>]=?|==|!=|:=|\+|-|\*|\/|%|&&|\|\||[<>=!&|^~]/, "operator"],

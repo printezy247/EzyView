@@ -8,7 +8,12 @@ import { TapeBuffer, tapeEntry, type TapeEntry } from "./tape";
  * sequence, and a side derived from the previous print.
  */
 
-const print = (price: number, ts: number, size = 1): Omit<TapeEntry, "id" | "side"> => ({ symbol: "BTC/USD", price, size, ts });
+const print = (price: number, ts: number, size = 1): Omit<TapeEntry, "id" | "side"> => ({
+  symbol: "BTC/USD",
+  price,
+  size,
+  ts,
+});
 
 describe("tapeEntry", () => {
   it("marks an uptick as a buy and a downtick as a sell", () => {

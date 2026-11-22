@@ -43,7 +43,9 @@ describe("chartPngFilename", () => {
   it("is chart-<symbol>-<resolution>.png with unsafe chars stripped", () => {
     expect(chartPngFilename({ symbol: "BTCUSDT", resolution: "1D" })).toBe("chart-BTCUSDT-1D.png");
     // Symbols carry a provider prefix ("BINANCE:BTCUSDT"); the colon goes.
-    expect(chartPngFilename({ symbol: "BINANCE:BTCUSDT", resolution: "1m" })).toBe("chart-BINANCEBTCUSDT-1m.png");
+    expect(chartPngFilename({ symbol: "BINANCE:BTCUSDT", resolution: "1m" })).toBe(
+      "chart-BINANCEBTCUSDT-1m.png",
+    );
   });
 
   it("degrades to a safe name when the meta is empty", () => {

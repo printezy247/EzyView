@@ -49,10 +49,10 @@ const runIsolated = (): number => {
 describe(" Pine script compatibility (full scripts)", () => {
   it("EMA cross strategy: transpiles, runs, and orders backtest into fills", () => {
     const src = [
-      '//@version=5',
+      "//@version=5",
       'strategy("EMA Cross", overlay=true)',
-      "fast = input.int(9, title=\"Fast\")",
-      "slow = input.int(21, title=\"Slow\")",
+      'fast = input.int(9, title="Fast")',
+      'slow = input.int(21, title="Slow")',
       "emaFast = ta.ema(close, fast)",
       "emaSlow = ta.ema(close, slow)",
       "long = ta.crossover(emaFast, emaSlow)",
@@ -87,7 +87,7 @@ describe(" Pine script compatibility (full scripts)", () => {
       "if ta.crossover(r, ob)",
       '    strategy.close("Buy")',
       "plot(r)",
-      "plotshape(ta.crossover(r, ob), title=\"OB\", location=location.top)",
+      'plotshape(ta.crossover(r, ob), title="OB", location=location.top)',
     ].join("\n");
     const ctx = makeContext(120);
     const out = runPine(src, ctx);

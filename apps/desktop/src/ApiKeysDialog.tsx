@@ -3,29 +3,30 @@ import type { KeyName } from "./apiKeys";
 import { keyringAvailable, saveApiKey, useApiKeys } from "./apiKeys";
 import { Button, Dialog, Input } from "./ui";
 
-const PROVIDERS: { name: KeyName; label: string; signup: string; covers: string; limit: string }[] = [
-  {
-    name: "finnhub",
-    label: "Finnhub",
-    signup: "https://finnhub.io/register",
-    covers: "News, earnings, IPO calendar, dividends",
-    limit: "Free plan: 60 requests / minute",
-  },
-  {
-    name: "alphavantage",
-    label: "Alpha Vantage",
-    signup: "https://www.alphavantage.co/support/#api-key",
-    covers: "Company profile, dividends (and earnings without Finnhub)",
-    limit: "Free plan: 25 requests / day",
-  },
-  {
-    name: "twelvedata",
-    label: "Twelve Data",
-    signup: "https://twelvedata.com/pricing",
-    covers: "Live gold and forex prices for charts (pick it in the chart's Data source menu)",
-    limit: "Free key from twelvedata.com; about 8 requests/minute",
-  },
-];
+const PROVIDERS: { name: KeyName; label: string; signup: string; covers: string; limit: string }[] =
+  [
+    {
+      name: "finnhub",
+      label: "Finnhub",
+      signup: "https://finnhub.io/register",
+      covers: "News, earnings, IPO calendar, dividends",
+      limit: "Free plan: 60 requests / minute",
+    },
+    {
+      name: "alphavantage",
+      label: "Alpha Vantage",
+      signup: "https://www.alphavantage.co/support/#api-key",
+      covers: "Company profile, dividends (and earnings without Finnhub)",
+      limit: "Free plan: 25 requests / day",
+    },
+    {
+      name: "twelvedata",
+      label: "Twelve Data",
+      signup: "https://twelvedata.com/pricing",
+      covers: "Live gold and forex prices for charts (pick it in the chart's Data source menu)",
+      limit: "Free key from twelvedata.com; about 8 requests/minute",
+    },
+  ];
 
 /** Enter or remove provider API keys. Keys go straight to the OS keyring. */
 export function ApiKeysDialog() {
@@ -46,8 +47,8 @@ export function ApiKeysDialog() {
     >
       <div className="space-y-4">
         <p className="text-ev-muted">
-          All providers have free plans. Keys are stored in your system keyring (never in a file), and
-          any panel without a key keeps showing demo data.
+          All providers have free plans. Keys are stored in your system keyring (never in a file),
+          and any panel without a key keeps showing demo data.
         </p>
         {!canStore && (
           <p className="rounded border border-ev-warn/40 bg-ev-warn/10 p-2 text-ev-warn">
@@ -55,7 +56,13 @@ export function ApiKeysDialog() {
           </p>
         )}
         {PROVIDERS.map((p) => (
-          <KeyRow key={p.name} provider={p} saved={Boolean(keys[p.name])} disabled={!canStore} onChanged={onChanged} />
+          <KeyRow
+            key={p.name}
+            provider={p}
+            saved={Boolean(keys[p.name])}
+            disabled={!canStore}
+            onChanged={onChanged}
+          />
         ))}
       </div>
     </Dialog>
@@ -105,11 +112,18 @@ function KeyRow({
         <label htmlFor={id} className="font-medium text-ev-strong">
           {provider.label}
         </label>
-        <span className={saved ? "text-ev-up-text" : "text-ev-muted"}>{saved ? "Key saved · live" : "No key · demo data"}</span>
+        <span className={saved ? "text-ev-up-text" : "text-ev-muted"}>
+          {saved ? "Key saved · live" : "No key · demo data"}
+        </span>
       </div>
       <p className="text-dense text-ev-muted">
         {provider.covers}. {provider.limit}. Get a free key at{" "}
-        <a href={provider.signup} target="_blank" rel="noopener noreferrer" className="select-all text-ev-accent-text hover:underline">
+        <a
+          href={provider.signup}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="select-all text-ev-accent-text hover:underline"
+        >
           {provider.signup}
         </a>
       </p>
@@ -125,18 +139,11 @@ function KeyRow({
           onChange={(e) => setValue(e.target.value)}
           className="flex-1"
         />
-        <Button
-          type="submit"
-          disabled={disabled || busy || !value.trim()}
-        >
+        <Button type="submit" disabled={disabled || busy || !value.trim()}>
           Save
         </Button>
         {saved && (
-          <Button
-            variant="outline"
-            disabled={disabled || busy}
-            onClick={() => void store("")}
-          >
+          <Button variant="outline" disabled={disabled || busy} onClick={() => void store("")}>
             Remove
           </Button>
         )}

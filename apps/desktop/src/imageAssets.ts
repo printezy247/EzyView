@@ -20,7 +20,9 @@ function openDb(): Promise<IDBDatabase | null> {
       if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
     });
     request.addEventListener("success", () => resolve(request.result));
-    request.addEventListener("error", () => reject(request.error ?? new Error("Could not open the image asset store")));
+    request.addEventListener("error", () =>
+      reject(request.error ?? new Error("Could not open the image asset store")),
+    );
   });
 }
 
@@ -48,7 +50,9 @@ export async function getImageAsset(assetId: string): Promise<Blob | null> {
   return new Promise((resolve) => {
     const tx = db.transaction(STORE, "readonly");
     const request = tx.objectStore(STORE).get(assetId);
-    request.addEventListener("success", () => resolve(request.result instanceof Blob ? request.result : null));
+    request.addEventListener("success", () =>
+      resolve(request.result instanceof Blob ? request.result : null),
+    );
     request.addEventListener("error", () => resolve(null));
     tx.addEventListener("complete", () => db.close());
   });
@@ -72,7 +76,9 @@ export async function deleteImageAsset(assetId: string): Promise<void> {
 }
 
 /** Decode stored blobs into a map the chart renderer can paint. */
-export async function loadImageAssets(assetIds: readonly string[]): Promise<Map<string, CanvasImageSource>> {
+export async function loadImageAssets(
+  assetIds: readonly string[],
+): Promise<Map<string, CanvasImageSource>> {
   const out = new Map<string, CanvasImageSource>();
   if (assetIds.length === 0) return out;
   await Promise.all(

@@ -58,7 +58,10 @@ export function useChartSync(ctx: HostContext, props: Props, opts: ChartSyncOpti
       vertColor: props.gridVertColor ?? null,
       horzColor: props.gridHorzColor ?? null,
     });
-    chart.setCrosshair({ color: props.crosshairColor ?? null, style: props.crosshairStyle ?? "dashed" });
+    chart.setCrosshair({
+      color: props.crosshairColor ?? null,
+      style: props.crosshairStyle ?? "dashed",
+    });
     chart.setLastPriceVisible(props.showLastPrice ?? true);
   }, [
     props.showGrid,
@@ -80,7 +83,15 @@ export function useChartSync(ctx: HostContext, props: Props, opts: ChartSyncOpti
     chart.setInvertScale(props.invertScale ?? false);
     chart.setTimezone(props.timezone ?? null);
     chart.setWatermark(props.watermark ? `${props.symbol} · ${props.resolution}` : null);
-  }, [props.crosshairMode, props.priceScale, props.invertScale, props.timezone, props.watermark, props.symbol, props.resolution]);
+  }, [
+    props.crosshairMode,
+    props.priceScale,
+    props.invertScale,
+    props.timezone,
+    props.watermark,
+    props.symbol,
+    props.resolution,
+  ]);
 
   // Crosshair sync: another cell's pointer moves this chart's crosshair.
   // A null target clears a sync-imposed position so the local pointer wins.
@@ -97,7 +108,6 @@ export function useChartSync(ctx: HostContext, props: Props, opts: ChartSyncOpti
   useEffect(() => {
     chartRef.current?.setScriptPlots(toPlotSpecs(scripts), toBands(scripts));
   }, [scripts]);
-
 
   useEffect(() => {
     chartRef.current?.setChartType(props.chartType);
@@ -141,7 +151,6 @@ export function useChartSync(ctx: HostContext, props: Props, opts: ChartSyncOpti
     chartRef.current?.setSelection(selectedIds);
   }, [selectedIds]);
 
-
   // The floating mini-bar follows the selected drawing's box on screen. The
   // callback is read through a ref: cells pass an inline function, and making
   // it an effect dependency would let one box update re-render the page, hand
@@ -171,7 +180,9 @@ export function useChartSync(ctx: HostContext, props: Props, opts: ChartSyncOpti
     const chart = chartRef.current;
     if (!chart?.subscribeRangeChange) return;
     return chart.subscribeRangeChange(() => {
-      const drawing = selectedId ? visibleDrawingsRef.current.find((d) => d.id === selectedId) : null;
+      const drawing = selectedId
+        ? visibleDrawingsRef.current.find((d) => d.id === selectedId)
+        : null;
       if (!drawing) return;
       const pts = chart.projectDrawing(drawing).filter((p): p is ScreenPoint => p !== null);
       if (pts.length === 0) return;
@@ -182,7 +193,6 @@ export function useChartSync(ctx: HostContext, props: Props, opts: ChartSyncOpti
       onDrawingBoxRef.current?.({ x: x0 - 6, y: y0 - 6, w: x1 - x0 + 12, h: y1 - y0 + 12 });
     });
   }, [selectedId]);
-
 
   // Navigate cursor: crosshair for an armed tool, the eraser, or the cursor
   // mode button; the pointer handlers refine it over handles and bodies.

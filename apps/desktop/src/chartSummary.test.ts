@@ -12,8 +12,13 @@ const bar = (time: number, open: number, high: number, low: number, close: numbe
 
 describe("summarizeChart", () => {
   it("reads out last price, change and range", () => {
-    const text = summarizeChart("AAPL", "1D", [bar(1, 100, 105, 99, 104), bar(2, 104, 112, 103, 110)]);
-    expect(text).toBe("AAPL 1D chart, 2 bars, last 110, up 10.00% over the range, range 99 to 112.");
+    const text = summarizeChart("AAPL", "1D", [
+      bar(1, 100, 105, 99, 104),
+      bar(2, 104, 112, 103, 110),
+    ]);
+    expect(text).toBe(
+      "AAPL 1D chart, 2 bars, last 110, up 10.00% over the range, range 99 to 112.",
+    );
   });
 
   it("adds the point of control when the volume profile is on", () => {

@@ -3,7 +3,12 @@
 const escapeAttr = (s: string): string =>
   s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-export function embedSnippet(opts: { src: string; width?: number; height?: number; title?: string }): string {
+export function embedSnippet(opts: {
+  src: string;
+  width?: number;
+  height?: number;
+  title?: string;
+}): string {
   const width = opts.width ?? 800;
   const height = opts.height ?? 600;
   const title = opts.title ?? "EzyView chart";

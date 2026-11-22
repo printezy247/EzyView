@@ -60,7 +60,8 @@ function extractOptions(script: Script): ScriptOptions {
   for (const arg of call.args.slice(1)) {
     if (arg.kind === "AssignExpr" && arg.target.kind === "Identifier") {
       if (arg.target.name === "overlay" && arg.value.kind === "BoolLit") overlay = arg.value.value;
-      if (arg.target.name === "shorttitle" && arg.value.kind === "StringLit") shortName = arg.value.value;
+      if (arg.target.name === "shorttitle" && arg.value.kind === "StringLit")
+        shortName = arg.value.value;
     }
   }
 
@@ -193,7 +194,11 @@ class Emitter {
       }
       case "AssignExpr": {
         if (node.target.kind !== "Identifier") {
-          throw new PineUnsupportedError("reassignment target must be an identifier", node.line, node.col);
+          throw new PineUnsupportedError(
+            "reassignment target must be an identifier",
+            node.line,
+            node.col,
+          );
         }
         // Pine's `:=` reassigns; JS uses `=` for both declare and reassign, so
         // the operator normalizes here rather than reaching the output verbatim.
@@ -203,9 +208,10 @@ class Emitter {
         // scalar before it lands in the carried variable. Without the collapse
         // the broadcast writes a full series into `state` and the next bar
         // compounds the entire array again — state drifts bar by bar.
-        const rhs = this.varNames.has(target) && hasIndexExpr(node.value)
-          ? `atBar(${this.expr(node.value)}, barIndex)`
-          : this.expr(node.value);
+        const rhs =
+          this.varNames.has(target) && hasIndexExpr(node.value)
+            ? `atBar(${this.expr(node.value)}, barIndex)`
+            : this.expr(node.value);
         this.line(`${target} = ${rhs};`);
         return;
       }
@@ -240,9 +246,11 @@ class Emitter {
           this.line(
             `const __step = ${node.step ? `num(${this.expr(node.step)})` : "(__from <= __to ? 1 : -1)"};`,
           );
-          this.line(`for (let ${v} = __from; __step > 0 ? ${v} <= __to : ${v} >= __to; ${v} += __step) {`);
+          this.line(
+            `for (let ${v} = __from; __step > 0 ? ${v} <= __to : ${v} >= __to; ${v} += __step) {`,
+          );
           this.indent(() => {
-            this.line("if (++__iters > 100000) throw new Error(\"pine: too many iterations\");");
+            this.line('if (++__iters > 100000) throw new Error("pine: too many iterations");');
             this.emitBody(node.body.body);
           });
           this.line("}");
@@ -255,7 +263,7 @@ class Emitter {
         this.indent(() => {
           this.line(`while (truthy(${this.expr(node.test)}, barIndex)) {`);
           this.indent(() => {
-            this.line("if (++__iters > 100000) throw new Error(\"pine: too many iterations\");");
+            this.line('if (++__iters > 100000) throw new Error("pine: too many iterations");');
             this.emitBody(node.body.body);
           });
           this.line("}");
@@ -267,10 +275,18 @@ class Emitter {
         // The whole body runs inside one per-bar loop, so a `return` here
         // exits the run function and silently truncates every bar after the
         // first one that hits it — reject it instead of compiling it.
-        throw new PineUnsupportedError("return is not supported in a script body", node.line, node.col);
+        throw new PineUnsupportedError(
+          "return is not supported in a script body",
+          node.line,
+          node.col,
+        );
       }
       default:
-        throw new PineUnsupportedError(`statement \`${node.kind}\` is not supported`, node.line, node.col);
+        throw new PineUnsupportedError(
+          `statement \`${node.kind}\` is not supported`,
+          node.line,
+          node.col,
+        );
     }
   }
 
@@ -298,7 +314,11 @@ class Emitter {
         return this.safeName(node.name, node.line, node.col);
       case "MemberExpr": {
         if (DENIED_MEMBERS.has(node.property)) {
-          throw new PineUnsupportedError(`member \`${node.property}\` is not allowed`, node.line, node.col);
+          throw new PineUnsupportedError(
+            `member \`${node.property}\` is not allowed`,
+            node.line,
+            node.col,
+          );
         }
         return `${this.expr(node.object)}.${node.property}`;
       }
@@ -319,11 +339,19 @@ class Emitter {
         // `:=` only makes sense as a statement; compiled verbatim in
         // expression position it is invalid JS and would smuggle an
         // assignment past the sandbox's reassign path.
-        throw new PineUnsupportedError("assignment is not allowed inside an expression", node.line, node.col);
+        throw new PineUnsupportedError(
+          "assignment is not allowed inside an expression",
+          node.line,
+          node.col,
+        );
       case "ArrayLit":
         return `[${node.elements.map((e) => this.expr(e)).join(", ")}]`;
       default:
-        throw new PineUnsupportedError(`expression \`${node.kind}\` is not supported`, node.line, node.col);
+        throw new PineUnsupportedError(
+          `expression \`${node.kind}\` is not supported`,
+          node.line,
+          node.col,
+        );
     }
   }
 
@@ -334,7 +362,13 @@ class Emitter {
    * element-wise so `cond[1]` keeps its history; truthiness collapses at the
    * current bar.
    */
-  private binary(node: { operator: string; left: Node; right: Node; line: number; col: number }): string {
+  private binary(node: {
+    operator: string;
+    left: Node;
+    right: Node;
+    line: number;
+    col: number;
+  }): string {
     const l = this.expr(node.left);
     const r = this.expr(node.right);
     switch (node.operator) {
@@ -374,11 +408,12 @@ class Emitter {
   }
 
   private call(node: { callee: Node; args: Node[]; line: number; col: number }): string {
-    const callee = node.callee;    // Keyword arguments (`qty=10`) become one trailing object so the runtime
+    const callee = node.callee; // Keyword arguments (`qty=10`) become one trailing object so the runtime
     // helpers can pick them off by name instead of by position.
     const positional = node.args.filter((a) => !(a.kind === "AssignExpr" && a.operator === "="));
-    const kwargs = node.args.filter((a): a is AssignExpr =>
-      a.kind === "AssignExpr" && a.operator === "=" && a.target.kind === "Identifier",
+    const kwargs = node.args.filter(
+      (a): a is AssignExpr =>
+        a.kind === "AssignExpr" && a.operator === "=" && a.target.kind === "Identifier",
     );
     // Keyword arguments (`color=…`) become one options object. The generic call
     // path appends it last, but plot/order/input sinks take it in a fixed slot
@@ -405,15 +440,27 @@ class Emitter {
       // A member call emits its namespace verbatim, so it has to be checked
       // here: `self.fetch(...)` and `x.constructor(...)` both used to compile.
       if (ns && DANGEROUS_GLOBALS.has(ns)) {
-        throw new PineUnsupportedError(`identifier \`${ns}\` is not allowed`, callee.line, callee.col);
+        throw new PineUnsupportedError(
+          `identifier \`${ns}\` is not allowed`,
+          callee.line,
+          callee.col,
+        );
       }
       if (DENIED_MEMBERS.has(callee.property)) {
-        throw new PineUnsupportedError(`member \`${callee.property}\` is not allowed`, callee.line, callee.col);
+        throw new PineUnsupportedError(
+          `member \`${callee.property}\` is not allowed`,
+          callee.line,
+          callee.col,
+        );
       }
       // `request.security()`/`security()` would compile to a runtime
       // ReferenceError — other symbols are not modeled, so say so up front.
       if (ns === "request" || ns === "security") {
-        throw new PineUnsupportedError("request.security is not supported", callee.line, callee.col);
+        throw new PineUnsupportedError(
+          "request.security is not supported",
+          callee.line,
+          callee.col,
+        );
       }
 
       // Plotting and order functions are script-level sinks, so they bypass the
@@ -431,8 +478,11 @@ class Emitter {
       if (ns === "ta" && callee.property === "atr") {
         // `ta.atr(length=14)` passes no positional series, so the length comes
         // from the kwargs object instead of sliding in as the first argument.
-        const lenArg = posArgs[0]
-          ?? (kwargs.some((k) => k.target.kind === "Identifier" && k.target.name === "length") ? `${opts}.length` : "14");
+        const lenArg =
+          posArgs[0] ??
+          (kwargs.some((k) => k.target.kind === "Identifier" && k.target.name === "length")
+            ? `${opts}.length`
+            : "14");
         return `ta.atr(ctx, ${lenArg})`;
       }
       if (ns === "input" && ["int", "float", "bool", "string"].includes(callee.property)) {
@@ -444,9 +494,13 @@ class Emitter {
       // bar index and the sink prepended like the plotting helpers do.
       if (ns === "strategy" && ["entry", "close", "exit", "close_all"].includes(callee.property)) {
         const helper =
-          callee.property === "entry" ? "strategyEntry" :
-          callee.property === "close" ? "strategyClose" :
-          callee.property === "exit" ? "strategyExit" : "strategyCloseAll";
+          callee.property === "entry"
+            ? "strategyEntry"
+            : callee.property === "close"
+              ? "strategyClose"
+              : callee.property === "exit"
+                ? "strategyExit"
+                : "strategyCloseAll";
         return orderCall(helper);
       }
 
@@ -459,7 +513,11 @@ class Emitter {
       // Bare `input(…)` is the v4 name for `input.int`.
       // Bare `security(…)` is the v4 name for `request.security`.
       if (callee.name === "security") {
-        throw new PineUnsupportedError("request.security is not supported", callee.line, callee.col);
+        throw new PineUnsupportedError(
+          "request.security is not supported",
+          callee.line,
+          callee.col,
+        );
       }
       if (callee.name === "input") return inputEmit("inputCall");
       if (callee.name === "nz") return `nz(${args[0] ?? "NA"}${args[1] ? `, ${args[1]}` : ""})`;

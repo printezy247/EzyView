@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import { getDrawingLevels, priceAt, simplifyRdp } from "./geometry.js";
 import type { Drawing } from "./types.js";
 
-const mockDrawing = (tool: Drawing["tool"], points: { time: number; price: number }[], style: Drawing["style"] = { color: "#fff", width: 1, lineStyle: "solid" }): Drawing => ({
+const mockDrawing = (
+  tool: Drawing["tool"],
+  points: { time: number; price: number }[],
+  style: Drawing["style"] = { color: "#fff", width: 1, lineStyle: "solid" },
+): Drawing => ({
   id: "d",
   tool,
   points,
@@ -17,7 +21,7 @@ describe("geometry", () => {
       for (let i = 0; i < 10_000; i++) {
         const x = i * 0.1;
         // smooth wave with small sub-pixel noise
-        const y = Math.sin(i * 0.005) * 100 + (Math.sin(i * 0.5) * 0.2);
+        const y = Math.sin(i * 0.005) * 100 + Math.sin(i * 0.5) * 0.2;
         points.push({ x, y });
       }
 
@@ -27,7 +31,10 @@ describe("geometry", () => {
     });
 
     it("preserves endpoints and small point sets", () => {
-      const small = [{ x: 0, y: 0 }, { x: 10, y: 10 }];
+      const small = [
+        { x: 0, y: 0 },
+        { x: 10, y: 10 },
+      ];
       expect(simplifyRdp(small, 2)).toEqual(small);
     });
   });

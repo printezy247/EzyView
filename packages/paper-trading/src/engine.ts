@@ -102,13 +102,14 @@ const DEFAULTS = {
   maintenanceMarginRate: 0.005,
 };
 
-const finite = (value: number | undefined): value is number => typeof value === "number" && Number.isFinite(value);
+const finite = (value: number | undefined): value is number =>
+  typeof value === "number" && Number.isFinite(value);
 
 function unrealized(position: PaperPosition, price: number = position.markPrice): number {
-  const delta = position.side === "long" ? price - position.entryPrice : position.entryPrice - price;
+  const delta =
+    position.side === "long" ? price - position.entryPrice : position.entryPrice - price;
   return delta * position.qty;
 }
-
 
 export class PaperTradingEngine implements TradingAdapter {
   readonly id = "paper";
@@ -138,7 +139,8 @@ export class PaperTradingEngine implements TradingAdapter {
       maxLeverage: options.maxLeverage ?? DEFAULTS.maxLeverage,
       maintenanceMarginRate: options.maintenanceMarginRate ?? DEFAULTS.maintenanceMarginRate,
     };
-    this.idGenerator = options.idGenerator ?? (() => `${Date.now().toString(36)}${(this.sequence++).toString(36)}`);
+    this.idGenerator =
+      options.idGenerator ?? (() => `${Date.now().toString(36)}${(this.sequence++).toString(36)}`);
     this.now = options.now ?? (() => Math.floor(Date.now() / 1000));
     this.balance = this.options.startingBalance;
   }
@@ -185,7 +187,9 @@ export class PaperTradingEngine implements TradingAdapter {
   }
 
   async getHistory(from?: EpochSeconds, to?: EpochSeconds): Promise<Deal[]> {
-    return this.deals.filter((d) => (from === undefined || d.time >= from) && (to === undefined || d.time <= to));
+    return this.deals.filter(
+      (d) => (from === undefined || d.time >= from) && (to === undefined || d.time <= to),
+    );
   }
 
   /** True while connected; used by the status bar. */
@@ -226,7 +230,8 @@ export class PaperTradingEngine implements TradingAdapter {
     if (snapshot.version !== SNAPSHOT_VERSION) return engine;
     engine.balance = snapshot.balance;
     // A truncated or hand-edited file must not throw during module import.
-    for (const position of snapshot.positions ?? []) engine.positions.set(position.symbol, { ...position });
+    for (const position of snapshot.positions ?? [])
+      engine.positions.set(position.symbol, { ...position });
     for (const order of snapshot.orders ?? []) engine.orders.set(order.id, { ...order });
     for (const deal of snapshot.deals ?? []) engine.deals.push({ ...deal });
     engine.sequence = Number.isFinite(snapshot.sequence) ? snapshot.sequence : 0;
@@ -241,7 +246,10 @@ export class PaperTradingEngine implements TradingAdapter {
   async placeOrder(request: OrderRequest): Promise<Order> {
     const order = this.executeOrder(request);
     if (order.status === "rejected") {
-      throw new PaperTradingError(order.reason ?? "rejected", `Order rejected: ${order.reason ?? "unknown reason"}`);
+      throw new PaperTradingError(
+        order.reason ?? "rejected",
+        `Order rejected: ${order.reason ?? "unknown reason"}`,
+      );
     }
     return order;
   }
@@ -261,13 +269,22 @@ export class PaperTradingEngine implements TradingAdapter {
     if (!order || order.status !== "pending") {
       throw new PaperTradingError("not_open", `No open order ${id}`);
     }
-    if (patch.qty !== undefined && (patch.qty <= 0 || !Number.isFinite(patch.qty) || patch.qty > MAX_ORDER_QTY)) {
-      throw new PaperTradingError("invalid_qty", `qty must be greater than zero and at most ${MAX_ORDER_QTY}`);
+    if (
+      patch.qty !== undefined &&
+      (patch.qty <= 0 || !Number.isFinite(patch.qty) || patch.qty > MAX_ORDER_QTY)
+    ) {
+      throw new PaperTradingError(
+        "invalid_qty",
+        `qty must be greater than zero and at most ${MAX_ORDER_QTY}`,
+      );
     }
     if (patch.price !== undefined && (patch.price <= 0 || !Number.isFinite(patch.price))) {
       throw new PaperTradingError("invalid_price", "price must be greater than zero");
     }
-    if (patch.stopPrice !== undefined && (patch.stopPrice <= 0 || !Number.isFinite(patch.stopPrice))) {
+    if (
+      patch.stopPrice !== undefined &&
+      (patch.stopPrice <= 0 || !Number.isFinite(patch.stopPrice))
+    ) {
       throw new PaperTradingError("invalid_stop_price", "stop price must be greater than zero");
     }
     for (const key of ["stopLoss", "takeProfit"] as const) {
@@ -298,7 +315,10 @@ export class PaperTradingEngine implements TradingAdapter {
     // A close that the engine refuses must not look like a close. `closeAll`
     // and the UI both used to ignore the rejected Order and report success.
     if (order.status === "rejected") {
-      throw new PaperTradingError(order.reason ?? "rejected", `Close rejected: ${order.reason ?? "unknown reason"}`);
+      throw new PaperTradingError(
+        order.reason ?? "rejected",
+        `Close rejected: ${order.reason ?? "unknown reason"}`,
+      );
     }
     return order;
   }
@@ -311,7 +331,10 @@ export class PaperTradingEngine implements TradingAdapter {
    * A non-finite price is rejected rather than stored, because a NaN stop would
    * silently never trigger.
    */
-  async setLevels(symbol: string, patch: { stopLoss?: number | null; takeProfit?: number | null }): Promise<PaperPosition> {
+  async setLevels(
+    symbol: string,
+    patch: { stopLoss?: number | null; takeProfit?: number | null },
+  ): Promise<PaperPosition> {
     const position = this.positions.get(symbol);
     if (!position) throw new PaperTradingError("no_position", `No open position on ${symbol}`);
     for (const value of [patch.stopLoss, patch.takeProfit]) {
@@ -348,7 +371,8 @@ export class PaperTradingEngine implements TradingAdapter {
       this.onUpdate?.();
       return rest;
     }
-    const seed = position.side === "long" ? position.markPrice - distance : position.markPrice + distance;
+    const seed =
+      position.side === "long" ? position.markPrice - distance : position.markPrice + distance;
     const next: PaperPosition = { ...position, trailingDistance: distance, stopLoss: seed };
     this.positions.set(symbol, next);
     this.onUpdate?.();
@@ -366,7 +390,8 @@ export class PaperTradingEngine implements TradingAdapter {
     if (!a || !b || a.status !== "pending" || b.status !== "pending") {
       throw new PaperTradingError("not_open", "Both OCO orders must be pending");
     }
-    if (a.symbol !== b.symbol) throw new PaperTradingError("oco_symbol", "OCO orders must share a symbol");
+    if (a.symbol !== b.symbol)
+      throw new PaperTradingError("oco_symbol", "OCO orders must share a symbol");
     const ocoId = this.idGenerator();
     this.orders.set(aId, { ...a, ocoId });
     this.orders.set(bId, { ...b, ocoId });
@@ -381,7 +406,9 @@ export class PaperTradingEngine implements TradingAdapter {
     for (const symbol of Array.from(this.positions.keys())) {
       const position = this.positions.get(symbol);
       if (!position) continue;
-      closed.push(this.marketOrder(symbol, position.side === "long" ? "sell" : "buy", position.qty));
+      closed.push(
+        this.marketOrder(symbol, position.side === "long" ? "sell" : "buy", position.qty),
+      );
     }
     const failed = closed.filter((order) => order.status === "rejected");
     if (failed.length > 0) {
@@ -418,7 +445,12 @@ export class PaperTradingEngine implements TradingAdapter {
 
     const position = this.positions.get(symbol);
     const hadPosition = Boolean(position);
-    if (position) this.positions.set(symbol, { ...position, markPrice: price, unrealizedPnl: unrealized(position, price) });
+    if (position)
+      this.positions.set(symbol, {
+        ...position,
+        markPrice: price,
+        unrealizedPnl: unrealized(position, price),
+      });
     // Ratchet any trailing stop before exits are checked, so a trailed stop
     // can trigger on the same tick that moved it.
     this.trailStops(symbol, price);
@@ -535,7 +567,12 @@ export class PaperTradingEngine implements TradingAdapter {
   }
 
   /** Close the whole position at an explicit price, recording the deal. */
-  private closeAt(symbol: string, position: PaperPosition, price: number, time: EpochSeconds): void {
+  private closeAt(
+    symbol: string,
+    position: PaperPosition,
+    price: number,
+    time: EpochSeconds,
+  ): void {
     const pnl = unrealized(position, price);
     this.positions.delete(symbol);
     this.pushDeal({
@@ -560,7 +597,12 @@ export class PaperTradingEngine implements TradingAdapter {
     const equity = this.balance + this.totalUnrealized();
     if (equity / margin >= this.options.maintenanceMarginRate) return;
     for (const position of Array.from(this.positions.values())) {
-      this.closeAt(position.symbol, position, this.last.get(position.symbol) ?? position.markPrice, time);
+      this.closeAt(
+        position.symbol,
+        position,
+        this.last.get(position.symbol) ?? position.markPrice,
+        time,
+      );
     }
   }
 
@@ -588,7 +630,12 @@ export class PaperTradingEngine implements TradingAdapter {
     if (rejection) {
       // Report the rejection but don't store it: rejected orders would
       // otherwise pile up in the snapshot and on every boot forever.
-      const rejected: Order = { ...order, status: "rejected", reason: rejection, updateTime: this.now() };
+      const rejected: Order = {
+        ...order,
+        status: "rejected",
+        reason: rejection,
+        updateTime: this.now(),
+      };
       this.onUpdate?.();
       return rejected;
     }
@@ -602,10 +649,17 @@ export class PaperTradingEngine implements TradingAdapter {
 
     // `validate` has already refused a market order with no price; this keeps
     // the narrowing local instead of trusting a separate function's return.
-    if (!finite(price)) throw new PaperTradingError("no_price", `No market price for ${request.symbol}`);
+    if (!finite(price))
+      throw new PaperTradingError("no_price", `No market price for ${request.symbol}`);
 
     this.fill(request, price);
-    const done: Order = { ...order, status: "filled", filledQty: request.qty, avgFillPrice: price, updateTime: this.now() };
+    const done: Order = {
+      ...order,
+      status: "filled",
+      filledQty: request.qty,
+      avgFillPrice: price,
+      updateTime: this.now(),
+    };
     this.onUpdate?.();
     return done;
   }
@@ -618,17 +672,26 @@ export class PaperTradingEngine implements TradingAdapter {
     if (request.type === "stop_limit" && (!finite(request.price) || !finite(request.stopPrice))) {
       return "stop limit orders need a price and stop price";
     }
-    if (request.type === "stop" && !finite(request.stopPrice ?? request.price)) return "stop orders need a price";
+    if (request.type === "stop" && !finite(request.stopPrice ?? request.price))
+      return "stop orders need a price";
     // A price of zero (an empty ticket field) is finite but not tradable: it
     // would fill a sell limit against any quote and open a position at 0. For
     // a stop order the tradable level is the stop price, so judge that instead
     // of rejecting a valid stop that carries only `stopPrice`.
-    const effectivePrice = request.type === "stop" ? (request.stopPrice ?? request.price) : request.price;
-    if (request.type !== "market" && (effectivePrice ?? 0) <= 0) return "price must be greater than zero";
-    if (request.stopLoss !== undefined && (!Number.isFinite(request.stopLoss) || request.stopLoss <= 0)) {
+    const effectivePrice =
+      request.type === "stop" ? (request.stopPrice ?? request.price) : request.price;
+    if (request.type !== "market" && (effectivePrice ?? 0) <= 0)
+      return "price must be greater than zero";
+    if (
+      request.stopLoss !== undefined &&
+      (!Number.isFinite(request.stopLoss) || request.stopLoss <= 0)
+    ) {
       return "stop loss must be a positive number";
     }
-    if (request.takeProfit !== undefined && (!Number.isFinite(request.takeProfit) || request.takeProfit <= 0)) {
+    if (
+      request.takeProfit !== undefined &&
+      (!Number.isFinite(request.takeProfit) || request.takeProfit <= 0)
+    ) {
       return "take profit must be a positive number";
     }
     // Margin is taken at the order's own entry price, at the account ceiling.
@@ -638,10 +701,12 @@ export class PaperTradingEngine implements TradingAdapter {
     const existing = this.positions.get(request.symbol);
     const reduces =
       existing !== undefined &&
-      ((existing.side === "long" && request.side === "sell") || (existing.side === "short" && request.side === "buy"));
+      ((existing.side === "long" && request.side === "sell") ||
+        (existing.side === "short" && request.side === "buy"));
     const openingQty = reduces && existing ? Math.max(0, request.qty - existing.qty) : request.qty;
     const notional = (price ?? request.price ?? 0) * openingQty;
-    if (openingQty > 0 && notional / this.options.maxLeverage > this.freeMargin()) return "not enough free margin";
+    if (openingQty > 0 && notional / this.options.maxLeverage > this.freeMargin())
+      return "not enough free margin";
     return null;
   }
 

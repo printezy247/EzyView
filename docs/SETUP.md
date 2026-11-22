@@ -5,12 +5,12 @@ builds to static assets, which is how the optional self-hosted web build works.
 
 ## Prerequisites
 
-| Tool | Version | Notes |
-|---|---|---|
-| Node.js | ≥ 22.19 | [nodejs.org](https://nodejs.org) or `nvm install 22` |
-| npm | ≥ 10 | ships with Node |
-| Rust | stable ≥ 1.77 | `curl https://sh.rustup.rs -sSf \| sh` |
-| Tauri CLI | v2 | installed locally via `npm install` (no global needed) |
+| Tool      | Version       | Notes                                                  |
+| --------- | ------------- | ------------------------------------------------------ |
+| Node.js   | ≥ 22.19       | [nodejs.org](https://nodejs.org) or `nvm install 22`   |
+| npm       | ≥ 10          | ships with Node                                        |
+| Rust      | stable ≥ 1.77 | `curl https://sh.rustup.rs -sSf \| sh`                 |
+| Tauri CLI | v2            | installed locally via `npm install` (no global needed) |
 
 ### Linux (Debian/Ubuntu/Mint) system deps for Tauri
 
@@ -30,18 +30,18 @@ npm install
 
 ## Commands
 
-| Command | What it does |
-|---|---|
-| `npm run dev` | launch the desktop app with hot reload |
-| `npm run build:web` | build the renderer to static `apps/desktop/dist` |
-| `npm run build:desktop` | full Tauri bundle (`.AppImage` / `.deb` on Linux) |
-| `npm run lint` | oxlint over the whole workspace |
-| `npm run format` | oxfmt |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm run test` | vitest unit tests |
-| `npm run check:versions` | verify all version files agree |
-| `npm run build:mcp` | bundle the MCP server |
-| `npm run test:e2e` | Playwright smoke (visual baselines are local-only) |
+| Command                  | What it does                                       |
+| ------------------------ | -------------------------------------------------- |
+| `npm run dev`            | launch the desktop app with hot reload             |
+| `npm run build:web`      | build the renderer to static `apps/desktop/dist`   |
+| `npm run build:desktop`  | full Tauri bundle (`.AppImage` / `.deb` on Linux)  |
+| `npm run lint`           | oxlint over the whole workspace                    |
+| `npm run format`         | oxfmt                                              |
+| `npm run typecheck`      | `tsc --noEmit`                                     |
+| `npm run test`           | vitest unit tests                                  |
+| `npm run check:versions` | verify all version files agree                     |
+| `npm run build:mcp`      | bundle the MCP server                              |
+| `npm run test:e2e`       | Playwright smoke (visual baselines are local-only) |
 
 ## Install the .deb (Linux Mint / Ubuntu / Debian)
 
@@ -89,10 +89,10 @@ View → **Open chart in new window** opens the current chart in its own window;
 Without keys, the Fundamentals panel shows offline **demo data**, marked by a yellow `DEMO DATA` badge.
 With keys it shows live data, marked by a green `LIVE · <provider>` badge.
 
-| Provider | What it powers | Free plan |
-| --- | --- | --- |
-| Finnhub | News, earnings, IPO calendar, dividends* | 60 requests / minute |
-| Alpha Vantage | Company profile, dividends, earnings (if no Finnhub key) | 25 requests / day |
+| Provider      | What it powers                                           | Free plan            |
+| ------------- | -------------------------------------------------------- | -------------------- |
+| Finnhub       | News, earnings, IPO calendar, dividends*                 | 60 requests / minute |
+| Alpha Vantage | Company profile, dividends, earnings (if no Finnhub key) | 25 requests / day    |
 
 \* Finnhub's dividend endpoint is paid on some plans. When it refuses, EzyView uses Alpha Vantage
 for dividends (if that key is set) instead.

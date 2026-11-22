@@ -36,7 +36,9 @@ export function ChartDock({ active, onSelect, onOpenAlerts }: Props) {
         id: "depth",
         label: "Depth",
         hint: "Depth of market around the current price",
-        render: () => <DepthOfMarket symbol={symbol} precision={precisionForSymbol(symbol, null)} />,
+        render: () => (
+          <DepthOfMarket symbol={symbol} precision={precisionForSymbol(symbol, null)} />
+        ),
       },
       {
         id: "objects",

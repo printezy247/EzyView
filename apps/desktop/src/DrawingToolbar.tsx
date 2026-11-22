@@ -52,7 +52,9 @@ interface Popover {
  */
 export function DrawingToolbar() {
   const [collapsed, setCollapsed] = useState(false);
-  const [lastTools, setLastTools] = useState<Partial<Record<DrawingToolCategory, DrawingToolId>>>({});
+  const [lastTools, setLastTools] = useState<Partial<Record<DrawingToolCategory, DrawingToolId>>>(
+    {},
+  );
   const [popover, setPopover] = useState<Popover | null>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -226,7 +228,10 @@ export function DrawingToolbar() {
         >
           <Magnet size={16} aria-hidden />
           {magnet === "strong" && (
-            <span className="absolute bottom-1 right-1 size-1.5 rounded-full bg-ev-accent" aria-hidden />
+            <span
+              className="absolute bottom-1 right-1 size-1.5 rounded-full bg-ev-accent"
+              aria-hidden
+            />
           )}
         </IconButton>
         <IconButton
@@ -237,7 +242,10 @@ export function DrawingToolbar() {
           className={stayInDrawingMode ? `relative ${activeCls}` : "relative"}
         >
           <Pencil size={SHELL_RAIL_ICON} aria-hidden />
-          <span className="absolute bottom-0.5 right-0.5 size-1.5 rounded-full border border-ev-chrome bg-ev-accent" aria-hidden />
+          <span
+            className="absolute bottom-0.5 right-0.5 size-1.5 rounded-full border border-ev-chrome bg-ev-accent"
+            aria-hidden
+          />
         </IconButton>
         <IconButton
           label="Lock all drawings: visible, but nothing can be dragged"
@@ -246,7 +254,11 @@ export function DrawingToolbar() {
           onClick={() => setLockAllDrawings(!lockAllDrawings)}
           className={lockAllDrawings ? activeCls : undefined}
         >
-          {lockAllDrawings ? <Lock size={SHELL_RAIL_ICON} aria-hidden /> : <LockOpen size={SHELL_RAIL_ICON} aria-hidden />}
+          {lockAllDrawings ? (
+            <Lock size={SHELL_RAIL_ICON} aria-hidden />
+          ) : (
+            <LockOpen size={SHELL_RAIL_ICON} aria-hidden />
+          )}
         </IconButton>
         <IconButton
           label="Hide all drawings without deleting them"
@@ -255,7 +267,11 @@ export function DrawingToolbar() {
           onClick={() => setHideAllDrawings(!hideAllDrawings)}
           className={hideAllDrawings ? activeCls : undefined}
         >
-          {hideAllDrawings ? <EyeOff size={SHELL_RAIL_ICON} aria-hidden /> : <Eye size={SHELL_RAIL_ICON} aria-hidden />}
+          {hideAllDrawings ? (
+            <EyeOff size={SHELL_RAIL_ICON} aria-hidden />
+          ) : (
+            <Eye size={SHELL_RAIL_ICON} aria-hidden />
+          )}
         </IconButton>
 
         <div className="my-1 h-px w-5 bg-ev-raised" />
@@ -299,13 +315,19 @@ export function DrawingToolbar() {
           ref={popoverRef}
           data-rail-popover
           role="menu"
-          aria-label={popover.id === "remove" ? "Remove objects" : TOOL_CATEGORIES.find((c) => c.id === popover.id)?.title}
+          aria-label={
+            popover.id === "remove"
+              ? "Remove objects"
+              : TOOL_CATEGORIES.find((c) => c.id === popover.id)?.title
+          }
           style={{ position: "fixed", left: 44, top: popover.top, zIndex: 60 }}
           className="max-h-[70vh] w-56 overflow-y-auto rounded border border-ev-line bg-ev-panel py-1 text-dense shadow-2xl"
         >
           {popover.id === "remove" ? (
             <>
-              <p className="px-2 py-1 text-dense font-semibold uppercase tracking-wider text-ev-faint">Remove</p>
+              <p className="px-2 py-1 text-dense font-semibold uppercase tracking-wider text-ev-faint">
+                Remove
+              </p>
               <Button
                 variant="ghost"
                 size="sm"
@@ -366,14 +388,19 @@ export function DrawingToolbar() {
                     variant="ghost"
                     size="sm"
                     onClick={() => {
-                      setLastTools((prev) => ({ ...prev, [popover.id as DrawingToolCategory]: tool }));
+                      setLastTools((prev) => ({
+                        ...prev,
+                        [popover.id as DrawingToolCategory]: tool,
+                      }));
                       arm(tool);
                     }}
                     className="min-w-0 flex-1 justify-start"
                   >
                     <Icon size={14} aria-hidden />
                     <span className="min-w-0 flex-1 truncate">{spec.label}</span>
-                    {spec.shortcut && <span className="text-micro text-ev-faint">{spec.shortcut}</span>}
+                    {spec.shortcut && (
+                      <span className="text-micro text-ev-faint">{spec.shortcut}</span>
+                    )}
                   </Button>
                   <IconButton
                     label={starred ? `Unstar ${spec.label}` : `Star ${spec.label}`}

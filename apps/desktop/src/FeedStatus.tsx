@@ -26,7 +26,13 @@ export function FeedStatus({ symbol }: { symbol: string }) {
           ? "var(--ev-down)"
           : "var(--ev-dim)";
   const label =
-    status === "online" ? "MT5 live" : status === "connecting" ? "MT5 connecting…" : status === "error" ? "MT5 offline" : "MT5";
+    status === "online"
+      ? "MT5 live"
+      : status === "connecting"
+        ? "MT5 connecting…"
+        : status === "error"
+          ? "MT5 offline"
+          : "MT5";
 
   return (
     <span role="status" className="flex items-center gap-1.5" title={error ?? undefined}>

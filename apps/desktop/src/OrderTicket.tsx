@@ -67,8 +67,10 @@ export function OrderTicket({ symbol }: Props) {
     setSide(draft.side);
     setType(draft.type);
     setLimitPrice(draft.price.trim() === "" ? null : Number(draft.price));
-    if (draft.stopLoss !== undefined) setStopLoss(draft.stopLoss.trim() === "" ? null : Number(draft.stopLoss));
-    if (draft.takeProfit !== undefined) setTakeProfit(draft.takeProfit.trim() === "" ? null : Number(draft.takeProfit));
+    if (draft.stopLoss !== undefined)
+      setStopLoss(draft.stopLoss.trim() === "" ? null : Number(draft.stopLoss));
+    if (draft.takeProfit !== undefined)
+      setTakeProfit(draft.takeProfit.trim() === "" ? null : Number(draft.takeProfit));
     // Consume it, so reopening the panel later does not replay an old draft.
     useOrderDraft.setState({ draft: null });
     // Keyed on the sequence so a repeated identical draft still applies.
@@ -95,7 +97,8 @@ export function OrderTicket({ symbol }: Props) {
   const limitValue = limitPrice;
   const workingPrice = type === "market" ? last : limitValue;
   const quantity = qty ?? NaN;
-  const value = workingPrice !== null && Number.isFinite(workingPrice) ? workingPrice * quantity : null;
+  const value =
+    workingPrice !== null && Number.isFinite(workingPrice) ? workingPrice * quantity : null;
   const margin = value !== null ? value / maxLeverage : null;
   const stopValue = stopLoss ?? undefined;
   const targetValue = takeProfit ?? undefined;
@@ -160,9 +163,12 @@ export function OrderTicket({ symbol }: Props) {
       inFlight.current = false;
       setSending(false);
     }
-    if (ok) setNotice(`${side === "buy" ? "Buy" : "Sell"} ${type} order for ${quantity} ${ticker} sent.`);
+    if (ok)
+      setNotice(`${side === "buy" ? "Buy" : "Sell"} ${type} order for ${quantity} ${ticker} sent.`);
     else if (useTrading.getState().pending)
-      setNotice(`${side === "buy" ? "Buy" : "Sell"} ${type} order for ${quantity} ${ticker} — awaiting confirmation.`);
+      setNotice(
+        `${side === "buy" ? "Buy" : "Sell"} ${type} order for ${quantity} ${ticker} — awaiting confirmation.`,
+      );
   };
 
   return (
@@ -204,7 +210,13 @@ export function OrderTicket({ symbol }: Props) {
           <div className="flex items-center gap-1 text-dense text-ev-muted">
             <span>Risk:</span>
             {[1, 2, 5].map((pct) => (
-              <Button key={pct} variant="outline" size="sm" onClick={() => calcRiskQty(pct)} aria-label={`Size by ${pct} percent risk`}>
+              <Button
+                key={pct}
+                variant="outline"
+                size="sm"
+                onClick={() => calcRiskQty(pct)}
+                aria-label={`Size by ${pct} percent risk`}
+              >
                 {pct}%
               </Button>
             ))}
@@ -224,25 +236,42 @@ export function OrderTicket({ symbol }: Props) {
       )}
 
       <div className="grid grid-cols-2 gap-2">
-        <NumberInput label="Stop loss" value={stopLoss} min={0} onValueChange={setStopLoss} placeholder="off" />
-        <NumberInput label="Take profit" value={takeProfit} min={0} onValueChange={setTakeProfit} placeholder="off" />
+        <NumberInput
+          label="Stop loss"
+          value={stopLoss}
+          min={0}
+          onValueChange={setStopLoss}
+          placeholder="off"
+        />
+        <NumberInput
+          label="Take profit"
+          value={takeProfit}
+          min={0}
+          onValueChange={setTakeProfit}
+          placeholder="off"
+        />
       </div>
 
       <dl className="space-y-1 border-t border-ev-raised pt-2 text-dense">
         <Row label="Reference" value={last === null ? "—" : last.toFixed(precision)} />
         {multiplier > 1 && (
-          <Row
-            label="Contract size"
-            value={`${multiplier.toLocaleString()} / lot`}
-          />
+          <Row label="Contract size" value={`${multiplier.toLocaleString()} / lot`} />
         )}
         <Row
           label="Value"
-          value={value === null ? "—" : (value * multiplier).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+          value={
+            value === null
+              ? "—"
+              : (value * multiplier).toLocaleString(undefined, { maximumFractionDigits: 2 })
+          }
         />
         <Row
           label={`Margin @ ${maxLeverage}×`}
-          value={margin === null ? "—" : (margin * multiplier).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+          value={
+            margin === null
+              ? "—"
+              : (margin * multiplier).toLocaleString(undefined, { maximumFractionDigits: 2 })
+          }
         />
         {rr.ratio !== null && (
           <div className="flex items-center justify-between pt-1">
@@ -264,12 +293,18 @@ export function OrderTicket({ symbol }: Props) {
       </dl>
 
       {!levelsValid && (
-        <p role="alert" className="rounded border border-ev-down/40 bg-ev-down/10 px-2 py-1.5 text-dense text-ev-down-text">
+        <p
+          role="alert"
+          className="rounded border border-ev-down/40 bg-ev-down/10 px-2 py-1.5 text-dense text-ev-down-text"
+        >
           Stop loss and take profit must be positive numbers.
         </p>
       )}
       {type !== "market" && !ready && limitValue === null && (
-        <p role="alert" className="rounded border border-ev-down/40 bg-ev-down/10 px-2 py-1.5 text-dense text-ev-down-text">
+        <p
+          role="alert"
+          className="rounded border border-ev-down/40 bg-ev-down/10 px-2 py-1.5 text-dense text-ev-down-text"
+        >
           Enter a {type === "limit" ? "limit" : "stop"} price above zero.
         </p>
       )}
@@ -286,7 +321,10 @@ export function OrderTicket({ symbol }: Props) {
         </p>
       )}
       {note && !error && (
-        <p role="status" className="rounded border border-ev-line bg-ev-raised/40 px-2 py-1.5 text-dense leading-snug text-ev-muted">
+        <p
+          role="status"
+          className="rounded border border-ev-line bg-ev-raised/40 px-2 py-1.5 text-dense leading-snug text-ev-muted"
+        >
           {note}
         </p>
       )}
@@ -298,7 +336,9 @@ export function OrderTicket({ symbol }: Props) {
         }}
         disabled={!ready}
         aria-label={`${side === "buy" ? "Buy" : "Sell"} ${type === "market" ? "at market" : type}`}
-        className={side === "buy" ? "bg-ev-up-solid hover:bg-ev-up" : "bg-ev-down-solid hover:bg-ev-down"}
+        className={
+          side === "buy" ? "bg-ev-up-solid hover:bg-ev-up" : "bg-ev-down-solid hover:bg-ev-down"
+        }
       >
         {side === "buy" ? "Buy" : "Sell"} {type === "market" ? "at market" : type}
       </Button>

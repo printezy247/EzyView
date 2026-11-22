@@ -18,7 +18,9 @@ describe("chart themes", () => {
   it("keeps the session band translucent", () => {
     for (const [name, theme] of Object.entries(CHART_THEMES)) {
       expect(theme.sessionBand, name).toMatch(/^rgba\(/);
-      const alpha = Number(/rgba\([^,]+,[^,]+,[^,]+,([\d.]+)\)/.exec(theme.sessionBand)?.[1] ?? "1");
+      const alpha = Number(
+        /rgba\([^,]+,[^,]+,[^,]+,([\d.]+)\)/.exec(theme.sessionBand)?.[1] ?? "1",
+      );
       expect(alpha, name).toBeGreaterThan(0);
       expect(alpha, name).toBeLessThan(0.35);
     }

@@ -3,21 +3,21 @@
 These files are copied into the `.deb` by `apps/desktop/src-tauri/tauri.conf.json`
 under `bundle.linux.deb.files`.
 
-| File | Destination |
-|---|---|
-| `copyright` (DEP-5) | `/usr/share/doc/ezy-view/copyright` |
-| `changelog.gz` | `/usr/share/doc/ezy-view/changelog.gz` |
-| `ezyview.1.gz` | `/usr/share/man/man1/ezyview.1.gz` |
-| `ezyview-mcp` | `/usr/bin/ezyview-mcp` |
-| `ezyview-mcp.1.gz` | `/usr/share/man/man1/ezyview-mcp.1.gz` |
-| `ezyview-mt5-bridge` | `/usr/bin/ezyview-mt5-bridge` |
-| `ezyview-mt5-bridge.1.gz` | `/usr/share/man/man1/ezyview-mt5-bridge.1.gz` |
-| `LICENSE` | `/usr/share/doc/ezy-view/copyright` (via `copyright`) + `/usr/share/doc/ezy-view/LICENSE` |
-| `NOTICE` | `/usr/share/doc/ezy-view/NOTICE` |
-| `../tools/mt5-bridge/README.md` | `/usr/share/doc/ezy-view/mt5-bridge.md` |
-| `../tools/mt5-bridge/bridge.py` | `/usr/lib/EzyView/mt5-bridge/` (Tauri resource) |
-| `com.printezy247.ezyview.metainfo.xml` | `/usr/share/metainfo/` |
-| `EzyView.desktop.hbs` | rendered desktop entry (via `desktopTemplate`) |
+| File                                   | Destination                                                                               |
+| -------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `copyright` (DEP-5)                    | `/usr/share/doc/ezy-view/copyright`                                                       |
+| `changelog.gz`                         | `/usr/share/doc/ezy-view/changelog.gz`                                                    |
+| `ezyview.1.gz`                         | `/usr/share/man/man1/ezyview.1.gz`                                                        |
+| `ezyview-mcp`                          | `/usr/bin/ezyview-mcp`                                                                    |
+| `ezyview-mcp.1.gz`                     | `/usr/share/man/man1/ezyview-mcp.1.gz`                                                    |
+| `ezyview-mt5-bridge`                   | `/usr/bin/ezyview-mt5-bridge`                                                             |
+| `ezyview-mt5-bridge.1.gz`              | `/usr/share/man/man1/ezyview-mt5-bridge.1.gz`                                             |
+| `LICENSE`                              | `/usr/share/doc/ezy-view/copyright` (via `copyright`) + `/usr/share/doc/ezy-view/LICENSE` |
+| `NOTICE`                               | `/usr/share/doc/ezy-view/NOTICE`                                                          |
+| `../tools/mt5-bridge/README.md`        | `/usr/share/doc/ezy-view/mt5-bridge.md`                                                   |
+| `../tools/mt5-bridge/bridge.py`        | `/usr/lib/EzyView/mt5-bridge/` (Tauri resource)                                           |
+| `com.printezy247.ezyview.metainfo.xml` | `/usr/share/metainfo/`                                                                    |
+| `EzyView.desktop.hbs`                  | rendered desktop entry (via `desktopTemplate`)                                            |
 
 The Debian changelog and the manual page are committed compressed because
 Tauri copies files verbatim and lintian requires both `.gz` names. After

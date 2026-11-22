@@ -1,7 +1,8 @@
 import type { Candle } from "@ezyview/data-adapters";
 import { volumeProfile } from "@ezyview/chart-engine";
 
-const fmt = (v: number): string => v.toLocaleString(undefined, { maximumFractionDigits: Math.abs(v) < 10 ? 4 : 2 });
+const fmt = (v: number): string =>
+  v.toLocaleString(undefined, { maximumFractionDigits: Math.abs(v) < 10 ? 4 : 2 });
 
 /**
  * Text alternative for the chart canvas: what a sighted user reads at a glance

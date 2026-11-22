@@ -26,6 +26,12 @@ describe("candlesToCsv", () => {
 describe("candlesToJson", () => {
   it("round-trips bars under the format tag", () => {
     const parsed = JSON.parse(candlesToJson(BARS, { symbol: "BTCUSDT", resolution: "1D" }));
-    expect(parsed).toEqual({ format: "ezyview-chart", version: 1, symbol: "BTCUSDT", resolution: "1D", bars: BARS });
+    expect(parsed).toEqual({
+      format: "ezyview-chart",
+      version: 1,
+      symbol: "BTCUSDT",
+      resolution: "1D",
+      bars: BARS,
+    });
   });
 });

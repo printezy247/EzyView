@@ -1,5 +1,9 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { getActiveExportSource, getExportSourceVersion, subscribeExportSources } from "./exportBridge";
+import {
+  getActiveExportSource,
+  getExportSourceVersion,
+  subscribeExportSources,
+} from "./exportBridge";
 import { formatClock, parseGoToDate, RANGE_PRESETS } from "./chartView";
 import { EventsControls } from "./EventsControls";
 import { CompareDialog } from "./CompareDialog";
@@ -38,7 +42,14 @@ export function ChartBottomBar({ onOpenHotkeys }: { onOpenHotkeys: () => void })
       className="flex h-7 shrink-0 items-center gap-1 overflow-x-auto ev-bar-below border-t border-ev-raised bg-ev-chrome px-2"
     >
       {RANGE_PRESETS.map(({ id, description }) => (
-        <Button key={id} size="sm" variant="ghost" disabled={!view} title={description} onClick={() => void view?.showRange(id)}>
+        <Button
+          key={id}
+          size="sm"
+          variant="ghost"
+          disabled={!view}
+          title={description}
+          onClick={() => void view?.showRange(id)}
+        >
           {id}
         </Button>
       ))}
@@ -55,7 +66,13 @@ export function ChartBottomBar({ onOpenHotkeys }: { onOpenHotkeys: () => void })
         className={inputClass("h-5 w-28 px-1 text-dense")}
       />
 
-      <Button size="sm" variant="ghost" onClick={() => setCompareOpen(true)} title="Overlay another symbol on this chart" className="ml-1">
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() => setCompareOpen(true)}
+        title="Overlay another symbol on this chart"
+        className="ml-1"
+      >
         Compare
       </Button>
 
@@ -63,10 +80,22 @@ export function ChartBottomBar({ onOpenHotkeys }: { onOpenHotkeys: () => void })
       <EventsControls layout="bar" />
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5">
-        <Button size="sm" variant="ghost" disabled={!view} title="Reset zoom, scroll and price scale" onClick={() => view?.reset()}>
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={!view}
+          title="Reset zoom, scroll and price scale"
+          onClick={() => view?.reset()}
+        >
           Reset
         </Button>
-        <Button size="sm" variant="ghost" disabled={!view} title="Fit the price scale to the visible bars" onClick={() => view?.autoScale()}>
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={!view}
+          title="Fit the price scale to the visible bars"
+          onClick={() => view?.autoScale()}
+        >
           Auto
         </Button>
         <Button
@@ -84,15 +113,28 @@ export function ChartBottomBar({ onOpenHotkeys }: { onOpenHotkeys: () => void })
           variant="ghost"
           aria-pressed={priceScale === "percentage"}
           title="Show price as percent change from the first visible bar"
-          onClick={() => updateActive({ priceScale: priceScale === "percentage" ? "normal" : "percentage" })}
+          onClick={() =>
+            updateActive({ priceScale: priceScale === "percentage" ? "normal" : "percentage" })
+          }
           className={priceScale === "percentage" ? litPill : undefined}
         >
           %
         </Button>
-        <span className="ml-2 text-dense num text-ev-muted" title="Current time in the chart's timezone" data-volatile="clock">
+        <span
+          className="ml-2 text-dense num text-ev-muted"
+          title="Current time in the chart's timezone"
+          data-volatile="clock"
+        >
           {formatClock(now, timezone)}
         </span>
-        <Button size="sm" variant="ghost" onClick={onOpenHotkeys} title="Keyboard shortcuts (?)" aria-keyshortcuts="?" className="ml-auto">
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={onOpenHotkeys}
+          title="Keyboard shortcuts (?)"
+          aria-keyshortcuts="?"
+          className="ml-auto"
+        >
           Shortcuts
         </Button>
       </div>

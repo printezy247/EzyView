@@ -60,8 +60,17 @@ export function EquityCurve({ equity }: { equity: readonly number[] }) {
   );
 }
 
-export function Metric({ label, value, tone }: { label: string; value: string; tone?: "pos" | "neg" }) {
-  const color = tone === "pos" ? "text-ev-up-text" : tone === "neg" ? "text-ev-down-text" : "text-ev-strong";
+export function Metric({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: "pos" | "neg";
+}) {
+  const color =
+    tone === "pos" ? "text-ev-up-text" : tone === "neg" ? "text-ev-down-text" : "text-ev-strong";
   return (
     <span className="flex items-center gap-1">
       <span className="text-ev-faint">{label}</span>
@@ -69,4 +78,3 @@ export function Metric({ label, value, tone }: { label: string; value: string; t
     </span>
   );
 }
-

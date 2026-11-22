@@ -1,7 +1,14 @@
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
 
 import { cn } from "./cn";
-import { type ButtonVariant, type ControlSize, buttonClass, chipClass, iconButtonClass, inputClass } from "./classNames";
+import {
+  type ButtonVariant,
+  type ControlSize,
+  buttonClass,
+  chipClass,
+  iconButtonClass,
+  inputClass,
+} from "./classNames";
 
 /**
  * The shared control set. Every button, input and chip in the app comes from
@@ -15,7 +22,13 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
 }
 
-export function Button({ size = "md", variant = "solid", className, type = "button", ...rest }: ButtonProps) {
+export function Button({
+  size = "md",
+  variant = "solid",
+  className,
+  type = "button",
+  ...rest
+}: ButtonProps) {
   return <button type={type} className={buttonClass({ size, variant, className })} {...rest} />;
 }
 
@@ -26,7 +39,14 @@ export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>
   variant?: ButtonVariant;
 }
 
-export function IconButton({ label, size = "md", variant = "ghost", className, type = "button", ...rest }: IconButtonProps) {
+export function IconButton({
+  label,
+  size = "md",
+  variant = "ghost",
+  className,
+  type = "button",
+  ...rest
+}: IconButtonProps) {
   return (
     <button
       type={type}

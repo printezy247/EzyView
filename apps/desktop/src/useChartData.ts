@@ -11,7 +11,6 @@ import { applySessionShading, sliceForReplay } from "./chartHostKit";
 import type { HostContext } from "./chartHostKit";
 import type { Props } from "./ChartHost";
 
-
 /**
  * Data subscriptions: the initial history load, live last-bar folding, the
  * replay slice and the compare overlays. Everything here reads and writes
@@ -52,7 +51,6 @@ export function useChartData(ctx: HostContext, props: Props): void {
       cancelled = true;
     };
   }, [props.symbol, props.resolution, props.dataSource, globalFeed]);
-
 
   // Scrolling to the left edge loads one older page (500 bars) at a time, once
   // per request. A page that adds nothing means the provider has no more, and
@@ -185,16 +183,20 @@ export function useChartData(ctx: HostContext, props: Props): void {
       const every = feed === "mt5" ? 500 : feed === "twelvedata" ? 8000 : 1000;
       // The shared poller means the legend, ticket and tape on this chart do
       // not add a second request for the symbol the chart already polls.
-      unsubscribe = subscribeQuote(props.symbol, (q) => {
-        if (!busy && historyRef.current.length > 0 && historyKeyRef.current === key) {
-          busy = true;
-          try {
-            if (q) apply(q);
-          } finally {
-            busy = false;
+      unsubscribe = subscribeQuote(
+        props.symbol,
+        (q) => {
+          if (!busy && historyRef.current.length > 0 && historyKeyRef.current === key) {
+            busy = true;
+            try {
+              if (q) apply(q);
+            } finally {
+              busy = false;
+            }
           }
-        }
-      }, { source: props.dataSource, intervalMs: every });
+        },
+        { source: props.dataSource, intervalMs: every },
+      );
     };
 
     if (isLiveSourceChoice(feed)) {

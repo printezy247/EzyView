@@ -57,10 +57,14 @@ describe("RiskSessionSync", () => {
 
   it("reset clears the base balance and the loss history", () => {
     const sync = new RiskSessionSync();
-    sync.sync({ balance: 10_000 }, [{ id: "d3", symbol: "EURUSD", pnl: -100, time: 1_700_000_000 }]);
+    sync.sync({ balance: 10_000 }, [
+      { id: "d3", symbol: "EURUSD", pnl: -100, time: 1_700_000_000 },
+    ]);
     sync.reset();
     expect(dailyRiskTracker.checkDailyDrawdown(1, 5).tripped).toBe(false);
-    expect(dailyRiskTracker.isSymbolInCooldown("EURUSD", 60, 1_700_000_000 * 1000).inCooldown).toBe(false);
+    expect(dailyRiskTracker.isSymbolInCooldown("EURUSD", 60, 1_700_000_000 * 1000).inCooldown).toBe(
+      false,
+    );
   });
 });
 
@@ -82,7 +86,10 @@ describe("the drawdown breaker fires once the tracker is fed", () => {
     const sync = new RiskSessionSync();
     const now = Math.floor(Date.now() / 1000);
     sync.sync({ balance: 10_000 }, [{ id: "d4", symbol: "XAUUSD", pnl: -120, time: now }]);
-    const result = gateAction({ action: "place", symbol: "XAUUSD", volume: 0.1, accountKind: "demo" }, rails());
+    const result = gateAction(
+      { action: "place", symbol: "XAUUSD", volume: 0.1, accountKind: "demo" },
+      rails(),
+    );
     expect(result.decision).toBe("block");
     expect(result.reasons.join(" ")).toMatch(/cooldown active for XAUUSD/);
     sync.reset();

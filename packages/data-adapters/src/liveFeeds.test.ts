@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createLiveSources, LIVE_SOURCE_IDS } from "./liveFeeds.js";
 import type { LiveSourceDeps } from "./liveFeeds.js";
-import type { Quote } from "./types.js";class FakeWS {
+import type { Quote } from "./types.js";
+class FakeWS {
   static all: FakeWS[] = [];
   sent: string[] = [];
   closed = false;
@@ -38,7 +39,8 @@ import type { Quote } from "./types.js";class FakeWS {
   }
 }
 
-const json = (body: unknown, ok = true) => Promise.resolve({ ok, json: () => Promise.resolve(body) } as Response);
+const json = (body: unknown, ok = true) =>
+  Promise.resolve({ ok, json: () => Promise.resolve(body) } as Response);
 
 function setup(routes: (url: string) => unknown, extra: Partial<LiveSourceDeps> = {}) {
   const urls: string[] = [];
@@ -99,7 +101,9 @@ describe("binance", () => {
       { time: 1700000000, open: 1, high: 2, low: 0.5, close: 1.5, volume: 10 },
       { time: 1700000060, open: 1.5, high: 2.5, low: 1, close: 2, volume: 5 },
     ]);
-    expect(urls[0]).toMatch(/^https:\/\/data-api\.binance\.vision\/api\/v3\/klines\?symbol=BTCUSDT&interval=1m/);
+    expect(urls[0]).toMatch(
+      /^https:\/\/data-api\.binance\.vision\/api\/v3\/klines\?symbol=BTCUSDT&interval=1m/,
+    );
     expect(urls[0]).toContain("limit=1000");
   });
 
@@ -113,9 +117,19 @@ describe("binance", () => {
   });
 
   it("getQuote reads 24h ticker; returns null on bad data or http error", async () => {
-    const { sources } = setup(() => ({ lastPrice: "100.5", priceChange: "-2", priceChangePercent: "-1.9" }));
+    const { sources } = setup(() => ({
+      lastPrice: "100.5",
+      priceChange: "-2",
+      priceChangePercent: "-1.9",
+    }));
     const q = await sources.binance.getQuote("BINANCE:BTCUSDT");
-    expect(q).toMatchObject({ symbol: "BINANCE:BTCUSDT", last: 100.5, change: -2, changePercent: -1.9, time: 1_700_000_000 });
+    expect(q).toMatchObject({
+      symbol: "BINANCE:BTCUSDT",
+      last: 100.5,
+      change: -2,
+      changePercent: -1.9,
+      time: 1_700_000_000,
+    });
     const bad = setup(() => ({ lastPrice: "0" }));
     expect(await bad.sources.binance.getQuote("BTCUSDT")).toBeNull();
     const err = setup(() => undefined);
@@ -133,7 +147,9 @@ describe("binance", () => {
 
   it("aborts a hanging fetch after ~4 s", async () => {
     const hang = ((_u: string, init: RequestInit) =>
-      new Promise((_r, rej) => init.signal?.addEventListener("abort", () => rej(new Error("aborted"))))) as unknown as typeof fetch;
+      new Promise((_r, rej) =>
+        init.signal?.addEventListener("abort", () => rej(new Error("aborted"))),
+      )) as unknown as typeof fetch;
     const { sources } = setup(() => undefined, { fetch: hang });
     const p = sources.binance.getQuote("BTCUSDT");
     await vi.advanceTimersByTimeAsync(4100);
@@ -150,7 +166,7 @@ describe("binance", () => {
     ws.msg({ e: "trade", p: "123.4" });
     ws.msg({ e: "trade", p: "nope" });
     expect(got).toEqual([{ symbol: "BINANCE:BTCUSDT", last: 123.4, time: 1_700_000_000 }]);
-    stop();
+    stop?.();
     expect(ws.closed).toBe(true);
   });
 
@@ -171,7 +187,7 @@ describe("binance", () => {
     await vi.advanceTimersByTimeAsync(2000);
     expect(got.length).toBe(3);
     expect(urls.every((u) => u.includes("/ticker/24hr"))).toBe(true);
-    stop();
+    stop?.();
     await vi.advanceTimersByTimeAsync(5000);
     expect(got.length).toBe(3);
   });
@@ -187,7 +203,7 @@ describe("binance", () => {
       const stop = await sources.binance.subscribe(["BTCUSDT"], (q) => got.push(q));
       await vi.advanceTimersByTimeAsync(1500);
       expect(got.length).toBeGreaterThanOrEqual(2);
-      stop();
+      stop?.();
     } finally {
       g.WebSocket = saved;
     }
@@ -217,7 +233,9 @@ describe("kraken", () => {
     const c = await sources.kraken.getHistory(req("BTCUSD", "1h"));
     expect(c).toHaveLength(2);
     expect(c[0]).toEqual({ time: 1700000000, open: 1, high: 2, low: 0.5, close: 1.5, volume: 3 });
-    expect(urls[0]).toMatch(/^https:\/\/api\.kraken\.com\/0\/public\/OHLC\?pair=XBTUSD&interval=60/);
+    expect(urls[0]).toMatch(
+      /^https:\/\/api\.kraken\.com\/0\/public\/OHLC\?pair=XBTUSD&interval=60/,
+    );
     expect(await sources.kraken.getHistory(req("BTCUSD", "5s"))).toEqual([]);
   });
 
@@ -228,9 +246,19 @@ describe("kraken", () => {
   });
 
   it("getQuote reads Ticker c/o", async () => {
-    const { sources, urls } = setup(() => ({ error: [], result: { XXBTZUSD: { c: ["110", "1"], o: "100", b: ["109"], a: ["111"], v: ["5", "9"] } } }));
+    const { sources, urls } = setup(() => ({
+      error: [],
+      result: { XXBTZUSD: { c: ["110", "1"], o: "100", b: ["109"], a: ["111"], v: ["5", "9"] } },
+    }));
     const q = await sources.kraken.getQuote("KRAKEN:BTCUSD");
-    expect(q).toMatchObject({ last: 110, change: 10, changePercent: 10, bid: 109, ask: 111, volume24h: 9 });
+    expect(q).toMatchObject({
+      last: 110,
+      change: 10,
+      changePercent: 10,
+      bid: 109,
+      ask: 111,
+      volume24h: 9,
+    });
     expect(urls[0]).toBe("https://api.kraken.com/0/public/Ticker?pair=XBTUSD");
   });
 
@@ -241,11 +269,14 @@ describe("kraken", () => {
     const ws = FakeWS.all[0]!;
     expect(ws.url).toBe("wss://ws.kraken.com/v2");
     ws.open();
-    expect(JSON.parse(ws.sent[0]!)).toEqual({ method: "subscribe", params: { channel: "ticker", symbol: ["BTC/USD"] } });
+    expect(JSON.parse(ws.sent[0]!)).toEqual({
+      method: "subscribe",
+      params: { channel: "ticker", symbol: ["BTC/USD"] },
+    });
     ws.msg({ channel: "ticker", type: "update", data: [{ symbol: "BTC/USD", last: 64000.5 }] });
     ws.msg({ channel: "heartbeat" });
     expect(got.map((q) => q.last)).toEqual([64000.5]);
-    stop();
+    stop?.();
     expect(ws.closed).toBe(true);
   });
 });
@@ -263,14 +294,16 @@ describe("twelvedata", () => {
     const { sources, fetchFn } = setup(() => undefined, { getKey: async () => null });
     expect(await sources.twelvedata.getHistory(req("XAUUSD"))).toEqual([]);
     expect(await sources.twelvedata.getQuote("XAUUSD")).toBeNull();
-    const stop = await sources.twelvedata.subscribe(["XAUUSD"], () => undefined);
-    expect(() => stop()).not.toThrow();
+    // No key means no stream can be planned: null tells the caller to poll.
+    expect(await sources.twelvedata.subscribe(["XAUUSD"], () => undefined)).toBeNull();
     expect(fetchFn).not.toHaveBeenCalled();
     expect(FakeWS.all).toHaveLength(0);
   });
 
   it("getKey that throws is treated as no key", async () => {
-    const { sources } = setup(() => undefined, { getKey: async () => Promise.reject(new Error("keyring")) });
+    const { sources } = setup(() => undefined, {
+      getKey: async () => Promise.reject(new Error("keyring")),
+    });
     expect(await sources.twelvedata.getQuote("XAUUSD")).toBeNull();
   });
 
@@ -279,7 +312,14 @@ describe("twelvedata", () => {
       status: "ok",
       values: [
         { datetime: "2023-11-14 22:13:20", open: "1", high: "2", low: "0.5", close: "1.5" },
-        { datetime: "2023-11-14 22:28:20", open: "1.5", high: "2", low: "1", close: "1.7", volume: "9" },
+        {
+          datetime: "2023-11-14 22:28:20",
+          open: "1.5",
+          high: "2",
+          low: "1",
+          close: "1.7",
+          volume: "9",
+        },
       ],
     }));
     const c = await sources.twelvedata.getHistory(req("OANDA:XAUUSD", "1m", { limit: 9999 }));
@@ -287,14 +327,32 @@ describe("twelvedata", () => {
       { time: 1700000000, open: 1, high: 2, low: 0.5, close: 1.5, volume: 0 },
       { time: 1700000900, open: 1.5, high: 2, low: 1, close: 1.7, volume: 9 },
     ]);
-    expect(urls[0]).toMatch(/^https:\/\/api\.twelvedata\.com\/time_series\?symbol=XAU\/USD&interval=1min&outputsize=500&order=asc&timezone=UTC&apikey=SECRETKEY(&end=[^&]+)?$/);
+    expect(urls[0]).toMatch(
+      /^https:\/\/api\.twelvedata\.com\/time_series\?symbol=XAU\/USD&interval=1min&outputsize=500&order=asc&timezone=UTC&apikey=SECRETKEY(&end=[^&]+)?$/,
+    );
     await sources.twelvedata.getHistory(req("EURUSD", "1D"));
     expect(urls[1]).toContain("interval=1day");
     expect(await sources.twelvedata.getHistory(req("EURUSD", "5s"))).toEqual([]);
   });
 
+  it("pins history windows with Twelve Data's space-separated UTC format", async () => {
+    const { sources, urls } = setup(() => ({ status: "ok", values: [] }));
+    await sources.twelvedata.getHistory({
+      symbol: "EURUSD",
+      resolution: "1m",
+      from: 1_700_000_000,
+      to: 1_700_000_900,
+      limit: 10,
+    });
+    expect(urls[0]).toContain("start=2023-11-14%2022%3A13%3A20");
+    expect(urls[0]).toContain("end=2023-11-14%2022%3A28%3A20");
+    expect(urls[0]).not.toContain("T22");
+  });
+
   it("parses date-only daily bars as UTC midnight", async () => {
-    const { sources } = setup(() => ({ values: [{ datetime: "2023-11-14", open: "1", high: "1", low: "1", close: "1" }] }));
+    const { sources } = setup(() => ({
+      values: [{ datetime: "2023-11-14", open: "1", high: "1", low: "1", close: "1" }],
+    }));
     const c = await sources.twelvedata.getHistory(req("EURUSD", "1D"));
     expect(c[0]!.time).toBe(Date.UTC(2023, 10, 14) / 1000);
   });
@@ -319,13 +377,21 @@ describe("twelvedata", () => {
     const ws = FakeWS.all[0]!;
     expect(ws.url).toBe("wss://ws.twelvedata.com/v1/quotes/price?apikey=SECRETKEY");
     ws.open();
-    expect(JSON.parse(ws.sent[0]!)).toEqual({ action: "subscribe", params: { symbols: "XAU/USD" } });
-    ws.msg({ event: "subscribe-status", status: "ok", success: [{ symbol: "XAU/USD" }], fails: null });
+    expect(JSON.parse(ws.sent[0]!)).toEqual({
+      action: "subscribe",
+      params: { symbols: "XAU/USD" },
+    });
+    ws.msg({
+      event: "subscribe-status",
+      status: "ok",
+      success: [{ symbol: "XAU/USD" }],
+      fails: null,
+    });
     ws.msg({ event: "price", symbol: "XAU/USD", price: 2651.5, timestamp: 1700000000 });
     expect(got.map((q) => q.last)).toEqual([2651.5]);
     await vi.advanceTimersByTimeAsync(10_000);
     expect(ws.sent.some((s) => s.includes("heartbeat"))).toBe(true);
-    stop();
+    stop?.();
     expect(ws.closed).toBe(true);
   });
 
@@ -343,7 +409,7 @@ describe("twelvedata", () => {
     await vi.advanceTimersByTimeAsync(200);
     expect(got).toHaveLength(2);
     expect(urls.every((u) => u.startsWith("https://api.twelvedata.com/price"))).toBe(true);
-    stop();
+    stop?.();
   });
 
   it("socket close falls back to polling too", async () => {
@@ -353,7 +419,7 @@ describe("twelvedata", () => {
     FakeWS.all[0]!.drop();
     await vi.advanceTimersByTimeAsync(0);
     expect(got).toHaveLength(1);
-    stop();
+    stop?.();
   });
 
   it("never leaks the key in thrown or returned values", async () => {
@@ -372,7 +438,10 @@ describe("search / symbol info", () => {
     expect(r.map((s) => s.ticker)).toEqual(["ETHUSDT"]);
     expect(r[0]!.provider).toBe("binance");
     expect(await sources.binance.searchSymbols("eth", "forex")).toEqual([]);
-    expect(await sources.twelvedata.getSymbol("FX:EURUSD")).toMatchObject({ ticker: "EURUSD", assetClass: "forex" });
+    expect(await sources.twelvedata.getSymbol("FX:EURUSD")).toMatchObject({
+      ticker: "EURUSD",
+      assetClass: "forex",
+    });
     expect(await sources.twelvedata.getSymbol("BTCUSDT")).toBeNull();
   });
 });
@@ -392,7 +461,10 @@ describe("live feed resilience", () => {
     const k: Quote[] = [];
     await sources.kraken.subscribe(["BTCUSD"], (q) => k.push(q));
     FakeWS.all[0]!.open();
-    FakeWS.all[0]!.msg({ channel: "ticker", data: [{ last: 5, timestamp: "2023-11-14T22:13:20.000000Z" }] });
+    FakeWS.all[0]!.msg({
+      channel: "ticker",
+      data: [{ last: 5, timestamp: "2023-11-14T22:13:20.000000Z" }],
+    });
     expect(k[0]!.time).toBe(1_700_000_000);
     const t: Quote[] = [];
     await sources.twelvedata.subscribe(["XAUUSD"], (q) => t.push(q));
@@ -438,11 +510,31 @@ describe("live feed resilience", () => {
     FakeWS.all[3]!.msg({ e: "trade", p: "9" }); // healthy again: no more polling downgrade
   });
 
+  it("reports stream health so the UI can mark a dead feed", async () => {
+    const seen: Array<[string, boolean]> = [];
+    const { sources } = setup(() => undefined, { onHealth: (id, ok) => seen.push([id, ok]) });
+    await sources.binance.subscribe(["BTCUSDT"], () => undefined);
+    // Three dead sockets (initial + two retries) exhaust the fail budget and
+    // the adapter falls back to polling — that transition is the health signal.
+    FakeWS.all[0]!.drop();
+    await vi.advanceTimersByTimeAsync(1_000);
+    FakeWS.all[1]!.drop();
+    await vi.advanceTimersByTimeAsync(2_000);
+    FakeWS.all[2]!.drop();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(seen).toContainEqual(["binance", false]);
+  });
+
   it("backs off after a 429 and reports it", async () => {
     let clock = 1_700_000_000_000;
     const seen: Array<[string, number]> = [];
     const fetchFn = vi.fn(() =>
-      Promise.resolve({ ok: false, status: 429, headers: new Headers({ "retry-after": "10" }), json: () => Promise.resolve({}) } as Response),
+      Promise.resolve({
+        ok: false,
+        status: 429,
+        headers: new Headers({ "retry-after": "10" }),
+        json: () => Promise.resolve({}),
+      } as Response),
     );
     const { sources } = setup(() => undefined, {
       fetch: fetchFn as unknown as typeof fetch,

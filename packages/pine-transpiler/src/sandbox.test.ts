@@ -66,7 +66,9 @@ describe("Pine sandbox denylist", () => {
   });
 
   it("rejects the host globals reached through a member", () => {
-    expect(() => transpile('plot(self.fetch("http://127.0.0.1:8765/order"))')).toThrow(PineUnsupportedError);
+    expect(() => transpile('plot(self.fetch("http://127.0.0.1:8765/order"))')).toThrow(
+      PineUnsupportedError,
+    );
     expect(() => transpile("x = window.location.href")).toThrow(PineUnsupportedError);
     expect(() => transpile("x = navigator.sendBeacon")).toThrow(PineUnsupportedError);
     expect(() => transpile("x = document.cookie")).toThrow(PineUnsupportedError);
@@ -74,7 +76,18 @@ describe("Pine sandbox denylist", () => {
   });
 
   it("rejects the built-ins that lead back to Function", () => {
-    for (const name of ["Object", "Array", "JSON", "Math", "Symbol", "Date", "Intl", "Map", "Set", "WeakMap"]) {
+    for (const name of [
+      "Object",
+      "Array",
+      "JSON",
+      "Math",
+      "Symbol",
+      "Date",
+      "Intl",
+      "Map",
+      "Set",
+      "WeakMap",
+    ]) {
       expect(() => transpile(`x = ${name}`), name).toThrow(PineUnsupportedError);
     }
   });
@@ -86,7 +99,17 @@ describe("Pine sandbox denylist", () => {
   });
 
   it("rejects the dangerous member names", () => {
-    for (const m of ["constructor", "__proto__", "prototype", "then", "call", "apply", "bind", "toString", "valueOf"]) {
+    for (const m of [
+      "constructor",
+      "__proto__",
+      "prototype",
+      "then",
+      "call",
+      "apply",
+      "bind",
+      "toString",
+      "valueOf",
+    ]) {
       expect(() => transpile(`close.${m}`), m).toThrow(PineUnsupportedError);
     }
   });

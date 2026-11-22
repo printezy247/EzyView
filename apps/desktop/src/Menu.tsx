@@ -12,9 +12,24 @@ import { buttonClass, cn } from "./ui";
  * a row of look-alike buttons.
  */
 export type MenuEntry =
-  | { kind: "action"; id: string; label: string; hint?: string; disabled?: boolean; onSelect: () => void }
+  | {
+      kind: "action";
+      id: string;
+      label: string;
+      hint?: string;
+      disabled?: boolean;
+      onSelect: () => void;
+    }
   | { kind: "toggle"; id: string; label: string; checked: boolean; onSelect: () => void }
-  | { kind: "radio"; id: string; label: string; selected: boolean; disabled?: boolean; hint?: string; onSelect: () => void }
+  | {
+      kind: "radio";
+      id: string;
+      label: string;
+      selected: boolean;
+      disabled?: boolean;
+      hint?: string;
+      onSelect: () => void;
+    }
   | { kind: "separator"; id: string }
   | { kind: "label"; id: string; label: string };
 
@@ -43,7 +58,15 @@ interface Props {
  * absolutely positioned menu inside it is clipped to the 36px strip - the
  * menus were effectively invisible.
  */
-export function Menu({ label, caption, entries, icon, badge, triggerActive, align = "left" }: Props) {
+export function Menu({
+  label,
+  caption,
+  entries,
+  icon,
+  badge,
+  triggerActive,
+  align = "left",
+}: Props) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -72,7 +95,12 @@ export function Menu({ label, caption, entries, icon, badge, triggerActive, alig
     const all = items();
     if (all.length === 0) return;
     const current = all.indexOf(document.activeElement as HTMLButtonElement);
-    const next = current === -1 ? (delta > 0 ? 0 : all.length - 1) : (current + delta + all.length) % all.length;
+    const next =
+      current === -1
+        ? delta > 0
+          ? 0
+          : all.length - 1
+        : (current + delta + all.length) % all.length;
     all[next]?.focus();
   };
 
@@ -146,7 +174,9 @@ export function Menu({ label, caption, entries, icon, badge, triggerActive, alig
         {icon}
         {label}
         {badge !== undefined && badge > 0 && (
-          <span className="rounded bg-ev-accent px-1 text-dense leading-4 text-ev-accent-ink">{badge}</span>
+          <span className="rounded bg-ev-accent px-1 text-dense leading-4 text-ev-accent-ink">
+            {badge}
+          </span>
         )}
         <ChevronDown size={12} aria-hidden />
       </button>
@@ -160,7 +190,10 @@ export function Menu({ label, caption, entries, icon, badge, triggerActive, alig
             aria-label={caption ?? label}
             onKeyDown={onListKey}
             className="fixed z-[var(--z-dropdown)] whitespace-nowrap rounded-lg border border-ev-line bg-ev-panel py-1 shadow-xl"
-            style={{ ...popupPosition(triggerRef.current, { align, minWidth: 220 }), overflowY: "auto" }}
+            style={{
+              ...popupPosition(triggerRef.current, { align, minWidth: 220 }),
+              overflowY: "auto",
+            }}
           >
             <MenuItems entries={entries} onPick={pick} />
           </div>,
@@ -171,7 +204,13 @@ export function Menu({ label, caption, entries, icon, badge, triggerActive, alig
 }
 
 /** The rows of a menu popup; shared by dropdown menus and the chart's right-click menu. */
-export function MenuItems({ entries, onPick }: { entries: MenuEntry[]; onPick: (entry: MenuEntry) => void }) {
+export function MenuItems({
+  entries,
+  onPick,
+}: {
+  entries: MenuEntry[];
+  onPick: (entry: MenuEntry) => void;
+}) {
   return (
     <>
       {entries.map((entry) => {
@@ -180,15 +219,25 @@ export function MenuItems({ entries, onPick }: { entries: MenuEntry[]; onPick: (
         }
         if (entry.kind === "label") {
           return (
-            <div key={entry.id} className="px-3 pb-1 pt-2 text-dense font-medium uppercase tracking-wider text-ev-faint">
+            <div
+              key={entry.id}
+              className="px-3 pb-1 pt-2 text-dense font-medium uppercase tracking-wider text-ev-faint"
+            >
               {entry.label}
             </div>
           );
         }
 
-        const on = entry.kind === "toggle" ? entry.checked : entry.kind === "radio" ? entry.selected : false;
-        const role = entry.kind === "toggle" ? "menuitemcheckbox" : entry.kind === "radio" ? "menuitemradio" : "menuitem";
-        const disabled = entry.kind === "action" || entry.kind === "radio" ? entry.disabled === true : false;
+        const on =
+          entry.kind === "toggle" ? entry.checked : entry.kind === "radio" ? entry.selected : false;
+        const role =
+          entry.kind === "toggle"
+            ? "menuitemcheckbox"
+            : entry.kind === "radio"
+              ? "menuitemradio"
+              : "menuitem";
+        const disabled =
+          entry.kind === "action" || entry.kind === "radio" ? entry.disabled === true : false;
 
         return (
           <button

@@ -102,7 +102,8 @@ export function VirtualTableBody<T>({
   const virtualizer = useVirtualizer({
     count: items.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: (index) => (typeof estimateSize === "function" ? estimateSize(index) : estimateSize),
+    estimateSize: (index) =>
+      typeof estimateSize === "function" ? estimateSize(index) : estimateSize,
     overscan,
     getItemKey: (index) => {
       const item = items[index];
@@ -125,7 +126,10 @@ export function VirtualTableBody<T>({
     <tbody>
       {spacer(first?.start ?? 0, "virtual-top")}
       {virtualItems.map((virtual) => (
-        <VirtualRow key={virtual.key} render={() => renderRow(items[virtual.index]!, virtual.index)} />
+        <VirtualRow
+          key={virtual.key}
+          render={() => renderRow(items[virtual.index]!, virtual.index)}
+        />
       ))}
       {spacer(total - (last?.end ?? 0), "virtual-bottom")}
     </tbody>

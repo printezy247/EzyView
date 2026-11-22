@@ -17,11 +17,11 @@ EzyView has two chart feeds today: the demo feed and Broker · MT5 (global switc
 
 `packages/data-adapters/src/liveFeeds.ts` exports `createLiveSources(deps)`; each source implements the existing `MarketDataAdapter` (`getHistory`, `getQuote`, `subscribe`, `searchSymbols`) plus `supports(symbol)` and `label`. Dependencies (`fetch`, `WebSocket`, `getKey`) are injected so tests run with fakes.
 
-| id | History | Live | Symbols |
-| --- | --- | --- | --- |
-| `binance` | `data-api.binance.vision/api/v3/klines` | `wss://stream.binance.vision/ws/<pair>@bookTicker` | `*USDT` crypto pairs |
-| `kraken` | `api.kraken.com/0/public/OHLC` | `wss://ws.kraken.com/v2` ticker | `BTC/USD`-style pairs |
-| `twelvedata` | `api.twelvedata.com/time_series` | `wss://ws.twelvedata.com/v1/quotes/price`, else REST `/price` polled no faster than every 8 s | forex pairs, XAUUSD, XAGUSD |
+| id           | History                                 | Live                                                                                          | Symbols                     |
+| ------------ | --------------------------------------- | --------------------------------------------------------------------------------------------- | --------------------------- |
+| `binance`    | `data-api.binance.vision/api/v3/klines` | `wss://stream.binance.vision/ws/<pair>@bookTicker`                                            | `*USDT` crypto pairs        |
+| `kraken`     | `api.kraken.com/0/public/OHLC`          | `wss://ws.kraken.com/v2` ticker                                                               | `BTC/USD`-style pairs       |
+| `twelvedata` | `api.twelvedata.com/time_series`        | `wss://ws.twelvedata.com/v1/quotes/price`, else REST `/price` polled no faster than every 8 s | forex pairs, XAUUSD, XAGUSD |
 
 Free Twelve Data limits (about 8 requests/minute, 800/day) are why its polling fallback is throttled. Candle updates on that source can lag by seconds; this is stated in the UI help text.
 

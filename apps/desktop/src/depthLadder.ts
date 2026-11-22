@@ -50,7 +50,9 @@ export interface TapeDelta {
  * carries quotes (`size: 0`), delta is null and callers fall back to the raw
  * tick imbalance — labelled as tick counts, never dressed up as volume.
  */
-export function tapeDelta<T extends { side: "buy" | "sell"; size: number }>(entries: readonly T[]): TapeDelta {
+export function tapeDelta<T extends { side: "buy" | "sell"; size: number }>(
+  entries: readonly T[],
+): TapeDelta {
   let delta = 0;
   let buyTicks = 0;
   let sellTicks = 0;

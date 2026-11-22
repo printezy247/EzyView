@@ -115,7 +115,10 @@ export interface TradingActions {
    * `undefined` leaves it as it is — so dragging the stop on the chart does not
    * disturb the target.
    */
-  amend(symbol: string, levels: { stopLoss?: number | null; takeProfit?: number | null }): Promise<boolean>;
+  amend(
+    symbol: string,
+    levels: { stopLoss?: number | null; takeProfit?: number | null },
+  ): Promise<boolean>;
   closeAll(): Promise<void>;
   /** Send the parked action once, after the user confirms. */
   approve(): Promise<boolean>;
@@ -126,7 +129,9 @@ export interface TradingActions {
 }
 
 /** Facts about the price on screen and the recent order rate, added to every gate check. */
-function marketFacts(symbol: string | undefined): Pick<GateInput, "quoteAgeSec" | "feedDown" | "ordersLastMinute"> {
+function marketFacts(
+  symbol: string | undefined,
+): Pick<GateInput, "quoteAgeSec" | "feedDown" | "ordersLastMinute"> {
   const facts: Pick<GateInput, "quoteAgeSec" | "feedDown" | "ordersLastMinute"> = {
     ordersLastMinute: orderRateLimiter.countLastMinute(),
   };
@@ -140,7 +145,11 @@ function marketFacts(symbol: string | undefined): Pick<GateInput, "quoteAgeSec" 
 
 function mt5Gate(action: Omit<GateInput, "accountKind">): GateResult {
   return gateAction(
-    { ...marketFacts(action.symbol), ...action, accountKind: accountKindOf(useMt5Accounts.getState().session) },
+    {
+      ...marketFacts(action.symbol),
+      ...action,
+      accountKind: accountKindOf(useMt5Accounts.getState().session),
+    },
     useMt5Accounts.getState().safety,
   );
 }
@@ -152,19 +161,32 @@ function mt5Gate(action: Omit<GateInput, "accountKind">): GateResult {
  * confirmation and never shows a dialog — only the hard blocks apply.
  */
 function paperGate(action: Omit<GateInput, "accountKind">): GateResult {
-  return gateAction({ ...marketFacts(action.symbol), ...action, accountKind: "demo" }, useMt5Accounts.getState().safety);
+  return gateAction(
+    { ...marketFacts(action.symbol), ...action, accountKind: "demo" },
+    useMt5Accounts.getState().safety,
+  );
 }
 
 /** A timeout or dropped connection: the write might still have happened. */
 export function outcomeUnknown(err: unknown): boolean {
   const text = err instanceof Error ? `${err.name} ${err.message}` : String(err);
-  return /abort|timed? ?out|failed to fetch|networkerror|network error|socket|ECONN|fetch failed/i.test(text);
+  return /abort|timed? ?out|failed to fetch|networkerror|network error|socket|ECONN|fetch failed/i.test(
+    text,
+  );
 }
 
-function park(set: (patch: Partial<TradingState>) => void, gate: GateResult, pending: PendingAction): boolean {
+function park(
+  set: (patch: Partial<TradingState>) => void,
+  gate: GateResult,
+  pending: PendingAction,
+): boolean {
   if (gate.decision === "block") {
     approvalTokens.consume(pending.token);
-    set({ error: gate.reasons.join("; ") || "blocked by the safety rails", pending: null, note: null });
+    set({
+      error: gate.reasons.join("; ") || "blocked by the safety rails",
+      pending: null,
+      note: null,
+    });
     return false;
   }
   // One action at a time. Overwriting the parked action used to drop it
@@ -306,7 +328,14 @@ export const useTrading = create<TradingState & TradingActions>((set, get) => ({
       return false;
     }
     const gate = mt5Gate({ action: "modify", symbol });
-    return park(set, gate, { kind: "amend", symbol, ticket: position.id, ...levels, gate, token: approvalTokens.mint() });
+    return park(set, gate, {
+      kind: "amend",
+      symbol,
+      ticket: position.id,
+      ...levels,
+      gate,
+      token: approvalTokens.mint(),
+    });
   },
 
   async closeAll() {
@@ -433,8 +462,18 @@ async function refreshInto(set: SetState): Promise<void> {
   ]);
   if (stale()) return;
   const current = useTrading.getState();
-  const ordersFingerprint = orders.map((o) => `${o.id}:${o.status}:${o.price ?? ""}:${(o as PaperOrder).stopLoss ?? ""}:${(o as PaperOrder).takeProfit ?? ""}`).join("|");
-  const currentOrdersFingerprint = current.orders.map((o) => `${o.id}:${o.status}:${o.price ?? ""}:${(o as PaperOrder).stopLoss ?? ""}:${(o as PaperOrder).takeProfit ?? ""}`).join("|");
+  const ordersFingerprint = orders
+    .map(
+      (o) =>
+        `${o.id}:${o.status}:${o.price ?? ""}:${(o as PaperOrder).stopLoss ?? ""}:${(o as PaperOrder).takeProfit ?? ""}`,
+    )
+    .join("|");
+  const currentOrdersFingerprint = current.orders
+    .map(
+      (o) =>
+        `${o.id}:${o.status}:${o.price ?? ""}:${(o as PaperOrder).stopLoss ?? ""}:${(o as PaperOrder).takeProfit ?? ""}`,
+    )
+    .join("|");
   if (
     current.account?.equity === account?.equity &&
     current.account?.balance === account?.balance &&
@@ -442,7 +481,10 @@ async function refreshInto(set: SetState): Promise<void> {
     current.orders.length === orders.length &&
     current.deals.length === deals.length &&
     currentOrdersFingerprint === ordersFingerprint &&
-    current.positions.every((p, i) => p.symbol === positions[i]?.symbol && p.unrealizedPnl === positions[i]?.unrealizedPnl)
+    current.positions.every(
+      (p, i) =>
+        p.symbol === positions[i]?.symbol && p.unrealizedPnl === positions[i]?.unrealizedPnl,
+    )
   ) {
     return;
   }

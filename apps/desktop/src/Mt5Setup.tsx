@@ -16,7 +16,6 @@ import { Button, Checkbox, Input, NumberInput, SegmentedControl } from "./ui";
  * bridge audit log.
  */
 
-
 /** A readable message for anything thrown by the keyring, the bridge or the store. */
 function describe(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
@@ -27,7 +26,17 @@ function money(value: number | undefined, currency: string | undefined): string 
   return `${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${currency ? ` ${currency}` : ""}`;
 }
 
-export function ConnectionTab({ settings, save, busy, setBusy }: { settings: Mt5Settings; save: (patch: Partial<Mt5Settings>) => Promise<void>; busy: boolean; setBusy: (b: boolean) => void }) {
+export function ConnectionTab({
+  settings,
+  save,
+  busy,
+  setBusy,
+}: {
+  settings: Mt5Settings;
+  save: (patch: Partial<Mt5Settings>) => Promise<void>;
+  busy: boolean;
+  setBusy: (b: boolean) => void;
+}) {
   const [draft, setDraft] = useState<Mt5Settings>(settings);
   const submit = async () => {
     setBusy(true);
@@ -37,8 +46,8 @@ export function ConnectionTab({ settings, save, busy, setBusy }: { settings: Mt5
   return (
     <>
       <p className="mb-2 text-dense text-ev-muted">
-        Where MetaTrader 5 answers from. The app only connects to this computer (127.0.0.1 or ::1); reach a
-        terminal on another machine through an SSH tunnel.
+        Where MetaTrader 5 answers from. The app only connects to this computer (127.0.0.1 or ::1);
+        reach a terminal on another machine through an SSH tunnel.
       </p>
       <div className="mb-2">
         <SegmentedControl
@@ -56,7 +65,12 @@ export function ConnectionTab({ settings, save, busy, setBusy }: { settings: Mt5
         <>
           <label className="mb-2 block text-dense text-ev-muted">
             Bridge URL
-            <Input block value={draft.bridgeUrl} onChange={(e) => setDraft({ ...draft, bridgeUrl: e.target.value })} spellCheck={false} />
+            <Input
+              block
+              value={draft.bridgeUrl}
+              onChange={(e) => setDraft({ ...draft, bridgeUrl: e.target.value })}
+              spellCheck={false}
+            />
           </label>
           <label className="mb-2 block text-dense text-ev-muted">
             Bridge token
@@ -79,13 +93,27 @@ export function ConnectionTab({ settings, save, busy, setBusy }: { settings: Mt5
         <>
           <label className="mb-2 block text-dense text-ev-muted">
             MCP endpoint
-            <Input block value={draft.mcpUrl} onChange={(e) => setDraft({ ...draft, mcpUrl: e.target.value })} spellCheck={false} />
+            <Input
+              block
+              value={draft.mcpUrl}
+              onChange={(e) => setDraft({ ...draft, mcpUrl: e.target.value })}
+              spellCheck={false}
+            />
           </label>
           <label className="mb-2 block text-dense text-ev-muted">
             API key
-            <Input block type="password" value={draft.mcpKey} onChange={(e) => setDraft({ ...draft, mcpKey: e.target.value })} placeholder="Tools → Options → MCP" spellCheck={false} />
+            <Input
+              block
+              type="password"
+              value={draft.mcpKey}
+              onChange={(e) => setDraft({ ...draft, mcpKey: e.target.value })}
+              placeholder="Tools → Options → MCP"
+              spellCheck={false}
+            />
             <span className="mt-0.5 block text-dense text-ev-muted">
-              {keyringAvailable() ? "Saved in your OS keyring." : "Kept for this session only (desktop app saves it to the keyring)."}
+              {keyringAvailable()
+                ? "Saved in your OS keyring."
+                : "Kept for this session only (desktop app saves it to the keyring)."}
             </span>
           </label>
         </>
@@ -131,7 +159,12 @@ export function BrokerTab() {
           setLocalError(`Could not save the password for next time: ${describe(err)}`);
         }
       }
-      await connect({ server, login, password: password || undefined, riskAccepted: accepted || undefined });
+      await connect({
+        server,
+        login,
+        password: password || undefined,
+        riskAccepted: accepted || undefined,
+      });
       setPassword("");
       setRiskPending(false);
     } catch (err) {
@@ -150,7 +183,9 @@ export function BrokerTab() {
     return (
       <div className="space-y-2">
         <p className="text-dense text-ev-muted">
-          <span className={`mr-1 rounded px-1 py-0.5 text-micro font-semibold ${session.demo ? "bg-ev-raised text-ev-strong" : "bg-ev-warn/20 text-ev-warn"}`}>
+          <span
+            className={`mr-1 rounded px-1 py-0.5 text-micro font-semibold ${session.demo ? "bg-ev-raised text-ev-strong" : "bg-ev-warn/20 text-ev-warn"}`}
+          >
             {session.demo ? "DEMO" : "REAL"}
           </span>
           {maskLogin(session.login)} @ {session.server}
@@ -186,9 +221,13 @@ export function BrokerTab() {
       {accounts.length > 0 && (
         <ul className="space-y-1">
           {accounts.map((a) => (
-            <li key={`${a.server}|${a.login}`} className="flex items-center justify-between gap-2 rounded border border-ev-line px-2 py-1">
+            <li
+              key={`${a.server}|${a.login}`}
+              className="flex items-center justify-between gap-2 rounded border border-ev-line px-2 py-1"
+            >
               <span className="truncate text-dense text-ev-text">
-                {a.label || `${maskLogin(a.login)} @ ${a.server}`} <span className="text-ev-muted">{a.demo ? "demo" : "real"}</span>
+                {a.label || `${maskLogin(a.login)} @ ${a.server}`}{" "}
+                <span className="text-ev-muted">{a.demo ? "demo" : "real"}</span>
               </span>
               <span className="flex shrink-0 gap-1">
                 <button
@@ -218,7 +257,12 @@ export function BrokerTab() {
                 >
                   connect
                 </button>
-                <button type="button" disabled={busy} onClick={() => void forget(a.server, a.login)} className="px-1 text-dense text-ev-down-text hover:underline">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void forget(a.server, a.login)}
+                  className="px-1 text-dense text-ev-down-text hover:underline"
+                >
                   forget
                 </button>
               </span>
@@ -228,26 +272,54 @@ export function BrokerTab() {
       )}
       <label className="block text-dense text-ev-muted">
         Server
-        <Input block value={server} onChange={(e) => setServer(e.target.value)} placeholder="MetaQuotes-Demo" spellCheck={false} />
+        <Input
+          block
+          value={server}
+          onChange={(e) => setServer(e.target.value)}
+          placeholder="MetaQuotes-Demo"
+          spellCheck={false}
+        />
       </label>
       <label className="block text-dense text-ev-muted">
         Login
-        <Input block value={login} onChange={(e) => setLogin(e.target.value)} inputMode="numeric" spellCheck={false} />
+        <Input
+          block
+          value={login}
+          onChange={(e) => setLogin(e.target.value)}
+          inputMode="numeric"
+          spellCheck={false}
+        />
       </label>
       <label className="block text-dense text-ev-muted">
         Password
-        <Input block type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={accounts.length ? "leave empty to use the saved one" : ""} spellCheck={false} />
+        <Input
+          block
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder={accounts.length ? "leave empty to use the saved one" : ""}
+          spellCheck={false}
+        />
       </label>
       {riskPending && (
         <label className="flex items-start gap-2 rounded border border-ev-warn/40 bg-ev-warn/10 p-2 text-dense text-ev-warn">
           <input type="checkbox" checked={riskOk} onChange={(e) => setRiskOk(e.target.checked)} />
           <span>
-            This login is a <strong>real-money</strong> account. Orders you confirm in EzyView can open live positions. I understand.
+            This login is a <strong>real-money</strong> account. Orders you confirm in EzyView can
+            open live positions. I understand.
           </span>
         </label>
       )}
-      {error && <p className="rounded border border-ev-down/40 bg-ev-down/10 p-1.5 text-dense text-ev-down-text">{error}</p>}
-      {localError && <p className="rounded border border-ev-down/40 bg-ev-down/10 p-1.5 text-dense text-ev-down-text">{localError}</p>}
+      {error && (
+        <p className="rounded border border-ev-down/40 bg-ev-down/10 p-1.5 text-dense text-ev-down-text">
+          {error}
+        </p>
+      )}
+      {localError && (
+        <p className="rounded border border-ev-down/40 bg-ev-down/10 p-1.5 text-dense text-ev-down-text">
+          {localError}
+        </p>
+      )}
       <div className="flex justify-end">
         <Button
           size="sm"
@@ -281,7 +353,14 @@ export function SafetyTab() {
         <Input
           block
           value={safety.symbolAllowList.join(", ")}
-          onChange={(e) => saveSafety({ symbolAllowList: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+          onChange={(e) =>
+            saveSafety({
+              symbolAllowList: e.target.value
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean),
+            })
+          }
           placeholder="XAUUSD, EURUSD"
           spellCheck={false}
         />
@@ -320,9 +399,9 @@ export function SafetyTab() {
         onChange={(checked) => saveSafety({ dryRun: checked })}
       />
       <p className="text-dense text-ev-muted">
-        Every MT5 action still asks for confirmation; these rails block what should never be sent. The paper account
-        follows the volume cap and the allow-list too, so a habit built in demo carries over safely. The MCP transport
-        cannot dry-run and refuses the flag.
+        Every MT5 action still asks for confirmation; these rails block what should never be sent.
+        The paper account follows the volume cap and the allow-list too, so a habit built in demo
+        carries over safely. The MCP transport cannot dry-run and refuses the flag.
       </p>
     </div>
   );
@@ -348,21 +427,41 @@ export function AuditTab() {
   useEffect(load, []); // eslint-disable-line react-hooks/exhaustive-deps
   if (rows === null) return <p className="text-dense text-ev-muted">Loading…</p>;
   if (rows.length === 0)
-    return <p className="text-dense text-ev-muted">No audit rows yet — the bridge writes one per login, order, close, cancel and modify. Nothing here is ever a password.</p>;
+    return (
+      <p className="text-dense text-ev-muted">
+        No audit rows yet — the bridge writes one per login, order, close, cancel and modify.
+        Nothing here is ever a password.
+      </p>
+    );
   return (
     <div className="space-y-1">
       <div className="flex justify-end">
-        <button type="button" onClick={load} className="px-1 text-dense text-ev-accent hover:underline">
+        <button
+          type="button"
+          onClick={load}
+          className="px-1 text-dense text-ev-accent hover:underline"
+        >
           refresh
         </button>
       </div>
       <ul className="space-y-1">
         {rows.slice(0, 30).map((r, i) => (
-          <li key={`${r.ts}-${i}`} className="rounded border border-ev-line px-2 py-1 text-micro text-ev-muted">
+          <li
+            key={`${r.ts}-${i}`}
+            className="rounded border border-ev-line px-2 py-1 text-micro text-ev-muted"
+          >
             <span className="text-ev-text">{r.ts?.replace("T", " ").slice(0, 19)}</span> · {r.event}
             {r.symbol ? ` · ${r.symbol}` : ""}
             {r.volume !== undefined && r.volume !== null ? ` ×${r.volume}` : ""}
-            {r.result === "rejected" || r.result === "error" ? <span className="text-ev-down-text"> · {r.result}{r.error ? `: ${r.error}` : ""}</span> : ` · ${r.result}`}
+            {r.result === "rejected" || r.result === "error" ? (
+              <span className="text-ev-down-text">
+                {" "}
+                · {r.result}
+                {r.error ? `: ${r.error}` : ""}
+              </span>
+            ) : (
+              ` · ${r.result}`
+            )}
           </li>
         ))}
       </ul>

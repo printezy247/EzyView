@@ -90,7 +90,12 @@ const eventOn = (o: EventOptions, key: EventSwitchKey): boolean =>
   key === "earnings" ? o.earnings : key === "economic" ? o.economic : o.impacts[key];
 
 const sep = (id: string): MenuEntry => ({ kind: "separator", id });
-const action = (id: string, label: string, onSelect: () => void, extra: { hint?: string; disabled?: boolean } = {}): MenuEntry => ({
+const action = (
+  id: string,
+  label: string,
+  onSelect: () => void,
+  extra: { hint?: string; disabled?: boolean } = {},
+): MenuEntry => ({
   kind: "action",
   id,
   label,
@@ -101,7 +106,10 @@ const action = (id: string, label: string, onSelect: () => void, extra: { hint?:
 export function buildChartMenu(c: ChartMenuContext): MenuEntry[] {
   const a = c.actions;
   const ticker = tickerOf(c.symbol);
-  const p = c.price.toLocaleString("en-US", { minimumFractionDigits: c.precision, maximumFractionDigits: c.precision });
+  const p = c.price.toLocaleString("en-US", {
+    minimumFractionDigits: c.precision,
+    maximumFractionDigits: c.precision,
+  });
   const out: MenuEntry[] = [];
 
   // A right-click on a drawing is about that drawing first; the general chart
@@ -112,13 +120,20 @@ export function buildChartMenu(c: ChartMenuContext): MenuEntry[] {
     out.push(
       { kind: "label", id: "drawing-label", label: d.label },
       action("drawing-settings", "Settings…", da.settings, { hint: "Double-click" }),
-      action("drawing-alert", d.hasAlert ? "Alert armed on this drawing" : "Add alert on drawing…", da.addAlert, {
-        disabled: !d.hasLevel || d.hasAlert,
-      }),
+      action(
+        "drawing-alert",
+        d.hasAlert ? "Alert armed on this drawing" : "Add alert on drawing…",
+        da.addAlert,
+        {
+          disabled: !d.hasLevel || d.hasAlert,
+        },
+      ),
       action("drawing-save-template", "Save drawing as template…", da.saveTemplate),
     );
     for (const t of d.templates) {
-      out.push(action(`drawing-tpl-${t.id}`, `Apply template “${t.name}”`, () => da.applyTemplate(t.id)));
+      out.push(
+        action(`drawing-tpl-${t.id}`, `Apply template “${t.name}”`, () => da.applyTemplate(t.id)),
+      );
     }
     out.push(
       action("drawing-clone", "Clone", da.clone, { hint: "Ctrl+D" }),
@@ -154,11 +169,25 @@ export function buildChartMenu(c: ChartMenuContext): MenuEntry[] {
 
   out.push(
     sep("s3"),
-    action("cursor-lock", c.cursorLocked ? "Unlock vertical cursor line" : "Lock vertical cursor line by time", a.toggleCursorLock),
+    action(
+      "cursor-lock",
+      c.cursorLocked ? "Unlock vertical cursor line" : "Lock vertical cursor line by time",
+      a.toggleCursorLock,
+    ),
     sep("s4"),
     action("table", "Table view", a.openTable),
-    { kind: "toggle", id: "object-tree", label: "Object tree", checked: c.objectTreeOpen, onSelect: a.toggleObjectTree },
-    action("link-group", c.linkGroup ? `Link group “${c.linkGroup}”…` : "Link to a group…", a.openLinkGroup),
+    {
+      kind: "toggle",
+      id: "object-tree",
+      label: "Object tree",
+      checked: c.objectTreeOpen,
+      onSelect: a.toggleObjectTree,
+    },
+    action(
+      "link-group",
+      c.linkGroup ? `Link group “${c.linkGroup}”…` : "Link to a group…",
+      a.openLinkGroup,
+    ),
     sep("s5"),
     { kind: "label", id: "templates-label", label: "Chart template" },
     action("save-template", "Save current chart as template…", a.saveTemplate),
@@ -172,12 +201,19 @@ export function buildChartMenu(c: ChartMenuContext): MenuEntry[] {
 
   if (c.indicators.length > 0) {
     out.push(sep("s6"), { kind: "label", id: "indicators-label", label: "Indicators" });
-    for (const i of c.indicators) out.push(action(`remove-ind-${i.uid}`, `Remove ${i.name}`, () => a.removeIndicator(i.uid)));
+    for (const i of c.indicators)
+      out.push(action(`remove-ind-${i.uid}`, `Remove ${i.name}`, () => a.removeIndicator(i.uid)));
   }
 
   out.push(sep("s7"), { kind: "label", id: "events-label", label: "Events" });
   for (const row of EVENT_ROWS) {
-    out.push({ kind: "toggle", id: `event-${row.key}`, label: row.label, checked: eventOn(c.eventOptions, row.key), onSelect: () => a.toggleEvent(row.key) });
+    out.push({
+      kind: "toggle",
+      id: `event-${row.key}`,
+      label: row.label,
+      checked: eventOn(c.eventOptions, row.key),
+      onSelect: () => a.toggleEvent(row.key),
+    });
   }
 
   out.push(sep("s8"), action("settings", "Settings…", a.openSettings));

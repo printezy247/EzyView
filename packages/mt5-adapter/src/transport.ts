@@ -37,7 +37,12 @@ export interface Mt5Transport {
   marketWatch(): Promise<unknown>;
   /** One symbol's latest tick (bridge only): far cheaper than the whole market watch. */
   quote?(symbol: string): Promise<unknown>;
-  history(request: { symbol: string; resolution: Resolution; from: number; to: number }): Promise<unknown>;
+  history(request: {
+    symbol: string;
+    resolution: Resolution;
+    from: number;
+    to: number;
+  }): Promise<unknown>;
   placeOrder(request: OrderRequest, options?: Mt5WriteOptions): Promise<unknown>;
   close(symbol: string, qty?: number, options?: Mt5WriteOptions): Promise<unknown>;
   cancel(ticket: string, options?: Mt5WriteOptions): Promise<unknown>;
@@ -132,7 +137,8 @@ class BridgeTransport implements Mt5Transport {
   }
 
   deals(from?: number, to?: number): Promise<unknown> {
-    const query = from !== undefined || to !== undefined ? `?from=${from ?? ""}&to=${to ?? ""}` : "";
+    const query =
+      from !== undefined || to !== undefined ? `?from=${from ?? ""}&to=${to ?? ""}` : "";
     return this.send("GET", `/deals${query}`);
   }
 
@@ -144,7 +150,12 @@ class BridgeTransport implements Mt5Transport {
     return this.send("GET", `/quote?symbol=${encodeURIComponent(symbol)}`);
   }
 
-  history(request: { symbol: string; resolution: Resolution; from: number; to: number }): Promise<unknown> {
+  history(request: {
+    symbol: string;
+    resolution: Resolution;
+    from: number;
+    to: number;
+  }): Promise<unknown> {
     const params = new URLSearchParams({
       symbol: request.symbol,
       tf: toTimeframe(request.resolution),
@@ -191,7 +202,9 @@ class BridgeTransport implements Mt5Transport {
     // bridge on this machine. A mistyped host would hand the password to a
     // stranger.
     if (!isLoopbackUrl(this.baseUrl)) {
-      throw new Error("Refusing to send broker credentials to a non-local host. The MT5 bridge runs on this machine.");
+      throw new Error(
+        "Refusing to send broker credentials to a non-local host. The MT5 bridge runs on this machine.",
+      );
     }
     const payload = await this.send<Mt5ConnectResult>("POST", "/connect", credentials);
     this.session = payload.session ?? null;
@@ -237,7 +250,11 @@ class BridgeTransport implements Mt5Transport {
     const redact = (text: string): string => {
       let out = text;
       if (this.token) {
-        out = out.split(this.token).join("[redacted]").split(encodeURIComponent(this.token)).join("[redacted]");
+        out = out
+          .split(this.token)
+          .join("[redacted]")
+          .split(encodeURIComponent(this.token))
+          .join("[redacted]");
       }
       return out.replace(/([?&]token=)[^&\s]*/gi, "$1[redacted]");
     };
@@ -258,7 +275,11 @@ class BridgeTransport implements Mt5Transport {
       if (!response.ok) {
         if (response.status === 401) this.session = null;
         const detail = (await response.text().catch(() => "")).slice(0, 200);
-        throw new Error(redact(`MT5 bridge ${method} ${path.split("?")[0]} → HTTP ${response.status} ${detail}`.trim()));
+        throw new Error(
+          redact(
+            `MT5 bridge ${method} ${path.split("?")[0]} → HTTP ${response.status} ${detail}`.trim(),
+          ),
+        );
       }
       return (await response.json()) as T;
     } finally {
@@ -309,7 +330,12 @@ class McpTransport implements Mt5Transport {
     return this.client.call(MT5_TOOLS.marketWatch);
   }
 
-  history(request: { symbol: string; resolution: Resolution; from: number; to: number }): Promise<unknown> {
+  history(request: {
+    symbol: string;
+    resolution: Resolution;
+    from: number;
+    to: number;
+  }): Promise<unknown> {
     return this.client.call(MT5_TOOLS.chartHistory, {
       symbol: request.symbol,
       timeframe: toTimeframe(request.resolution),
@@ -350,7 +376,8 @@ class McpTransport implements Mt5Transport {
    * simulated click into a real order, so refuse instead.
    */
   private rejectDryRun(options?: Mt5WriteOptions): void {
-    if (options?.dryRun) throw new Error("MT5 MCP transport cannot dry-run; use the local bridge for simulation");
+    if (options?.dryRun)
+      throw new Error("MT5 MCP transport cannot dry-run; use the local bridge for simulation");
   }
 }
 

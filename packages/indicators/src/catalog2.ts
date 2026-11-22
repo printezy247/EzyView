@@ -55,7 +55,8 @@ const hmaDef: IndicatorDef = {
   family: "trend",
   defaultColorIndex: 14,
   params: [lengthParam(16), srcParam("close")],
-  compute: (d, p) => res("hma", "HMA", hma(source(d, String(p.source ?? "close")), num(p, "length", 16))),
+  compute: (d, p) =>
+    res("hma", "HMA", hma(source(d, String(p.source ?? "close")), num(p, "length", 16))),
 };
 
 const almaDef: IndicatorDef = {
@@ -73,7 +74,12 @@ const almaDef: IndicatorDef = {
     res(
       "alma",
       "ALMA",
-      alma(source(d, String(p.source ?? "close")), num(p, "length", 9), num(p, "offset", 0.85), num(p, "sigma", 6)),
+      alma(
+        source(d, String(p.source ?? "close")),
+        num(p, "length", 9),
+        num(p, "offset", 0.85),
+        num(p, "sigma", 6),
+      ),
     ),
 };
 
@@ -84,7 +90,8 @@ const zlemaDef: IndicatorDef = {
   family: "trend",
   defaultColorIndex: 16,
   params: [lengthParam(21), srcParam("close")],
-  compute: (d, p) => res("zlema", "ZLEMA", zlema(source(d, String(p.source ?? "close")), num(p, "length", 21))),
+  compute: (d, p) =>
+    res("zlema", "ZLEMA", zlema(source(d, String(p.source ?? "close")), num(p, "length", 21))),
 };
 
 const demaDef: IndicatorDef = {
@@ -99,7 +106,11 @@ const demaDef: IndicatorDef = {
     const n = num(p, "length", 10);
     const e1 = ema(s, n);
     const e2 = ema(fillForward(e1), n);
-    return res("dema", "DEMA", map2(e1, e2, (a, b) => 2 * a - b));
+    return res(
+      "dema",
+      "DEMA",
+      map2(e1, e2, (a, b) => 2 * a - b),
+    );
   },
 };
 
@@ -116,7 +127,15 @@ const temaDef: IndicatorDef = {
     const e1 = ema(s, n);
     const e2 = ema(fillForward(e1), n);
     const e3 = ema(fillForward(e2), n);
-    return res("tema", "TEMA", map2(map2(e1, e2, (a, b) => 3 * a - 3 * b), e3, (a, b) => a + b));
+    return res(
+      "tema",
+      "TEMA",
+      map2(
+        map2(e1, e2, (a, b) => 3 * a - 3 * b),
+        e3,
+        (a, b) => a + b,
+      ),
+    );
   },
 };
 
@@ -126,7 +145,10 @@ const kamaDef: IndicatorDef = {
   pane: "overlay",
   family: "trend",
   defaultColorIndex: 19,
-  params: [lengthParam(10, "ER Length"), { id: "fast", label: "Fast SC", type: "int", default: 2, min: 1, max: 50 }],
+  params: [
+    lengthParam(10, "ER Length"),
+    { id: "fast", label: "Fast SC", type: "int", default: 2, min: 1, max: 50 },
+  ],
   compute: (d, p) => {
     const n = num(p, "length", 10);
     const fastSc = 2 / (num(p, "fast", 2) + 1);
@@ -293,7 +315,11 @@ const stochRsiDef: IndicatorDef = {
   pane: "separate",
   family: "momentum",
   defaultColorIndex: 24,
-  params: [lengthParam(14, "RSI Length", "length"), lengthParam(14, "Stoch Length", "length1"), lengthParam(3, "Smoothing", "length2")],
+  params: [
+    lengthParam(14, "RSI Length", "length"),
+    lengthParam(14, "Stoch Length", "length1"),
+    lengthParam(3, "Smoothing", "length2"),
+  ],
   compute: (d, p) => {
     const rsiLen = num(p, "length", 14);
     const stochLen = num(p, "length1", 14);
@@ -309,7 +335,7 @@ const stochRsiDef: IndicatorDef = {
       gains.push(v > 0 ? v : 0);
       losses.push(v < 0 ? -v : 0);
     }
-        const rsi = map2(
+    const rsi = map2(
       shiftLeadingNull(rma(gains, rsiLen)),
       shiftLeadingNull(rma(losses, rsiLen)),
       // Both averages zero (flat window) is neutral 50, not 100.
@@ -412,7 +438,11 @@ const tsiDef: IndicatorDef = {
   pane: "separate",
   family: "momentum",
   defaultColorIndex: 28,
-  params: [lengthParam(25, "Long", "length"), lengthParam(13, "Short", "length1"), lengthParam(7, "Signal", "length2")],
+  params: [
+    lengthParam(25, "Long", "length"),
+    lengthParam(13, "Short", "length1"),
+    lengthParam(7, "Signal", "length2"),
+  ],
   compute: (d, p) => {
     const longLen = num(p, "length", 25);
     const shortLen = num(p, "length1", 13);
@@ -420,9 +450,14 @@ const tsiDef: IndicatorDef = {
     const momentum = change(d.close, 1).slice(1) as number[];
     // The momentum EMA starts one bar later than the close series: shift the
     // output back to bar alignment instead of seeding with a synthetic zero.
-        const smooth1 = shiftLeadingNull(ema(momentum, longLen));
+    const smooth1 = shiftLeadingNull(ema(momentum, longLen));
     const smooth2 = ema(fillForward(smooth1), shortLen);
-    const abs1 = shiftLeadingNull(ema(momentum.map((v) => Math.abs(v)), longLen));
+    const abs1 = shiftLeadingNull(
+      ema(
+        momentum.map((v) => Math.abs(v)),
+        longLen,
+      ),
+    );
     const abs2 = ema(fillForward(abs1), shortLen);
     const tsi = map2(smooth2, abs2, (a, b) => (b === 0 ? 0 : (100 * a) / b));
     const signal = sma(fillForward(tsi), sigLen).map((v, i) => (tsi[i] === null ? null : v));
@@ -491,7 +526,11 @@ const awesomeDef: IndicatorDef = {
   compute: (d, p) => {
     const fast = sma(hl2(d), num(p, "fast", 5));
     const slow = sma(hl2(d), num(p, "slow", 34));
-    return res("ao", "Awesome Oscillator", map2(fast, slow, (a, b) => a - b));
+    return res(
+      "ao",
+      "Awesome Oscillator",
+      map2(fast, slow, (a, b) => a - b),
+    );
   },
 };
 
@@ -504,7 +543,11 @@ const bullsDef: IndicatorDef = {
   params: [lengthParam(13)],
   compute: (d, p) => {
     const e = ema(d.close, num(p, "length", 13));
-    return res("bulls_power", "Bulls Power", d.high.map((h, i) => (e[i] === null ? null : h - e[i]!)));
+    return res(
+      "bulls_power",
+      "Bulls Power",
+      d.high.map((h, i) => (e[i] === null ? null : h - e[i]!)),
+    );
   },
 };
 
@@ -517,7 +560,11 @@ const bearsDef: IndicatorDef = {
   params: [lengthParam(13)],
   compute: (d, p) => {
     const e = ema(d.close, num(p, "length", 13));
-    return res("bears_power", "Bears Power", d.low.map((l, i) => (e[i] === null ? null : l - e[i]!)));
+    return res(
+      "bears_power",
+      "Bears Power",
+      d.low.map((l, i) => (e[i] === null ? null : l - e[i]!)),
+    );
   },
 };
 
@@ -642,7 +689,10 @@ const bbwidthDef: IndicatorDef = {
   pane: "separate",
   family: "volatility",
   defaultColorIndex: 38,
-  params: [lengthParam(20), { id: "mult", label: "StdDev", type: "float", default: 2, min: 0.1, max: 10 }],
+  params: [
+    lengthParam(20),
+    { id: "mult", label: "StdDev", type: "float", default: 2, min: 0.1, max: 10 },
+  ],
   compute: (d, p) => {
     const n = num(p, "length", 20);
     const mult = num(p, "mult", 2);
@@ -793,13 +843,9 @@ const adLineDef: IndicatorDef = {
     const mfm: number[] = d.close.map((c, i) => {
       const h = d.high[i]!;
       const l = d.low[i]!;
-      return h === l ? 0 : ((c - l) - (h - c)) / (h - l);
+      return h === l ? 0 : (c - l - (h - c)) / (h - l);
     });
-    return res(
-      "ad_line",
-      "A/D Line",
-      cumSum(mfm.map((m, i) => m * d.volume[i]!)),
-    );
+    return res("ad_line", "A/D Line", cumSum(mfm.map((m, i) => m * d.volume[i]!)));
   },
 };
 
@@ -817,12 +863,16 @@ const adOscDef: IndicatorDef = {
     const mfv: number[] = d.close.map((c, i) => {
       const h = d.high[i]!;
       const l = d.low[i]!;
-      const mfm = h === l ? 0 : ((c - l) - (h - c)) / (h - l);
+      const mfm = h === l ? 0 : (c - l - (h - c)) / (h - l);
       return mfm * d.volume[i]!;
     });
     const fast = ema(mfv, num(p, "fast", 3));
     const slow = ema(mfv, num(p, "slow", 10));
-    return res("adosc", "A/D Oscillator", map2(fast, slow, (a, b) => a - b));
+    return res(
+      "adosc",
+      "A/D Oscillator",
+      map2(fast, slow, (a, b) => a - b),
+    );
   },
 };
 
@@ -838,11 +888,15 @@ const cmfDef: IndicatorDef = {
     const mfv = d.close.map((c, i) => {
       const h = d.high[i]!;
       const l = d.low[i]!;
-      const mfm = h === l ? 0 : ((c - l) - (h - c)) / (h - l);
+      const mfm = h === l ? 0 : (c - l - (h - c)) / (h - l);
       return mfm * d.volume[i]!;
     });
     const vol = sumRolling(d.volume, n);
-    return res("cmf", "CMF", map2(sumRolling(mfv, n), vol, (a, b) => (b === 0 ? 0 : a / b)));
+    return res(
+      "cmf",
+      "CMF",
+      map2(sumRolling(mfv, n), vol, (a, b) => (b === 0 ? 0 : a / b)),
+    );
   },
 };
 
@@ -871,7 +925,11 @@ const eomDef: IndicatorDef = {
   params: [lengthParam(14)],
   compute: (d, p) => {
     const n = num(p, "length", 14);
-    const midMove = d.high.map((h, i) => ((h + d.low[i]!) / 2 - (d.high[i - 1] !== undefined ? (d.high[i - 1]! + d.low[i - 1]!) / 2 : (h + d.low[i]!) / 2)));
+    const midMove = d.high.map(
+      (h, i) =>
+        (h + d.low[i]!) / 2 -
+        (d.high[i - 1] !== undefined ? (d.high[i - 1]! + d.low[i - 1]!) / 2 : (h + d.low[i]!) / 2),
+    );
     const boxRatio = d.high.map((h, i) => {
       const l = d.low[i]!;
       const range = h - l;

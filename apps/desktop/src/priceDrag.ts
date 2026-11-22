@@ -24,7 +24,11 @@ export interface DraggableLevel {
  * stacked; a line with no coordinate is never returned, so an off-screen level
  * cannot be grabbed by a pointer that happens to share its row.
  */
-export function hitTestLevel(levels: readonly DraggableLevel[], y: number, slop = HIT_SLOP_PX): DraggableLevel | null {
+export function hitTestLevel(
+  levels: readonly DraggableLevel[],
+  y: number,
+  slop = HIT_SLOP_PX,
+): DraggableLevel | null {
   let best: DraggableLevel | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
   for (const level of levels) {

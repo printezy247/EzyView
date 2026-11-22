@@ -29,7 +29,9 @@ function breakerFor(provider: string): BreakerLike | null {
 }
 
 /** The slice of `fetch` the live adapters use, so tests can inject a fake. */
-export type FetchLike = (url: string) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;
+export type FetchLike = (
+  url: string,
+) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;
 
 /** How a request should be retried when the provider is having a bad day. */
 export interface RetryOptions {
@@ -43,10 +45,16 @@ export interface RetryOptions {
   sleep?: (ms: number) => Promise<void>;
 }
 
-const defaultSleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+const defaultSleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Exponential backoff with full jitter: `random(0 .. min(max, base * 2^n))`. */
-export function backoffDelay(attempt: number, baseDelayMs: number, maxDelayMs: number, rand = Math.random): number {
+export function backoffDelay(
+  attempt: number,
+  baseDelayMs: number,
+  maxDelayMs: number,
+  rand = Math.random,
+): number {
   const exp = Math.min(maxDelayMs, baseDelayMs * 2 ** attempt);
   return Math.floor(rand() * exp);
 }
@@ -107,7 +115,11 @@ async function getJsonOnce(fetchFn: FetchLike, provider: string, url: string): P
   try {
     res = await fetchFn(url);
   } catch (err) {
-    throw new ProviderError(provider, 0, `network error (${err instanceof Error ? err.message : String(err)})`);
+    throw new ProviderError(
+      provider,
+      0,
+      `network error (${err instanceof Error ? err.message : String(err)})`,
+    );
   }
   if (!res.ok) {
     const hint =
@@ -131,7 +143,8 @@ function isTransient(err: unknown): boolean {
 }
 
 /** Epoch seconds → "YYYY-MM-DD" (UTC). */
-export const ymd = (epoch: EpochSeconds): string => new Date(epoch * 1000).toISOString().slice(0, 10);
+export const ymd = (epoch: EpochSeconds): string =>
+  new Date(epoch * 1000).toISOString().slice(0, 10);
 
 /** "YYYY-MM-DD" → epoch seconds at UTC midnight, or null when missing/invalid. */
 export function parseYmd(value: unknown): EpochSeconds | null {
@@ -155,7 +168,9 @@ const FIAT = new Set(["USD", "EUR", "GBP", "JPY", "CHF", "AUD", "NZD", "CAD", "X
 /** Rough class of an app symbol ("DEMO:AAPL", "BINANCE:BTCUSDT") for picking endpoints. */
 export function classify(symbol: string): { ticker: string; kind: SymbolKind } {
   const ticker = (symbol.split(":").pop() ?? symbol).toUpperCase();
-  if (/(USDT|USDC|BUSD)$/.test(ticker) || /^(BTC|ETH|SOL|XRP|DOGE|ADA|BNB)/.test(ticker)) return { ticker, kind: "crypto" };
-  if (ticker.length === 6 && FIAT.has(ticker.slice(0, 3)) && FIAT.has(ticker.slice(3))) return { ticker, kind: "forex" };
+  if (/(USDT|USDC|BUSD)$/.test(ticker) || /^(BTC|ETH|SOL|XRP|DOGE|ADA|BNB)/.test(ticker))
+    return { ticker, kind: "crypto" };
+  if (ticker.length === 6 && FIAT.has(ticker.slice(0, 3)) && FIAT.has(ticker.slice(3)))
+    return { ticker, kind: "forex" };
   return { ticker, kind: "stock" };
 }

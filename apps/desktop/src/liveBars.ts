@@ -27,14 +27,21 @@ export function mergeQuote(
   tickVolume = 0,
 ): Candle[] {
   const last = bars.at(-1);
-  if (!last || !Number.isFinite(price) || price <= 0 || !Number.isFinite(time) || stepSeconds <= 0) {
+  if (
+    !last ||
+    !Number.isFinite(price) ||
+    price <= 0 ||
+    !Number.isFinite(time) ||
+    stepSeconds <= 0
+  ) {
     return bars as Candle[];
   }
   if (time < last.time) return bars as Candle[];
   const vol = Number.isFinite(tickVolume) && tickVolume > 0 ? tickVolume : 0;
 
   if (time < last.time + stepSeconds) {
-    if (vol === 0 && price === last.close && price <= last.high && price >= last.low) return bars as Candle[];
+    if (vol === 0 && price === last.close && price <= last.high && price >= last.low)
+      return bars as Candle[];
     const updated: Candle = {
       ...last,
       high: Math.max(last.high, price),
@@ -46,6 +53,13 @@ export function mergeQuote(
   }
 
   const periods = Math.floor((time - last.time) / stepSeconds);
-  const opened: Candle = { time: last.time + periods * stepSeconds, open: price, high: price, low: price, close: price, volume: vol };
+  const opened: Candle = {
+    time: last.time + periods * stepSeconds,
+    open: price,
+    high: price,
+    low: price,
+    close: price,
+    volume: vol,
+  };
   return [...bars, opened];
 }

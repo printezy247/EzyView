@@ -26,7 +26,15 @@ export interface HoverCardProps {
  * trapping the cursor. Positioned `fixed` near the anchor and flipped when
  * the anchor sits near the viewport edge.
  */
-export function HoverCard({ title, x, y, width = 280, onClose, className, children }: HoverCardProps) {
+export function HoverCard({
+  title,
+  x,
+  y,
+  width = 280,
+  onClose,
+  className,
+  children,
+}: HoverCardProps) {
   useEffect(() => {
     if (!onClose) return;
     const onKey = (e: KeyboardEvent) => {

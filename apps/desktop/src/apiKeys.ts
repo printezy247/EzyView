@@ -2,7 +2,8 @@ import { create } from "zustand";
 import type { ApiKeyName } from "@ezyview/fundamentals";
 
 /** True inside the Tauri shell, where the OS keyring is reachable. */
-export const keyringAvailable = (): boolean => typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+export const keyringAvailable = (): boolean =>
+  typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
 /** Keyring names the UI manages: the fundamentals keys plus the Twelve Data live-price key. */
 export type KeyName = ApiKeyName | "twelvedata";
@@ -31,7 +32,8 @@ export async function loadApiKeys(): Promise<StoredKeys> {
   // A name the Rust side does not know yet must not hide the other keys.
   const entries = await Promise.all(
     API_KEY_NAMES.map(
-      async (name) => [name, await invoke<string | null>("api_key_get", { name }).catch(() => null)] as const,
+      async (name) =>
+        [name, await invoke<string | null>("api_key_get", { name }).catch(() => null)] as const,
     ),
   );
   return Object.fromEntries(entries);
@@ -39,7 +41,8 @@ export async function loadApiKeys(): Promise<StoredKeys> {
 
 /** Save a key to the OS keyring; an empty value removes it. */
 export async function saveApiKey(name: KeyName, value: string): Promise<void> {
-  if (!keyringAvailable()) throw new Error("API keys can only be stored in the EzyView desktop app.");
+  if (!keyringAvailable())
+    throw new Error("API keys can only be stored in the EzyView desktop app.");
   const { invoke } = await import("@tauri-apps/api/core");
   await invoke("api_key_set", { name, value });
 }

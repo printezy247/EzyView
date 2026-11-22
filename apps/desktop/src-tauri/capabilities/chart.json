@@ -2,9 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "chart-windows",
   "description": "Detached chart windows: crash logging and image export only",
-  "windows": [
-    "chart-*"
-  ],
+  "windows": ["chart-*"],
   "permissions": [
     "core:default",
     "core:window:allow-start-dragging",

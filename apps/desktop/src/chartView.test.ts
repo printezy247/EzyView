@@ -23,7 +23,17 @@ describe("rangeStart", () => {
   });
 
   it("describes every preset for the hover text", () => {
-    expect(RANGE_PRESETS.map((p) => p.id)).toEqual(["1D", "5D", "1M", "3M", "6M", "YTD", "1Y", "5Y", "All"]);
+    expect(RANGE_PRESETS.map((p) => p.id)).toEqual([
+      "1D",
+      "5D",
+      "1M",
+      "3M",
+      "6M",
+      "YTD",
+      "1Y",
+      "5Y",
+      "All",
+    ]);
     for (const p of RANGE_PRESETS) expect(p.description.length).toBeGreaterThan(5);
   });
 });
@@ -44,7 +54,8 @@ describe("parseGoToDate", () => {
   });
 
   it("rejects junk and impossible dates", () => {
-    for (const bad of ["", "21/10/2026", "2026-13-01", "2026-02-30", "abc"]) expect(parseGoToDate(bad)).toBeNull();
+    for (const bad of ["", "21/10/2026", "2026-13-01", "2026-02-30", "abc"])
+      expect(parseGoToDate(bad)).toBeNull();
   });
 });
 

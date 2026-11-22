@@ -132,7 +132,12 @@ export class DrawingsPrimitive implements IPanePrimitive<Time> {
         }
         // Advanced packs share one geometry renderer; the original switch
         // still owns every tool that shipped before them.
-        if (!paintAdvanced(ctx, drawing, pts, width, height, { isPreview: false, images: this.images })) {
+        if (
+          !paintAdvanced(ctx, drawing, pts, width, height, {
+            isPreview: false,
+            images: this.images,
+          })
+        ) {
           paint(ctx, drawing, pts, width, height, bars, { isPreview: false });
         }
         ctx.restore();
@@ -141,7 +146,12 @@ export class DrawingsPrimitive implements IPanePrimitive<Time> {
         const pts = this.project(this.preview);
         if (pts.length > 0) {
           ctx.save();
-          if (!paintAdvanced(ctx, this.preview, pts, width, height, { isPreview: true, images: this.images })) {
+          if (
+            !paintAdvanced(ctx, this.preview, pts, width, height, {
+              isPreview: true,
+              images: this.images,
+            })
+          ) {
             paint(ctx, this.preview, pts, width, height, bars, { isPreview: true });
           }
           ctx.restore();
@@ -176,7 +186,10 @@ export class DrawingsPrimitive implements IPanePrimitive<Time> {
       const color = drawing.style.color;
       // Midpoint drag marker on two-point lines and shapes.
       if (visible.length === 2 && MIDPOINT_TOOLS.has(drawing.tool)) {
-        const mid = { x: (visible[0]!.x + visible[1]!.x) / 2, y: (visible[0]!.y + visible[1]!.y) / 2 };
+        const mid = {
+          x: (visible[0]!.x + visible[1]!.x) / 2,
+          y: (visible[0]!.y + visible[1]!.y) / 2,
+        };
         circle(ctx, mid, 2.5, color, color, 1);
       }
       for (const p of visible) {
@@ -314,10 +327,18 @@ function paint(
       if (style.showPriceLabels !== false) {
         drawLabel(ctx, labelOf(drawing.points[0]!.price), width - 4, a.y, style.color, "right");
       }
-      if (drawing.text) drawLineText(ctx, drawing, { x: Math.max(a.x, width * 0.5), y: a.y }, width);
+      if (drawing.text)
+        drawLineText(ctx, drawing, { x: Math.max(a.x, width * 0.5), y: a.y }, width);
       if (style.showStats) {
         const stats = statsFor(drawing, bars, true);
-        if (stats) drawPill(ctx, stats, { x: Math.max(a.x, width * 0.5), y: a.y, above: true }, style, "center");
+        if (stats)
+          drawPill(
+            ctx,
+            stats,
+            { x: Math.max(a.x, width * 0.5), y: a.y, above: true },
+            style,
+            "center",
+          );
       }
       return;
     }
@@ -398,11 +419,23 @@ function paint(
         ctx.restore();
       }
       if (drawing.text) {
-        drawLineText(ctx, drawing, midpoint(midpoint(baseStart, baseEnd), midpoint(topStart, topEnd)), width);
+        drawLineText(
+          ctx,
+          drawing,
+          midpoint(midpoint(baseStart, baseEnd), midpoint(topStart, topEnd)),
+          width,
+        );
       }
       if (style.showStats) {
         const stats = statsFor(drawing, bars, true);
-        if (stats) drawPill(ctx, stats, { x: (baseStart.x + baseEnd.x) / 2, y: baseStart.y, above: true }, style, "center");
+        if (stats)
+          drawPill(
+            ctx,
+            stats,
+            { x: (baseStart.x + baseEnd.x) / 2, y: baseStart.y, above: true },
+            style,
+            "center",
+          );
       }
       return;
     }
@@ -462,7 +495,10 @@ function paint(
       ctx.lineTo(bx, by + boxHeight / 2);
       ctx.stroke();
       circle(ctx, a, 3, stroke, stroke, 1);
-      const bg = withAlpha(style.fill ?? style.color, Math.max((style.fillOpacity ?? 20) / 100, 0.16));
+      const bg = withAlpha(
+        style.fill ?? style.color,
+        Math.max((style.fillOpacity ?? 20) / 100, 0.16),
+      );
       roundedRect(ctx, bx, by, boxWidth, boxHeight, 5);
       ctx.fillStyle = bg;
       ctx.fill();
@@ -492,7 +528,13 @@ function paint(
       strokeLine(ctx, a, { x: b.x, y: a.y });
       strokeLine(ctx, { x: b.x, y: a.y }, b);
       ctx.restore();
-      arrowHead(ctx, { x: b.x - (b.x - a.x) * 0.001, y: a.y }, { x: b.x, y: a.y }, withAlpha(style.color, 0.9), 7);
+      arrowHead(
+        ctx,
+        { x: b.x - (b.x - a.x) * 0.001, y: a.y },
+        { x: b.x, y: a.y },
+        withAlpha(style.color, 0.9),
+        7,
+      );
       arrowHead(ctx, { x: b.x, y: a.y + (b.y - a.y) * 0.001 }, b, withAlpha(style.color, 0.9), 7);
       drawMeasureLabels(ctx, drawing, a, b, bars, width, height);
       return;
@@ -580,7 +622,11 @@ function paint(
           ctx.font = `${style.fontSize ?? 11}px Inter, system-ui, sans-serif`;
           ctx.fillStyle = style.color;
           ctx.globalAlpha = 1;
-          ctx.fillText(`${level.label}  ${labelOf(level.price)}`, Math.min(x1 + 6, width - 90), y + 4);
+          ctx.fillText(
+            `${level.label}  ${labelOf(level.price)}`,
+            Math.min(x1 + 6, width - 90),
+            y + 4,
+          );
         }
       }
       // Boundary lines and the anchor segment, as TradingView draws them.
@@ -627,18 +673,38 @@ function drawTextBlock(
 }
 
 /** Text inside a rectangle, positioned by the style's alignment. */
-function drawBoxText(ctx: CanvasRenderingContext2D, drawing: Drawing, topLeft: ScreenPoint, bottomRight: ScreenPoint): void {
+function drawBoxText(
+  ctx: CanvasRenderingContext2D,
+  drawing: Drawing,
+  topLeft: ScreenPoint,
+  bottomRight: ScreenPoint,
+): void {
   if (!drawing.text) return;
   const pad = 6;
   const align = drawing.style.textAlign ?? "left";
   const valign = drawing.style.textVAlign ?? "top";
-  const x = align === "center" ? (topLeft.x + bottomRight.x) / 2 : align === "right" ? bottomRight.x - pad : topLeft.x + pad;
-  const y = valign === "middle" ? (topLeft.y + bottomRight.y) / 2 : valign === "bottom" ? bottomRight.y - pad : topLeft.y + pad;
+  const x =
+    align === "center"
+      ? (topLeft.x + bottomRight.x) / 2
+      : align === "right"
+        ? bottomRight.x - pad
+        : topLeft.x + pad;
+  const y =
+    valign === "middle"
+      ? (topLeft.y + bottomRight.y) / 2
+      : valign === "bottom"
+        ? bottomRight.y - pad
+        : topLeft.y + pad;
   drawTextBlock(ctx, drawing, drawing.text, { x, y }, { align, valign });
 }
 
 /** A one-line annotation next to a line's midpoint. */
-function drawLineText(ctx: CanvasRenderingContext2D, drawing: Drawing, at: ScreenPoint, width: number): void {
+function drawLineText(
+  ctx: CanvasRenderingContext2D,
+  drawing: Drawing,
+  at: ScreenPoint,
+  width: number,
+): void {
   const style = drawing.style;
   const funit = style.fontSize ?? 12;
   ctx.font = fontOf(style);
@@ -646,7 +712,13 @@ function drawLineText(ctx: CanvasRenderingContext2D, drawing: Drawing, at: Scree
   const lines = (drawing.text ?? "").split("\n");
   const textWidth = Math.max(...lines.map((l) => ctx.measureText(l).width), 0);
   const align = style.textAlign ?? "center";
-  const x = Math.max(8, Math.min(width - textWidth - 8, at.x - (align === "center" ? textWidth / 2 : align === "right" ? textWidth : 0)));
+  const x = Math.max(
+    8,
+    Math.min(
+      width - textWidth - 8,
+      at.x - (align === "center" ? textWidth / 2 : align === "right" ? textWidth : 0),
+    ),
+  );
   const valign = style.textVAlign ?? "bottom";
   const total = lines.length * funit * 1.3;
   const y = valign === "top" ? at.y + 6 : valign === "middle" ? at.y - total / 2 : at.y - total - 4;
@@ -758,7 +830,11 @@ function drawPillText(
 }
 
 /** Stats lines: price change, percent, bars, duration, angle. */
-export function statsFor(drawing: Drawing, bars: readonly DrawingBar[], lineTool: boolean): string[] | null {
+export function statsFor(
+  drawing: Drawing,
+  bars: readonly DrawingBar[],
+  lineTool: boolean,
+): string[] | null {
   const p0 = drawing.points[0]?.price;
   const p1 = drawing.points[1]?.price;
   if (!lineTool) {
@@ -775,7 +851,9 @@ export function statsFor(drawing: Drawing, bars: readonly DrawingBar[], lineTool
   const count = t0 === undefined || t1 === undefined ? null : countBars(bars, t0, t1);
   const duration = t0 === undefined || t1 === undefined ? null : formatDuration(Math.abs(t1 - t0));
   const first = `${delta >= 0 ? "+" : ""}${labelOf(delta)} (${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%)`;
-  const tail = [count === null ? null : `${count} bars`, duration].filter((s): s is string => s !== null);
+  const tail = [count === null ? null : `${count} bars`, duration].filter(
+    (s): s is string => s !== null,
+  );
   return tail.length > 0 ? [first, tail.join(" · ")] : [first];
 }
 
@@ -821,7 +899,14 @@ function circle(
   ctx.stroke();
 }
 
-function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
+function roundedRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+): void {
   const radius = Math.min(r, w / 2, h / 2);
   ctx.beginPath();
   ctx.moveTo(x + radius, y);
@@ -848,15 +933,27 @@ function paintArrowEnds(
 }
 
 /** Arrowhead at `b`, pointing away from `a`. */
-function arrowHead(ctx: CanvasRenderingContext2D, a: ScreenPoint, b: ScreenPoint, color: string, size: number): void {
+function arrowHead(
+  ctx: CanvasRenderingContext2D,
+  a: ScreenPoint,
+  b: ScreenPoint,
+  color: string,
+  size: number,
+): void {
   const angle = Math.atan2(b.y - a.y, b.x - a.x);
   ctx.save();
   ctx.setLineDash([]);
   ctx.fillStyle = color;
   ctx.beginPath();
   ctx.moveTo(b.x, b.y);
-  ctx.lineTo(b.x - size * Math.cos(angle - Math.PI / 7), b.y - size * Math.sin(angle - Math.PI / 7));
-  ctx.lineTo(b.x - size * Math.cos(angle + Math.PI / 7), b.y - size * Math.sin(angle + Math.PI / 7));
+  ctx.lineTo(
+    b.x - size * Math.cos(angle - Math.PI / 7),
+    b.y - size * Math.sin(angle - Math.PI / 7),
+  );
+  ctx.lineTo(
+    b.x - size * Math.cos(angle + Math.PI / 7),
+    b.y - size * Math.sin(angle + Math.PI / 7),
+  );
   ctx.closePath();
   ctx.fill();
   ctx.restore();
@@ -888,10 +985,19 @@ export function fontOf(style: DrawingStyle): string {
   return `${fontStyle} ${weight} ${style.fontSize ?? 13}px Inter, system-ui, sans-serif`;
 }
 
-export const extendOf = (d: Drawing): [boolean, boolean] => [d.style.extendLeft === true, d.style.extendRight === true];
+export const extendOf = (d: Drawing): [boolean, boolean] => [
+  d.style.extendLeft === true,
+  d.style.extendRight === true,
+];
 
 /** The segment a straight tool actually paints, after its extend settings. */
-export function displaySegment(d: Drawing, a: ScreenPoint, b: ScreenPoint, width: number, height: number): [ScreenPoint, ScreenPoint] {
+export function displaySegment(
+  d: Drawing,
+  a: ScreenPoint,
+  b: ScreenPoint,
+  width: number,
+  height: number,
+): [ScreenPoint, ScreenPoint] {
   const [left, right] = extendOf(d);
   if (left && right) return lineToEdges(a, b, width, height);
   if (right) return [a, extendToEdge(a, b, width, height)[1]];
@@ -914,7 +1020,11 @@ export function withAlpha(color: string, alpha: number): string {
   const short = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(hex);
   const long = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
   const parts = short
-    ? [parseInt(short[1]! + short[1]!, 16), parseInt(short[2]! + short[2]!, 16), parseInt(short[3]! + short[3]!, 16)]
+    ? [
+        parseInt(short[1]! + short[1]!, 16),
+        parseInt(short[2]! + short[2]!, 16),
+        parseInt(short[3]! + short[3]!, 16),
+      ]
     : long
       ? [parseInt(long[1]!, 16), parseInt(long[2]!, 16), parseInt(long[3]!, 16)]
       : null;
@@ -964,7 +1074,12 @@ export function hasTime(bars: readonly DrawingBar[], time: number): boolean {
   return bars[i]?.time === time;
 }
 
-export function priceToYFor(drawing: Drawing, price: number, a: ScreenPoint, b: ScreenPoint): number | null {
+export function priceToYFor(
+  drawing: Drawing,
+  price: number,
+  a: ScreenPoint,
+  b: ScreenPoint,
+): number | null {
   const p0 = drawing.points[0]?.price;
   const p1 = drawing.points[1]?.price;
   if (p0 === undefined || p1 === undefined || p1 === p0) return null;
@@ -982,7 +1097,12 @@ export function midpoint(a: ScreenPoint, b: ScreenPoint): ScreenPoint {
  * pane, then backs off one step. Bisection would be tighter but a coarse march
  * is exact enough at pane scale and cannot divide by a zero component.
  */
-export function extendToEdge(a: ScreenPoint, b: ScreenPoint, width: number, height: number): [ScreenPoint, ScreenPoint] {
+export function extendToEdge(
+  a: ScreenPoint,
+  b: ScreenPoint,
+  width: number,
+  height: number,
+): [ScreenPoint, ScreenPoint] {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   if (dx === 0 && dy === 0) return [a, b];
@@ -999,7 +1119,12 @@ export function extendToEdge(a: ScreenPoint, b: ScreenPoint, width: number, heig
 }
 
 /** Extend a line through both pane edges, for the infinite-line tool. */
-export function lineToEdges(a: ScreenPoint, b: ScreenPoint, width: number, height: number): [ScreenPoint, ScreenPoint] {
+export function lineToEdges(
+  a: ScreenPoint,
+  b: ScreenPoint,
+  width: number,
+  height: number,
+): [ScreenPoint, ScreenPoint] {
   const [, far] = extendToEdge(a, b, width, height);
   const [, back] = extendToEdge(b, a, width, height);
   return [back, far];

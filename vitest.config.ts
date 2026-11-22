@@ -6,7 +6,8 @@ import { defineConfig } from "vitest/config";
  * `new URL(...).pathname` URL-encodes spaces, so it breaks in any directory
  * whose name contains one. `fileURLToPath` decodes correctly.
  */
-const pkg = (name: string): string => fileURLToPath(new URL(`./packages/${name}/src/index.ts`, import.meta.url));
+const pkg = (name: string): string =>
+  fileURLToPath(new URL(`./packages/${name}/src/index.ts`, import.meta.url));
 
 export default defineConfig({
   test: {

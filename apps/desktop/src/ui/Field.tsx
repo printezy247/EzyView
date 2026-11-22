@@ -40,7 +40,8 @@ export function Field({ label, hint, error, required, htmlFor, className, childr
   const controlId = htmlFor ?? generated;
   const hintId = `${controlId}-hint`;
   const errorId = `${controlId}-error`;
-  const describedBy = [hint ? hintId : null, error ? errorId : null].filter(Boolean).join(" ") || undefined;
+  const describedBy =
+    [hint ? hintId : null, error ? errorId : null].filter(Boolean).join(" ") || undefined;
   const ids: FieldIds = { describedBy, invalid: Boolean(error), controlId };
 
   return (
@@ -127,7 +128,10 @@ export function RadioGroup({ label, value, onChange, options, inline }: RadioGro
       <legend className={FIELD_LABEL_CLASS}>{label}</legend>
       <div className={cn("flex gap-3", inline ? "flex-row flex-wrap" : "flex-col gap-1")}>
         {options.map((option) => (
-          <label key={option.value} className="flex cursor-pointer items-center gap-2 text-base text-ev-text">
+          <label
+            key={option.value}
+            className="flex cursor-pointer items-center gap-2 text-base text-ev-text"
+          >
             <input
               type="radio"
               name={name}
@@ -204,7 +208,16 @@ export interface SliderProps {
   disabled?: boolean;
 }
 
-export function Slider({ label, value, min, max, step = 1, onChange, format, disabled }: SliderProps) {
+export function Slider({
+  label,
+  value,
+  min,
+  max,
+  step = 1,
+  onChange,
+  format,
+  disabled,
+}: SliderProps) {
   const id = useId();
   const text = format ? format(value) : String(value);
   return (
@@ -259,7 +272,10 @@ export function ColorInput({ label, value, onChange, disabled, className }: Colo
   );
 }
 
-export interface NumberInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "type" | "min" | "max" | "step"> {
+export interface NumberInputProps extends Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "value" | "onChange" | "type" | "min" | "max" | "step"
+> {
   label: string;
   value: number | null;
   onValueChange: (value: number | null) => void;
@@ -359,7 +375,11 @@ export function NumberInput({
   if (inline) {
     return (
       <div className={cn("flex items-center gap-1.5", className)}>
-        <label htmlFor={inlineId} className="shrink-0 text-dense text-ev-muted" title={hint ?? label}>
+        <label
+          htmlFor={inlineId}
+          className="shrink-0 text-dense text-ev-muted"
+          title={hint ?? label}
+        >
           {label}
         </label>
         <div className="w-16 shrink-0">{renderInput(inlineId, undefined, Boolean(error))}</div>
@@ -387,7 +407,16 @@ export interface DatePickerProps {
 }
 
 /** A calendar date field. Native `<input type="date">` keeps the OS picker and keyboard support. */
-export function DatePicker({ label, value, onChange, min, max, hint, error, disabled }: DatePickerProps) {
+export function DatePicker({
+  label,
+  value,
+  onChange,
+  min,
+  max,
+  hint,
+  error,
+  disabled,
+}: DatePickerProps) {
   return (
     <Field label={label} hint={hint} error={error}>
       {({ controlId, describedBy, invalid }) => (

@@ -80,7 +80,11 @@ export function groupsInUse(charts: readonly LinkableChart[]): string[] {
  * Returns the same array when nothing would change, so the caller can skip a
  * store write. The input is never mutated.
  */
-export function withLinkedUpdate<T extends LinkableChart>(charts: readonly T[], index: number, patch: LinkPatch): T[] {
+export function withLinkedUpdate<T extends LinkableChart>(
+  charts: readonly T[],
+  index: number,
+  patch: LinkPatch,
+): T[] {
   const indices = linkedIndices(charts, index);
   if (indices.length === 0) return charts as T[];
   const next = charts.slice();

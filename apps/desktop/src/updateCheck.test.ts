@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { checkForUpdate, isNewer, isReleaseUrl, parseVersion } from "./updateCheck";
 
-const reply = (status: number, body: unknown = {}) => (async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch;
+const reply = (status: number, body: unknown = {}) =>
+  (async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch;
 
 describe("version compare", () => {
   it("parses tags with or without v and suffixes", () => {
@@ -27,7 +28,10 @@ describe("version compare", () => {
 describe("checkForUpdate", () => {
   it("treats 404 as no releases and other failures as errors", async () => {
     expect(await checkForUpdate(reply(404))).toEqual({ kind: "none" });
-    expect(await checkForUpdate(reply(500))).toEqual({ kind: "error", message: "GitHub answered 500" });
+    expect(await checkForUpdate(reply(500))).toEqual({
+      kind: "error",
+      message: "GitHub answered 500",
+    });
     const down = (async () => {
       throw new Error("offline");
     }) as unknown as typeof fetch;
@@ -35,7 +39,11 @@ describe("checkForUpdate", () => {
   });
 
   it("ignores a release whose tag is not a version", async () => {
-    expect(await checkForUpdate(reply(200, { tag_name: "nightly", html_url: "https://github.com/printezy247/EzyView/x" }))).toEqual({
+    expect(
+      await checkForUpdate(
+        reply(200, { tag_name: "nightly", html_url: "https://github.com/printezy247/EzyView/x" }),
+      ),
+    ).toEqual({
       kind: "none",
     });
   });

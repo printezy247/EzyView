@@ -44,7 +44,9 @@ export function templateFromChart(chart: ChartState, name: string, id: string): 
     name: name.trim().slice(0, MAX_NAME) || "Template",
     chartType: chart.chartType,
     showVolume: chart.showVolume,
-    ...(chart.showVolumeProfile !== undefined ? { showVolumeProfile: chart.showVolumeProfile } : {}),
+    ...(chart.showVolumeProfile !== undefined
+      ? { showVolumeProfile: chart.showVolumeProfile }
+      : {}),
     ...(chart.boxSize !== undefined ? { boxSize: chart.boxSize } : {}),
     showGrid: chart.showGrid,
     theme: chart.theme,
@@ -53,7 +55,9 @@ export function templateFromChart(chart: ChartState, name: string, id: string): 
     ...(chart.invertScale !== undefined ? { invertScale: chart.invertScale } : {}),
     ...(chart.timezone !== undefined ? { timezone: chart.timezone } : {}),
     ...(chart.watermark !== undefined ? { watermark: chart.watermark } : {}),
-    ...(chart.showSessionBreaks !== undefined ? { showSessionBreaks: chart.showSessionBreaks } : {}),
+    ...(chart.showSessionBreaks !== undefined
+      ? { showSessionBreaks: chart.showSessionBreaks }
+      : {}),
     indicators: chart.indicators.map((i) => ({
       defId: i.def.id,
       params: i.params,
@@ -88,7 +92,8 @@ export function applyTemplate(
   return { ...chart, ...look, indicators };
 }
 
-const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+const isObject = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
 
 /** Rebuild saved templates from storage; rows missing the required fields are dropped. */
 export function restoreTemplates(raw: unknown): ChartTemplate[] {
@@ -98,9 +103,18 @@ export function restoreTemplates(raw: unknown): ChartTemplate[] {
     if (!isObject(row)) continue;
     if (typeof row.id !== "string" || typeof row.name !== "string") continue;
     if (typeof row.chartType !== "string" || typeof row.theme !== "string") continue;
-    if (typeof row.showVolume !== "boolean" || typeof row.showGrid !== "boolean" || !Array.isArray(row.indicators)) continue;
+    if (
+      typeof row.showVolume !== "boolean" ||
+      typeof row.showGrid !== "boolean" ||
+      !Array.isArray(row.indicators)
+    )
+      continue;
     const indicators = row.indicators.filter(
-      (i): i is TemplateIndicator => isObject(i) && typeof i.defId === "string" && isObject(i.params) && typeof i.colorIndex === "number",
+      (i): i is TemplateIndicator =>
+        isObject(i) &&
+        typeof i.defId === "string" &&
+        isObject(i.params) &&
+        typeof i.colorIndex === "number",
     );
     out.push({ ...(row as unknown as ChartTemplate), indicators });
     if (out.length >= MAX_TEMPLATES) break;

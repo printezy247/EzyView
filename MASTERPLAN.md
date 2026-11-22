@@ -185,23 +185,23 @@ Organized to mirror the TradingView desktop shell + Supercharts. Each item is a 
 
 ## 4. Tech stack (recommended)
 
-| Layer | Choice | Rationale |
-|---|---|---|
-| Frontend | Next.js 16 (App Router) + React 19 + TypeScript + Tailwind + shadcn/ui | matches our other projects; SSR + RSC |
-| Charting | TradingView Lightweight Charts v5 + custom Canvas 2D plugins; evaluate CandleViewer/OpenCharts for advanced drawing | open, performant, MIT/Apache |
-| State | Zustand + TanStack Query | simple, scalable |
-| Editor | Monaco (Pine) | mature |
-| Backend | Fastify (Node) + tRPC or REST | fast, TS-native |
-| DB | PostgreSQL (Supabase) + TimescaleDB for OHLCV | time-series |
-| Cache/realtime | Redis + WebSocket (Socket.IO or native) | low-latency ticks |
-| MT5 bridge | Python FastAPI (`mt5api`) in Wine; optional Node client | MT5 Python API Windows-only |
-| Fundamentals | Python scrapers (ForexFactory/Investing/Reuters) + scheduled jobs | reuse devils/Metatrader pattern |
-| Desktop | Tauri v2 (or Electron) wrapping web app | small bundle, native multi-window |
-| Mobile (later) | PWA first | |
-| Auth | Supabase Auth or Lucia | |
-| Infra | Docker Compose for self-host; Vercel for web demo | |
-| Testing | Vitest + Playwright | |
-| Lint/format | oxlint + oxfmt (per our standard) | |
+| Layer          | Choice                                                                                                              | Rationale                             |
+| -------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| Frontend       | Next.js 16 (App Router) + React 19 + TypeScript + Tailwind + shadcn/ui                                              | matches our other projects; SSR + RSC |
+| Charting       | TradingView Lightweight Charts v5 + custom Canvas 2D plugins; evaluate CandleViewer/OpenCharts for advanced drawing | open, performant, MIT/Apache          |
+| State          | Zustand + TanStack Query                                                                                            | simple, scalable                      |
+| Editor         | Monaco (Pine)                                                                                                       | mature                                |
+| Backend        | Fastify (Node) + tRPC or REST                                                                                       | fast, TS-native                       |
+| DB             | PostgreSQL (Supabase) + TimescaleDB for OHLCV                                                                       | time-series                           |
+| Cache/realtime | Redis + WebSocket (Socket.IO or native)                                                                             | low-latency ticks                     |
+| MT5 bridge     | Python FastAPI (`mt5api`) in Wine; optional Node client                                                             | MT5 Python API Windows-only           |
+| Fundamentals   | Python scrapers (ForexFactory/Investing/Reuters) + scheduled jobs                                                   | reuse devils/Metatrader pattern       |
+| Desktop        | Tauri v2 (or Electron) wrapping web app                                                                             | small bundle, native multi-window     |
+| Mobile (later) | PWA first                                                                                                           |                                       |
+| Auth           | Supabase Auth or Lucia                                                                                              |                                       |
+| Infra          | Docker Compose for self-host; Vercel for web demo                                                                   |                                       |
+| Testing        | Vitest + Playwright                                                                                                 |                                       |
+| Lint/format    | oxlint + oxfmt (per our standard)                                                                                   |                                       |
 
 ---
 
@@ -249,19 +249,19 @@ EzyView/
 
 Status legend: **done** = merged to `main`; **next** = first build target once approved; **planned** = not started.
 
-| Phase | Scope | Exit criteria | Status |
-|---|---|---|---|
-| 0 | Drawing/chart-control reliability + quick chart command input | deterministic placement, undo/redo, command input works | **done** (PR #10) |
-| 1 | MT5 real-account login flow (keyring, safety rails, audit log, chart source toggle) | place/close/modify via MT5 from app | **done** (PR #11) |
-| 2 | Navigation / information architecture (React Router + persistent shell) | dedicated pages, no boolean panel flags | **done** (PR #12) |
-| 3 | Drawing parity (full tool suite, selection/editing, properties, magnet, alerts) | edit/select/delete drawings | **done** (PR #13) |
-| 4 | Charting controls & layouts (crosshair sync, multi-chart, replay, scales, themes) | layouts/timeframes/themes | **done** (PR #14) |
-| 5 | Trading journal (manual + MT5 import, stats, screenshots, reviews, prop-firm) | journal usable daily | **done** (PR #15) |
-| 6 | Fundamentals (calendar, news, earnings, screener, heatmaps, macro) | fundamentals panel live | **done** (PR #16) |
-| 7 | Pine editor & strategy testing (Monaco, lint, compile, backtest, optimize) | custom indicator runs | **done** (PR #17) |
-| 8 | Sharing / export / collaboration | export + share links | **done** (PR #18) |
-| 9 | Desktop, multi-monitor, MCP (workspace restore, native windows, MCP parity) | desktop app shipped | **done** (PR #19) |
-| 10 | Git ops / CI / report / merge | green CI, merged PR, report | **done** (PR #20) |
+| Phase | Scope                                                                               | Exit criteria                                           | Status            |
+| ----- | ----------------------------------------------------------------------------------- | ------------------------------------------------------- | ----------------- |
+| 0     | Drawing/chart-control reliability + quick chart command input                       | deterministic placement, undo/redo, command input works | **done** (PR #10) |
+| 1     | MT5 real-account login flow (keyring, safety rails, audit log, chart source toggle) | place/close/modify via MT5 from app                     | **done** (PR #11) |
+| 2     | Navigation / information architecture (React Router + persistent shell)             | dedicated pages, no boolean panel flags                 | **done** (PR #12) |
+| 3     | Drawing parity (full tool suite, selection/editing, properties, magnet, alerts)     | edit/select/delete drawings                             | **done** (PR #13) |
+| 4     | Charting controls & layouts (crosshair sync, multi-chart, replay, scales, themes)   | layouts/timeframes/themes                               | **done** (PR #14) |
+| 5     | Trading journal (manual + MT5 import, stats, screenshots, reviews, prop-firm)       | journal usable daily                                    | **done** (PR #15) |
+| 6     | Fundamentals (calendar, news, earnings, screener, heatmaps, macro)                  | fundamentals panel live                                 | **done** (PR #16) |
+| 7     | Pine editor & strategy testing (Monaco, lint, compile, backtest, optimize)          | custom indicator runs                                   | **done** (PR #17) |
+| 8     | Sharing / export / collaboration                                                    | export + share links                                    | **done** (PR #18) |
+| 9     | Desktop, multi-monitor, MCP (workspace restore, native windows, MCP parity)         | desktop app shipped                                     | **done** (PR #19) |
+| 10    | Git ops / CI / report / merge                                                       | green CI, merged PR, report                             | **done** (PR #20) |
 
 Historical note: the original scaffold phases (P0–P9) are already delivered and merged to `main` (see git log). The phase table above re-sequences the remaining remediation and parity work per `docs/MEGA-PLAN.md`; it does not discard delivered work. Phase 10 is the standing git-ops close-out and runs after every green build.
 
@@ -509,22 +509,22 @@ Routes and persistent shell:
 
 ## 18. Repos to study / reuse (not reinvent)
 
-| Repo | Use |
-|---|---|
-| tradingview/lightweight-charts | chart engine (Apache 2.0) |
-| dylanpersonguy/OpenCharts | terminal shell, drawing tools, Pine transpiler reference, paper engine |
-| basiltt/CandleViewer | GPU engine ideas, indicator ecosystem |
-| hectorvss/tradingview-clone | module organization, 50+ modules reference |
-| Opus-Aether-AI/pine-transpiler | Pine v5/v6 → JS compiler |
-| OpenCharts pine-transpiler | alternative |
-| Eleven-Trading/TradeNote | trading journal UX/data model |
-| TheQuantum-Dev/journedge | institutional journal features |
-| hugodemenez/deltalytix | AI journal + stats |
-| devilforcex/Metatrader | MT5 EA + FastAPI gateway, safety patterns |
-| dceoy/mt5api | MT5 REST bridge |
-| sumedhkumar/mt5-trading-mcp | MT5 MCP server |
-| xclunderrated/ForexFactory-Unofficial-API | economic calendar |
-| viandwi24/forexfactory | FF client |
+| Repo                                      | Use                                                                    |
+| ----------------------------------------- | ---------------------------------------------------------------------- |
+| tradingview/lightweight-charts            | chart engine (Apache 2.0)                                              |
+| dylanpersonguy/OpenCharts                 | terminal shell, drawing tools, Pine transpiler reference, paper engine |
+| basiltt/CandleViewer                      | GPU engine ideas, indicator ecosystem                                  |
+| hectorvss/tradingview-clone               | module organization, 50+ modules reference                             |
+| Opus-Aether-AI/pine-transpiler            | Pine v5/v6 → JS compiler                                               |
+| OpenCharts pine-transpiler                | alternative                                                            |
+| Eleven-Trading/TradeNote                  | trading journal UX/data model                                          |
+| TheQuantum-Dev/journedge                  | institutional journal features                                         |
+| hugodemenez/deltalytix                    | AI journal + stats                                                     |
+| devilforcex/Metatrader                    | MT5 EA + FastAPI gateway, safety patterns                              |
+| dceoy/mt5api                              | MT5 REST bridge                                                        |
+| sumedhkumar/mt5-trading-mcp               | MT5 MCP server                                                         |
+| xclunderrated/ForexFactory-Unofficial-API | economic calendar                                                      |
+| viandwi24/forexfactory                    | FF client                                                              |
 
 ---
 
@@ -802,7 +802,7 @@ Pine breadth backlog is in `docs/ezyview-chart-parity-review-2026-10-25.md`.
 
 ## 26. Interaction reliability & chart/watchlist parity plan (2026-10-25)
 
-This workstream follows §25 and closes the gaps that remain *around* the chart
+This workstream follows §25 and closes the gaps that remain _around_ the chart
 rather than inside it: shortcuts, the quick command input, the watchlist, and
 the per-cell chart options that the settings dialog already persists. It is
 ordered so the keyboard dispatcher lands first; every later phase depends on a
@@ -813,24 +813,24 @@ work; the drawing/Pine breadth backlog stays in the separate parity review.
 
 ### 26.1 Status against current code
 
-| Area | Today | Gap this plan closes |
-|---|---|---|
-| Shortcuts | `hotkeys.ts` is a documentation table only. Key handling is spread across `App.tsx` (two global listeners), `Toolbar.tsx`, `ChartPage.tsx` (two), `ReplayBar.tsx`, `Menu.tsx`, `ChartContextMenu.tsx` and `Modal.tsx`. | No central priority/scope rules, no dialog stack, duplicated `Escape`/`?` handling, and each listener decides its own typing guard. |
-| Command input | Symbol autocomplete, `@` timeframe mode, `/tf`, `/sym`, global recent symbols; `/layout` closes without applying (`ChartCommandInput.tsx`). | Source scoping, active cell/link group, pair shortcuts, timeframe stepping, per-source recents, a working `/layout`. |
-| Watchlist | Global `WatchEntry[]` with no source field; selecting a row calls `setSymbol` on the active chart; quotes join the shared poller. | Per-entry source, active-cell/link-group targeting, source-aware polling, add-from-chart, MT5 symbol search, selected-row highlight. |
+| Area           | Today                                                                                                                                                                                                                                                                                                          | Gap this plan closes                                                                                                                          |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shortcuts      | `hotkeys.ts` is a documentation table only. Key handling is spread across `App.tsx` (two global listeners), `Toolbar.tsx`, `ChartPage.tsx` (two), `ReplayBar.tsx`, `Menu.tsx`, `ChartContextMenu.tsx` and `Modal.tsx`.                                                                                         | No central priority/scope rules, no dialog stack, duplicated `Escape`/`?` handling, and each listener decides its own typing guard.           |
+| Command input  | Symbol autocomplete, `@` timeframe mode, `/tf`, `/sym`, global recent symbols; `/layout` closes without applying (`ChartCommandInput.tsx`).                                                                                                                                                                    | Source scoping, active cell/link group, pair shortcuts, timeframe stepping, per-source recents, a working `/layout`.                          |
+| Watchlist      | Global `WatchEntry[]` with no source field; selecting a row calls `setSymbol` on the active chart; quotes join the shared poller.                                                                                                                                                                              | Per-entry source, active-cell/link-group targeting, source-aware polling, add-from-chart, MT5 symbol search, selected-row highlight.          |
 | Chart settings | `ChartState.chartSettings` is persisted, but `ChartHost` receives only `showGrid` (plus a `session` value derived from the session-breaks toggle); grid colours, status-line and similar fields are never rendered. The main series sets `priceLineVisible: false` (`packages/chart-engine/src/host.ts:1059`). | Wire the detailed settings into every cell, add the current-price line, make crosshair labels/watermark/session breaks configurable per cell. |
-| Drawings | Selection, move, resize, magnet, undo/redo, duplicate, object tree and level alerts are shipped (see §25 and the 2026-10-25 parity review). | Verify the same interaction works in every grid cell and after a layout restore; do not rebuild it. |
+| Drawings       | Selection, move, resize, magnet, undo/redo, duplicate, object tree and level alerts are shipped (see §25 and the 2026-10-25 parity review).                                                                                                                                                                    | Verify the same interaction works in every grid cell and after a layout restore; do not rebuild it.                                           |
 
 Phase status:
 
-| Phase | Scope | Status |
-|---|---|---|
-| 0 | Keyboard dispatcher | **planned** |
-| 1 | Command input: symbol/timeframe/pair | **planned** |
-| 2 | Watchlist: layout/chart/source | **planned** |
-| 3 | Chart rendering parity | **planned** |
-| 4 | Consolidation and cleanup | **planned** |
-| 5 | Unit and e2e coverage | **planned** |
+| Phase | Scope                                | Status      |
+| ----- | ------------------------------------ | ----------- |
+| 0     | Keyboard dispatcher                  | **planned** |
+| 1     | Command input: symbol/timeframe/pair | **planned** |
+| 2     | Watchlist: layout/chart/source       | **planned** |
+| 3     | Chart rendering parity               | **planned** |
+| 4     | Consolidation and cleanup            | **planned** |
+| 5     | Unit and e2e coverage                | **planned** |
 
 Estimated: Phase 0 = 3–4 days; Phases 1–2 = 2–3 weeks combined; Phase 3 =
 3–4 days; Phases 4–5 = 1–2 weeks. One developer familiar with the tree; review
@@ -860,8 +860,8 @@ Work:
    - `Menu.tsx:78`
    - `ChartContextMenu.tsx:51`
    - `Modal.tsx:63` (keep the focus trap; route `Escape` through the dispatcher)
-   Local input handlers (`ChartCommandInput`, `SymbolSearch`, `CommandPalette`
-   list navigation) stay local — they are not global shortcuts.
+     Local input handlers (`ChartCommandInput`, `SymbolSearch`, `CommandPalette`
+     list navigation) stay local — they are not global shortcuts.
 5. Make `hotkeys.ts` the single human-readable registry, or generate the sheet
    from the dispatcher bindings so the documentation cannot drift.
 

@@ -7,7 +7,11 @@ interface Sortable {
 }
 
 /** Sort watchlist rows; missing quotes always sink to the bottom, ties fall back to ticker. */
-export function sortWatch<T extends Sortable>(rows: T[], field: WatchSortField, desc: boolean): T[] {
+export function sortWatch<T extends Sortable>(
+  rows: T[],
+  field: WatchSortField,
+  desc: boolean,
+): T[] {
   if (field === "none") return rows;
   return [...rows].sort((a, b) => {
     if (field !== "symbol") {

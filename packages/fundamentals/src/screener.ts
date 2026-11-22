@@ -36,7 +36,8 @@ export function runScreener(rows: ScreenerRow[], query: ScreenerQuery): Screener
   const text = query.text?.trim().toLowerCase() ?? "";
   const kept = rows.filter((row) => {
     if (query.assetClass && row.assetClass !== query.assetClass) return false;
-    if (text && !row.ticker.toLowerCase().includes(text) && !row.name.toLowerCase().includes(text)) return false;
+    if (text && !row.ticker.toLowerCase().includes(text) && !row.name.toLowerCase().includes(text))
+      return false;
     return query.filters.every((f) => {
       const value = row[f.field];
       if (f.min === undefined && f.max === undefined) return true;

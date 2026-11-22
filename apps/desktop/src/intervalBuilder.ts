@@ -70,15 +70,20 @@ export function parseInterval(input: string): ParseResult {
 
   // Split the leading digits from the unit, tolerating a space ("5 m").
   const match = /^(\d+)\s*([A-Za-z]+)$/.exec(typed);
-  if (!match) return { ok: false, reason: `Could not read "${typed}" as an interval. Try 15m, 4h or 1d.` };
+  if (!match)
+    return { ok: false, reason: `Could not read "${typed}" as an interval. Try 15m, 4h or 1d.` };
 
   const count = Number.parseInt(match[1]!, 10);
   const rawUnit = match[2]!;
   // `M` is a month and `m` a minute in the resolution table, so the unit's case
   // is load-bearing: only accept the upper-case spelling as a month.
-  const unit = rawUnit === "M" || rawUnit === "mo" || rawUnit === "MO" ? "mo" : UNIT_ALIASES[rawUnit.toLowerCase()];
+  const unit =
+    rawUnit === "M" || rawUnit === "mo" || rawUnit === "MO"
+      ? "mo"
+      : UNIT_ALIASES[rawUnit.toLowerCase()];
   if (!unit) return { ok: false, reason: `Unknown unit "${rawUnit}". Use m, h, d, w or mo.` };
-  if (!Number.isFinite(count) || count < 1) return { ok: false, reason: "The count must be at least 1." };
+  if (!Number.isFinite(count) || count < 1)
+    return { ok: false, reason: "The count must be at least 1." };
 
   // Day and above are single buckets: 2 days is a week, not a two-day bar.
   if (unit === "d" || unit === "w" || unit === "mo") {
@@ -96,7 +101,7 @@ export function parseInterval(input: string): ParseResult {
   if (exact) return { ok: true, resolution: exact, label: resolutionName(exact) };
 
   const near = nearestCount(unit, count);
-  const suggestion = near === null ? undefined : `${near}${unit}` as Resolution;
+  const suggestion = near === null ? undefined : (`${near}${unit}` as Resolution);
   return {
     ok: false,
     reason: `${count}${unit} is not a served interval.`,

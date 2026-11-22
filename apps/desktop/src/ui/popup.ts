@@ -32,12 +32,17 @@ export function popupPosition(
   const rect = trigger.getBoundingClientRect();
   const popupWidth = width ?? Math.max(minWidth, rect.width);
   const maxLeft = Math.max(8, window.innerWidth - popupWidth - 8);
-  const left = align === "right" ? Math.max(8, Math.min(rect.right - popupWidth, maxLeft)) : Math.max(8, Math.min(rect.left, maxLeft));
+  const left =
+    align === "right"
+      ? Math.max(8, Math.min(rect.right - popupWidth, maxLeft))
+      : Math.max(8, Math.min(rect.left, maxLeft));
 
   const spaceBelow = window.innerHeight - rect.bottom - gap;
   const estimated = 260;
   const above = spaceBelow < Math.min(estimated, 160) && rect.top > spaceBelow;
-  const top = above ? Math.max(8, rect.top - gap - Math.min(estimated, rect.top - 8)) : rect.bottom + gap;
+  const top = above
+    ? Math.max(8, rect.top - gap - Math.min(estimated, rect.top - 8))
+    : rect.bottom + gap;
 
   return {
     top,
@@ -97,7 +102,11 @@ export function wrapIndex(count: number, index: number): number {
  * whose label starts with them. Returns the new index, or null when the key is
  * not part of a match.
  */
-export function typeaheadIndex(labels: readonly string[], buffer: string, from: number): number | null {
+export function typeaheadIndex(
+  labels: readonly string[],
+  buffer: string,
+  from: number,
+): number | null {
   if (buffer === "") return null;
   const needle = buffer.toLowerCase();
   for (let step = 0; step < labels.length; step += 1) {

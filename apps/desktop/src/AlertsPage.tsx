@@ -31,7 +31,12 @@ const STATE_TONE: Record<string, string> = {
 };
 
 const when = (epoch: number): string =>
-  new Date(epoch).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  new Date(epoch).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
 /** One alert's rolling close series, newest last, as a sparkline row of values. */
 function HistoryRow({ closes }: { closes: number[] }) {
@@ -58,7 +63,11 @@ export function AlertsPage() {
   const scrollRef = useRef<HTMLElement>(null);
 
   return (
-    <section ref={scrollRef} aria-label="Alerts" className="flex min-h-0 flex-1 flex-col overflow-y-auto text-base">
+    <section
+      ref={scrollRef}
+      aria-label="Alerts"
+      className="flex min-h-0 flex-1 flex-col overflow-y-auto text-base"
+    >
       <header className="flex h-9 shrink-0 items-center gap-3 border-b border-ev-raised px-3">
         <h2 className="text-body font-semibold text-ev-strong">Price alerts</h2>
         <span className="text-dense text-ev-faint">
@@ -84,14 +93,30 @@ export function AlertsPage() {
           <table className="w-full border-collapse text-left">
             <thead>
               <tr className="border-b border-ev-line text-micro font-semibold uppercase tracking-wider text-ev-faint">
-                <th scope="col" className="py-1">Symbol</th>
-                <th scope="col" className="py-1">Condition</th>
-                <th scope="col" className="py-1">Level</th>
-                <th scope="col" className="py-1">Freq</th>
-                <th scope="col" className="py-1">State</th>
-                <th scope="col" className="py-1">Message</th>
-                <th scope="col" className="py-1">Created</th>
-                <th scope="col" className="py-1 text-right"> </th>
+                <th scope="col" className="py-1">
+                  Symbol
+                </th>
+                <th scope="col" className="py-1">
+                  Condition
+                </th>
+                <th scope="col" className="py-1">
+                  Level
+                </th>
+                <th scope="col" className="py-1">
+                  Freq
+                </th>
+                <th scope="col" className="py-1">
+                  State
+                </th>
+                <th scope="col" className="py-1">
+                  Message
+                </th>
+                <th scope="col" className="py-1">
+                  Created
+                </th>
+                <th scope="col" className="py-1 text-right">
+                  {" "}
+                </th>
               </tr>
             </thead>
             <VirtualTableBody
@@ -132,11 +157,21 @@ interface RowProps {
   onSnooze: (seconds: number) => void;
 }
 
-const FragmentRow = memo(function FragmentRow({ alert: a, closes, expanded, onToggle, onOpenSymbol, onDelete, onSnooze }: RowProps) {
+const FragmentRow = memo(function FragmentRow({
+  alert: a,
+  closes,
+  expanded,
+  onToggle,
+  onOpenSymbol,
+  onDelete,
+  onSnooze,
+}: RowProps) {
   return (
     <>
       <tr
-        className={rowClass({ className: "cursor-pointer border-b border-ev-panel hover:bg-ev-raised" })}
+        className={rowClass({
+          className: "cursor-pointer border-b border-ev-panel hover:bg-ev-raised",
+        })}
         onClick={onToggle}
         onKeyDown={(e) => {
           // The row expands the close history, so it answers the keyboard.

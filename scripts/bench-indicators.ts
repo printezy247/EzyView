@@ -33,8 +33,10 @@ const walk = (n: number, seed: number, step = 1): number[] => {
   let x = seed;
   const out: number[] = [];
   for (let i = 0; i < n; i++) {
-    x ^= x << 13; x ^= x >>> 17; x ^= x << 5;
-    out.push(((Math.abs(x) % 20_000) / step) / 100);
+    x ^= x << 13;
+    x ^= x >>> 17;
+    x ^= x << 5;
+    out.push((Math.abs(x) % 20_000) / step / 100);
   }
   return out;
 };

@@ -27,11 +27,14 @@
 ## Tasks
 
 ### Task 1: Filter + overlay domain helpers
+
 **Files:**
+
 - Create: `packages/fundamentals/src/overlay.ts`, `packages/fundamentals/src/overlay.test.ts`
 - Modify: `packages/fundamentals/src/index.ts` (barrel exports)
 
 **Interfaces:**
+
 - Produces (Task 2/3 consume):
   - `filterEvents(events: readonly EconomicEvent[], opts: { impact?: Impact | "all"; currency?: string; search?: string; from?: EpochSeconds; to?: EpochSeconds }): EconomicEvent[]` — AND semantics; `impact: "all"`/omitted = no impact filtering; currency case-insensitive exact match; search case-insensitive substring over `title` and `currency`; `from` inclusive, `to` exclusive on `event.time`; input never mutated.
   - `filterNews(items: readonly NewsItem[], search: string): NewsItem[]` — case-insensitive substring over `headline` and `summary`; empty/whitespace search returns input as-is.
@@ -45,12 +48,15 @@
 - [ ] Step 5: Commit `feat(fundamentals): calendar/news filters + overlay mapping`.
 
 ### Task 2: Panel filter UI + tab extraction
+
 **Files:**
+
 - Create: `apps/desktop/src/FundamentalsTabs.tsx` (Calendar/News/Earnings tabs moved out)
 - Modify: `apps/desktop/src/FundamentalsPanel.tsx` (imports moved tabs; slims below 300 lines)
 - Test: `apps/desktop/src/fundamentalsFilters.test.ts` if any new non-JSX helper logic is added (e.g. currency list builder) — otherwise skip with justification in report.
 
 **Interfaces:**
+
 - Consumes: `filterEvents`, `filterNews` from Task 1; existing `useLoad`, `src.sources.calendar.getCalendar(from, to)`, `src.sources.news.getNews`.
 - Produces: none new (UI only).
 
@@ -61,10 +67,13 @@
 - [ ] Step 5: Commit `feat(fundamentals): calendar currency/search/date filters, news search`.
 
 ### Task 3: Chart overlays (markers + event lines)
+
 **Files:**
+
 - Modify: `packages/chart-engine/src/host.ts` (new channel), tests if host logic is unit-testable in isolation (markers/line primitive data prep — extract a pure helper and test it in `packages/chart-engine/src/`), `apps/desktop/src/Toolbar.tsx` or `ChartPage.tsx` (toggle + fetch), possibly `apps/desktop/src/fundamentalEvents.test.ts`.
 
 **Interfaces:**
+
 - Consumes: `fundamentalOverlays` (Task 1); `ChartHost` existing `markerLayer`/`applyMarkers`/`resetMarkers` machinery; `src.sources.calendar.getCalendar`, `src.sources.earnings.getEarnings`.
 - Produces:
   - `ChartHost.setFundamentalEvents(overlays: { markers: FundamentalMarker[]; lines: number[] }): void` — merges fundamental markers into a SEPARATE list from script markers; `applyMarkers()` composites both (sorted by time) and re-applies. Clears previous fundamentals state (both lists) each call; empty overlays = pure cleanup.
@@ -78,6 +87,7 @@
 - [ ] Step 5: Commit `feat(chart): fundamental event markers + macro vertical lines`.
 
 ### Task 4: Gates + docs
+
 - Full gates: `npm run lint`, `npm run typecheck`, `npx vitest run --configLoader runner`, `npm run build:web`.
 - MASTERPLAN: §7 row 6 → **done (PR #16)**; §8 add Phase 6 closed line; §12 Phase 6 → Done with deviations; known-gaps line refresh.
 - (Controller runs git usual ops separately.)

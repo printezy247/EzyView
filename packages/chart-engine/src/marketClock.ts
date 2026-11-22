@@ -42,7 +42,11 @@ export interface ClockReading {
 export function clockFor(epochMs: number): ClockReading {
   const d = new Date(epochMs);
   const weekday = d.getUTCDay();
-  return { minutes: d.getUTCHours() * 60 + d.getUTCMinutes(), weekday, isWeekend: weekday === 0 || weekday === 6 };
+  return {
+    minutes: d.getUTCHours() * 60 + d.getUTCMinutes(),
+    weekday,
+    isWeekend: weekday === 0 || weekday === 6,
+  };
 }
 
 /**
@@ -51,7 +55,8 @@ export function clockFor(epochMs: number): ClockReading {
  */
 export function isOpen(session: MarketSession, minutes: number): boolean {
   if (session.openUtc === session.closeUtc) return true;
-  if (session.openUtc < session.closeUtc) return minutes >= session.openUtc && minutes < session.closeUtc;
+  if (session.openUtc < session.closeUtc)
+    return minutes >= session.openUtc && minutes < session.closeUtc;
   return minutes >= session.openUtc || minutes < session.closeUtc;
 }
 

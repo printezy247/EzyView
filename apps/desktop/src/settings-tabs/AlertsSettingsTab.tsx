@@ -13,23 +13,38 @@ export function AlertsSettingsTab({ draft, setDraft }: Props) {
       <div className="font-semibold text-ev-strong">Chart Alerts</div>
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <Checkbox label="Alert lines on chart" checked={draft.alerts.alertLines} onChange={(checked) =>
-                setDraft((d) => ({
-                  ...d,
-                  alerts: { ...d.alerts, alertLines: checked },
-                }))} />
-          <ColorInput label="Alert line colour" value={draft.alerts.alertLineColor} onChange={(value) =>
+          <Checkbox
+            label="Alert lines on chart"
+            checked={draft.alerts.alertLines}
+            onChange={(checked) =>
+              setDraft((d) => ({
+                ...d,
+                alerts: { ...d.alerts, alertLines: checked },
+              }))
+            }
+          />
+          <ColorInput
+            label="Alert line colour"
+            value={draft.alerts.alertLineColor}
+            onChange={(value) =>
               setDraft((d) => ({
                 ...d,
                 alerts: { ...d.alerts, alertLineColor: value },
-              }))} />
+              }))
+            }
+          />
         </div>
 
-        <Checkbox label="Play sound on alert trigger" checked={draft.alerts.playSound} onChange={(checked) =>
-              setDraft((d) => ({
-                ...d,
-                alerts: { ...d.alerts, playSound: checked },
-              }))} />
+        <Checkbox
+          label="Play sound on alert trigger"
+          checked={draft.alerts.playSound}
+          onChange={(checked) =>
+            setDraft((d) => ({
+              ...d,
+              alerts: { ...d.alerts, playSound: checked },
+            }))
+          }
+        />
 
         <Slider
           label="Sound volume"

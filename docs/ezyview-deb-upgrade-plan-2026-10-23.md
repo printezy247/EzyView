@@ -26,19 +26,19 @@ Phase 2 makes it a supported release rather than a one-off file.
 
 ## 1. Baseline evidence
 
-| Check | Result |
-|---|---|
-| `npm run typecheck` | clean |
-| `npm test` | 107 files, 1010 tests, all pass |
-| `npm run lint` | 0 errors, 11 warnings |
-| `npm audit --omit=dev` | 0 vulnerabilities |
-| `cargo test` | not run in this pass (CI runs it) |
-| `lintian EzyView_0.3.0_amd64.deb` | **4 errors, 2 warnings** |
-| `objdump -T usr/bin/ezyview` | highest symbol `GLIBC_2.39` |
-| `dpkg-deb -I` | `Depends: libwebkit2gtk-4.1-0, libgtk-3-0` only |
-| `dpkg-deb -c` | no MT5 bridge, no `NOTICE`, no `LICENSE`, no changelog, no man page |
-| GitHub Releases | `GET /releases/latest` → **404**, no tags, no releases |
-| Installed on this host | yes, `ezy-view 0.3.0` |
+| Check                             | Result                                                              |
+| --------------------------------- | ------------------------------------------------------------------- |
+| `npm run typecheck`               | clean                                                               |
+| `npm test`                        | 107 files, 1010 tests, all pass                                     |
+| `npm run lint`                    | 0 errors, 11 warnings                                               |
+| `npm audit --omit=dev`            | 0 vulnerabilities                                                   |
+| `cargo test`                      | not run in this pass (CI runs it)                                   |
+| `lintian EzyView_0.3.0_amd64.deb` | **4 errors, 2 warnings**                                            |
+| `objdump -T usr/bin/ezyview`      | highest symbol `GLIBC_2.39`                                         |
+| `dpkg-deb -I`                     | `Depends: libwebkit2gtk-4.1-0, libgtk-3-0` only                     |
+| `dpkg-deb -c`                     | no MT5 bridge, no `NOTICE`, no `LICENSE`, no changelog, no man page |
+| GitHub Releases                   | `GET /releases/latest` → **404**, no tags, no releases              |
+| Installed on this host            | yes, `ezy-view 0.3.0`                                               |
 
 Lintian output, verbatim:
 
@@ -75,28 +75,28 @@ all the margin, and the engine then refuses to close it.
 Severity: **P0** = lose/block money or trade control; **P1** = package is broken or unsupported;
 **P2** = wrong or misleading data, reliability; **P3** = polish.
 
-| ID | Sev | Finding | Evidence | Phase |
-|---|---|---|---|---|
-| F1 | P0 | Paper engine refuses to close a fully-margined position; `close`/`closeAll` silently report success | `packages/paper-trading/src/engine.ts:512`, `:274`, `:308`; `apps/desktop/src/trading.ts:219-234`, `:250-260` | 0 |
-| F2 | P0 | MT5 SL/TP amend sends the **symbol** where the bridge expects a **ticket**; every amend fails as "unknown ticket" | `apps/desktop/src/trading.ts:158`; `packages/mt5-adapter/src/transport.ts:180`; `tools/mt5-bridge/bridge.py:790-797` | 0 |
-| F3 | P0 | The same bridge path turns an omitted `sl`/`tp` into `0.0`, so amending one bracket level clears the other (e.g. "break even" wipes TP) | `tools/mt5-bridge/bridge.py:804`, `:813`; caller `apps/desktop/src/TradingPanel.tsx:215` | 0 |
-| F4 | P1 | The `.deb` does not contain `tools/mt5-bridge` or any launcher; MT5 cannot work from a packaged install | `tauri.conf.json:70-75`; `dpkg-deb -c` | 1 |
-| F5 | P1 | No GitHub Release, tag or release workflow exists; the in-app update check has nothing to find | `apps/desktop/src/updateCheck.ts:7`; GitHub API 404; `git tag` empty | 2 |
-| F6 | P1 | Debian metadata is non-compliant: malformed Maintainer, no `libc6` dependency, no changelog, no copyright, no man page, over-long description | lintian output above | 1 |
-| F7 | P1 | Binary requires glibc 2.39 but the package does not say so; on Mint 21 / Ubuntu 22.04 `dpkg -i` succeeds and the app dies at launch | `objdump`; `depends` from `dpkg-deb -I` | 1 |
-| F8 | P1 | No `LICENSE` / `NOTICE` / Debian copyright in the package, although the binary embeds Apache-2.0 Lightweight Charts | `NOTICE`; `dpkg-deb -c` | 1 |
-| F9 | P2 | MCP server is shipped but needs Node 22+, which is neither declared nor detected; on a stock Mint 22 `node` may be 18 or absent | `packages/mcp-server/package.json` build target; `docs/SETUP.md:56` | 1/5 |
-| F10 | P2 | Price precision loses FX digits: `precisionFor(1.085) = 3`; Depth of Market is hard-coded to 2 decimals; symbol metadata already carries `precision` | `apps/desktop/src/data.ts:64-70`; `apps/desktop/src/ChartPage.tsx:341`; `apps/desktop/src/OrderTicket.tsx:101` | 3 |
-| F11 | P2 | Daily loss / cooldown session resets at **UTC midnight**, not the trader's local or broker day; journal uses local `dateKey` | `apps/desktop/src/tradingSafety.ts:71-72` | 3 |
-| F12 | P2 | Time & Sales fabricates random trade sizes and calls them executed prints / "each trade tick" | `apps/desktop/src/TimeAndSales.tsx:47-69`, `:75`, `:97` | 3 |
-| F13 | P2 | Demo quote timers leak: every symbol ever quoted keeps a 1 Hz timer; `stopTicking` only fires when a watchlist row is removed | `apps/desktop/src/data.ts:283-305`; `packages/data-adapters/src/demo.ts:186-212`; `store.ts:788` | 3 |
-| F14 | P2 | A handful of quote pollers are `void quoteOf(...).then(...)` with no rejection handler, so a provider error becomes an unhandled rejection in the crash log | `ChartPage.tsx:672`, `TimeAndSales.tsx:95`, `TradePage.tsx:41`, `OrderTicket.tsx:87` | 3 |
-| F15 | P2 | Journal and screenshots live in `localStorage`; a quota overflow silently drops the write, and there is no full backup/restore path | `apps/desktop/src/journal.ts:104-140`; `store.ts:345-360` | 4 |
-| F16 | P2 | Ten panels still poll quotes on independent timers (known open item) | `MASTERPLAN.md` §24; interval grep | 4 |
-| F17 | P3 | `getPositions()` is documented as returning snapshots but returns live engine objects | `packages/paper-trading/src/engine.ts:181-183` | 3 |
-| F18 | P3 | Journal `expectancy` divides by all closed trades while the win rate ignores break-even in the loss term | `packages/journal/src/stats.ts:148-160` | 3 |
-| F19 | P3 | Packaging polish: no AppStream metainfo, no 48/64px icons, no man page, no `Keywords`/`GenericName` in the desktop entry | `dpkg-deb -c`; `.desktop` | 1 |
-| F20 | P3 | AppImage requires FUSE 2, which modern Ubuntu/Mint does not install by default; no documented fallback | release packaging | 2 |
+| ID  | Sev | Finding                                                                                                                                                     | Evidence                                                                                                             | Phase |
+| --- | --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ----- |
+| F1  | P0  | Paper engine refuses to close a fully-margined position; `close`/`closeAll` silently report success                                                         | `packages/paper-trading/src/engine.ts:512`, `:274`, `:308`; `apps/desktop/src/trading.ts:219-234`, `:250-260`        | 0     |
+| F2  | P0  | MT5 SL/TP amend sends the **symbol** where the bridge expects a **ticket**; every amend fails as "unknown ticket"                                           | `apps/desktop/src/trading.ts:158`; `packages/mt5-adapter/src/transport.ts:180`; `tools/mt5-bridge/bridge.py:790-797` | 0     |
+| F3  | P0  | The same bridge path turns an omitted `sl`/`tp` into `0.0`, so amending one bracket level clears the other (e.g. "break even" wipes TP)                     | `tools/mt5-bridge/bridge.py:804`, `:813`; caller `apps/desktop/src/TradingPanel.tsx:215`                             | 0     |
+| F4  | P1  | The `.deb` does not contain `tools/mt5-bridge` or any launcher; MT5 cannot work from a packaged install                                                     | `tauri.conf.json:70-75`; `dpkg-deb -c`                                                                               | 1     |
+| F5  | P1  | No GitHub Release, tag or release workflow exists; the in-app update check has nothing to find                                                              | `apps/desktop/src/updateCheck.ts:7`; GitHub API 404; `git tag` empty                                                 | 2     |
+| F6  | P1  | Debian metadata is non-compliant: malformed Maintainer, no `libc6` dependency, no changelog, no copyright, no man page, over-long description               | lintian output above                                                                                                 | 1     |
+| F7  | P1  | Binary requires glibc 2.39 but the package does not say so; on Mint 21 / Ubuntu 22.04 `dpkg -i` succeeds and the app dies at launch                         | `objdump`; `depends` from `dpkg-deb -I`                                                                              | 1     |
+| F8  | P1  | No `LICENSE` / `NOTICE` / Debian copyright in the package, although the binary embeds Apache-2.0 Lightweight Charts                                         | `NOTICE`; `dpkg-deb -c`                                                                                              | 1     |
+| F9  | P2  | MCP server is shipped but needs Node 22+, which is neither declared nor detected; on a stock Mint 22 `node` may be 18 or absent                             | `packages/mcp-server/package.json` build target; `docs/SETUP.md:56`                                                  | 1/5   |
+| F10 | P2  | Price precision loses FX digits: `precisionFor(1.085) = 3`; Depth of Market is hard-coded to 2 decimals; symbol metadata already carries `precision`        | `apps/desktop/src/data.ts:64-70`; `apps/desktop/src/ChartPage.tsx:341`; `apps/desktop/src/OrderTicket.tsx:101`       | 3     |
+| F11 | P2  | Daily loss / cooldown session resets at **UTC midnight**, not the trader's local or broker day; journal uses local `dateKey`                                | `apps/desktop/src/tradingSafety.ts:71-72`                                                                            | 3     |
+| F12 | P2  | Time & Sales fabricates random trade sizes and calls them executed prints / "each trade tick"                                                               | `apps/desktop/src/TimeAndSales.tsx:47-69`, `:75`, `:97`                                                              | 3     |
+| F13 | P2  | Demo quote timers leak: every symbol ever quoted keeps a 1 Hz timer; `stopTicking` only fires when a watchlist row is removed                               | `apps/desktop/src/data.ts:283-305`; `packages/data-adapters/src/demo.ts:186-212`; `store.ts:788`                     | 3     |
+| F14 | P2  | A handful of quote pollers are `void quoteOf(...).then(...)` with no rejection handler, so a provider error becomes an unhandled rejection in the crash log | `ChartPage.tsx:672`, `TimeAndSales.tsx:95`, `TradePage.tsx:41`, `OrderTicket.tsx:87`                                 | 3     |
+| F15 | P2  | Journal and screenshots live in `localStorage`; a quota overflow silently drops the write, and there is no full backup/restore path                         | `apps/desktop/src/journal.ts:104-140`; `store.ts:345-360`                                                            | 4     |
+| F16 | P2  | Ten panels still poll quotes on independent timers (known open item)                                                                                        | `MASTERPLAN.md` §24; interval grep                                                                                   | 4     |
+| F17 | P3  | `getPositions()` is documented as returning snapshots but returns live engine objects                                                                       | `packages/paper-trading/src/engine.ts:181-183`                                                                       | 3     |
+| F18 | P3  | Journal `expectancy` divides by all closed trades while the win rate ignores break-even in the loss term                                                    | `packages/journal/src/stats.ts:148-160`                                                                              | 3     |
+| F19 | P3  | Packaging polish: no AppStream metainfo, no 48/64px icons, no man page, no `Keywords`/`GenericName` in the desktop entry                                    | `dpkg-deb -c`; `.desktop`                                                                                            | 1     |
+| F20 | P3  | AppImage requires FUSE 2, which modern Ubuntu/Mint does not install by default; no documented fallback                                                      | release packaging                                                                                                    | 2     |
 
 Things previously reported that are **already fixed** and should not be re-scheduled: alerts/watchlist
 persistence, Pine zero-step and 100k-iteration guard, MCP envelope validation, bridge token support,
@@ -113,7 +113,7 @@ Effort: ~1 day. Depends on: nothing.
 
 #### F1 — Make reduce-only orders margin-free
 
-`validate()` charges margin for *every* order. Closing a position reduces margin, so it must not
+`validate()` charges margin for _every_ order. Closing a position reduces margin, so it must not
 require free margin.
 
 - Add an `isReducing(request)` check: an opposing side against an existing position.
@@ -526,15 +526,15 @@ removed or replaced; CandleViewer is pre-alpha and is not an architecture bluepr
 
 ## 4. Sequencing and release gates
 
-| Order | Phase | Why now | Ship gate |
-|---|---|---|---|
-| 1 | Phase 0 | Trading bugs block/erase user actions | tests + demo-account manual check |
-| 2 | Phase 1 | Package must be installable, legal and honest about requirements | lintian clean, licence files, glibc declared |
-| 3 | Phase 2 | Users need a place to download and a way to update | release artifact + signed updater + CI gates |
-| 4 | Phase 3 | Wrong prices and fake tape data erode trust | precision/tape/timezone tests |
-| 5 | Phase 4 | Journal loss and UI stalls are the next support burden | migration + backup test, measured perf |
-| 6 | Phase 5 | MT5 and keyring are the remaining integration risks | clean-install MT5/keyring/Wayland checks |
-| 7 | Phase 6 | New features only after the base is trustworthy | each item independently shippable |
+| Order | Phase   | Why now                                                          | Ship gate                                    |
+| ----- | ------- | ---------------------------------------------------------------- | -------------------------------------------- |
+| 1     | Phase 0 | Trading bugs block/erase user actions                            | tests + demo-account manual check            |
+| 2     | Phase 1 | Package must be installable, legal and honest about requirements | lintian clean, licence files, glibc declared |
+| 3     | Phase 2 | Users need a place to download and a way to update               | release artifact + signed updater + CI gates |
+| 4     | Phase 3 | Wrong prices and fake tape data erode trust                      | precision/tape/timezone tests                |
+| 5     | Phase 4 | Journal loss and UI stalls are the next support burden           | migration + backup test, measured perf       |
+| 6     | Phase 5 | MT5 and keyring are the remaining integration risks              | clean-install MT5/keyring/Wayland checks     |
+| 7     | Phase 6 | New features only after the base is trustworthy                  | each item independently shippable            |
 
 Phases 3 and 4 can run in parallel with Phase 2 once Phase 0/1 are on `main`. Phase 6 is not a
 release blocker for 0.3.1.
@@ -591,7 +591,7 @@ import { PaperTradingEngine } from "/absolute/path/to/EzyView/packages/paper-tra
 const e = new PaperTradingEngine({ startingBalance: 100000, maxLeverage: 100 });
 e.updateQuote("X", 100);
 await e.placeOrder({ symbol: "X", side: "buy", type: "market", qty: 100000 });
-console.log(await e.getAccount());       // margin 100000, freeMargin 0
+console.log(await e.getAccount()); // margin 100000, freeMargin 0
 console.log((await e.closeAll()).map((o) => [o.status, o.reason])); // [['rejected','not enough free margin']]
 ```
 

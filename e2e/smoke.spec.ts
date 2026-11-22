@@ -129,3 +129,29 @@ test("the chart cell mounts with a canvas", async ({ page }) => {
   // signal that the engine mounted rather than crashed.
   await expect(cell.locator("canvas").first()).toBeAttached();
 });
+
+test("every section page renders without uncaught errors", async ({ page }) => {
+  // Deeper than the route check above: each page must actually mount its
+  // content, not just resolve the URL. Journal and Strategies lazy-load their
+  // panels, so we give each navigation a beat before checking for pageerrors.
+  const errors: string[] = [];
+  page.on("pageerror", (err) => errors.push(err.message));
+
+  const sections = [
+    "/markets",
+    "/trade",
+    "/research",
+    "/journal",
+    "/strategies",
+    "/alerts",
+    "/settings",
+  ];
+  /* eslint-disable no-await-in-loop -- sequential navigation */
+  for (const path of sections) {
+    await page.goto(`/#${path}`);
+    await expect(page.getByRole("navigation", { name: "Sections" })).toBeVisible();
+    await page.waitForTimeout(300);
+  }
+  /* eslint-enable no-await-in-loop */
+  expect(errors).toEqual([]);
+});

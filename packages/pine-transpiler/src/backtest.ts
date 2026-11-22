@@ -60,7 +60,7 @@ export interface BacktestOptions {
  */
 export function backtest(orders: PineOrder[], opts: BacktestOptions): BacktestResult {
   const { close, initialCash = 10_000 } = opts;
-  const fillOnClose = opts.fillOnClose ?? (opts.open === undefined);
+  const fillOnClose = opts.fillOnClose ?? opts.open === undefined;
   const slippage = opts.slippage ?? 0;
   const commission = opts.commission ?? 0;
   const multiplier = opts.contractMultiplier ?? 1;
@@ -103,8 +103,10 @@ export function backtest(orders: PineOrder[], opts: BacktestOptions): BacktestRe
     if (closeBar === undefined || Number.isNaN(closeBar)) continue;
 
     const openBar = opts.open?.[b] ?? closeBar;
-    const highBar = opts.high?.[b] ?? (opts.open !== undefined ? Math.max(openBar, closeBar) : closeBar);
-    const lowBar = opts.low?.[b] ?? (opts.open !== undefined ? Math.min(openBar, closeBar) : closeBar);
+    const highBar =
+      opts.high?.[b] ?? (opts.open !== undefined ? Math.max(openBar, closeBar) : closeBar);
+    const lowBar =
+      opts.low?.[b] ?? (opts.open !== undefined ? Math.min(openBar, closeBar) : closeBar);
 
     // 1. Check intrabar stop/limit brackets for positions open coming into bar b.
     for (const [key, pos] of Array.from(openPositions.entries())) {
@@ -181,7 +183,9 @@ export function backtest(orders: PineOrder[], opts: BacktestOptions): BacktestRe
       if (order.action === "exit") {
         const key = order.fromEntry ?? order.id ?? "";
         // Look up position by fromEntry/id, or first position if key matches or is default
-        const pos = openPositions.get(key) ?? (openPositions.size === 1 ? openPositions.values().next().value : undefined);
+        const pos =
+          openPositions.get(key) ??
+          (openPositions.size === 1 ? openPositions.values().next().value : undefined);
         if (!pos) continue;
 
         if (order.stop !== undefined || order.limit !== undefined || order.trail !== undefined) {
@@ -309,7 +313,12 @@ export function backtest(orders: PineOrder[], opts: BacktestOptions): BacktestRe
  * Updates the position's extreme as a side effect so the trail ratchets.
  */
 function trailExitPrice(
-  pos: { side: "long" | "short"; price: number; trailExtreme?: number; bracket?: { trail?: { points?: number; offset?: number } } },
+  pos: {
+    side: "long" | "short";
+    price: number;
+    trailExtreme?: number;
+    bracket?: { trail?: { points?: number; offset?: number } };
+  },
   highBar: number,
   lowBar: number,
   slippage: number,
@@ -327,7 +336,8 @@ function trailExitPrice(
   pos.trailExtreme = extreme;
 
   const offset = trail.offset ?? 0;
-  const activated = pos.side === "long" ? extreme - pos.price >= offset : pos.price - extreme >= offset;
+  const activated =
+    pos.side === "long" ? extreme - pos.price >= offset : pos.price - extreme >= offset;
   if (!activated) return null;
 
   const level = pos.side === "long" ? extreme - trail.points : extreme + trail.points;
@@ -354,12 +364,18 @@ function closePosition(
     exitPrice,
     qty: pos.qty,
     pnl: net,
-    returnPct: pos.price === 0 ? 0 : ((exitPrice - pos.price) / pos.price) * (pos.side === "long" ? 1 : -1),
+    returnPct:
+      pos.price === 0 ? 0 : ((exitPrice - pos.price) / pos.price) * (pos.side === "long" ? 1 : -1),
   });
 }
 
 /** Walk trades bar by bar, carrying open-position PnL into the equity curve. */
-function buildEquity(trades: Trade[], close: number[], initialCash: number, equity: number[]): void {
+function buildEquity(
+  trades: Trade[],
+  close: number[],
+  initialCash: number,
+  equity: number[],
+): void {
   let cash = initialCash;
   const byExit = new Map<number, Trade[]>();
   for (const t of trades) {

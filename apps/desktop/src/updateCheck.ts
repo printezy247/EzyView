@@ -82,6 +82,9 @@ export async function checkOnStartup(): Promise<void> {
   }
   const result = await checkForUpdate();
   if (result.kind === "available") {
-    void notifyNative("EzyView update available", `Version ${result.version} is out. Settings → Desktop → Check for updates.`);
+    void notifyNative(
+      "EzyView update available",
+      `Version ${result.version} is out. Settings → Desktop → Check for updates.`,
+    );
   }
 }

@@ -47,5 +47,8 @@ export function normalizePair(input: string): [string, string] | null {
  */
 export function formatAmount(value: number, precision: number): string {
   const decimals = Math.abs(value) > 0 && Math.abs(value) < 1 ? Math.max(4, precision) : precision;
-  return value.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
 }

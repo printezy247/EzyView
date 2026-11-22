@@ -62,8 +62,14 @@ describe("screener", () => {
   });
 
   it("sorts with nulls last and filters by class/text", () => {
-    expect(runScreener(rows, { ...base, sortBy: "rsi" }).map((r) => r.ticker)).toEqual(["AAA", "BBB", "CCC"]);
-    expect(runScreener(rows, { ...base, assetClass: "crypto" }).map((r) => r.ticker)).toEqual(["CCC"]);
+    expect(runScreener(rows, { ...base, sortBy: "rsi" }).map((r) => r.ticker)).toEqual([
+      "AAA",
+      "BBB",
+      "CCC",
+    ]);
+    expect(runScreener(rows, { ...base, assetClass: "crypto" }).map((r) => r.ticker)).toEqual([
+      "CCC",
+    ]);
     expect(runScreener(rows, { ...base, text: "bb" }).map((r) => r.ticker)).toEqual(["BBB"]);
   });
 
@@ -71,16 +77,26 @@ describe("screener", () => {
     const up = Array.from({ length: 30 }, (_, i) => 100 + i);
     expect(rsiOf(up)).toBe(100);
     expect(rsiOf([1, 2, 3])).toBeNull();
-    const built = rowFromBars({ symbol: "X:A", ticker: "A", name: "A", assetClass: "stock" }, up.map((c) => ({ high: c + 1, close: c, volume: 10 })));
+    const built = rowFromBars(
+      { symbol: "X:A", ticker: "A", name: "A", assetClass: "stock" },
+      up.map((c) => ({ high: c + 1, close: c, volume: 10 })),
+    );
     expect(built?.changePct).toBeCloseTo(29, 5);
     expect(built?.fromHighPct).toBeLessThan(0);
-    expect(rowFromBars({ symbol: "X:A", ticker: "A", name: "A", assetClass: "stock" }, [])).toBeNull();
+    expect(
+      rowFromBars({ symbol: "X:A", ticker: "A", name: "A", assetClass: "stock" }, []),
+    ).toBeNull();
   });
 });
 
 describe("heatmap", () => {
   it("fills the rectangle with area proportional to weight", () => {
-    const items = [10, 6, 6, 4, 3, 2, 1].map((weight, i) => ({ id: `${i}`, label: `${i}`, weight, changePct: i - 3 }));
+    const items = [10, 6, 6, 4, 3, 2, 1].map((weight, i) => ({
+      id: `${i}`,
+      label: `${i}`,
+      weight,
+      changePct: i - 3,
+    }));
     const tiles = layoutHeatmap(items, 400, 300);
     expect(tiles).toHaveLength(items.length);
     const total = tiles.reduce((s, t) => s + t.w * t.h, 0);

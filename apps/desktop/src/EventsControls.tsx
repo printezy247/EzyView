@@ -6,11 +6,31 @@ type Key = "earnings" | "economic" | "high" | "medium" | "low";
 
 /** One table drives the bottom bar chips, the Settings checkboxes and the right-click menu. */
 export const EVENT_SWITCHES: { key: Key; label: string; description: string }[] = [
-  { key: "earnings", label: "Earnings", description: "Show company earnings dates as dots on the chart" },
-  { key: "economic", label: "Economic", description: "Show economic-calendar events as markers and vertical lines" },
-  { key: "high", label: "High", description: "High-impact events, such as rate decisions and jobs reports" },
-  { key: "medium", label: "Medium", description: "Medium-impact events, such as CPI-style data releases" },
-  { key: "low", label: "Low", description: "Low-impact events, such as minor speeches and minutes" },
+  {
+    key: "earnings",
+    label: "Earnings",
+    description: "Show company earnings dates as dots on the chart",
+  },
+  {
+    key: "economic",
+    label: "Economic",
+    description: "Show economic-calendar events as markers and vertical lines",
+  },
+  {
+    key: "high",
+    label: "High",
+    description: "High-impact events, such as rate decisions and jobs reports",
+  },
+  {
+    key: "medium",
+    label: "Medium",
+    description: "Medium-impact events, such as CPI-style data releases",
+  },
+  {
+    key: "low",
+    label: "Low",
+    description: "Low-impact events, such as minor speeches and minutes",
+  },
 ];
 
 export const eventSwitchOn = (o: EventOptions, key: Key): boolean =>
@@ -39,7 +59,10 @@ export function EventsControls({ layout }: { layout: "bar" | "panel" }) {
     return (
       <ul className="space-y-1.5" aria-label="Chart events">
         {EVENT_SWITCHES.map(({ key, label, description }) => (
-          <li key={key} className={key === "high" || key === "medium" || key === "low" ? "ml-5" : ""}>
+          <li
+            key={key}
+            className={key === "high" || key === "medium" || key === "low" ? "ml-5" : ""}
+          >
             <Checkbox
               label={label}
               hint={description}

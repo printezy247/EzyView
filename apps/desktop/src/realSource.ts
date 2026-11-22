@@ -28,7 +28,8 @@ export function describeRealSource(source: RealSource): RealSourceVerdict {
     return { kind: "unknown", key: "unknown" };
   }
   // trade_mode 1 = real, 0 = demo. Anything else is not a trade mode we know.
-  if (source.tradeMode === 1) return { kind: "real", key: `attached|${String(source.login ?? "")}` };
+  if (source.tradeMode === 1)
+    return { kind: "real", key: `attached|${String(source.login ?? "")}` };
   if (source.tradeMode === 0) return { kind: "demo", key: null };
   return { kind: "unknown", key: `attached|${String(source.login ?? "")}` };
 }

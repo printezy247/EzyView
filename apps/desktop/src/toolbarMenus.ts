@@ -207,17 +207,15 @@ export function buildToolbarMenus(input: ToolbarMenuInput): ToolbarMenuEntries {
 
   const replayActive = replayBar !== null;
 
-  const sourceEntries: MenuEntry[] = sourceOpts.map(
-    (o): MenuEntry => ({
-      kind: "radio",
-      id: `source-${o.id}`,
-      label: o.label,
-      selected: chart.dataSource === o.id,
-      ...(o.disabled ? { disabled: true } : {}),
-      ...(o.hint ? { hint: o.hint } : {}),
-      onSelect: () => actions.updateActive({ dataSource: o.id }),
-    }),
-  );
+  const sourceEntries: MenuEntry[] = sourceOpts.map((o): MenuEntry => ({
+    kind: "radio",
+    id: `source-${o.id}`,
+    label: o.label,
+    selected: chart.dataSource === o.id,
+    ...(o.disabled ? { disabled: true } : {}),
+    ...(o.hint ? { hint: o.hint } : {}),
+    onSelect: () => actions.updateActive({ dataSource: o.id }),
+  }));
   if (sourceOpts.some((o) => o.id === "twelvedata")) {
     sourceEntries.push(
       { kind: "separator", id: "source-sep" },
@@ -227,18 +225,66 @@ export function buildToolbarMenus(input: ToolbarMenuInput): ToolbarMenuEntries {
 
   const quickSymbols: MenuEntry[] = [
     { kind: "label", id: "qs-metals", label: "Precious Metals & Forex" },
-    { kind: "radio", id: "sym-xau", label: "OANDA:XAUUSD — Gold / US Dollar", selected: chart.symbol === "OANDA:XAUUSD", onSelect: () => actions.setSymbol("OANDA:XAUUSD") },
-    { kind: "radio", id: "sym-eur", label: "FX:EURUSD — Euro / US Dollar", selected: chart.symbol === "FX:EURUSD", onSelect: () => actions.setSymbol("FX:EURUSD") },
-    { kind: "radio", id: "sym-gbp", label: "FX:GBPUSD — British Pound / US Dollar", selected: chart.symbol === "FX:GBPUSD", onSelect: () => actions.setSymbol("FX:GBPUSD") },
+    {
+      kind: "radio",
+      id: "sym-xau",
+      label: "OANDA:XAUUSD — Gold / US Dollar",
+      selected: chart.symbol === "OANDA:XAUUSD",
+      onSelect: () => actions.setSymbol("OANDA:XAUUSD"),
+    },
+    {
+      kind: "radio",
+      id: "sym-eur",
+      label: "FX:EURUSD — Euro / US Dollar",
+      selected: chart.symbol === "FX:EURUSD",
+      onSelect: () => actions.setSymbol("FX:EURUSD"),
+    },
+    {
+      kind: "radio",
+      id: "sym-gbp",
+      label: "FX:GBPUSD — British Pound / US Dollar",
+      selected: chart.symbol === "FX:GBPUSD",
+      onSelect: () => actions.setSymbol("FX:GBPUSD"),
+    },
     { kind: "separator", id: "qs-s1" },
     { kind: "label", id: "qs-crypto", label: "Crypto Spot" },
-    { kind: "radio", id: "sym-btc", label: "BINANCE:BTCUSDT — Bitcoin / USDT", selected: chart.symbol === "BINANCE:BTCUSDT", onSelect: () => actions.setSymbol("BINANCE:BTCUSDT") },
-    { kind: "radio", id: "sym-eth", label: "BINANCE:ETHUSDT — Ethereum / USDT", selected: chart.symbol === "BINANCE:ETHUSDT", onSelect: () => actions.setSymbol("BINANCE:ETHUSDT") },
-    { kind: "radio", id: "sym-sol", label: "BINANCE:SOLUSDT — Solana / USDT", selected: chart.symbol === "BINANCE:SOLUSDT", onSelect: () => actions.setSymbol("BINANCE:SOLUSDT") },
+    {
+      kind: "radio",
+      id: "sym-btc",
+      label: "BINANCE:BTCUSDT — Bitcoin / USDT",
+      selected: chart.symbol === "BINANCE:BTCUSDT",
+      onSelect: () => actions.setSymbol("BINANCE:BTCUSDT"),
+    },
+    {
+      kind: "radio",
+      id: "sym-eth",
+      label: "BINANCE:ETHUSDT — Ethereum / USDT",
+      selected: chart.symbol === "BINANCE:ETHUSDT",
+      onSelect: () => actions.setSymbol("BINANCE:ETHUSDT"),
+    },
+    {
+      kind: "radio",
+      id: "sym-sol",
+      label: "BINANCE:SOLUSDT — Solana / USDT",
+      selected: chart.symbol === "BINANCE:SOLUSDT",
+      onSelect: () => actions.setSymbol("BINANCE:SOLUSDT"),
+    },
     { kind: "separator", id: "qs-s2" },
     { kind: "label", id: "qs-eq", label: "Equities & Indices" },
-    { kind: "radio", id: "sym-spx", label: "SP:SPX — S&P 500 Index", selected: chart.symbol === "SP:SPX", onSelect: () => actions.setSymbol("SP:SPX") },
-    { kind: "radio", id: "sym-aapl", label: "NASDAQ:AAPL — Apple Inc.", selected: chart.symbol === "NASDAQ:AAPL", onSelect: () => actions.setSymbol("NASDAQ:AAPL") },
+    {
+      kind: "radio",
+      id: "sym-spx",
+      label: "SP:SPX — S&P 500 Index",
+      selected: chart.symbol === "SP:SPX",
+      onSelect: () => actions.setSymbol("SP:SPX"),
+    },
+    {
+      kind: "radio",
+      id: "sym-aapl",
+      label: "NASDAQ:AAPL — Apple Inc.",
+      selected: chart.symbol === "NASDAQ:AAPL",
+      onSelect: () => actions.setSymbol("NASDAQ:AAPL"),
+    },
   ];
 
   const templateEntries: MenuEntry[] = [
@@ -278,29 +324,26 @@ export function buildToolbarMenus(input: ToolbarMenuInput): ToolbarMenuEntries {
         notice.alert("Template saved", `Saved "${name}" to Templates.`);
       },
     },
-    ...chartTemplates.map(
-      (t): MenuEntry => ({
-        kind: "action",
-        id: `tpl-${t.id}`,
-        label: `Apply: ${t.name}`,
-        onSelect: () => applyChartTemplate(t.id),
-      }),
-    ),
+    ...chartTemplates.map((t): MenuEntry => ({
+      kind: "action",
+      id: `tpl-${t.id}`,
+      label: `Apply: ${t.name}`,
+      onSelect: () => applyChartTemplate(t.id),
+    })),
   ];
 
-  const gridEntries: MenuEntry[] = GRID_MODES.map(
-    (g): MenuEntry => ({
-      kind: "radio",
-      id: `qgrid-${g.id}`,
-      label: `${g.label} (${g.id})`,
-      selected: chart.grid === g.id,
-      onSelect: () => actions.setGrid(g.id),
-    }),
-  );
+  const gridEntries: MenuEntry[] = GRID_MODES.map((g): MenuEntry => ({
+    kind: "radio",
+    id: `qgrid-${g.id}`,
+    label: `${g.label} (${g.id})`,
+    selected: chart.grid === g.id,
+    onSelect: () => actions.setGrid(g.id),
+  }));
 
   const dockTabMenu = (id: DockTabId, label: string) =>
     toggle(id, label, dockTabId === id, () => onSelectDockTab(id));
-  const tradingPanel = () => toggle("trading", "Order ticket & positions", tradingOpen, onToggleTrading);
+  const tradingPanel = () =>
+    toggle("trading", "Order ticket & positions", tradingOpen, onToggleTrading);
 
   const intervalEntries: MenuEntry[] = [];
   for (const group of RESOLUTION_GROUPS) {
@@ -327,15 +370,13 @@ export function buildToolbarMenus(input: ToolbarMenuInput): ToolbarMenuEntries {
     onSelect: () => setIntervalOpen(true),
   });
 
-  const typeEntries: MenuEntry[] = CHART_TYPES.map(
-    (t): MenuEntry => ({
-      kind: "radio",
-      id: t.id,
-      label: t.label,
-      selected: t.id === chart.chartType,
-      onSelect: () => actions.updateActive({ chartType: t.id }),
-    }),
-  );
+  const typeEntries: MenuEntry[] = CHART_TYPES.map((t): MenuEntry => ({
+    kind: "radio",
+    id: t.id,
+    label: t.label,
+    selected: t.id === chart.chartType,
+    onSelect: () => actions.updateActive({ chartType: t.id }),
+  }));
 
   const studyEntries: MenuEntry[] = [
     { kind: "action", id: "indicators", label: "Indicators…", onSelect: onOpenIndicators },
@@ -344,11 +385,23 @@ export function buildToolbarMenus(input: ToolbarMenuInput): ToolbarMenuEntries {
 
   const analysisEntries: MenuEntry[] = [
     { kind: "label", id: "research", label: "Research" },
-    { kind: "action", id: "fundamentals", label: "Fundamentals & screener", onSelect: () => navigate("/research?tab=fundamentals") },
-    { kind: "action", id: "options", label: "Options chain", onSelect: () => navigate("/research?tab=options") },
+    {
+      kind: "action",
+      id: "fundamentals",
+      label: "Fundamentals & screener",
+      onSelect: () => navigate("/research?tab=fundamentals"),
+    },
+    {
+      kind: "action",
+      id: "options",
+      label: "Options chain",
+      onSelect: () => navigate("/research?tab=options"),
+    },
     { kind: "separator", id: "s-tools" },
     { kind: "label", id: "tools", label: "Tools" },
-    toggle("replay", "Bar replay", replayActive, () => actions.setReplay(replayBar === null ? -30 : null)),
+    toggle("replay", "Bar replay", replayActive, () =>
+      actions.setReplay(replayBar === null ? -30 : null),
+    ),
     { kind: "action", id: "alerts", label: "Price alerts…", onSelect: onOpenAlerts },
     { kind: "separator", id: "s-data" },
     { kind: "label", id: "data", label: "Data" },
@@ -359,20 +412,23 @@ export function buildToolbarMenus(input: ToolbarMenuInput): ToolbarMenuEntries {
     tradingPanel(),
     dockTabMenu("depth", "Depth of market"),
     { kind: "separator", id: "s-review" },
-    { kind: "action", id: "journal", label: "Trading journal", onSelect: () => navigate("/journal") },
+    {
+      kind: "action",
+      id: "journal",
+      label: "Trading journal",
+      onSelect: () => navigate("/journal"),
+    },
   ];
 
   const viewEntries: MenuEntry[] = [
     { kind: "label", id: "layout", label: "Layout" },
-    ...GRID_MODES.map(
-      (g): MenuEntry => ({
-        kind: "radio",
-        id: `grid-${g.id}`,
-        label: g.label,
-        selected: chart.grid === g.id,
-        onSelect: () => actions.setGrid(g.id),
-      }),
-    ),
+    ...GRID_MODES.map((g): MenuEntry => ({
+      kind: "radio",
+      id: `grid-${g.id}`,
+      label: g.label,
+      selected: chart.grid === g.id,
+      onSelect: () => actions.setGrid(g.id),
+    })),
     { kind: "separator", id: "s-panels" },
     { kind: "label", id: "panels", label: "Panels" },
     dockTabMenu("watchlist", "Watchlist"),
@@ -380,20 +436,24 @@ export function buildToolbarMenus(input: ToolbarMenuInput): ToolbarMenuEntries {
     dockTabMenu("tape", "Time & sales"),
     { kind: "separator", id: "s-drawing" },
     { kind: "label", id: "drawing", label: "Drawing" },
-    ...MAGNET_MODES.map(
-      (m): MenuEntry => ({
-        kind: "radio",
-        id: `magnet-${m.id}`,
-        label: m.label,
-        selected: magnet === m.id,
-        onSelect: () => setMagnet(m.id),
-      }),
-    ),
+    ...MAGNET_MODES.map((m): MenuEntry => ({
+      kind: "radio",
+      id: `magnet-${m.id}`,
+      label: m.label,
+      selected: magnet === m.id,
+      onSelect: () => setMagnet(m.id),
+    })),
     { kind: "separator", id: "s-chart" },
     { kind: "label", id: "chart", label: "Chart" },
-    toggle("volume", "Volume", chart.showVolume, () => actions.updateActive({ showVolume: !chart.showVolume })),
-    toggle("volume-profile", "Volume profile", chart.showVolumeProfile, () => actions.updateActive({ showVolumeProfile: !chart.showVolumeProfile })),
-    toggle("grid", "Grid", chart.showGrid, () => actions.updateActive({ showGrid: !chart.showGrid })),
+    toggle("volume", "Volume", chart.showVolume, () =>
+      actions.updateActive({ showVolume: !chart.showVolume }),
+    ),
+    toggle("volume-profile", "Volume profile", chart.showVolumeProfile, () =>
+      actions.updateActive({ showVolumeProfile: !chart.showVolumeProfile }),
+    ),
+    toggle("grid", "Grid", chart.showGrid, () =>
+      actions.updateActive({ showGrid: !chart.showGrid }),
+    ),
     { kind: "separator", id: "s-crosshair" },
     { kind: "label", id: "crosshair", label: "Crosshair" },
     ...(
@@ -402,16 +462,16 @@ export function buildToolbarMenus(input: ToolbarMenuInput): ToolbarMenuEntries {
         { id: "magnet", label: "Magnet (snap to OHLC)" },
         { id: "hidden", label: "Hidden" },
       ] as const
-    ).map(
-      (m): MenuEntry => ({
-        kind: "radio",
-        id: `crosshair-${m.id}`,
-        label: m.label,
-        selected: chart.crosshairMode === m.id,
-        onSelect: () => actions.updateActive({ crosshairMode: m.id }),
-      }),
+    ).map((m): MenuEntry => ({
+      kind: "radio",
+      id: `crosshair-${m.id}`,
+      label: m.label,
+      selected: chart.crosshairMode === m.id,
+      onSelect: () => actions.updateActive({ crosshairMode: m.id }),
+    })),
+    toggle("crosshair-sync", "Sync across charts", crosshairSync, () =>
+      setCrosshairSync(!crosshairSync),
     ),
-    toggle("crosshair-sync", "Sync across charts", crosshairSync, () => setCrosshairSync(!crosshairSync)),
     { kind: "separator", id: "s-scale" },
     { kind: "label", id: "scale", label: "Price scale" },
     ...(
@@ -420,29 +480,31 @@ export function buildToolbarMenus(input: ToolbarMenuInput): ToolbarMenuEntries {
         { id: "log", label: "Logarithmic" },
         { id: "percentage", label: "Percentage" },
       ] as const
-    ).map(
-      (m): MenuEntry => ({
-        kind: "radio",
-        id: `scale-${m.id}`,
-        label: m.label,
-        selected: chart.priceScale === m.id,
-        onSelect: () => actions.updateActive({ priceScale: m.id }),
-      }),
+    ).map((m): MenuEntry => ({
+      kind: "radio",
+      id: `scale-${m.id}`,
+      label: m.label,
+      selected: chart.priceScale === m.id,
+      onSelect: () => actions.updateActive({ priceScale: m.id }),
+    })),
+    toggle("invert-scale", "Invert scale", chart.invertScale, () =>
+      actions.updateActive({ invertScale: !chart.invertScale }),
     ),
-    toggle("invert-scale", "Invert scale", chart.invertScale, () => actions.updateActive({ invertScale: !chart.invertScale })),
     { kind: "separator", id: "s-time" },
     { kind: "label", id: "time-axis", label: "Time axis" },
-    ...TIMEZONES.map(
-      (tz): MenuEntry => ({
-        kind: "radio",
-        id: `tz-${tz.id}`,
-        label: tz.label,
-        selected: (chart.timezone ?? "") === tz.id,
-        onSelect: () => actions.updateActive({ timezone: tz.id === "" ? undefined : tz.id }),
-      }),
+    ...TIMEZONES.map((tz): MenuEntry => ({
+      kind: "radio",
+      id: `tz-${tz.id}`,
+      label: tz.label,
+      selected: (chart.timezone ?? "") === tz.id,
+      onSelect: () => actions.updateActive({ timezone: tz.id === "" ? undefined : tz.id }),
+    })),
+    toggle("watermark", "Watermark", chart.watermark, () =>
+      actions.updateActive({ watermark: !chart.watermark }),
     ),
-    toggle("watermark", "Watermark", chart.watermark, () => actions.updateActive({ watermark: !chart.watermark })),
-    toggle("session-breaks", "Session breaks", chart.sessionBreaks, () => actions.updateActive({ showSessionBreaks: chart.sessionBreaks === false })),
+    toggle("session-breaks", "Session breaks", chart.sessionBreaks, () =>
+      actions.updateActive({ showSessionBreaks: chart.sessionBreaks === false }),
+    ),
     { kind: "separator", id: "s-theme" },
     { kind: "label", id: "appearance", label: "Appearance" },
     ...(
@@ -451,28 +513,47 @@ export function buildToolbarMenus(input: ToolbarMenuInput): ToolbarMenuEntries {
         { id: "light", label: "Light theme" },
         { id: "tokyo", label: "Tokyo Night" },
       ] as const
-    ).map(
-      (t): MenuEntry => ({
-        kind: "radio",
-        id: t.id,
-        label: t.label,
-        selected: chart.theme === t.id,
-        onSelect: () => actions.updateActive({ theme: t.id }),
-      }),
-    ),
+    ).map((t): MenuEntry => ({
+      kind: "radio",
+      id: t.id,
+      label: t.label,
+      selected: chart.theme === t.id,
+      onSelect: () => actions.updateActive({ theme: t.id }),
+    })),
     { kind: "separator", id: "s-window" },
     { kind: "label", id: "window", label: "Window" },
     { kind: "action", id: "new-window", label: "Open chart in new window", onSelect: onOpenWindow },
-    { kind: "action", id: "zen", label: "Fullscreen (hide tabs)", hint: "F11", onSelect: () => useZen.getState().toggle() },
-    { kind: "action", id: "palette", label: "Search features…", hint: PALETTE_KEY, onSelect: () => setPaletteOpen(true) },
+    {
+      kind: "action",
+      id: "zen",
+      label: "Fullscreen (hide tabs)",
+      hint: "F11",
+      onSelect: () => useZen.getState().toggle(),
+    },
+    {
+      kind: "action",
+      id: "palette",
+      label: "Search features…",
+      hint: PALETTE_KEY,
+      onSelect: () => setPaletteOpen(true),
+    },
   ];
 
   const exportEntries: MenuEntry[] = buildExportEntries(exportApi);
 
-  const navCommands = [...buildNavCommands((to) => navigate(to)), ...buildSubViewCommands((to) => navigate(to))];
+  const navCommands = [
+    ...buildNavCommands((to) => navigate(to)),
+    ...buildSubViewCommands((to) => navigate(to)),
+  ];
   const navGroup: CommandGroup = {
     title: "Go to",
-    entries: navCommands.map((c) => ({ kind: "action" as const, id: c.id, label: c.label, hint: c.hint, onSelect: c.run })),
+    entries: navCommands.map((c) => ({
+      kind: "action" as const,
+      id: c.id,
+      label: c.label,
+      hint: c.hint,
+      onSelect: c.run,
+    })),
   };
 
   const groups: CommandGroup[] = [
@@ -487,6 +568,18 @@ export function buildToolbarMenus(input: ToolbarMenuInput): ToolbarMenuEntries {
     { title: "Export", entries: exportEntries },
   ];
 
-
-  return { intervalEntries, typeEntries, sourceEntries, quickSymbols, templateEntries, gridEntries, studyEntries, analysisEntries, tradeEntries, viewEntries, exportEntries, groups };
+  return {
+    intervalEntries,
+    typeEntries,
+    sourceEntries,
+    quickSymbols,
+    templateEntries,
+    gridEntries,
+    studyEntries,
+    analysisEntries,
+    tradeEntries,
+    viewEntries,
+    exportEntries,
+    groups,
+  };
 }

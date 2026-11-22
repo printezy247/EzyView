@@ -13,11 +13,16 @@
  */
 export function compositeCanvasesToPng(container: Element, background = "#0e1117"): string | null {
   if (typeof document === "undefined") return null;
-  const canvases = [...container.querySelectorAll("canvas")].filter((c): c is HTMLCanvasElement => c instanceof HTMLCanvasElement);
+  const canvases = [...container.querySelectorAll("canvas")].filter(
+    (c): c is HTMLCanvasElement => c instanceof HTMLCanvasElement,
+  );
   if (canvases.length === 0) return null;
 
   const hostRect = container.getBoundingClientRect();
-  const dpr = typeof window !== "undefined" && window.devicePixelRatio ? Math.max(1, window.devicePixelRatio) : 1;
+  const dpr =
+    typeof window !== "undefined" && window.devicePixelRatio
+      ? Math.max(1, window.devicePixelRatio)
+      : 1;
   const out = document.createElement("canvas");
   const cssWidth = Math.max(1, Math.round(hostRect.width));
   const cssHeight = Math.max(1, Math.round(hostRect.height));
@@ -33,7 +38,13 @@ export function compositeCanvasesToPng(container: Element, background = "#0e1117
     const rect = canvas.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) continue;
     try {
-      ctx.drawImage(canvas, rect.left - hostRect.left, rect.top - hostRect.top, rect.width, rect.height);
+      ctx.drawImage(
+        canvas,
+        rect.left - hostRect.left,
+        rect.top - hostRect.top,
+        rect.width,
+        rect.height,
+      );
     } catch {
       // A zero-sized or backing-store-less layer is skipped, never fatal.
     }

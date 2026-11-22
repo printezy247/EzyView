@@ -40,7 +40,8 @@ const ctx = (over: Partial<ChartMenuContext> = {}): ChartMenuContext => ({
   ...over,
 });
 
-const labels = (entries: MenuEntry[]) => entries.filter((e) => "label" in e).map((e) => (e as { label: string }).label);
+const labels = (entries: MenuEntry[]) =>
+  entries.filter((e) => "label" in e).map((e) => (e as { label: string }).label);
 const find = (entries: MenuEntry[], id: string) => entries.find((e) => e.id === id);
 
 describe("buildChartMenu", () => {
@@ -55,24 +56,43 @@ describe("buildChartMenu", () => {
     expect(find(off, "sell-limit")).toBeUndefined();
     const on = buildChartMenu(ctx({ mt5: true }));
     expect(labels(on)).toEqual(
-      expect.arrayContaining(["Sell XAUUSD @ 4,165.89 limit", "Buy XAUUSD @ 4,165.89 stop", "Add order on XAUUSD at 4,165.89…"]),
+      expect.arrayContaining([
+        "Sell XAUUSD @ 4,165.89 limit",
+        "Buy XAUUSD @ 4,165.89 stop",
+        "Add order on XAUUSD at 4,165.89…",
+      ]),
     );
   });
 
   it("disables Paste until something is copied", () => {
     expect((find(buildChartMenu(ctx()), "paste") as { disabled?: boolean }).disabled).toBe(true);
-    expect((find(buildChartMenu(ctx({ hasClipboard: true })), "paste") as { disabled?: boolean }).disabled).toBe(false);
+    expect(
+      (find(buildChartMenu(ctx({ hasClipboard: true })), "paste") as { disabled?: boolean })
+        .disabled,
+    ).toBe(false);
   });
 
   it("flips the cursor-lock label and the object-tree state", () => {
     expect(labels(buildChartMenu(ctx()))).toContain("Lock vertical cursor line by time");
-    expect(labels(buildChartMenu(ctx({ cursorLocked: true })))).toContain("Unlock vertical cursor line");
-    expect((find(buildChartMenu(ctx({ objectTreeOpen: true })), "object-tree") as { checked?: boolean }).checked).toBe(true);
+    expect(labels(buildChartMenu(ctx({ cursorLocked: true })))).toContain(
+      "Unlock vertical cursor line",
+    );
+    expect(
+      (find(buildChartMenu(ctx({ objectTreeOpen: true })), "object-tree") as { checked?: boolean })
+        .checked,
+    ).toBe(true);
   });
 
   it("lists one removal per indicator and omits the section when there are none", () => {
     expect(find(buildChartMenu(ctx()), "indicators-label")).toBeUndefined();
-    const menu = buildChartMenu(ctx({ indicators: [{ uid: "u1", name: "RSI" }, { uid: "u2", name: "EMA" }] }));
+    const menu = buildChartMenu(
+      ctx({
+        indicators: [
+          { uid: "u1", name: "RSI" },
+          { uid: "u2", name: "EMA" },
+        ],
+      }),
+    );
     expect(labels(menu)).toEqual(expect.arrayContaining(["Remove RSI", "Remove EMA"]));
     (find(menu, "remove-ind-u2") as { onSelect: () => void }).onSelect();
     expect(menu.length).toBeGreaterThan(5);
@@ -81,10 +101,31 @@ describe("buildChartMenu", () => {
   it("wires every action to its entry", () => {
     const a = actions();
     const menu = buildChartMenu(
-      ctx({ mt5: true, hasClipboard: true, templates: [{ id: "t1", name: "Clean" }], indicators: [{ uid: "u1", name: "RSI" }], actions: a }),
+      ctx({
+        mt5: true,
+        hasClipboard: true,
+        templates: [{ id: "t1", name: "Clean" }],
+        indicators: [{ uid: "u1", name: "RSI" }],
+        actions: a,
+      }),
     );
     const run = (id: string) => (find(menu, id) as { onSelect: () => void }).onSelect();
-    for (const id of ["reset", "copy-price", "paste", "add-alert", "sell-limit", "buy-stop", "add-order", "cursor-lock", "table", "object-tree", "save-template", "settings", "link-group"]) run(id);
+    for (const id of [
+      "reset",
+      "copy-price",
+      "paste",
+      "add-alert",
+      "sell-limit",
+      "buy-stop",
+      "add-order",
+      "cursor-lock",
+      "table",
+      "object-tree",
+      "save-template",
+      "settings",
+      "link-group",
+    ])
+      run(id);
     run("template-t1");
     run("template-del-t1");
     run("remove-ind-u1");
@@ -114,7 +155,13 @@ describe("buildChartMenu", () => {
   });
 
   it("keeps entry ids unique", () => {
-    const menu = buildChartMenu(ctx({ mt5: true, templates: [{ id: "t", name: "T" }], indicators: [{ uid: "u", name: "I" }] }));
+    const menu = buildChartMenu(
+      ctx({
+        mt5: true,
+        templates: [{ id: "t", name: "T" }],
+        indicators: [{ uid: "u", name: "I" }],
+      }),
+    );
     const ids = menu.map((e) => e.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
@@ -140,7 +187,21 @@ describe("buildChartMenu", () => {
     );
     expect(find(menu, "reset")).toBeTruthy(); // chart actions still follow
     const run = (id: string) => (find(menu, id) as { onSelect: () => void }).onSelect();
-    for (const id of ["drawing-settings", "drawing-alert", "drawing-save-template", "drawing-clone", "drawing-copy", "drawing-lock", "drawing-hide", "drawing-front", "drawing-forward", "drawing-backward", "drawing-back", "drawing-remove"]) run(id);
+    for (const id of [
+      "drawing-settings",
+      "drawing-alert",
+      "drawing-save-template",
+      "drawing-clone",
+      "drawing-copy",
+      "drawing-lock",
+      "drawing-hide",
+      "drawing-front",
+      "drawing-forward",
+      "drawing-backward",
+      "drawing-back",
+      "drawing-remove",
+    ])
+      run(id);
     expect(drawingApi.settings).toHaveBeenCalledOnce();
     expect(drawingApi.addAlert).toHaveBeenCalledOnce();
     expect(drawingApi.saveTemplate).toHaveBeenCalledOnce();
@@ -155,9 +216,15 @@ describe("buildChartMenu", () => {
   it("flips the drawing lock/hide labels and disables a bound or level-less alert", () => {
     const locked = buildChartMenu(ctx({ drawing: drawingCtx({ locked: true, hidden: true }) }));
     expect(labels(locked)).toEqual(expect.arrayContaining(["Unlock", "Show"]));
-    const bound = find(buildChartMenu(ctx({ drawing: drawingCtx({ hasAlert: true }) })), "drawing-alert") as { disabled?: boolean };
+    const bound = find(
+      buildChartMenu(ctx({ drawing: drawingCtx({ hasAlert: true }) })),
+      "drawing-alert",
+    ) as { disabled?: boolean };
     expect(bound.disabled).toBe(true);
-    const noLevel = find(buildChartMenu(ctx({ drawing: drawingCtx({ hasLevel: false }) })), "drawing-alert") as { disabled?: boolean };
+    const noLevel = find(
+      buildChartMenu(ctx({ drawing: drawingCtx({ hasLevel: false }) })),
+      "drawing-alert",
+    ) as { disabled?: boolean };
     expect(noLevel.disabled).toBe(true);
   });
 });
@@ -175,7 +242,14 @@ const drawingActions = () => ({
   remove: vi.fn(),
 });
 
-const drawingCtx = (over: Partial<ReturnType<typeof drawingActions>> & { locked?: boolean; hidden?: boolean; hasAlert?: boolean; hasLevel?: boolean } = {}) => {
+const drawingCtx = (
+  over: Partial<ReturnType<typeof drawingActions>> & {
+    locked?: boolean;
+    hidden?: boolean;
+    hasAlert?: boolean;
+    hasLevel?: boolean;
+  } = {},
+) => {
   const { locked, hidden, hasAlert, hasLevel, ...rest } = over;
   return {
     id: "d1",

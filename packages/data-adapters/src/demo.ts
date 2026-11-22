@@ -66,14 +66,78 @@ interface DemoSpec {
 }
 
 const DEMO_SYMBOLS: DemoSpec[] = [
-  { symbol: "DEMO:BTCUSDT", ticker: "BTCUSDT", description: "Bitcoin / TetherUS", assetClass: "crypto", base: 94500, precision: 2, tickSize: 0.1 },
-  { symbol: "DEMO:ETHUSDT", ticker: "ETHUSDT", description: "Ethereum / TetherUS", assetClass: "crypto", base: 3420, precision: 2, tickSize: 0.01 },
-  { symbol: "DEMO:SOLUSDT", ticker: "SOLUSDT", description: "Solana / TetherUS", assetClass: "crypto", base: 215, precision: 3, tickSize: 0.001 },
-  { symbol: "DEMO:EURUSD", ticker: "EURUSD", description: "Euro / US Dollar", assetClass: "forex", base: 1.092, precision: 5, tickSize: 0.00001 },
-  { symbol: "DEMO:GBPUSD", ticker: "GBPUSD", description: "British Pound / US Dollar", assetClass: "forex", base: 1.304, precision: 5, tickSize: 0.00001 },
-  { symbol: "DEMO:XAUUSD", ticker: "XAUUSD", description: "Gold / US Dollar", assetClass: "forex", base: 4128.5, precision: 2, tickSize: 0.01 },
-  { symbol: "DEMO:AAPL", ticker: "AAPL", description: "Apple Inc.", assetClass: "stock", base: 242, precision: 2, tickSize: 0.01 },
-  { symbol: "DEMO:SPX", ticker: "SPX", description: "S&P 500 Index", assetClass: "index", base: 6120, precision: 2, tickSize: 0.01 },
+  {
+    symbol: "DEMO:BTCUSDT",
+    ticker: "BTCUSDT",
+    description: "Bitcoin / TetherUS",
+    assetClass: "crypto",
+    base: 94500,
+    precision: 2,
+    tickSize: 0.1,
+  },
+  {
+    symbol: "DEMO:ETHUSDT",
+    ticker: "ETHUSDT",
+    description: "Ethereum / TetherUS",
+    assetClass: "crypto",
+    base: 3420,
+    precision: 2,
+    tickSize: 0.01,
+  },
+  {
+    symbol: "DEMO:SOLUSDT",
+    ticker: "SOLUSDT",
+    description: "Solana / TetherUS",
+    assetClass: "crypto",
+    base: 215,
+    precision: 3,
+    tickSize: 0.001,
+  },
+  {
+    symbol: "DEMO:EURUSD",
+    ticker: "EURUSD",
+    description: "Euro / US Dollar",
+    assetClass: "forex",
+    base: 1.092,
+    precision: 5,
+    tickSize: 0.00001,
+  },
+  {
+    symbol: "DEMO:GBPUSD",
+    ticker: "GBPUSD",
+    description: "British Pound / US Dollar",
+    assetClass: "forex",
+    base: 1.304,
+    precision: 5,
+    tickSize: 0.00001,
+  },
+  {
+    symbol: "DEMO:XAUUSD",
+    ticker: "XAUUSD",
+    description: "Gold / US Dollar",
+    assetClass: "forex",
+    base: 4128.5,
+    precision: 2,
+    tickSize: 0.01,
+  },
+  {
+    symbol: "DEMO:AAPL",
+    ticker: "AAPL",
+    description: "Apple Inc.",
+    assetClass: "stock",
+    base: 242,
+    precision: 2,
+    tickSize: 0.01,
+  },
+  {
+    symbol: "DEMO:SPX",
+    ticker: "SPX",
+    description: "S&P 500 Index",
+    assetClass: "index",
+    base: 6120,
+    precision: 2,
+    tickSize: 0.01,
+  },
 ];
 
 /**
@@ -159,7 +223,13 @@ export class DemoMarketAdapter implements MarketDataAdapter {
 
     const promise = (async () => {
       try {
-        const candles = await this.getHistory({ symbol: spec.symbol, resolution: "1m", from: 0, to: 0, limit: 2 });
+        const candles = await this.getHistory({
+          symbol: spec.symbol,
+          resolution: "1m",
+          from: 0,
+          to: 0,
+          limit: 2,
+        });
         if (candles.length === 0) return null;
         const last = candles[candles.length - 1]!;
         const prev = candles.length > 1 ? candles[candles.length - 2]! : last;
@@ -167,7 +237,8 @@ export class DemoMarketAdapter implements MarketDataAdapter {
           symbol,
           last: last.close,
           change: round(last.close - prev.close, 6),
-          changePercent: prev.close === 0 ? 0 : round(((last.close - prev.close) / prev.close) * 100, 4),
+          changePercent:
+            prev.close === 0 ? 0 : round(((last.close - prev.close) / prev.close) * 100, 4),
           time: Math.floor(Date.now() / 1000),
         };
         this.quotes.set(spec.symbol, quote);
@@ -216,7 +287,8 @@ export class DemoMarketAdapter implements MarketDataAdapter {
     // prefix resolves by ticker instead of silently missing.
     const ticker = symbol.includes(":") ? symbol.slice(symbol.indexOf(":") + 1) : symbol;
     return (
-      DEMO_SYMBOLS.find((s) => s.symbol === symbol || s.ticker === symbol || s.ticker === ticker) ?? null
+      DEMO_SYMBOLS.find((s) => s.symbol === symbol || s.ticker === symbol || s.ticker === ticker) ??
+      null
     );
   }
 

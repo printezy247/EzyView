@@ -43,7 +43,9 @@ export function ChartContextMenu({ x, y, entries, onClose }: Props) {
     });
   }, [x, y, entries.length]);
 
-  const items = (): HTMLButtonElement[] => [...(ref.current?.querySelectorAll<HTMLButtonElement>("[data-menu-item]:not(:disabled)") ?? [])];
+  const items = (): HTMLButtonElement[] => [
+    ...(ref.current?.querySelectorAll<HTMLButtonElement>("[data-menu-item]:not(:disabled)") ?? []),
+  ];
 
   useEffect(() => {
     items()[0]?.focus();
@@ -65,7 +67,13 @@ export function ChartContextMenu({ x, y, entries, onClose }: Props) {
     const all = items();
     if (all.length === 0) return;
     const current = all.indexOf(document.activeElement as HTMLButtonElement);
-    all[current === -1 ? (delta > 0 ? 0 : all.length - 1) : (current + delta + all.length) % all.length]?.focus();
+    all[
+      current === -1
+        ? delta > 0
+          ? 0
+          : all.length - 1
+        : (current + delta + all.length) % all.length
+    ]?.focus();
   };
 
   const onListKey = (e: ReactKeyboardEvent<HTMLDivElement>) => {

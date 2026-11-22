@@ -21,7 +21,9 @@ export const DRAWING_MIGRATIONS: Record<number, Migration> = {
     ...data,
     version: 2,
     drawings: Array.isArray(data.drawings)
-      ? data.drawings.map((drawing) => (drawing && typeof drawing === "object" ? { ...drawing } : drawing))
+      ? data.drawings.map((drawing) =>
+          drawing && typeof drawing === "object" ? { ...drawing } : drawing,
+        )
       : data.drawings,
   }),
 };
@@ -46,7 +48,8 @@ export function parseDrawings(json: string): ParseResult {
   } catch {
     return { ok: false, error: "File is not valid JSON" };
   }
-  if (typeof data !== "object" || data === null) return { ok: false, error: "Expected a JSON object" };
+  if (typeof data !== "object" || data === null)
+    return { ok: false, error: "Expected a JSON object" };
 
   const envelope = data as Record<string, unknown>;
   const version = envelope.version;
@@ -88,23 +91,34 @@ export function parseDrawings(json: string): ParseResult {
     if (typeof e.tool !== "string" || !(e.tool in TOOL_ANCHORS)) return bad("unknown tool");
     if (!Array.isArray(e.points)) return bad("missing points");
     if (e.points.length > MAX_POINTS_PER_STROKE) {
-      return bad(`Stroke has ${e.points.length} points which exceeds maximum limit of ${MAX_POINTS_PER_STROKE}`);
+      return bad(
+        `Stroke has ${e.points.length} points which exceeds maximum limit of ${MAX_POINTS_PER_STROKE}`,
+      );
     }
     for (const p of e.points) {
       if (typeof p !== "object" || p === null) return bad("point is not an object");
       const { time, price } = p as { time?: unknown; price?: unknown };
-      if (typeof time !== "number" || !Number.isFinite(time)) return bad("point time is not a finite number");
-      if (typeof price !== "number" || !Number.isFinite(price)) return bad("point price is not a finite number");
+      if (typeof time !== "number" || !Number.isFinite(time))
+        return bad("point time is not a finite number");
+      if (typeof price !== "number" || !Number.isFinite(price))
+        return bad("point price is not a finite number");
     }
-    if (typeof e.style !== "object" || e.style === null || Array.isArray(e.style)) return bad("style is not an object");
+    if (typeof e.style !== "object" || e.style === null || Array.isArray(e.style))
+      return bad("style is not an object");
     // Unknown extra fields ride along untouched; known optional fields are
     // checked so garbage cannot reach the renderer.
     if (e.text !== undefined && typeof e.text !== "string") return bad("text is not a string");
-    if (e.locked !== undefined && typeof e.locked !== "boolean") return bad("locked is not a boolean");
-    if (e.hidden !== undefined && typeof e.hidden !== "boolean") return bad("hidden is not a boolean");
+    if (e.locked !== undefined && typeof e.locked !== "boolean")
+      return bad("locked is not a boolean");
+    if (e.hidden !== undefined && typeof e.hidden !== "boolean")
+      return bad("hidden is not a boolean");
     if (e.name !== undefined && typeof e.name !== "string") return bad("name is not a string");
     if (e.visibility !== undefined) {
-      if (typeof e.visibility !== "object" || e.visibility === null || Array.isArray(e.visibility)) {
+      if (
+        typeof e.visibility !== "object" ||
+        e.visibility === null ||
+        Array.isArray(e.visibility)
+      ) {
         return bad("visibility is not an object");
       }
       for (const [unit, on] of Object.entries(e.visibility)) {
@@ -121,28 +135,42 @@ export function parseDrawings(json: string): ParseResult {
       return bad("scale is not chart or screen");
     }
     if (e.pattern !== undefined) {
-      if (typeof e.pattern !== "object" || e.pattern === null || Array.isArray(e.pattern)) return bad("pattern is not an object");
+      if (typeof e.pattern !== "object" || e.pattern === null || Array.isArray(e.pattern))
+        return bad("pattern is not an object");
       const pattern = e.pattern as Record<string, unknown>;
       if (typeof pattern.kind !== "string") return bad("pattern.kind is not a string");
       if (pattern.ratios !== undefined) {
-        if (typeof pattern.ratios !== "object" || pattern.ratios === null || Array.isArray(pattern.ratios)) {
+        if (
+          typeof pattern.ratios !== "object" ||
+          pattern.ratios === null ||
+          Array.isArray(pattern.ratios)
+        ) {
           return bad("pattern.ratios is not an object");
         }
         for (const [leg, ratio] of Object.entries(pattern.ratios)) {
-          if (typeof ratio !== "number" || !Number.isFinite(ratio)) return bad(`pattern.ratios.${leg} is not finite`);
+          if (typeof ratio !== "number" || !Number.isFinite(ratio))
+            return bad(`pattern.ratios.${leg} is not finite`);
         }
       }
-      if (pattern.labels !== undefined && (!Array.isArray(pattern.labels) || pattern.labels.some((l) => typeof l !== "string"))) {
+      if (
+        pattern.labels !== undefined &&
+        (!Array.isArray(pattern.labels) || pattern.labels.some((l) => typeof l !== "string"))
+      ) {
         return bad("pattern.labels is not a string array");
       }
     }
     if (e.image !== undefined) {
-      if (typeof e.image !== "object" || e.image === null || Array.isArray(e.image)) return bad("image is not an object");
+      if (typeof e.image !== "object" || e.image === null || Array.isArray(e.image))
+        return bad("image is not an object");
       const image = e.image as Record<string, unknown>;
-      if (typeof image.assetId !== "string" || image.assetId === "") return bad("image.assetId is not a non-empty string");
-      if (typeof image.width !== "number" || !Number.isFinite(image.width) || image.width <= 0) return bad("image.width is not positive");
-      if (typeof image.height !== "number" || !Number.isFinite(image.height) || image.height <= 0) return bad("image.height is not positive");
-      if (image.lockAspect !== undefined && typeof image.lockAspect !== "boolean") return bad("image.lockAspect is not a boolean");
+      if (typeof image.assetId !== "string" || image.assetId === "")
+        return bad("image.assetId is not a non-empty string");
+      if (typeof image.width !== "number" || !Number.isFinite(image.width) || image.width <= 0)
+        return bad("image.width is not positive");
+      if (typeof image.height !== "number" || !Number.isFinite(image.height) || image.height <= 0)
+        return bad("image.height is not positive");
+      if (image.lockAspect !== undefined && typeof image.lockAspect !== "boolean")
+        return bad("image.lockAspect is not a boolean");
     }
     out.push({
       ...(entry as object),

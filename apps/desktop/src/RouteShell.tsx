@@ -21,11 +21,13 @@ import { Button } from "./ui";
 const FALLBACK_COPY: Record<string, { title: string; detail: string }> = {
   "/chart": {
     title: "Chart render encountered an error.",
-    detail: "A chart error was caught and isolated so the rest of the application remains functional.",
+    detail:
+      "A chart error was caught and isolated so the rest of the application remains functional.",
   },
   "/markets": {
     title: "Markets failed to load.",
-    detail: "The watchlist, screener and heatmap share one data path; the rest of the app is untouched.",
+    detail:
+      "The watchlist, screener and heatmap share one data path; the rest of the app is untouched.",
   },
   "/trade": {
     title: "Trade failed to load.",
@@ -33,7 +35,8 @@ const FALLBACK_COPY: Record<string, { title: string; detail: string }> = {
   },
   "/research": {
     title: "Research failed to load.",
-    detail: "Fundamentals, options and news load from provider adapters that can fail one at a time.",
+    detail:
+      "Fundamentals, options and news load from provider adapters that can fail one at a time.",
   },
   "/journal": {
     title: "Journal failed to load.",
@@ -80,20 +83,33 @@ export function RouteShell({
             role="alert"
             className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 bg-ev-bg p-6 text-center"
           >
-            <p className="text-body font-semibold text-ev-strong">{copy?.title ?? "This section failed to load."}</p>
+            <p className="text-body font-semibold text-ev-strong">
+              {copy?.title ?? "This section failed to load."}
+            </p>
             <p className="max-w-md text-base text-ev-muted">
-              {copy?.detail ?? "The rest of the app is still running. Retry this section, or pick another one from the rail."}
+              {copy?.detail ??
+                "The rest of the app is still running. Retry this section, or pick another one from the rail."}
             </p>
             <div className="flex items-center gap-2">
               <Button size="lg" onClick={reset}>
                 Retry
               </Button>
               {section === "/chart" && onResetChart && (
-                <Button size="lg" variant="ghost" onClick={onResetChart} className="bg-ev-raised text-ev-strong hover:bg-ev-line">
+                <Button
+                  size="lg"
+                  variant="ghost"
+                  onClick={onResetChart}
+                  className="bg-ev-raised text-ev-strong hover:bg-ev-line"
+                >
                   Reset chart to a clean state
                 </Button>
               )}
-              <Button size="lg" variant="ghost" onClick={() => window.location.reload()} className="bg-ev-raised text-ev-strong hover:bg-ev-line">
+              <Button
+                size="lg"
+                variant="ghost"
+                onClick={() => window.location.reload()}
+                className="bg-ev-raised text-ev-strong hover:bg-ev-line"
+              >
                 Reload app
               </Button>
             </div>

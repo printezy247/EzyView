@@ -50,7 +50,10 @@ interface ChartGridProps {
   syncOn: boolean;
   onCrosshairMove: (t: number | null, p: number | null) => void;
   onFocus: (index: number) => void;
-  onContextMenu: (index: number, info: { clientX: number; clientY: number; time: number; price: number; drawingId?: string }) => void;
+  onContextMenu: (
+    index: number,
+    info: { clientX: number; clientY: number; time: number; price: number; drawingId?: string },
+  ) => void;
   /** Box of the selected drawing in the focused cell, for the floating bar. */
   drawingBox: { index: number; box: DrawingBox } | null;
   onDrawingBox: (index: number, box: DrawingBox | null) => void;
@@ -101,7 +104,10 @@ export function ChartGrid({
   // inside that group; when it has none, the mirror keeps reaching every cell.
   const focusedGroup = linkGroupOf(cells[layout.activeChart] ?? {});
   const remoteFor = (symbol: string) =>
-    remoteCrosshair && remoteCrosshair.symbol === symbol && remoteCrosshair.time !== null && remoteCrosshair.price !== null
+    remoteCrosshair &&
+    remoteCrosshair.symbol === symbol &&
+    remoteCrosshair.time !== null &&
+    remoteCrosshair.price !== null
       ? { time: remoteCrosshair.time, price: remoteCrosshair.price }
       : null;
   // Export acts on the focused cell (the same `index === layout.activeChart`
@@ -181,7 +187,9 @@ export function ChartGrid({
               onCrosshairMove={focused ? onCrosshairMove : undefined}
               onDrawingBox={focused ? (box) => onDrawingBox(index, box) : undefined}
             />
-            {focused && <FloatingDrawingBar anchor={drawingBox?.index === index ? drawingBox.box : null} />}
+            {focused && (
+              <FloatingDrawingBar anchor={drawingBox?.index === index ? drawingBox.box : null} />
+            )}
             <Readout
               symbol={multi ? `${chart.symbol} · ${chart.resolution}` : chart.symbol}
               rawSymbol={chart.symbol}
@@ -197,7 +205,10 @@ export function ChartGrid({
               dataSource={chart.dataSource}
             />
             {multi && focused && (
-              <div className="pointer-events-none absolute inset-0 z-10 ring-1 ring-inset ring-ev-accent" aria-hidden />
+              <div
+                className="pointer-events-none absolute inset-0 z-10 ring-1 ring-inset ring-ev-accent"
+                aria-hidden
+              />
             )}
           </section>
         );
@@ -240,7 +251,9 @@ function Readout({
   const updateChart = useWorkspace((s) => s.updateChart);
   const activeIndex = useWorkspace((s) => s.activeLayout().activeChart);
   const targetIndex = chartIndex ?? activeIndex;
-  const watchedPrice = useWorkspace((s) => s.watchlist.find((w) => w.symbol === rawSymbol)?.price ?? null);
+  const watchedPrice = useWorkspace(
+    (s) => s.watchlist.find((w) => w.symbol === rawSymbol)?.price ?? null,
+  );
   const { quote } = useQuote(rawSymbol, { source: dataSource, intervalMs: 2000 });
 
   const [qty, setQty] = useState<number>(1);
@@ -252,7 +265,8 @@ function Readout({
   const displayPrice = quote?.last ?? watchedPrice;
   const liveChangePct = quote?.changePercent ?? null;
   const digits = precisionForSymbol(rawSymbol, displayPrice);
-  const spread = displayPrice !== null ? Math.max(Math.pow(10, -digits) * 2, displayPrice * 0.00015) : 0;
+  const spread =
+    displayPrice !== null ? Math.max(Math.pow(10, -digits) * 2, displayPrice * 0.00015) : 0;
   const bid = displayPrice !== null ? (displayPrice - spread / 2).toFixed(digits) : null;
   const ask = displayPrice !== null ? (displayPrice + spread / 2).toFixed(digits) : null;
 
@@ -288,7 +302,11 @@ function Readout({
             </IconButton>
           )}
           <span role="status" className="sr-only">
-            {multi && onToggleMaximize ? (isMaximized ? "Chart maximized" : "Chart grid restored") : ""}
+            {multi && onToggleMaximize
+              ? isMaximized
+                ? "Chart maximized"
+                : "Chart grid restored"
+              : ""}
             {collapsed ? ". Legend collapsed" : ""}
           </span>
           <span className="font-semibold text-ev-strong">{symbol}</span>
@@ -296,17 +314,25 @@ function Readout({
             <span className="num font-semibold text-ev-strong">{displayPrice.toFixed(digits)}</span>
           )}
           {liveChangePct !== null && (
-            <span className={`num text-micro font-medium ${liveChangePct >= 0 ? "text-ev-up-text" : "text-ev-down-text"}`}>
+            <span
+              className={`num text-micro font-medium ${liveChangePct >= 0 ? "text-ev-up-text" : "text-ev-down-text"}`}
+            >
               {liveChangePct >= 0 ? "+" : ""}
               {liveChangePct.toFixed(2)}%
             </span>
           )}
-          {time !== null && <span className="text-micro text-ev-faint">{new Date(time * 1000).toLocaleString()}</span>}
+          {time !== null && (
+            <span className="text-micro text-ev-faint">
+              {new Date(time * 1000).toLocaleString()}
+            </span>
+          )}
 
           <Button
             size="sm"
             variant="ghost"
-            title={tradeBoxVisible ? "Hide 1-click Buy/Sell buttons" : "Show 1-click Buy/Sell buttons"}
+            title={
+              tradeBoxVisible ? "Hide 1-click Buy/Sell buttons" : "Show 1-click Buy/Sell buttons"
+            }
             aria-pressed={tradeBoxVisible}
             onClick={(e) => {
               e.stopPropagation();
@@ -382,7 +408,10 @@ function Readout({
                 className="h-5 w-16 num text-micro"
                 value={String(qty)}
                 onChange={(v) => setQty(Number(v))}
-                options={[0.01, 0.1, 0.5, 1, 2, 5, 10].map((v) => ({ value: String(v), label: String(v) }))}
+                options={[0.01, 0.1, 0.5, 1, 2, 5, 10].map((v) => ({
+                  value: String(v),
+                  label: String(v),
+                }))}
               />
             </span>
 
@@ -400,7 +429,12 @@ function Readout({
             </button>
           </div>
         )}
-        {!collapsed && tradeBoxVisible && <SourceWarning source={dataSource} className="pointer-events-auto rounded bg-ev-bg/85 px-2 py-0.5" />}
+        {!collapsed && tradeBoxVisible && (
+          <SourceWarning
+            source={dataSource}
+            className="pointer-events-auto rounded bg-ev-bg/85 px-2 py-0.5"
+          />
+        )}
 
         {/* Active Study Legend Chips */}
         {!collapsed && indicators.length > 0 && (
@@ -422,7 +456,8 @@ function Readout({
                   className="hover:text-ev-strong"
                 >
                   {ind.name ?? ind.def.name}
-                  {Object.keys(ind.params).length > 0 && ` (${Object.values(ind.params).join(",")})`}
+                  {Object.keys(ind.params).length > 0 &&
+                    ` (${Object.values(ind.params).join(",")})`}
                 </button>
                 <button
                   type="button"
@@ -527,4 +562,3 @@ function Readout({
     </>
   );
 }
-

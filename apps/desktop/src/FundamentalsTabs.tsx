@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { DividendEvent, EarningsReport, EconomicEvent, Impact, NewsItem } from "@ezyview/data-adapters";
+import type {
+  DividendEvent,
+  EarningsReport,
+  EconomicEvent,
+  Impact,
+  NewsItem,
+} from "@ezyview/data-adapters";
 import { filterEvents, filterNews } from "@ezyview/fundamentals";
 import type { FundamentalsSources } from "@ezyview/fundamentals";
 import { annualisedDividend, nextExDate, totalForYear } from "./dividends";
@@ -21,9 +27,15 @@ const IMPACT_COLOR: Record<Impact, string> = {
   none: "var(--ev-dim)",
 };
 const when = (epoch: number): string =>
-  new Date(epoch * 1000).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  new Date(epoch * 1000).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 /** Provider dates are UTC days; render them in UTC so they do not shift a day. */
-export const day = (epoch: number): string => new Date(epoch * 1000).toLocaleDateString(undefined, { timeZone: "UTC" });
+export const day = (epoch: number): string =>
+  new Date(epoch * 1000).toLocaleDateString(undefined, { timeZone: "UTC" });
 export const pct = (v: number): string => `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`;
 export const tone = (v: number): string => (v >= 0 ? "text-ev-up-text" : "text-ev-down-text");
 
@@ -41,7 +53,8 @@ export function dateInputToEpoch(value: string, edge: "start" | "end"): number |
   const d = Number(m[3]);
   const base = new Date(y, mo - 1, d);
   // Reject roll-overs such as 2026-02-31, which Date silently maps into March.
-  if (base.getFullYear() !== y || base.getMonth() !== mo - 1 || base.getDate() !== d) return undefined;
+  if (base.getFullYear() !== y || base.getMonth() !== mo - 1 || base.getDate() !== d)
+    return undefined;
   const bound = edge === "end" ? new Date(y, mo - 1, d + 1) : base;
   return Math.floor(bound.getTime() / 1000);
 }
@@ -55,7 +68,10 @@ const isoDate = (d: Date): string => {
 
 /** The default calendar date range: today through today + 7 days, local. */
 export function defaultDateRange(now: Date = new Date()): { from: string; to: string } {
-  return { from: isoDate(now), to: isoDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7)) };
+  return {
+    from: isoDate(now),
+    to: isoDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7)),
+  };
 }
 
 /** Distinct currencies present in the events, sorted, keeping the first-seen casing. */
@@ -70,8 +86,14 @@ export function currencyOptions(events: readonly EconomicEvent[]): string[] {
 }
 
 /** Run an async loader whenever `key` changes, ignoring stale results and keeping errors. */
-export function useLoad<T>(load: () => Promise<T>, key: string): { data: T | null; error: string | null } {
-  const [state, setState] = useState<{ data: T | null; error: string | null }>({ data: null, error: null });
+export function useLoad<T>(
+  load: () => Promise<T>,
+  key: string,
+): { data: T | null; error: string | null } {
+  const [state, setState] = useState<{ data: T | null; error: string | null }>({
+    data: null,
+    error: null,
+  });
   const loadRef = useRef(load);
   loadRef.current = load;
   useEffect(() => {
@@ -79,7 +101,9 @@ export function useLoad<T>(load: () => Promise<T>, key: string): { data: T | nul
     setState({ data: null, error: null });
     loadRef.current().then(
       (data) => !cancelled && setState({ data, error: null }),
-      (err: unknown) => !cancelled && setState({ data: null, error: err instanceof Error ? err.message : String(err) }),
+      (err: unknown) =>
+        !cancelled &&
+        setState({ data: null, error: err instanceof Error ? err.message : String(err) }),
     );
     return () => {
       cancelled = true;
@@ -88,7 +112,9 @@ export function useLoad<T>(load: () => Promise<T>, key: string): { data: T | nul
   return state;
 }
 
-export const Empty = ({ text }: { text: string }) => <p className="p-3 text-dense text-ev-muted">{text}</p>;
+export const Empty = ({ text }: { text: string }) => (
+  <p className="p-3 text-dense text-ev-muted">{text}</p>
+);
 export const Failed = ({ text }: { text: string }) => (
   <p role="alert" className="p-3 text-dense text-ev-down-text">
     Could not load: {text}
@@ -181,12 +207,24 @@ export function CalendarTab({ src }: { src: Src }) {
         <table className="w-full">
           <thead className="text-left text-ev-muted">
             <tr>
-              <th scope="col" className="px-3 py-1 font-normal">Time</th>
-              <th scope="col" className="font-normal">Cur</th>
-              <th scope="col" className="font-normal">Event</th>
-              <th scope="col" className="text-right font-normal">Actual</th>
-              <th scope="col" className="text-right font-normal">Forecast</th>
-              <th scope="col" className="pr-3 text-right font-normal">Previous</th>
+              <th scope="col" className="px-3 py-1 font-normal">
+                Time
+              </th>
+              <th scope="col" className="font-normal">
+                Cur
+              </th>
+              <th scope="col" className="font-normal">
+                Event
+              </th>
+              <th scope="col" className="text-right font-normal">
+                Actual
+              </th>
+              <th scope="col" className="text-right font-normal">
+                Forecast
+              </th>
+              <th scope="col" className="pr-3 text-right font-normal">
+                Previous
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -195,10 +233,16 @@ export function CalendarTab({ src }: { src: Src }) {
                 <td className="px-3 py-1 text-ev-muted">{when(e.time)}</td>
                 <td>{e.currency}</td>
                 <td>
-                  <span className="mr-1.5 inline-block size-1.5 rounded-full" style={{ background: IMPACT_COLOR[e.impact] }} aria-label={`${e.impact} impact`} />
+                  <span
+                    className="mr-1.5 inline-block size-1.5 rounded-full"
+                    style={{ background: IMPACT_COLOR[e.impact] }}
+                    aria-label={`${e.impact} impact`}
+                  />
                   {e.title}
                 </td>
-                <td className={`text-right ${e.deviation === "better" ? "text-ev-up-text" : e.deviation === "worse" ? "text-ev-down-text" : ""}`}>
+                <td
+                  className={`text-right ${e.deviation === "better" ? "text-ev-up-text" : e.deviation === "worse" ? "text-ev-down-text" : ""}`}
+                >
                   {e.actual ?? "—"}
                 </td>
                 <td className="text-right">{e.forecast ?? "—"}</td>
@@ -247,7 +291,13 @@ export function NewsTab({ symbol, src }: { symbol: string; src: Src }) {
             <li key={n.id} className="flex items-center gap-3 px-3 py-1.5">
               <span className="w-24 shrink-0 text-ev-muted">{when(n.time)}</span>
               {safeHref(n.url) ? (
-                <a href={safeHref(n.url)} target="_blank" rel="noopener noreferrer" title={n.summary} className="flex-1 hover:text-ev-strong hover:underline">
+                <a
+                  href={safeHref(n.url)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={n.summary}
+                  className="flex-1 hover:text-ev-strong hover:underline"
+                >
                   {n.headline}
                 </a>
               ) : (
@@ -293,25 +343,38 @@ export function DividendsTab({ symbol, src }: { symbol: string; src: Src }) {
         <div>
           <span className="text-micro uppercase tracking-wider text-ev-faint">Annualised</span>
           <p className="num text-body font-semibold text-ev-strong">
-            {trailing === null ? "—" : trailing.toFixed(2)} <span className="text-dense text-ev-muted">{rows[0]?.currency ?? ""}</span>
+            {trailing === null ? "—" : trailing.toFixed(2)}{" "}
+            <span className="text-dense text-ev-muted">{rows[0]?.currency ?? ""}</span>
           </p>
         </div>
         <div>
-          <span className="text-micro uppercase tracking-wider text-ev-faint">{thisYear} total</span>
+          <span className="text-micro uppercase tracking-wider text-ev-faint">
+            {thisYear} total
+          </span>
           <p className="num text-body font-semibold text-ev-strong">{yearTotal.toFixed(2)}</p>
         </div>
         <div>
           <span className="text-micro uppercase tracking-wider text-ev-faint">Next ex-date</span>
-          <p className="text-body font-semibold text-ev-strong">{next === null ? "—" : day(next)}</p>
+          <p className="text-body font-semibold text-ev-strong">
+            {next === null ? "—" : day(next)}
+          </p>
         </div>
       </div>
       <table className="w-full">
         <thead className="text-left text-ev-muted">
           <tr>
-            <th scope="col" className="px-3 py-1 font-normal">Ex-date</th>
-            <th scope="col" className="font-normal">Pay date</th>
-            <th scope="col" className="text-right font-normal">Amount</th>
-            <th scope="col" className="pr-3 text-right font-normal">Currency</th>
+            <th scope="col" className="px-3 py-1 font-normal">
+              Ex-date
+            </th>
+            <th scope="col" className="font-normal">
+              Pay date
+            </th>
+            <th scope="col" className="text-right font-normal">
+              Amount
+            </th>
+            <th scope="col" className="pr-3 text-right font-normal">
+              Currency
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -330,13 +393,16 @@ export function DividendsTab({ symbol, src }: { symbol: string; src: Src }) {
 }
 
 export function EarningsTab({ symbol, src }: { symbol: string; src: Src }) {
-  const { data, error } = useLoad<{ earnings: EarningsReport[]; profile: Record<string, number | string | null> }>(
-    async () => {
-      const [earnings, profile] = await Promise.all([src.sources.earnings.getEarnings(symbol), src.sources.profile.getProfile(symbol)]);
-      return { earnings, profile };
-    },
-    `${symbol}:${src.version}`,
-  );
+  const { data, error } = useLoad<{
+    earnings: EarningsReport[];
+    profile: Record<string, number | string | null>;
+  }>(async () => {
+    const [earnings, profile] = await Promise.all([
+      src.sources.earnings.getEarnings(symbol),
+      src.sources.profile.getProfile(symbol),
+    ]);
+    return { earnings, profile };
+  }, `${symbol}:${src.version}`);
   if (error) return <Failed text={error} />;
   if (data === null) return <Empty text="Loading…" />;
   if (data.earnings.length === 0 && Object.keys(data.profile).length === 0)
@@ -346,23 +412,38 @@ export function EarningsTab({ symbol, src }: { symbol: string; src: Src }) {
       <table className="flex-1">
         <thead className="text-left text-ev-muted">
           <tr>
-            <th scope="col" className="font-normal">Quarter</th>
-            <th scope="col" className="font-normal">Date</th>
-            <th scope="col" className="text-right font-normal">EPS est.</th>
-            <th scope="col" className="text-right font-normal">EPS actual</th>
-            <th scope="col" className="text-right font-normal">Surprise</th>
+            <th scope="col" className="font-normal">
+              Quarter
+            </th>
+            <th scope="col" className="font-normal">
+              Date
+            </th>
+            <th scope="col" className="text-right font-normal">
+              EPS est.
+            </th>
+            <th scope="col" className="text-right font-normal">
+              EPS actual
+            </th>
+            <th scope="col" className="text-right font-normal">
+              Surprise
+            </th>
           </tr>
         </thead>
         <tbody>
           {data.earnings.map((r) => {
-            const surprise = r.eps != null && r.estimate ? ((r.eps - r.estimate) / Math.abs(r.estimate)) * 100 : null;
+            const surprise =
+              r.eps != null && r.estimate
+                ? ((r.eps - r.estimate) / Math.abs(r.estimate)) * 100
+                : null;
             return (
               <tr key={r.time} className="border-t border-ev-raised">
                 <td className="py-1">{r.quarter}</td>
                 <td className="text-ev-muted">{day(r.time)}</td>
                 <td className="text-right">{r.estimate?.toFixed(2) ?? "—"}</td>
                 <td className="text-right">{r.eps?.toFixed(2) ?? "upcoming"}</td>
-                <td className={`text-right ${surprise === null ? "" : tone(surprise)}`}>{surprise === null ? "—" : pct(surprise)}</td>
+                <td className={`text-right ${surprise === null ? "" : tone(surprise)}`}>
+                  {surprise === null ? "—" : pct(surprise)}
+                </td>
               </tr>
             );
           })}

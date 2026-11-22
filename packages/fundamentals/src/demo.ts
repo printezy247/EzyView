@@ -70,7 +70,13 @@ export class DemoCalendarAdapter implements CalendarAdapter {
         const actual = released ? forecast + (rand() - 0.5) * spread * 1.5 : null;
         const gap = actual === null ? 0 : actual - forecast;
         const deviation: EconomicEvent["deviation"] =
-          actual === null ? null : Math.abs(gap) < spread * 0.1 ? "inline" : gap > 0 ? "better" : "worse";
+          actual === null
+            ? null
+            : Math.abs(gap) < spread * 0.1
+              ? "inline"
+              : gap > 0
+                ? "better"
+                : "worse";
         out.push({
           id: `cal-${day}-${i}`,
           time,
@@ -86,7 +92,11 @@ export class DemoCalendarAdapter implements CalendarAdapter {
       }
     }
     return [...out]
-      .filter((e) => (!filter?.currency || e.currency === filter.currency) && (!filter?.impact || e.impact === filter.impact))
+      .filter(
+        (e) =>
+          (!filter?.currency || e.currency === filter.currency) &&
+          (!filter?.impact || e.impact === filter.impact),
+      )
       .sort((a, b) => a.time - b.time);
   }
 }
@@ -101,14 +111,22 @@ const HEADLINES: { text: string; tags: string[]; sentiment: number }[] = [
   { text: "Options traders position for {S} breakout", tags: ["options"], sentiment: 0.2 },
 ];
 
-const GENERAL = ["Global equities mixed as yields hold steady", "Dollar index consolidates after payrolls", "Oil steadies on supply outlook"];
+const GENERAL = [
+  "Global equities mixed as yields hold steady",
+  "Dollar index consolidates after payrolls",
+  "Oil steadies on supply outlook",
+];
 
 /** Offline news: synthetic headlines. Replace with a real NewsAdapter for live news. */
 export class DemoNewsAdapter implements NewsAdapter {
   readonly id = "demo-news";
   readonly label = "Demo news (offline)";
 
-  async getNews(options?: { symbols?: string[]; from?: EpochSeconds; limit?: number }): Promise<NewsItem[]> {
+  async getNews(options?: {
+    symbols?: string[];
+    from?: EpochSeconds;
+    limit?: number;
+  }): Promise<NewsItem[]> {
     const now = Math.floor(Date.now() / 1000);
     const limit = options?.limit ?? 30;
     const symbols = options?.symbols?.length ? options.symbols : [];
@@ -153,7 +171,11 @@ export class DemoFundamentalsAdapter implements FundamentalsAdapter {
   readonly id = "demo-fundamentals";
   readonly label = "Demo fundamentals (offline)";
 
-  async getEarnings(symbol: string, from?: EpochSeconds, to?: EpochSeconds): Promise<EarningsReport[]> {
+  async getEarnings(
+    symbol: string,
+    from?: EpochSeconds,
+    to?: EpochSeconds,
+  ): Promise<EarningsReport[]> {
     const rand = mulberry32(hashSeed(`earn:${symbol}`));
     const baseEps = 0.5 + rand() * 4;
     const now = Math.floor(Date.now() / 1000);
@@ -188,12 +210,22 @@ export class DemoFundamentalsAdapter implements FundamentalsAdapter {
       "Dividend yield (%)": Number((rand() * 4).toFixed(2)),
       "Net margin (%)": Number((5 + rand() * 30).toFixed(1)),
       "Debt / equity": Number((rand() * 2).toFixed(2)),
-      Sector: ["Technology", "Financials", "Energy", "Healthcare", "Consumer", "Industrials"][Math.floor(rand() * 6)]!,
+      Sector: ["Technology", "Financials", "Energy", "Healthcare", "Consumer", "Industrials"][
+        Math.floor(rand() * 6)
+      ]!,
     };
   }
 }
 
-const IPO_NAMES = ["Northwind Robotics", "Bluefin Payments", "Cobalt Bio", "Harbor Energy", "Lumen Cloud", "Quarry Foods", "Vertex Mobility"];
+const IPO_NAMES = [
+  "Northwind Robotics",
+  "Bluefin Payments",
+  "Cobalt Bio",
+  "Harbor Energy",
+  "Lumen Cloud",
+  "Quarry Foods",
+  "Vertex Mobility",
+];
 
 /** Offline IPO and dividend calendars. */
 export class DemoCorporateCalendarAdapter implements CorporateCalendarAdapter {
@@ -222,7 +254,11 @@ export class DemoCorporateCalendarAdapter implements CorporateCalendarAdapter {
     return out;
   }
 
-  async getDividends(symbol: string, from: EpochSeconds, to: EpochSeconds): Promise<DividendEvent[]> {
+  async getDividends(
+    symbol: string,
+    from: EpochSeconds,
+    to: EpochSeconds,
+  ): Promise<DividendEvent[]> {
     if (classify(symbol).kind !== "stock") return [];
     const rand = mulberry32(hashSeed(`div:${symbol}`));
     const amount = Number((0.1 + rand() * 1.5).toFixed(2));
@@ -230,7 +266,15 @@ export class DemoCorporateCalendarAdapter implements CorporateCalendarAdapter {
     const out: DividendEvent[] = [];
     // Quarterly cadence anchored to a fixed epoch so results are stable across calls.
     for (let exDate = offset; exDate <= to; exDate += 91 * DAY) {
-      if (exDate >= from) out.push({ symbol, exDate, payDate: exDate + 21 * DAY, amount, currency: "USD", source: "demo" });
+      if (exDate >= from)
+        out.push({
+          symbol,
+          exDate,
+          payDate: exDate + 21 * DAY,
+          amount,
+          currency: "USD",
+          source: "demo",
+        });
     }
     return [...out].sort((a, b) => b.exDate - a.exDate);
   }

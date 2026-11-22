@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { PaperTradingEngine, PaperTradingError } from "./engine.js";
 
 /** Deterministic ids and clock so the assertions below are stable. */
-function makeEngine(startingBalance = 100_000, extra: Partial<ConstructorParameters<typeof PaperTradingEngine>[0]> = {}): PaperTradingEngine {
+function makeEngine(
+  startingBalance = 100_000,
+  extra: Partial<ConstructorParameters<typeof PaperTradingEngine>[0]> = {},
+): PaperTradingEngine {
   let seq = 0;
   let clock = 1_700_000_000;
   return new PaperTradingEngine({
@@ -34,7 +37,12 @@ describe("PaperTradingEngine", () => {
 
   it("fills a market buy at the last price and opens a long", async () => {
     engine.updateQuote("DEMO:BTCUSDT", 100);
-    const order = await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "market", qty: 10 });
+    const order = await engine.placeOrder({
+      symbol: "DEMO:BTCUSDT",
+      side: "buy",
+      type: "market",
+      qty: 10,
+    });
 
     expect(order.status).toBe("filled");
     expect(order.avgFillPrice).toBe(100);
@@ -129,7 +137,9 @@ describe("PaperTradingEngine", () => {
     engine.updateQuote("DEMO:BTCUSDT", 100);
     await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "market", qty: 100_000 });
 
-    await expect(engine.closePosition("DEMO:BTCUSDT", 50_000)).resolves.toMatchObject({ status: "filled" });
+    await expect(engine.closePosition("DEMO:BTCUSDT", 50_000)).resolves.toMatchObject({
+      status: "filled",
+    });
     const [position] = await engine.getPositions();
     expect(position?.qty).toBe(50_000);
   });
@@ -144,7 +154,13 @@ describe("PaperTradingEngine", () => {
 
   it("holds a limit order until a tick crosses it", async () => {
     engine.updateQuote("DEMO:BTCUSDT", 100);
-    await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "limit", price: 90, qty: 1 });
+    await engine.placeOrder({
+      symbol: "DEMO:BTCUSDT",
+      side: "buy",
+      type: "limit",
+      price: 90,
+      qty: 1,
+    });
 
     // Price has not reached the limit yet.
     await expect(engine.getPositions()).resolves.toEqual([]);
@@ -163,7 +179,13 @@ describe("PaperTradingEngine", () => {
 
   it("cancels a resting order so it can never fill", async () => {
     engine.updateQuote("DEMO:BTCUSDT", 100);
-    const order = await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "limit", price: 90, qty: 1 });
+    const order = await engine.placeOrder({
+      symbol: "DEMO:BTCUSDT",
+      side: "buy",
+      type: "limit",
+      price: 90,
+      qty: 1,
+    });
     await expect(engine.cancelOrder(order.id)).resolves.toBe(true);
 
     engine.updateQuote("DEMO:BTCUSDT", 80);
@@ -190,7 +212,13 @@ describe("PaperTradingEngine", () => {
 
   it("stops out at the stop-loss price", async () => {
     engine.updateQuote("DEMO:BTCUSDT", 100);
-    await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "market", qty: 10, stopLoss: 95 });
+    await engine.placeOrder({
+      symbol: "DEMO:BTCUSDT",
+      side: "buy",
+      type: "market",
+      qty: 10,
+      stopLoss: 95,
+    });
 
     engine.updateQuote("DEMO:BTCUSDT", 96);
     await expect(engine.getPositions()).resolves.toHaveLength(1);
@@ -233,15 +261,31 @@ describe("PaperTradingEngine", () => {
     await engine.closePosition("DEMO:BTCUSDT");
 
     engine.reset();
-    await expect(engine.getAccount()).resolves.toMatchObject({ balance: 100_000, margin: 0, equity: 100_000 });
+    await expect(engine.getAccount()).resolves.toMatchObject({
+      balance: 100_000,
+      margin: 0,
+      equity: 100_000,
+    });
     await expect(engine.getPositions()).resolves.toEqual([]);
     await expect(engine.getHistory()).resolves.toEqual([]);
   });
 
   it("round-trips the account through a snapshot", async () => {
     engine.updateQuote("DEMO:BTCUSDT", 100);
-    await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "market", qty: 10, stopLoss: 90 });
-    await engine.placeOrder({ symbol: "DEMO:ETHUSDT", side: "buy", type: "limit", price: 80, qty: 5 });
+    await engine.placeOrder({
+      symbol: "DEMO:BTCUSDT",
+      side: "buy",
+      type: "market",
+      qty: 10,
+      stopLoss: 90,
+    });
+    await engine.placeOrder({
+      symbol: "DEMO:ETHUSDT",
+      side: "buy",
+      type: "limit",
+      price: 80,
+      qty: 5,
+    });
     engine.updateQuote("DEMO:BTCUSDT", 110);
 
     const restored = PaperTradingEngine.restore(engine.snapshot());
@@ -250,7 +294,12 @@ describe("PaperTradingEngine", () => {
     expect(account.equity).toBeCloseTo(100_100);
 
     const [position] = await restored.getPositions();
-    expect(position).toMatchObject({ symbol: "DEMO:BTCUSDT", qty: 10, entryPrice: 100, stopLoss: 90 });
+    expect(position).toMatchObject({
+      symbol: "DEMO:BTCUSDT",
+      qty: 10,
+      entryPrice: 100,
+      stopLoss: 90,
+    });
     await expect(restored.getOrders()).resolves.toHaveLength(1);
 
     // The snapshot must not alias the live engine's records.
@@ -261,7 +310,9 @@ describe("PaperTradingEngine", () => {
 
   it("boots a fresh account when the snapshot comes from a future version", async () => {
     const stale = { ...engine.snapshot(), version: 999, balance: 5 };
-    await expect(PaperTradingEngine.restore(stale).getAccount()).resolves.toMatchObject({ balance: 100_000 });
+    await expect(PaperTradingEngine.restore(stale).getAccount()).resolves.toMatchObject({
+      balance: 100_000,
+    });
   });
 
   it("exposes the TradingAdapter surface the live brokers will share", async () => {
@@ -281,7 +332,14 @@ describe("amending an open position's stop and target", () => {
     engine = makeEngine();
     await engine.connect();
     engine.updateQuote("DEMO:BTCUSDT", 100);
-    await engine.placeOrder({ symbol: "DEMO:BTCUSDT", side: "buy", type: "market", qty: 10, stopLoss: 90, takeProfit: 120 });
+    await engine.placeOrder({
+      symbol: "DEMO:BTCUSDT",
+      side: "buy",
+      type: "market",
+      qty: 10,
+      stopLoss: 90,
+      takeProfit: 120,
+    });
   });
 
   it("moves a stop and leaves the target where it was", async () => {
@@ -303,11 +361,15 @@ describe("amending an open position's stop and target", () => {
   });
 
   it("refuses a non-finite level instead of arming a broken stop", async () => {
-    await expect(engine.setLevels("DEMO:BTCUSDT", { stopLoss: Number.NaN })).rejects.toThrow(PaperTradingError);
+    await expect(engine.setLevels("DEMO:BTCUSDT", { stopLoss: Number.NaN })).rejects.toThrow(
+      PaperTradingError,
+    );
   });
 
   it("refuses to amend a symbol with no open position", async () => {
-    await expect(engine.setLevels("DEMO:ETHUSDT", { stopLoss: 1 })).rejects.toThrow(PaperTradingError);
+    await expect(engine.setLevels("DEMO:ETHUSDT", { stopLoss: 1 })).rejects.toThrow(
+      PaperTradingError,
+    );
   });
 
   it("applies the amended stop on the next quote", async () => {
@@ -379,37 +441,60 @@ describe("rejected orders", () => {
   describe("hardening", () => {
     it("stop_limit keeps its type and stopPrice, flags triggered, then fills as a limit", async () => {
       engine.updateQuote("S", 100);
-      const o = await engine.placeOrder({ symbol: "S", side: "buy", type: "stop_limit", qty: 1, price: 106, stopPrice: 105 });
+      const o = await engine.placeOrder({
+        symbol: "S",
+        side: "buy",
+        type: "stop_limit",
+        qty: 1,
+        price: 106,
+        stopPrice: 105,
+      });
       engine.updateQuote("S", 104);
       expect((await engine.getOrders())[0]).toMatchObject({ type: "stop_limit", stopPrice: 105 });
       expect((await engine.getOrders())[0]!.triggered).toBeFalsy();
       engine.updateQuote("S", 107); // stop tripped, but above the 106 limit: parked
       const parked = (await engine.getOrders()).find((x) => x.id === o.id)!;
-      expect(parked).toMatchObject({ type: "stop_limit", stopPrice: 105, triggered: true, status: "pending" });
+      expect(parked).toMatchObject({
+        type: "stop_limit",
+        stopPrice: 105,
+        triggered: true,
+        status: "pending",
+      });
       engine.updateQuote("S", 105.5);
       expect((await engine.getPositions())[0]?.symbol).toBe("S");
     });
 
     it("stop_limit without stopPrice is rejected", async () => {
       engine.updateQuote("S", 100);
-      await expect(engine.placeOrder({ symbol: "S", side: "buy", type: "stop_limit", qty: 1, price: 106 })).rejects.toThrow(/stop price/);
+      await expect(
+        engine.placeOrder({ symbol: "S", side: "buy", type: "stop_limit", qty: 1, price: 106 }),
+      ).rejects.toThrow(/stop price/);
     });
 
     it("modifyOrder enforces the max qty", async () => {
       engine.updateQuote("S", 100);
-      const o = await engine.placeOrder({ symbol: "S", side: "buy", type: "limit", qty: 1, price: 50 });
+      const o = await engine.placeOrder({
+        symbol: "S",
+        side: "buy",
+        type: "limit",
+        qty: 1,
+        price: 50,
+      });
       await expect(engine.modifyOrder(o.id, { qty: 1e12 })).rejects.toThrow(/qty/);
     });
 
     it("placement rejects an absurd qty", async () => {
       engine.updateQuote("S", 100);
-      await expect(engine.placeOrder({ symbol: "S", side: "buy", type: "limit", qty: 1e12, price: 1 })).rejects.toThrow(/qty/);
+      await expect(
+        engine.placeOrder({ symbol: "S", side: "buy", type: "limit", qty: 1e12, price: 1 }),
+      ).rejects.toThrow(/qty/);
     });
   });
 
   describe("trailing stop", () => {
     it("seeds the stop at entry minus distance and ratchets up for a long", async () => {
-      const stopOf = async (): Promise<number | undefined> => (await engine.getPositions())[0]?.stopLoss;
+      const stopOf = async (): Promise<number | undefined> =>
+        (await engine.getPositions())[0]?.stopLoss;
       engine.updateQuote("S", 100);
       await engine.placeOrder({ symbol: "S", side: "buy", type: "market", qty: 1 });
       await engine.setTrailingStop("S", 10);
@@ -459,8 +544,20 @@ describe("rejected orders", () => {
       const taker = await engine.placeOrder({ symbol: "S", side: "buy", type: "market", qty: 1 });
       expect(taker.status).toBe("filled");
 
-      const tp = await engine.placeOrder({ symbol: "S", side: "sell", type: "limit", qty: 1, price: 120 });
-      const sl = await engine.placeOrder({ symbol: "S", side: "sell", type: "stop", qty: 1, stopPrice: 80 });
+      const tp = await engine.placeOrder({
+        symbol: "S",
+        side: "sell",
+        type: "limit",
+        qty: 1,
+        price: 120,
+      });
+      const sl = await engine.placeOrder({
+        symbol: "S",
+        side: "sell",
+        type: "stop",
+        qty: 1,
+        stopPrice: 80,
+      });
       const groupId = engine.linkOco(tp.id, sl.id);
       expect(groupId).toBeTruthy();
 
@@ -473,8 +570,20 @@ describe("rejected orders", () => {
     it("cancelling one leg cancels the sibling", async () => {
       engine.updateQuote("S", 100);
       await engine.placeOrder({ symbol: "S", side: "buy", type: "market", qty: 1 });
-      const tp = await engine.placeOrder({ symbol: "S", side: "sell", type: "limit", qty: 1, price: 120 });
-      const sl = await engine.placeOrder({ symbol: "S", side: "sell", type: "stop", qty: 1, stopPrice: 80 });
+      const tp = await engine.placeOrder({
+        symbol: "S",
+        side: "sell",
+        type: "limit",
+        qty: 1,
+        price: 120,
+      });
+      const sl = await engine.placeOrder({
+        symbol: "S",
+        side: "sell",
+        type: "stop",
+        qty: 1,
+        stopPrice: 80,
+      });
       engine.linkOco(tp.id, sl.id);
 
       await engine.cancelOrder(tp.id);
@@ -485,8 +594,20 @@ describe("rejected orders", () => {
     it("refuses to link orders on different symbols", async () => {
       engine.updateQuote("S", 100);
       engine.updateQuote("T", 100);
-      const a = await engine.placeOrder({ symbol: "S", side: "buy", type: "limit", qty: 1, price: 90 });
-      const b = await engine.placeOrder({ symbol: "T", side: "buy", type: "limit", qty: 1, price: 90 });
+      const a = await engine.placeOrder({
+        symbol: "S",
+        side: "buy",
+        type: "limit",
+        qty: 1,
+        price: 90,
+      });
+      const b = await engine.placeOrder({
+        symbol: "T",
+        side: "buy",
+        type: "limit",
+        qty: 1,
+        price: 90,
+      });
       expect(() => engine.linkOco(a.id, b.id)).toThrow(/symbol/);
     });
   });

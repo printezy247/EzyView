@@ -123,7 +123,9 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
   const [source, setSource] = useState(STARTER);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BacktestResult | null>(null);
-  const [backtestParams, setBacktestParams] = useState<BacktestParams>(() => loadBacktestParams(scriptId));
+  const [backtestParams, setBacktestParams] = useState<BacktestParams>(() =>
+    loadBacktestParams(scriptId),
+  );
   // Best combo from the Optimize panel, merged into the next run's inputs so
   // the tester reflects the applied grid point without re-running the grid.
   const [appliedBest, setAppliedBest] = useState<Record<string, number> | null>(null);
@@ -252,7 +254,15 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
       setError(msg);
       refreshMarkers();
       setResult(null);
-      setPineResult(scriptId, { id: scriptId, name, source, options: null, plots: [], orders: [], error: msg });
+      setPineResult(scriptId, {
+        id: scriptId,
+        name,
+        source,
+        options: null,
+        plots: [],
+        orders: [],
+        error: msg,
+      });
       setRunBusy(false);
     };
     const ctx: Context = {
@@ -304,7 +314,17 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
       })
       .catch(fail)
       .finally(() => setRunBusy(false));
-  }, [bars, name, scriptId, source, appliedBest, setPineResult, refreshMarkers, runBusy, backtestParams]);
+  }, [
+    bars,
+    name,
+    scriptId,
+    source,
+    appliedBest,
+    setPineResult,
+    refreshMarkers,
+    runBusy,
+    backtestParams,
+  ]);
 
   /** Download the live buffer as a share file; the name seeds the filename. */
   const exportScript = (): void => {
@@ -346,7 +366,9 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
       className="flex min-h-0 flex-1 flex-col border-t border-ev-raised bg-ev-bg text-dense"
     >
       <div className="flex items-center justify-between border-b border-ev-raised px-4 py-2.5">
-        <h2 id="pine-editor-title" className="text-body font-semibold text-ev-strong">Pine Editor — {symbol}</h2>
+        <h2 id="pine-editor-title" className="text-body font-semibold text-ev-strong">
+          Pine Editor — {symbol}
+        </h2>
         <IconButton size="sm" label="Close" onClick={onClose}>
           <X size={16} aria-hidden />
         </IconButton>
@@ -431,7 +453,9 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
                 refreshMarkers();
               }}
               className={`rounded px-2 py-1 text-base ${
-                s.id === scriptId ? "bg-ev-accent text-ev-accent-ink" : "bg-ev-line text-ev-muted hover:bg-ev-line-strong"
+                s.id === scriptId
+                  ? "bg-ev-accent text-ev-accent-ink"
+                  : "bg-ev-line text-ev-muted hover:bg-ev-line-strong"
               }`}
             >
               {s.name}
@@ -463,7 +487,10 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
       <div ref={host} className="min-h-0 flex-1" />
 
       {error && (
-        <div role="alert" className="border-t border-ev-line bg-ev-down/15 px-4 py-2 text-base text-ev-down-text">
+        <div
+          role="alert"
+          className="border-t border-ev-line bg-ev-down/15 px-4 py-2 text-base text-ev-down-text"
+        >
           {error}
         </div>
       )}
@@ -472,11 +499,17 @@ export function PineEditor({ onClose, bars, symbol, uiTheme }: Props) {
           <TrendingUp size={13} aria-hidden />
           <span>
             {record.plots.length} plot{record.plots.length === 1 ? "" : "s"}
-            {record.orders.length > 0 ? ` · ${record.orders.length} order${record.orders.length === 1 ? "" : "s"}` : ""}
+            {record.orders.length > 0
+              ? ` · ${record.orders.length} order${record.orders.length === 1 ? "" : "s"}`
+              : ""}
           </span>
           {record.plots.map((p) => (
             <span key={p.title} className="flex items-center gap-1">
-              <span className="inline-block h-2 w-2 rounded-full" style={{ background: p.color }} aria-hidden />
+              <span
+                className="inline-block h-2 w-2 rounded-full"
+                style={{ background: p.color }}
+                aria-hidden
+              />
               {p.title}
             </span>
           ))}
@@ -542,7 +575,8 @@ function applyMarkers(
   syntax: SyntaxLocation | null,
 ): void {
   const markers: Monaco.editor.IMarkerData[] = issues.map((issue) => ({
-    severity: issue.severity === "error" ? monaco.MarkerSeverity.Error : monaco.MarkerSeverity.Warning,
+    severity:
+      issue.severity === "error" ? monaco.MarkerSeverity.Error : monaco.MarkerSeverity.Warning,
     message: issue.message,
     ...markerRange(model, issue.line, issue.column),
   }));
@@ -565,7 +599,9 @@ async function loadMonaco(): Promise<typeof Monaco> {
   // The only worker the editor core needs (diffing, word ranges, links).
   (self as unknown as { MonacoEnvironment: unknown }).MonacoEnvironment = {
     getWorker: () =>
-      new Worker(new URL("monaco-editor/esm/vs/editor/editor.worker.js", import.meta.url), { type: "module" }),
+      new Worker(new URL("monaco-editor/esm/vs/editor/editor.worker.js", import.meta.url), {
+        type: "module",
+      }),
   };
   const [, api] = await Promise.all([
     import("monaco-editor/esm/vs/editor/editor.all.js"),

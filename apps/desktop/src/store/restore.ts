@@ -30,7 +30,12 @@ export function restoreToolStyles(
     if (!(tool in TOOL_ANCHORS)) continue;
     if (typeof style !== "object" || style === null) continue;
     const s = style as Partial<DrawingStyle>;
-    if (typeof s.color !== "string" || typeof s.width !== "number" || typeof s.lineStyle !== "string") continue;
+    if (
+      typeof s.color !== "string" ||
+      typeof s.width !== "number" ||
+      typeof s.lineStyle !== "string"
+    )
+      continue;
     out[tool as DrawingToolId] = s as DrawingStyle;
   }
   return out;
@@ -46,7 +51,9 @@ export function historySame(a: AlertHistory, b: AlertHistory): boolean {
   return ka.every((k) => {
     const x = a[k];
     const y = b[k];
-    return y !== undefined && x !== undefined && x.length === y.length && x.every((n, i) => n === y[i]);
+    return (
+      y !== undefined && x !== undefined && x.length === y.length && x.every((n, i) => n === y[i])
+    );
   });
 }
 
@@ -75,7 +82,9 @@ export function restoreAlertHistory(raw: unknown): AlertHistory {
   for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
     if (k === "__proto__") continue;
     if (Array.isArray(v)) {
-      out[k] = v.filter((n): n is number => typeof n === "number" && Number.isFinite(n)).slice(-200);
+      out[k] = v
+        .filter((n): n is number => typeof n === "number" && Number.isFinite(n))
+        .slice(-200);
     }
   }
   return out;
@@ -99,7 +108,10 @@ export function restoreWatchlist(raw: unknown, fallback: WatchEntry[]): WatchEnt
       ticker: x.ticker,
       description: typeof x.description === "string" ? x.description : x.ticker,
       assetClass: typeof x.assetClass === "string" ? x.assetClass : "",
-      precision: typeof x.precision === "number" && Number.isFinite(x.precision) ? Math.max(0, Math.min(10, Math.trunc(x.precision))) : 2,
+      precision:
+        typeof x.precision === "number" && Number.isFinite(x.precision)
+          ? Math.max(0, Math.min(10, Math.trunc(x.precision)))
+          : 2,
       price: num(x.price),
       changePct: num(x.changePct),
       ...(source ? { source } : {}),
@@ -107,4 +119,3 @@ export function restoreWatchlist(raw: unknown, fallback: WatchEntry[]): WatchEnt
   }
   return out.length > 0 ? out : safeFallback;
 }
-

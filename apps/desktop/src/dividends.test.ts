@@ -20,13 +20,17 @@ const events = [
 
 describe("annualisedDividend", () => {
   it("is the paid total over a full-year window", () => {
-    const window = events.filter((e) => e.exDate >= on("2026-01-01") && e.exDate < on("2027-01-01"));
+    const window = events.filter(
+      (e) => e.exDate >= on("2026-01-01") && e.exDate < on("2027-01-01"),
+    );
     expect(annualisedDividend(window, on("2026-01-01"), on("2027-01-01"))).toBeCloseTo(1.04, 6);
   });
 
   it("scales a part-year window up to a year", () => {
     // Two payments of 0.26 in a 181-day window -> 0.52 * 365/181.
-    const window = events.filter((e) => e.exDate >= on("2026-01-01") && e.exDate < on("2026-07-01"));
+    const window = events.filter(
+      (e) => e.exDate >= on("2026-01-01") && e.exDate < on("2026-07-01"),
+    );
     const expected = 0.52 * (365 / 181);
     expect(annualisedDividend(window, on("2026-01-01"), on("2026-07-01"))).toBeCloseTo(expected, 6);
   });

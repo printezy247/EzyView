@@ -20,7 +20,15 @@ export const RANGE_PRESETS: { id: RangePreset; description: string }[] = [
   { id: "All", description: "Show all loaded history" },
 ];
 
-const SPAN_DAYS: Partial<Record<RangePreset, number>> = { "1D": 1, "5D": 5, "1M": 30, "3M": 91, "6M": 182, "1Y": 365, "5Y": 5 * 365 };
+const SPAN_DAYS: Partial<Record<RangePreset, number>> = {
+  "1D": 1,
+  "5D": 5,
+  "1M": 30,
+  "3M": 91,
+  "6M": 182,
+  "1Y": 365,
+  "5Y": 5 * 365,
+};
 
 /** First visible time for a preset ending at `lastTime`; null means "fit everything". */
 export function rangeStart(preset: RangePreset, lastTime: number): number | null {
@@ -44,7 +52,8 @@ export function parseGoToDate(value: string): number | null {
   const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
   const t = Date.UTC(y, mo - 1, d);
   const back = new Date(t);
-  if (back.getUTCFullYear() !== y || back.getUTCMonth() !== mo - 1 || back.getUTCDate() !== d) return null;
+  if (back.getUTCFullYear() !== y || back.getUTCMonth() !== mo - 1 || back.getUTCDate() !== d)
+    return null;
   return t / 1000;
 }
 
@@ -54,9 +63,15 @@ export function parseGoToDate(value: string): number | null {
  * The formatters are cached per zone: building an `Intl.DateTimeFormat` is
  * expensive, and this runs once a second.
  */
-const clockFormatters = new Map<string, { time: Intl.DateTimeFormat; label: Intl.DateTimeFormat }>();
+const clockFormatters = new Map<
+  string,
+  { time: Intl.DateTimeFormat; label: Intl.DateTimeFormat }
+>();
 
-function formattersFor(zone: string | undefined): { time: Intl.DateTimeFormat; label: Intl.DateTimeFormat } {
+function formattersFor(zone: string | undefined): {
+  time: Intl.DateTimeFormat;
+  label: Intl.DateTimeFormat;
+} {
   const key = zone ?? "";
   const cached = clockFormatters.get(key);
   if (cached) return cached;
@@ -79,9 +94,7 @@ export function formatClock(nowMs: number, timeZone?: string): string {
     const { time: timeFormat, label: labelFormat } = formattersFor(zone);
     const time = timeFormat.format(nowMs);
     const label =
-      labelFormat
-        .formatToParts(nowMs)
-        .find((p) => p.type === "timeZoneName")?.value ?? "";
+      labelFormat.formatToParts(nowMs).find((p) => p.type === "timeZoneName")?.value ?? "";
     return `${time} ${label.replace("GMT", "UTC").replace(/^UTC\+0$/, "UTC")}`.trim();
   };
   try {

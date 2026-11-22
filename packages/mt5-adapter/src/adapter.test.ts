@@ -40,7 +40,13 @@ describe("Mt5MarketData", () => {
 
   it("returns bars sorted oldest first", async () => {
     const data = new Mt5MarketData(fakeTransport({ history: async () => candles }));
-    const bars = await data.getHistory({ symbol: "XAUUSD", resolution: "1m", from: 0, to: 400, limit: 2 });
+    const bars = await data.getHistory({
+      symbol: "XAUUSD",
+      resolution: "1m",
+      from: 0,
+      to: 400,
+      limit: 2,
+    });
     expect(bars.map((b) => b.time)).toEqual([200, 300]);
   });
 
@@ -56,7 +62,9 @@ describe("Mt5MarketData", () => {
         },
       }),
     );
-    await expect(data.getHistory({ symbol: "XAUUSD", resolution: "1m", from: 0, to: 1 })).resolves.toEqual([]);
+    await expect(
+      data.getHistory({ symbol: "XAUUSD", resolution: "1m", from: 0, to: 1 }),
+    ).resolves.toEqual([]);
     await expect(data.getQuote("XAUUSD")).resolves.toBeNull();
     await expect(data.searchSymbols("XAU")).resolves.toEqual([]);
     await expect(data.ping()).resolves.toBe(false);
@@ -66,7 +74,11 @@ describe("Mt5MarketData", () => {
     const marketWatch = vi.fn(async () => ({ symbols: [] }));
     const quote = vi.fn(async () => ({ symbol: "XAUUSD", bid: 4086.37, ask: 4086.99, time: 300 }));
     const data = new Mt5MarketData(fakeTransport({ marketWatch, quote }));
-    await expect(data.getQuote("XAUUSD")).resolves.toMatchObject({ symbol: "XAUUSD", last: 4086.37, ask: 4086.99 });
+    await expect(data.getQuote("XAUUSD")).resolves.toMatchObject({
+      symbol: "XAUUSD",
+      last: 4086.37,
+      ask: 4086.99,
+    });
     expect(quote).toHaveBeenCalledWith("XAUUSD");
     expect(marketWatch).not.toHaveBeenCalled();
   });
@@ -118,7 +130,9 @@ describe("Mt5MarketData", () => {
     vi.useFakeTimers();
     const seen: number[] = [];
     const data = new Mt5MarketData(
-      fakeTransport({ marketWatch: async () => ({ symbols: [{ symbol: "XAUUSD", bid: 1, ask: 2, time: 1 }] }) }),
+      fakeTransport({
+        marketWatch: async () => ({ symbols: [{ symbol: "XAUUSD", bid: 1, ask: 2, time: 1 }] }),
+      }),
     );
     const stop = await data.subscribe(["XAUUSD"], (q) => seen.push(q.last));
     await vi.advanceTimersByTimeAsync(1600);
@@ -141,7 +155,18 @@ describe("Mt5Trading", () => {
   });
 
   it("reports a live account as live", async () => {
-    const trading = new Mt5Trading(fakeTransport({ account: async () => ({ login: 1, trade_mode: 1, balance: 50, equity: 50, margin: 0, margin_free: 50 }) }));
+    const trading = new Mt5Trading(
+      fakeTransport({
+        account: async () => ({
+          login: 1,
+          trade_mode: 1,
+          balance: 50,
+          equity: 50,
+          margin: 0,
+          margin_free: 50,
+        }),
+      }),
+    );
     await trading.connect();
     expect(trading.mode).toBe("live");
   });
@@ -150,14 +175,42 @@ describe("Mt5Trading", () => {
     const trading = new Mt5Trading(
       fakeTransport({
         openPositions: async () => ({
-          positions: [{ ticket: 77, symbol: "XAUUSD", type: 0, volume: 0.1, price_open: 4000, price_current: 4100, profit: 100, sl: 0, tp: 0, time: 10 }],
-          orders: [{ ticket: 5, symbol: "XAUUSD", type: 0, volume_initial: 1, price_open: 3900, state: 1, time_setup: 11 }],
+          positions: [
+            {
+              ticket: 77,
+              symbol: "XAUUSD",
+              type: 0,
+              volume: 0.1,
+              price_open: 4000,
+              price_current: 4100,
+              profit: 100,
+              sl: 0,
+              tp: 0,
+              time: 10,
+            },
+          ],
+          orders: [
+            {
+              ticket: 5,
+              symbol: "XAUUSD",
+              type: 0,
+              volume_initial: 1,
+              price_open: 3900,
+              state: 1,
+              time_setup: 11,
+            },
+          ],
         }),
       }),
     );
     const positions = await trading.getPositions();
     const orders = await trading.getOrders();
-    expect(positions[0]).toMatchObject({ id: "77", symbol: "XAUUSD", side: "long", unrealizedPnl: 100 });
+    expect(positions[0]).toMatchObject({
+      id: "77",
+      symbol: "XAUUSD",
+      side: "long",
+      unrealizedPnl: 100,
+    });
     expect(orders[0]).toMatchObject({ id: "5", status: "pending", price: 3900 });
   });
 
@@ -177,10 +230,29 @@ describe("Mt5Trading", () => {
 
   it("places an order, closes and cancels through the transport", async () => {
     const transport = fakeTransport({
-      openPositions: async () => ({ positions: [{ symbol: "XAUUSD", type: 0, volume: 0.1, price_open: 1, price_current: 1, profit: 0, sl: 0, tp: 0, time: 1 }] }),
+      openPositions: async () => ({
+        positions: [
+          {
+            symbol: "XAUUSD",
+            type: 0,
+            volume: 0.1,
+            price_open: 1,
+            price_current: 1,
+            profit: 0,
+            sl: 0,
+            tp: 0,
+            time: 1,
+          },
+        ],
+      }),
     });
     const trading = new Mt5Trading(transport);
-    const order = await trading.placeOrder({ symbol: "XAUUSD", side: "buy", type: "market", qty: 0.1 });
+    const order = await trading.placeOrder({
+      symbol: "XAUUSD",
+      side: "buy",
+      type: "market",
+      qty: 0.1,
+    });
     expect(order).toMatchObject({ id: "42", symbol: "XAUUSD", status: "filled" });
     await trading.cancelOrder("5");
     expect(transport.cancel).toHaveBeenCalledWith("5");
@@ -198,9 +270,19 @@ describe("bridge transport", () => {
       calls.push({ url, method: init?.method ?? "GET" });
       return new Response(JSON.stringify({ rates: [] }), { status: 200 });
     });
-    const transport = createTransport({ kind: "bridge", bridgeUrl: "http://127.0.0.1:8765/", fetchFn });
+    const transport = createTransport({
+      kind: "bridge",
+      bridgeUrl: "http://127.0.0.1:8765/",
+      fetchFn,
+    });
     await transport.history({ symbol: "XAUUSD", resolution: "1D", from: 1, to: 2 });
-    await transport.placeOrder({ symbol: "XAUUSD", side: "buy", type: "limit", qty: 1, price: 4000 });
+    await transport.placeOrder({
+      symbol: "XAUUSD",
+      side: "buy",
+      type: "limit",
+      qty: 1,
+      price: 4000,
+    });
     expect(calls[0]?.url).toBe("http://127.0.0.1:8765/history?symbol=XAUUSD&tf=D1&from=1&to=2");
     expect(calls[1]?.url).toBe("http://127.0.0.1:8765/order");
     expect(calls[1]?.method).toBe("POST");
@@ -215,9 +297,14 @@ describe("bridge transport", () => {
   });
 
   it("propagates bridge error bodies for the trading panel", async () => {
-    const fetchFn = vi.fn(async () => new Response(JSON.stringify({ error: "rejected (10013): no money" }), { status: 409 }));
+    const fetchFn = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ error: "rejected (10013): no money" }), { status: 409 }),
+    );
     const transport = createTransport({ kind: "bridge", fetchFn });
-    await expect(transport.placeOrder({ symbol: "XAUUSD", side: "buy", type: "market", qty: 1 })).rejects.toThrow(/no money/);
+    await expect(
+      transport.placeOrder({ symbol: "XAUUSD", side: "buy", type: "market", qty: 1 }),
+    ).rejects.toThrow(/no money/);
   });
 
   it("mints a session on /connect and stamps every later write with it", async () => {
@@ -225,12 +312,23 @@ describe("bridge transport", () => {
     const fetchFn = vi.fn(async (url: string, init?: RequestInit) => {
       bodies.push(url.endsWith("/connect") ? { url } : JSON.parse(String(init?.body)));
       const payload = url.endsWith("/connect")
-        ? { ok: true, session: "abc123", login: "4123", server: "MetaQuotes-Demo", demo: true, balance: 10000 }
+        ? {
+            ok: true,
+            session: "abc123",
+            login: "4123",
+            server: "MetaQuotes-Demo",
+            demo: true,
+            balance: 10000,
+          }
         : { ok: true };
       return new Response(JSON.stringify(payload), { status: 200 });
     });
     const transport = createTransport({ kind: "bridge", fetchFn });
-    const result = await transport.connect?.({ server: "MetaQuotes-Demo", login: "4123", password: "hunter2" });
+    const result = await transport.connect?.({
+      server: "MetaQuotes-Demo",
+      login: "4123",
+      password: "hunter2",
+    });
     expect(result?.session).toBe("abc123");
     await transport.placeOrder({ symbol: "EURUSD", side: "buy", type: "market", qty: 0.1 });
     expect(bodies[1]).toMatchObject({ session: "abc123" });
@@ -267,10 +365,17 @@ describe("bridge transport", () => {
 
   it("MCP transport refuses dry-run rather than silently sending", () => {
     const fetchFn = vi.fn(async () => new Response("", { status: 500 }));
-    const transport = createTransport({ kind: "mcp", mcp: { url: "http://127.0.0.1:22346/mcp", key: "k" }, fetchFn });
+    const transport = createTransport({
+      kind: "mcp",
+      mcp: { url: "http://127.0.0.1:22346/mcp", key: "k" },
+      fetchFn,
+    });
     expect(transport.connect).toBeUndefined();
     expect(() =>
-      transport.placeOrder({ symbol: "EURUSD", side: "buy", type: "market", qty: 0.1 }, { dryRun: true }),
+      transport.placeOrder(
+        { symbol: "EURUSD", side: "buy", type: "market", qty: 0.1 },
+        { dryRun: true },
+      ),
     ).toThrow(/cannot dry-run/);
   });
 });
@@ -339,10 +444,13 @@ describe("McpClient", () => {
           headers: { "content-type": "text/event-stream" },
         });
       }
-      return new Response(`event: message\ndata: ${JSON.stringify({ jsonrpc: "2.0", id: body.id, result: { content: [{ text: '{"rates":[]}' }] } })}\n`, {
-        status: 200,
-        headers: { "content-type": "text/event-stream" },
-      });
+      return new Response(
+        `event: message\ndata: ${JSON.stringify({ jsonrpc: "2.0", id: body.id, result: { content: [{ text: '{"rates":[]}' }] } })}\n`,
+        {
+          status: 200,
+          headers: { "content-type": "text/event-stream" },
+        },
+      );
     });
     const client = new McpClient({ url: "http://127.0.0.1:22346/mcp", fetchFn });
     await expect(client.call("get_chart_history")).resolves.toEqual({ rates: [] });

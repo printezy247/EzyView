@@ -20,10 +20,14 @@ export const WINDOW_ID = Math.random().toString(36).slice(2);
 const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
 /** Validate a raw channel payload from another window; anything odd is ignored. */
-export function parseCrosshairMessage(data: unknown, selfId: string = WINDOW_ID): CrosshairMessage | null {
+export function parseCrosshairMessage(
+  data: unknown,
+  selfId: string = WINDOW_ID,
+): CrosshairMessage | null {
   if (typeof data !== "object" || data === null) return null;
   const m = data as Record<string, unknown>;
-  if (m.from === selfId || typeof m.symbol !== "string" || m.symbol === "" || m.symbol.length > 64) return null;
+  if (m.from === selfId || typeof m.symbol !== "string" || m.symbol === "" || m.symbol.length > 64)
+    return null;
   if (m.time === null && m.price === null) return { symbol: m.symbol, time: null, price: null };
   if (!finite(m.time) || !finite(m.price)) return null;
   return { symbol: m.symbol, time: m.time, price: m.price };
@@ -31,7 +35,8 @@ export function parseCrosshairMessage(data: unknown, selfId: string = WINDOW_ID)
 
 let channel: BroadcastChannel | null | undefined;
 const open = (): BroadcastChannel | null => {
-  if (channel === undefined) channel = typeof BroadcastChannel === "undefined" ? null : new BroadcastChannel(CHANNEL);
+  if (channel === undefined)
+    channel = typeof BroadcastChannel === "undefined" ? null : new BroadcastChannel(CHANNEL);
   return channel;
 };
 

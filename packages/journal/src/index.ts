@@ -16,6 +16,13 @@ export type {
   TradePlanStatus,
 } from "./model";
 export { computeStats } from "./stats";
-export type { JournalStats, RBucket, SetupBreakdown, SymbolBreakdown, TagBreakdown, TimeOfDayBreakdown } from "./stats";
+export type {
+  JournalStats,
+  RBucket,
+  SetupBreakdown,
+  SymbolBreakdown,
+  TagBreakdown,
+  TimeOfDayBreakdown,
+} from "./stats";
 export { composeReview, dateKey, reviewWindow } from "./review";
 export { entriesFromDeals, existingKeys } from "./import";

@@ -69,9 +69,12 @@ test.describe("shell", () => {
   test("the navigation rail", async ({ page }) => {
     await page.goto("/#/chart");
     await settle(page);
-    await expect(page.getByRole("navigation", { name: "Sections" })).toHaveScreenshot("nav-rail.png", {
-      animations: "disabled",
-    });
+    await expect(page.getByRole("navigation", { name: "Sections" })).toHaveScreenshot(
+      "nav-rail.png",
+      {
+        animations: "disabled",
+      },
+    );
   });
 
   test("the command palette", async ({ page }) => {
@@ -79,9 +82,12 @@ test.describe("shell", () => {
     await settle(page);
     await page.keyboard.press("Control+k");
     await expect(page.getByRole("dialog", { name: "Command palette" })).toBeVisible();
-    await expect(page.getByRole("dialog", { name: "Command palette" })).toHaveScreenshot("command-palette.png", {
-      animations: "disabled",
-    });
+    await expect(page.getByRole("dialog", { name: "Command palette" })).toHaveScreenshot(
+      "command-palette.png",
+      {
+        animations: "disabled",
+      },
+    );
   });
 });
 

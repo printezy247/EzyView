@@ -35,7 +35,10 @@ describe("snapToOhlc", () => {
   });
 
   it("still snaps a click within half a bar of the last candle", () => {
-    expect(snapToOhlc({ time: 340, price: 16.4 }, bars, "strong")).toEqual({ time: 300, price: 16 });
+    expect(snapToOhlc({ time: 340, price: 16.4 }, bars, "strong")).toEqual({
+      time: 300,
+      price: 16,
+    });
   });
 
   it("leaves the point alone when the magnet is off", () => {
@@ -44,9 +47,18 @@ describe("snapToOhlc", () => {
   });
 
   it("strong mode snaps time to the bar and price to the nearest level", () => {
-    expect(snapToOhlc({ time: 190, price: 19.4 }, bars, "strong")).toEqual({ time: 200, price: 20 });
-    expect(snapToOhlc({ time: 210, price: 11.3 }, bars, "strong")).toEqual({ time: 200, price: 11 });
-    expect(snapToOhlc({ time: 290, price: 16.4 }, bars, "strong")).toEqual({ time: 300, price: 16 });
+    expect(snapToOhlc({ time: 190, price: 19.4 }, bars, "strong")).toEqual({
+      time: 200,
+      price: 20,
+    });
+    expect(snapToOhlc({ time: 210, price: 11.3 }, bars, "strong")).toEqual({
+      time: 200,
+      price: 11,
+    });
+    expect(snapToOhlc({ time: 290, price: 16.4 }, bars, "strong")).toEqual({
+      time: 300,
+      price: 16,
+    });
   });
 
   it("strong mode snaps even a far-away click", () => {

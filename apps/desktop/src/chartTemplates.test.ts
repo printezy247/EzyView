@@ -23,7 +23,14 @@ const resolve = (id: string) => (id === "rsi" || id === "ema" ? def(id) : null);
 describe("chart templates", () => {
   it("captures style and indicators by id, not symbol or drawings", () => {
     const t = templateFromChart(chart, "  My look  ", "t1");
-    expect(t).toMatchObject({ id: "t1", name: "My look", chartType: "heikin", showVolume: false, theme: "tokyo", priceScale: "log" });
+    expect(t).toMatchObject({
+      id: "t1",
+      name: "My look",
+      chartType: "heikin",
+      showVolume: false,
+      theme: "tokyo",
+      priceScale: "log",
+    });
     expect(t.indicators).toEqual([
       { defId: "rsi", params: { length: 7 }, colorIndex: 2 },
       { defId: "ema", params: { length: 50 }, colorIndex: 0, hidden: true },
@@ -32,9 +39,21 @@ describe("chart templates", () => {
   });
 
   it("applies onto another chart keeping its symbol, interval and drawings", () => {
-    const target = { ...chart, symbol: "BINANCE:BTCUSDT", resolution: "5m", indicators: [], drawings: [{ id: "keep" }], theme: "dark" } as unknown as ChartState;
+    const target = {
+      ...chart,
+      symbol: "BINANCE:BTCUSDT",
+      resolution: "5m",
+      indicators: [],
+      drawings: [{ id: "keep" }],
+      theme: "dark",
+    } as unknown as ChartState;
     let n = 0;
-    const out = applyTemplate(target, templateFromChart(chart, "x", "t"), resolve, () => `new${++n}`);
+    const out = applyTemplate(
+      target,
+      templateFromChart(chart, "x", "t"),
+      resolve,
+      () => `new${++n}`,
+    );
     expect(out.symbol).toBe("BINANCE:BTCUSDT");
     expect(out.resolution).toBe("5m");
     expect(out.drawings).toEqual([{ id: "keep" }]);
@@ -48,13 +67,20 @@ describe("chart templates", () => {
 
   it("drops indicators whose definition no longer exists", () => {
     const t = templateFromChart(chart, "x", "t");
-    const out = applyTemplate(chart, t, (id) => (id === "rsi" ? def("rsi") : null), () => "u");
+    const out = applyTemplate(
+      chart,
+      t,
+      (id) => (id === "rsi" ? def("rsi") : null),
+      () => "u",
+    );
     expect(out.indicators.map((i) => i.def.id)).toEqual(["rsi"]);
   });
 
   it("restores saved templates, dropping malformed rows and capping the list", () => {
     const good = templateFromChart(chart, "ok", "g");
-    expect(restoreTemplates([good, null, { id: 1 }, { id: "x", name: "no style" }])).toEqual([good]);
+    expect(restoreTemplates([good, null, { id: 1 }, { id: "x", name: "no style" }])).toEqual([
+      good,
+    ]);
     expect(restoreTemplates("junk")).toEqual([]);
     const many = Array.from({ length: 80 }, (_, i) => templateFromChart(chart, `n${i}`, `id${i}`));
     expect(restoreTemplates(many)).toHaveLength(50);

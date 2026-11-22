@@ -161,7 +161,11 @@ export function trueRange(data: OHLCV): number[] {
 }
 
 /** Per-element arithmetic over two aligned series; null if either side is null (or the callback returns null). */
-export function map2(a: SeriesValue[], b: SeriesValue[], fn: (x: number, y: number) => number | null): SeriesValue[] {
+export function map2(
+  a: SeriesValue[],
+  b: SeriesValue[],
+  fn: (x: number, y: number) => number | null,
+): SeriesValue[] {
   const out: SeriesValue[] = Array.from({ length: a.length }, () => null);
   for (let i = 0; i < a.length; i++) {
     const x = a[i] ?? null;
@@ -173,7 +177,9 @@ export function map2(a: SeriesValue[], b: SeriesValue[], fn: (x: number, y: numb
 
 /** Fill leading/interior nulls with the previous known value (or backfilled first valid value). */
 export function fillForward(values: SeriesValue[], fallback = 0): number[] {
-  const firstNonNull = values.find((v): v is number => v !== null && v !== undefined && Number.isFinite(v));
+  const firstNonNull = values.find(
+    (v): v is number => v !== null && v !== undefined && Number.isFinite(v),
+  );
   const initial = firstNonNull !== undefined ? firstNonNull : fallback;
   const out: number[] = Array.from<number>({ length: values.length });
   let last = initial;

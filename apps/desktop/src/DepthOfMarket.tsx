@@ -50,26 +50,34 @@ export function DepthOfMarket({ symbol, precision }: Props) {
   return (
     <aside aria-label="Depth of market" className="flex w-full min-w-0 flex-1 flex-col bg-ev-bg">
       <div className="border-b border-ev-raised px-3 py-2">
-          <p className="pb-1 text-micro text-ev-faint" title="Sizes are generated from the quote, not broker depth">
-            Indicative ladder — sizes simulated from the quote
-          </p>
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold uppercase tracking-wider text-ev-muted">Depth of Market</h2>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 text-micro text-ev-muted">
-                <span>Lot:</span>
-                <Select
-                  label="Order size"
-                  size="sm"
-                  className="w-16"
-                  value={String(qty)}
-                  onChange={(v) => setQty(Number(v))}
-                  options={[0.1, 0.5, 1, 2, 5, 10].map((v) => ({ value: String(v), label: String(v) }))}
-                />
-              </div>
-              <span className="text-dense num text-ev-faint">{symbol}</span>
+        <p
+          className="pb-1 text-micro text-ev-faint"
+          title="Sizes are generated from the quote, not broker depth"
+        >
+          Indicative ladder — sizes simulated from the quote
+        </p>
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold uppercase tracking-wider text-ev-muted">
+            Depth of Market
+          </h2>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 text-micro text-ev-muted">
+              <span>Lot:</span>
+              <Select
+                label="Order size"
+                size="sm"
+                className="w-16"
+                value={String(qty)}
+                onChange={(v) => setQty(Number(v))}
+                options={[0.1, 0.5, 1, 2, 5, 10].map((v) => ({
+                  value: String(v),
+                  label: String(v),
+                }))}
+              />
             </div>
+            <span className="text-dense num text-ev-faint">{symbol}</span>
           </div>
+        </div>
 
         {/* Bid/Ask Volume Imbalance Bar */}
         {mid !== null && (
@@ -79,8 +87,14 @@ export function DepthOfMarket({ symbol, precision }: Props) {
               <span className="text-ev-down-text font-medium">Asks {100 - bidRatio}%</span>
             </div>
             <div className="flex h-1.5 w-full overflow-hidden rounded bg-ev-raised">
-              <div className="bg-ev-up transition-all duration-300" style={{ width: `${bidRatio}%` }} />
-              <div className="bg-ev-down transition-all duration-300" style={{ width: `${100 - bidRatio}%` }} />
+              <div
+                className="bg-ev-up transition-all duration-300"
+                style={{ width: `${bidRatio}%` }}
+              />
+              <div
+                className="bg-ev-down transition-all duration-300"
+                style={{ width: `${100 - bidRatio}%` }}
+              />
             </div>
           </div>
         )}
@@ -176,43 +190,45 @@ function Row({
 
   return (
     <li>
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={`Place ${side === "ask" ? "sell" : "buy"} limit at ${level.price.toFixed(precision)}, size ${level.size.toFixed(2)}`}
-      title={`Click to place ${side === "ask" ? "Sell" : "Buy"} Limit at ${level.price.toFixed(precision)}`}
-      className="group relative flex min-h-6 w-full cursor-pointer select-none items-center justify-between px-3 py-0.5 text-left transition-colors hover:bg-white/[0.06]"
-    >
-      {/* Cumulative depth background gradient bar */}
-      <span
-        className="absolute inset-y-0 right-0 pointer-events-none"
-        style={{
-          width: cumWidth,
-          backgroundColor: `color-mix(in srgb, var(--ev-${side === "ask" ? "down" : "up"}) 12%, transparent)`,
-        }}
-        aria-hidden
-      />
-      {/* Individual level size bar */}
-      <span
-        className="absolute inset-y-0 right-0 pointer-events-none opacity-40"
-        style={{
-          width: sizeWidth,
-          backgroundColor: `var(--ev-${side === "ask" ? "down" : "up"})`,
-        }}
-        aria-hidden
-      />
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={`Place ${side === "ask" ? "sell" : "buy"} limit at ${level.price.toFixed(precision)}, size ${level.size.toFixed(2)}`}
+        title={`Click to place ${side === "ask" ? "Sell" : "Buy"} Limit at ${level.price.toFixed(precision)}`}
+        className="group relative flex min-h-6 w-full cursor-pointer select-none items-center justify-between px-3 py-0.5 text-left transition-colors hover:bg-white/[0.06]"
+      >
+        {/* Cumulative depth background gradient bar */}
+        <span
+          className="absolute inset-y-0 right-0 pointer-events-none"
+          style={{
+            width: cumWidth,
+            backgroundColor: `color-mix(in srgb, var(--ev-${side === "ask" ? "down" : "up"}) 12%, transparent)`,
+          }}
+          aria-hidden
+        />
+        {/* Individual level size bar */}
+        <span
+          className="absolute inset-y-0 right-0 pointer-events-none opacity-40"
+          style={{
+            width: sizeWidth,
+            backgroundColor: `var(--ev-${side === "ask" ? "down" : "up"})`,
+          }}
+          aria-hidden
+        />
 
-      <span className={`relative font-semibold flex items-center gap-1.5 ${side === "ask" ? "text-ev-down-text" : "text-ev-up-text"}`}>
-        <span>{level.price.toFixed(precision)}</span>
-        <span className="hidden rounded border border-ev-line bg-ev-panel px-1 py-px text-micro font-medium text-ev-muted group-hover:inline-block group-focus-visible:inline-block">
-          + {side === "ask" ? "Sell" : "Buy"}
+        <span
+          className={`relative font-semibold flex items-center gap-1.5 ${side === "ask" ? "text-ev-down-text" : "text-ev-up-text"}`}
+        >
+          <span>{level.price.toFixed(precision)}</span>
+          <span className="hidden rounded border border-ev-line bg-ev-panel px-1 py-px text-micro font-medium text-ev-muted group-hover:inline-block group-focus-visible:inline-block">
+            + {side === "ask" ? "Sell" : "Buy"}
+          </span>
         </span>
-      </span>
-      <div className="relative flex items-baseline gap-2 text-right">
-        <span className="text-ev-strong font-medium">{level.size.toFixed(2)}</span>
-        <span className="text-micro text-ev-faint w-12">{level.cum.toFixed(2)}</span>
-      </div>
-    </button>
+        <div className="relative flex items-baseline gap-2 text-right">
+          <span className="text-ev-strong font-medium">{level.size.toFixed(2)}</span>
+          <span className="text-micro text-ev-faint w-12">{level.cum.toFixed(2)}</span>
+        </div>
+      </button>
     </li>
   );
 }

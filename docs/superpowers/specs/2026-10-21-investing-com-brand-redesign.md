@@ -37,34 +37,34 @@ Tailwind-based, dark mode present), logo amber `#F4A41D`, fonts Inter + Roboto.
 
 **invest-dark** (default; dark terminal with red accent):
 
-| Token | Value | Use |
-|---|---|---|
-| `--ev-bg` | `#12161d` | app canvas behind panels |
-| `--ev-panel` | `#181c21` | panels, tables, dialogs (Investing chrome) |
-| `--ev-raised` | `#22272f` | hover rows, popups |
-| `--ev-chrome` | `#0e1216` | top nav bar / rails (darker than content = signature inversion) |
-| `--ev-line` | `#2a2f38` | borders/dividers |
-| `--ev-accent` | `#d91400` | primary buttons, active states, brand |
-| `--ev-accent-hover` | `#b91100` | pressed/hover |
-| `--ev-accent-text` | `#ff4b3e` | red text on dark (AA on panel) |
-| `--ev-up` | `#0ea600` | bid/up/positive |
-| `--ev-down` | `#d91400` | ask/down/negative (brand red doubles as down — Investing.com does the same) |
-| `--ev-link` | `#4a90e2` | links, selections, secondary focus (their `#1256a0` lightened for dark AA) |
-| `--ev-warn` | `#f2a93b` | warnings, calendar impact dots (logo gold) |
-| text ramp | `#8b909a / #aab0ba / #d8dce2 / #ffffff` | muted / text-2 / text / strong |
+| Token               | Value                                   | Use                                                                         |
+| ------------------- | --------------------------------------- | --------------------------------------------------------------------------- |
+| `--ev-bg`           | `#12161d`                               | app canvas behind panels                                                    |
+| `--ev-panel`        | `#181c21`                               | panels, tables, dialogs (Investing chrome)                                  |
+| `--ev-raised`       | `#22272f`                               | hover rows, popups                                                          |
+| `--ev-chrome`       | `#0e1216`                               | top nav bar / rails (darker than content = signature inversion)             |
+| `--ev-line`         | `#2a2f38`                               | borders/dividers                                                            |
+| `--ev-accent`       | `#d91400`                               | primary buttons, active states, brand                                       |
+| `--ev-accent-hover` | `#b91100`                               | pressed/hover                                                               |
+| `--ev-accent-text`  | `#ff4b3e`                               | red text on dark (AA on panel)                                              |
+| `--ev-up`           | `#0ea600`                               | bid/up/positive                                                             |
+| `--ev-down`         | `#d91400`                               | ask/down/negative (brand red doubles as down — Investing.com does the same) |
+| `--ev-link`         | `#4a90e2`                               | links, selections, secondary focus (their `#1256a0` lightened for dark AA)  |
+| `--ev-warn`         | `#f2a93b`                               | warnings, calendar impact dots (logo gold)                                  |
+| text ramp           | `#8b909a / #aab0ba / #d8dce2 / #ffffff` | muted / text-2 / text / strong                                              |
 
 **invest-light** (Investing.com's web look; also the "auto" day theme):
 
-| Token | Value |
-|---|---|
-| `--ev-bg` | `#ffffff` |
-| `--ev-panel` | `#f7f8fa` |
-| `--ev-raised` | `#eceff2` |
-| `--ev-chrome` | `#181c21` (dark top bar on light content — the Investing.com signature) |
-| `--ev-line` | `#e2e5ea` |
-| `--ev-accent` | `#d91400` · hover `#b91100` · text `#c11200` |
-| `--ev-up` | `#0ea600` · `--ev-down` `#d91400` · `--ev-link` `#1256a0` · `--ev-warn` `#b19e00` |
-| text ramp | `#6b7078 / #4a4e56 / #1b1f26 / #000000` |
+| Token         | Value                                                                             |
+| ------------- | --------------------------------------------------------------------------------- |
+| `--ev-bg`     | `#ffffff`                                                                         |
+| `--ev-panel`  | `#f7f8fa`                                                                         |
+| `--ev-raised` | `#eceff2`                                                                         |
+| `--ev-chrome` | `#181c21` (dark top bar on light content — the Investing.com signature)           |
+| `--ev-line`   | `#e2e5ea`                                                                         |
+| `--ev-accent` | `#d91400` · hover `#b91100` · text `#c11200`                                      |
+| `--ev-up`     | `#0ea600` · `--ev-down` `#d91400` · `--ev-link` `#1256a0` · `--ev-warn` `#b19e00` |
+| text ramp     | `#6b7078 / #4a4e56 / #1b1f26 / #000000`                                           |
 
 **tokyo** stays as the user extra, but inherits the new accent/red semantics and density.
 
@@ -79,14 +79,14 @@ colors from the same palette values — one source file exported to both CSS and
   Investing.com's actual primary font. Roboto not needed; Inter covers it.
 - One ramp, registered as Tailwind theme sizes (kills `text-[9px]/[10px]/[11px]/[12px]` soup):
 
-| Token | Size / line | Use |
-|---|---|---|
-| `--text-micro` | 10 / 14 | badges, provenance chips, axis labels |
-| `--text-dense` | 11 / 16 | watchlist/DOM/trading tables |
-| `--text-base` | 12 / 18 | all controls, menus, toolbar, most UI |
-| `--text-body` | 13 / 20 | dialogs, panel body text |
-| `--text-title` | 15 / 20 | dialog titles, section heads |
-| `--text-head` | 18 / 24 | page titles |
+| Token          | Size / line | Use                                   |
+| -------------- | ----------- | ------------------------------------- |
+| `--text-micro` | 10 / 14     | badges, provenance chips, axis labels |
+| `--text-dense` | 11 / 16     | watchlist/DOM/trading tables          |
+| `--text-base`  | 12 / 18     | all controls, menus, toolbar, most UI |
+| `--text-body`  | 13 / 20     | dialogs, panel body text              |
+| `--text-title` | 15 / 20     | dialog titles, section heads          |
+| `--text-head`  | 18 / 24     | page titles                           |
 
 - **Tabular numerals everywhere numbers live**: `.num { font-variant-numeric: tabular-nums; }`
   applied to every price, %, P&L, volume, calendar time — the compact-table trick that makes
@@ -119,23 +119,23 @@ carries over into the wrappers.
 
 New `apps/desktop/src/ui/` directory — the only place class constants live:
 
-| Primitive | Replaces | Notes |
-|---|---|---|
-| `Button` (sm/md/lg × ghost/outline/solid/danger) | 10+ inline `const btn` strings | red primary, charcoal outline |
-| `IconButton` | ad-hoc icon buttons | 24/28px, mandatory `aria-label` |
-| `Input` / `NumberInput` / `SearchInput` | 6+ `const field` strings | 28px, `12px` text |
-| `Select` / `Combobox` | native `<select>`, ad-hoc pickers | Radix Select + popover search (symbol, interval, timezone, template pickers) |
-| `DropdownMenu` | `Menu.tsx` internals, `ChartContextMenu` | one positioning/animation/backdrop policy |
-| `Popover` | scattered absolute overlays | chart command input, footer feed popovers |
-| `Dialog` + `DialogHeader/Body/Footer` | `Modal.tsx` + per-dialog backdrop hacks | **one** backdrop: `fixed inset-0 z-dialog bg-black/50`, blur optional |
-| `Sheet` (side drawer) | none today | right-docked full-height panels & mobile-style flows |
-| `Command` (cmdk) | `CommandPalette.tsx` | `Ctrl+K` palette; grouped, fuzzy, recent section |
-| `Tabs` | hand-rolled tabs (Settings 8 tabs etc.) | roving tabindex, animated underline |
-| `Tooltip` | native `title=` only | `12px`, dark bubble, hover+focus trigger |
-| `Table` primitives (`Table, THead, TR, TD, TNum`) | 3 divergent `Row` defs (OrderTicket/DOM/ObjectTree) | 24px dense rows, hover/selected states |
-| `Chip` / `Badge` | inline spans | provenance, impact, interval chips |
-| `ConfirmDialog` | `window.confirm`/`window.alert` (DesktopTab:46, Toolbar:363, exportUi:89) | danger variant |
-| `StatusDot` | App.tsx inline status colors | feed status, connection states |
+| Primitive                                         | Replaces                                                                  | Notes                                                                        |
+| ------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `Button` (sm/md/lg × ghost/outline/solid/danger)  | 10+ inline `const btn` strings                                            | red primary, charcoal outline                                                |
+| `IconButton`                                      | ad-hoc icon buttons                                                       | 24/28px, mandatory `aria-label`                                              |
+| `Input` / `NumberInput` / `SearchInput`           | 6+ `const field` strings                                                  | 28px, `12px` text                                                            |
+| `Select` / `Combobox`                             | native `<select>`, ad-hoc pickers                                         | Radix Select + popover search (symbol, interval, timezone, template pickers) |
+| `DropdownMenu`                                    | `Menu.tsx` internals, `ChartContextMenu`                                  | one positioning/animation/backdrop policy                                    |
+| `Popover`                                         | scattered absolute overlays                                               | chart command input, footer feed popovers                                    |
+| `Dialog` + `DialogHeader/Body/Footer`             | `Modal.tsx` + per-dialog backdrop hacks                                   | **one** backdrop: `fixed inset-0 z-dialog bg-black/50`, blur optional        |
+| `Sheet` (side drawer)                             | none today                                                                | right-docked full-height panels & mobile-style flows                         |
+| `Command` (cmdk)                                  | `CommandPalette.tsx`                                                      | `Ctrl+K` palette; grouped, fuzzy, recent section                             |
+| `Tabs`                                            | hand-rolled tabs (Settings 8 tabs etc.)                                   | roving tabindex, animated underline                                          |
+| `Tooltip`                                         | native `title=` only                                                      | `12px`, dark bubble, hover+focus trigger                                     |
+| `Table` primitives (`Table, THead, TR, TD, TNum`) | 3 divergent `Row` defs (OrderTicket/DOM/ObjectTree)                       | 24px dense rows, hover/selected states                                       |
+| `Chip` / `Badge`                                  | inline spans                                                              | provenance, impact, interval chips                                           |
+| `ConfirmDialog`                                   | `window.confirm`/`window.alert` (DesktopTab:46, Toolbar:363, exportUi:89) | danger variant                                                               |
+| `StatusDot`                                       | App.tsx inline status colors                                              | feed status, connection states                                               |
 
 All accept `className` via a `cn()` helper (clsx + tailwind-merge — already installed,
 currently unused).
@@ -148,18 +148,19 @@ Current: 6-item NavRail + 7-menu toolbar + 4 boolean right-panels + 6 routes. Re
 **8 nav sections**, each a category that owns routes and sheets. NavRail becomes icon rail
 with hover-flyout labels (Investing.com's hover-nav pattern), active state = red accent bar.
 
-| # | Section | Route(s) | Sheets (full modal / drawer) |
-|---|---|---|---|
-| 1 | Terminal | `/chart` (grid, drawings, replay, DOM, T&S) | Symbol master search, chart templates, interval builder |
-| 2 | Markets | `/markets` (watchlists manager + screener + heatmap) | Add/edit symbol, list manager |
-| 3 | Trade | `/trade` (order ticket, positions, working orders, blotter) | Trade confirm, bracket/SL-TP editor |
-| 4 | Research | `/research` (fundamentals + options chain + news tabs) | Statement viewer, earnings/dividends/economic **calendars** |
-| 5 | Journal | `/journal` (calendar, stats, reviews, prop-firm bar) | Entry dialog (exists), import |
-| 6 | Strategies | `/pine` (Pine editor + strategy tester) | Optimization results, **hotkey sheet** (`?`) |
-| 7 | Alerts | `/alerts` (alert manager table: condition, state, last fired) | Create/edit alert (AlertDialog upgraded) |
-| 8 | Settings | `/settings` (existing 8 tabs) | MT5 setup, API keys, **layout manager**, export center |
+| #   | Section    | Route(s)                                                      | Sheets (full modal / drawer)                                |
+| --- | ---------- | ------------------------------------------------------------- | ----------------------------------------------------------- |
+| 1   | Terminal   | `/chart` (grid, drawings, replay, DOM, T&S)                   | Symbol master search, chart templates, interval builder     |
+| 2   | Markets    | `/markets` (watchlists manager + screener + heatmap)          | Add/edit symbol, list manager                               |
+| 3   | Trade      | `/trade` (order ticket, positions, working orders, blotter)   | Trade confirm, bracket/SL-TP editor                         |
+| 4   | Research   | `/research` (fundamentals + options chain + news tabs)        | Statement viewer, earnings/dividends/economic **calendars** |
+| 5   | Journal    | `/journal` (calendar, stats, reviews, prop-firm bar)          | Entry dialog (exists), import                               |
+| 6   | Strategies | `/pine` (Pine editor + strategy tester)                       | Optimization results, **hotkey sheet** (`?`)                |
+| 7   | Alerts     | `/alerts` (alert manager table: condition, state, last fired) | Create/edit alert (AlertDialog upgraded)                    |
+| 8   | Settings   | `/settings` (existing 8 tabs)                                 | MT5 setup, API keys, **layout manager**, export center      |
 
 Navigation contract:
+
 - **One command registry**: every action registered once with `{ id, label, category, run,
   shortcut }`. Toolbar menus, `Ctrl+K` palette, context menus and nav all render from it.
   (`buildExportEntries` in Toolbar.tsx is the existing seed — generalized.)
@@ -177,19 +178,19 @@ Navigation contract:
 
 ## 5. Feature additions (from repo research — "same functions or more")
 
-| Feature | From | Why |
-|---|---|---|
-| **Time & Sales tape panel** | eTape | DOM without tape is half a ladder; dock tab |
-| **Drag SL/TP on chart** (position line drag = order modify, confirm on release) | TradeCanvas | we have line rendering but no direct manipulation |
-| **Volume Profile indicator** (visible-range, POC/VAH/VAL) | TradeCanvas, OpenCharts | top missing indicator in every TV-alternative comparison |
-| **Custom interval builder** (assemble 2h/8h/3d from base candles, favorite + persist) | OpenAlgo Charts | we ship fixed 1m…1w only |
-| **Chart-cell linking** (group cells: symbol / interval / crosshair sync) | TradeCanvas ChartGrid | 9-cell grid without sync groups is a toy |
-| **Quote provenance chips** (live/delayed/demo/cached on every quote header) | OpenTerminalUI | honest data; we have FeedStatus dot only |
-| **Economic / earnings / dividends calendars** | Investing.com core product | brand-defining "more than TradingView" feature; Research section |
-| **Market heatmap + screener page** | Investing.com, TV | Markets section |
-| **Currency converter + market clock** | Investing.com tools | small sheets, cheap, brand-true |
-| **Hotkey cheat-sheet dialog** (`?`) | TradeCanvas | discoverability |
-| **Session breaks / extended hours** | MASTERPLAN deferred; OpenCharts session plugins | known gap |
+| Feature                                                                               | From                                            | Why                                                              |
+| ------------------------------------------------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------- |
+| **Time & Sales tape panel**                                                           | eTape                                           | DOM without tape is half a ladder; dock tab                      |
+| **Drag SL/TP on chart** (position line drag = order modify, confirm on release)       | TradeCanvas                                     | we have line rendering but no direct manipulation                |
+| **Volume Profile indicator** (visible-range, POC/VAH/VAL)                             | TradeCanvas, OpenCharts                         | top missing indicator in every TV-alternative comparison         |
+| **Custom interval builder** (assemble 2h/8h/3d from base candles, favorite + persist) | OpenAlgo Charts                                 | we ship fixed 1m…1w only                                         |
+| **Chart-cell linking** (group cells: symbol / interval / crosshair sync)              | TradeCanvas ChartGrid                           | 9-cell grid without sync groups is a toy                         |
+| **Quote provenance chips** (live/delayed/demo/cached on every quote header)           | OpenTerminalUI                                  | honest data; we have FeedStatus dot only                         |
+| **Economic / earnings / dividends calendars**                                         | Investing.com core product                      | brand-defining "more than TradingView" feature; Research section |
+| **Market heatmap + screener page**                                                    | Investing.com, TV                               | Markets section                                                  |
+| **Currency converter + market clock**                                                 | Investing.com tools                             | small sheets, cheap, brand-true                                  |
+| **Hotkey cheat-sheet dialog** (`?`)                                                   | TradeCanvas                                     | discoverability                                                  |
+| **Session breaks / extended hours**                                                   | MASTERPLAN deferred; OpenCharts session plugins | known gap                                                        |
 
 Deferred-from-MASTERPLAN items stay deferred (cloud sync, co-editing, walk-forward, signed
 updater) — not UI work.
@@ -214,7 +215,7 @@ updater) — not UI work.
    - `DepthOfMarket.tsx:97` `rgba(239,83,80,.14)` bars → color-mix on tokens
    - `FundamentalsTabs.tsx:313` `fill="#fff"` → currentColor
    - `App.tsx:90` `theme-color` meta hexes → read from token map
-   - `DrawingProperties.tsx:8` swatch palette: keep as *user* colors, but replace the two
+   - `DrawingProperties.tsx:8` swatch palette: keep as _user_ colors, but replace the two
      brand-red swatches with `#d91400`
 5. **Type ramp + `.num`** — replace `text-[9px]` (delete entirely), `text-[10px]`, the 172×
    `text-[11px]`, 35× `text-[12px]` with ramp tokens; audit every table for `.num`.
@@ -262,14 +263,14 @@ updater) — not UI work.
 
 ## 7. Related-repo research summary
 
-| Repo | Stars / license | Steal |
-|---|---|---|
-| OpenCharts | 169 / MIT | plugin-layer pattern (session breaks, tooltips), chart settings dialogs |
-| TradeCanvas | 23 / MIT | drag SL/TP overlay, volume profile, hotkey `?` sheet, grid linking, named layouts, 18 chart types (we have 10 — hollow/Equivolume/volume-candles easy adds) |
-| OpenTerminalUI | 306 / MIT | keyboard-first shell (`Ctrl+G` go-bar), provenance labelling, evidence-cited AI analyst (future MCP direction) |
-| OpenAlgo Charts | Apache-2.0 | custom intervals from source candles, grouped favorites menu |
-| eTape | 7 / MIT | Time & Sales, 10s candles, DOM-ladder hotkeys |
-| OpenTrader | 16 / GPL | nothing (early stage); confirms lightweight-charts v5 is the right base — we already on 5.2.1 |
+| Repo            | Stars / license | Steal                                                                                                                                                       |
+| --------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OpenCharts      | 169 / MIT       | plugin-layer pattern (session breaks, tooltips), chart settings dialogs                                                                                     |
+| TradeCanvas     | 23 / MIT        | drag SL/TP overlay, volume profile, hotkey `?` sheet, grid linking, named layouts, 18 chart types (we have 10 — hollow/Equivolume/volume-candles easy adds) |
+| OpenTerminalUI  | 306 / MIT       | keyboard-first shell (`Ctrl+G` go-bar), provenance labelling, evidence-cited AI analyst (future MCP direction)                                              |
+| OpenAlgo Charts | Apache-2.0      | custom intervals from source candles, grouped favorites menu                                                                                                |
+| eTape           | 7 / MIT         | Time & Sales, 10s candles, DOM-ladder hotkeys                                                                                                               |
+| OpenTrader      | 16 / GPL        | nothing (early stage); confirms lightweight-charts v5 is the right base — we already on 5.2.1                                                               |
 
 Licensing: we use lightweight-charts 5.2.1 (Apache-2.0) — keep the TradingView attribution
 notice visible in Settings → About (verify present; required by license).

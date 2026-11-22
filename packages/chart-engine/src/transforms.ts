@@ -114,7 +114,12 @@ export interface KagiLine {
 export function kagi(candles: readonly Candle[], reversal: number): KagiLine[] {
   const out: KagiLine[] = [];
   if (candles.length === 0 || !(reversal > 0)) return out;
-  let cur: KagiLine = { time: candles[0]!.time, start: candles[0]!.close, end: candles[0]!.close, yang: true };
+  let cur: KagiLine = {
+    time: candles[0]!.time,
+    start: candles[0]!.close,
+    end: candles[0]!.close,
+    yang: true,
+  };
   let dir = 0;
   for (const c of candles) {
     const p = c.close;
@@ -191,7 +196,9 @@ export function pointAndFigure(candles: readonly Candle[], box: number, reversal
 function toBox(col: { time: number; x: boolean; lo: number; hi: number }, box: number): PriceBox {
   const lo = Number((col.lo * box).toPrecision(12));
   const hi = Number((col.hi * box).toPrecision(12));
-  return col.x ? { time: col.time, open: lo, close: hi, up: true } : { time: col.time, open: hi, close: lo, up: false };
+  return col.x
+    ? { time: col.time, open: lo, close: hi, up: true }
+    : { time: col.time, open: hi, close: lo, up: false };
 }
 
 /**
@@ -299,7 +306,8 @@ export function volumeProfile(candles: readonly Candle[], rows = 24): VolumeProf
     volume: 0,
     upVolume: 0,
   }));
-  const rowOf = (p: number) => (step > 0 ? Math.min(count - 1, Math.max(0, Math.floor((p - lo) / step))) : 0);
+  const rowOf = (p: number) =>
+    step > 0 ? Math.min(count - 1, Math.max(0, Math.floor((p - lo) / step))) : 0;
 
   for (const c of candles) {
     if (!(c.volume > 0)) continue;
@@ -310,7 +318,9 @@ export function volumeProfile(candles: readonly Candle[], rows = 24): VolumeProf
     for (let i = first; i <= last; i++) {
       const row = out[i]!;
       const share =
-        span > 0 ? (Math.min(c.high, row.high) - Math.max(c.low, row.low)) / span : 1 / (last - first + 1);
+        span > 0
+          ? (Math.min(c.high, row.high) - Math.max(c.low, row.low)) / span
+          : 1 / (last - first + 1);
       const v = c.volume * Math.max(0, share);
       row.volume += v;
       if (isUp) row.upVolume += v;

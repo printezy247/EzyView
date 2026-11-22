@@ -55,14 +55,24 @@ function timeToIndex(times: readonly number[], time: number, step: number): numb
 }
 
 /** Pixel x → epoch seconds, or null when there is not enough data to map. */
-export function xToTime(times: readonly number[], l0: number, spacing: number, x: number): number | null {
+export function xToTime(
+  times: readonly number[],
+  l0: number,
+  spacing: number,
+  x: number,
+): number | null {
   const step = barStep(times);
   if (step <= 0 || !Number.isFinite(spacing) || spacing === 0) return null;
   return indexToTime(times, (x - l0) / spacing, step);
 }
 
 /** Epoch seconds → pixel x, or null when there is not enough data to map. */
-export function timeToX(times: readonly number[], l0: number, spacing: number, time: number): number | null {
+export function timeToX(
+  times: readonly number[],
+  l0: number,
+  spacing: number,
+  time: number,
+): number | null {
   const step = barStep(times);
   if (step <= 0 || !Number.isFinite(spacing) || spacing === 0) return null;
   return l0 + timeToIndex(times, time, step) * spacing;

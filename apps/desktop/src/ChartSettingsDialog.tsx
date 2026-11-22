@@ -30,7 +30,6 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "events", label: "Events" },
 ];
 
-
 export function ChartSettingsDialog({ open, onClose }: Props) {
   // Only the settings fields the draft is built from. A whole-chart
   // subscription re-rendered the dialog on every drawing drag.
@@ -204,7 +203,9 @@ export function ChartSettingsDialog({ open, onClose }: Props) {
         >
           {activeTab === "symbol" && <SymbolSettingsTab draft={draft} setDraft={setDraft} />}
 
-          {activeTab === "status_line" && <StatusLineSettingsTab draft={draft} setDraft={setDraft} />}
+          {activeTab === "status_line" && (
+            <StatusLineSettingsTab draft={draft} setDraft={setDraft} />
+          )}
 
           {activeTab === "scales" && <ScalesSettingsTab draft={draft} setDraft={setDraft} />}
 
@@ -252,8 +253,15 @@ export function ChartSettingsDialog({ open, onClose }: Props) {
             </div>
           )}
         </div>
-        <span className="ml-auto text-dense text-ev-faint">Use Cancel/Ok above to discard or apply.</span>
-        <IconButton label="Reset to defaults" size="sm" onClick={handleResetDefaults} className="ml-1">
+        <span className="ml-auto text-dense text-ev-faint">
+          Use Cancel/Ok above to discard or apply.
+        </span>
+        <IconButton
+          label="Reset to defaults"
+          size="sm"
+          onClick={handleResetDefaults}
+          className="ml-1"
+        >
           <RotateCcw size={13} aria-hidden />
         </IconButton>
       </div>

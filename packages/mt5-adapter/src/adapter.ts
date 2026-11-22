@@ -23,7 +23,16 @@ import type {
   TradingAdapter,
   UnsubscribeFn,
 } from "@ezyview/data-adapters";
-import { asRecord, toAccount, toCandles, toDeals, toOrders, toPositions, toQuote, toSymbols } from "./map";
+import {
+  asRecord,
+  toAccount,
+  toCandles,
+  toDeals,
+  toOrders,
+  toPositions,
+  toQuote,
+  toSymbols,
+} from "./map";
 import { createTransport } from "./transport";
 import type { Mt5Transport, TransportOptions } from "./transport";
 
@@ -64,7 +73,9 @@ export class Mt5MarketData implements MarketDataAdapter {
       const all = toSymbols(await this.transport.marketWatch());
       const needle = query.trim().toUpperCase();
       if (!needle) return all;
-      return all.filter((s) => s.symbol.includes(needle) || s.description.toUpperCase().includes(needle));
+      return all.filter(
+        (s) => s.symbol.includes(needle) || s.description.toUpperCase().includes(needle),
+      );
     } catch {
       return [];
     }
@@ -191,8 +202,10 @@ export class Mt5Trading implements TradingAdapter {
     const id = request.clientOrderId;
     if (id !== undefined) {
       const now = Date.now();
-      for (const [k, t] of this.recentIds) if (now - t > DUPLICATE_WINDOW_MS) this.recentIds.delete(k);
-      if (this.recentIds.has(id)) throw new Error(`Duplicate clientOrderId "${id}" seen in the last 60 s; order not sent`);
+      for (const [k, t] of this.recentIds)
+        if (now - t > DUPLICATE_WINDOW_MS) this.recentIds.delete(k);
+      if (this.recentIds.has(id))
+        throw new Error(`Duplicate clientOrderId "${id}" seen in the last 60 s; order not sent`);
       // Kept even if the send fails: the outcome may be unknown, so never auto-retry.
       this.recentIds.set(id, now);
     }
@@ -314,6 +327,7 @@ function validateOrder(r: OrderRequest): void {
   }
   for (const key of ["price", "stopPrice", "takeProfit", "stopLoss"] as const) {
     const v = r[key];
-    if (v !== undefined && !Number.isFinite(v)) throw new Error(`Invalid ${key}: must be a finite number`);
+    if (v !== undefined && !Number.isFinite(v))
+      throw new Error(`Invalid ${key}: must be a finite number`);
   }
 }

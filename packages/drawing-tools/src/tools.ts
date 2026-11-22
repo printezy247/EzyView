@@ -113,9 +113,18 @@ export const TOOL_SPECS: Record<DrawingToolId, DrawingToolSpec> = {
     stats: true,
     position: true,
   }),
-  pitchfork_standard: spec("pitchfork_standard", "Pitchfork", "pitchfork", { extend: true, stats: true, shortcut: "P" }),
+  pitchfork_standard: spec("pitchfork_standard", "Pitchfork", "pitchfork", {
+    extend: true,
+    stats: true,
+    shortcut: "P",
+  }),
   pitchfork_schiff: spec("pitchfork_schiff", "Schiff pitchfork", "pitchfork", { extend: true }),
-  pitchfork_modified_schiff: spec("pitchfork_modified_schiff", "Modified Schiff pitchfork", "pitchfork", { extend: true }),
+  pitchfork_modified_schiff: spec(
+    "pitchfork_modified_schiff",
+    "Modified Schiff pitchfork",
+    "pitchfork",
+    { extend: true },
+  ),
   pitchfork_inside: spec("pitchfork_inside", "Inside pitchfork", "pitchfork", { extend: true }),
   fib_fan: spec("fib_fan", "Fib fan", "fib", { fib: true, extend: true }),
   fib_arcs: spec("fib_arcs", "Fib arcs", "fib", { fib: true }),
@@ -125,16 +134,30 @@ export const TOOL_SPECS: Record<DrawingToolId, DrawingToolSpec> = {
   gann_fan: spec("gann_fan", "Gann fan", "gann", { extend: true }),
   gann_box: spec("gann_box", "Gann box", "gann", { fill: true }),
   gann_square: spec("gann_square", "Gann square", "gann", { fill: true }),
-  gann_square_from_two: spec("gann_square_from_two", "Square from two points", "gann", { fill: true }),
+  gann_square_from_two: spec("gann_square_from_two", "Square from two points", "gann", {
+    fill: true,
+  }),
   gann_time: spec("gann_time", "Gann time by 1/2/3", "gann", {}),
   xabcd: spec("xabcd", "XABCD pattern", "patterns", { stats: true, text: true }),
   cypher: spec("cypher", "Cypher pattern", "patterns", { stats: true, text: true }),
-  head_shoulders: spec("head_shoulders", "Head and shoulders", "patterns", { stats: true, text: true }),
+  head_shoulders: spec("head_shoulders", "Head and shoulders", "patterns", {
+    stats: true,
+    text: true,
+  }),
   abcd: spec("abcd", "ABCD pattern", "patterns", { stats: true, text: true }),
   three_drives: spec("three_drives", "Three drives", "patterns", { stats: true, text: true }),
-  elliott_impulse: spec("elliott_impulse", "Elliott impulse (1-5)", "patterns", { stats: true, text: true }),
-  elliott_correction: spec("elliott_correction", "Elliott correction (A-C)", "patterns", { stats: true, text: true }),
-  elliott_triangle: spec("elliott_triangle", "Elliott triangle", "patterns", { stats: true, text: true }),
+  elliott_impulse: spec("elliott_impulse", "Elliott impulse (1-5)", "patterns", {
+    stats: true,
+    text: true,
+  }),
+  elliott_correction: spec("elliott_correction", "Elliott correction (A-C)", "patterns", {
+    stats: true,
+    text: true,
+  }),
+  elliott_triangle: spec("elliott_triangle", "Elliott triangle", "patterns", {
+    stats: true,
+    text: true,
+  }),
   cup_handle: spec("cup_handle", "Cup and handle", "patterns", { stats: true, text: true }),
   image: spec("image", "Image", "annotation", { fill: true }),
   sticker: spec("sticker", "Sticker", "annotation", { text: true }),
@@ -143,9 +166,15 @@ export const TOOL_SPECS: Record<DrawingToolId, DrawingToolSpec> = {
   price_note: spec("price_note", "Price note", "annotation", { text: true }),
   arrow_marker: spec("arrow_marker", "Arrow marker", "annotation", {}),
   highlighter: spec("highlighter", "Highlighter", "annotation", {}),
-  date_price_range: spec("date_price_range", "Date and price range", "prediction", { fill: true, stats: true }),
+  date_price_range: spec("date_price_range", "Date and price range", "prediction", {
+    fill: true,
+    stats: true,
+  }),
   price_range: spec("price_range", "Price range", "prediction", { fill: true, stats: true }),
-  projected_range: spec("projected_range", "Projected range", "prediction", { fill: true, stats: true }),
+  projected_range: spec("projected_range", "Projected range", "prediction", {
+    fill: true,
+    stats: true,
+  }),
   bars_pattern: spec("bars_pattern", "Bars pattern", "prediction", { fill: true }),
   forecast: spec("forecast", "Forecast", "prediction", { fill: true, stats: true }),
   rotated_rectangle: spec("rotated_rectangle", "Rotated rectangle", "shapes", { fill: true }),
@@ -165,12 +194,26 @@ export const TOOL_CATEGORIES: readonly {
   {
     id: "trend",
     title: "Trend line tools",
-    tools: ["trend_line", "ray", "info_line", "extended_line", "horizontal_line", "horizontal_ray", "vertical_line", "parallel_channel"],
+    tools: [
+      "trend_line",
+      "ray",
+      "info_line",
+      "extended_line",
+      "horizontal_line",
+      "horizontal_ray",
+      "vertical_line",
+      "parallel_channel",
+    ],
   },
   {
     id: "pitchfork",
     title: "Pitchfork tools",
-    tools: ["pitchfork_standard", "pitchfork_schiff", "pitchfork_modified_schiff", "pitchfork_inside"],
+    tools: [
+      "pitchfork_standard",
+      "pitchfork_schiff",
+      "pitchfork_modified_schiff",
+      "pitchfork_inside",
+    ],
   },
   {
     id: "fib",
@@ -286,7 +329,13 @@ export function defaultStyleForTool(tool: DrawingToolId, base: DrawingStyle): Dr
     style.width = Math.max(8, base.width * 4);
     style.opacity = 40;
   }
-  if (tool === "image" || tool === "comment" || tool.endsWith("_range") || tool === "gann_box" || tool === "forecast") {
+  if (
+    tool === "image" ||
+    tool === "comment" ||
+    tool.endsWith("_range") ||
+    tool === "gann_box" ||
+    tool === "forecast"
+  ) {
     style.fill = base.fill ?? base.color;
     style.fillOpacity = base.fillOpacity ?? 12;
     style.showPriceLabels = base.showPriceLabels ?? true;

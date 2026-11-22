@@ -1,10 +1,7 @@
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import type { Candle } from "@ezyview/data-adapters";
 import type { EzyChart } from "@ezyview/chart-engine";
-import type {
-  IndicatorInstance,
-  ScriptPlotSpec,
-} from "@ezyview/chart-engine";
+import type { IndicatorInstance, ScriptPlotSpec } from "@ezyview/chart-engine";
 import type { Drawing, DrawingToolId, MagnetMode, ScreenPoint } from "@ezyview/drawing-tools";
 import {
   defaultStyleForTool,
@@ -66,7 +63,11 @@ export interface HostContext {
  */
 export function applySessionShading(ctx: HostContext): void {
   const times = ctx.historyRef.current.map((c) => c.time);
-  ctx.chartRef.current?.setSessionShading(times, ctx.sessionRef.current, THEME_OF[ctx.themeRef.current].sessionBand);
+  ctx.chartRef.current?.setSessionShading(
+    times,
+    ctx.sessionRef.current,
+    THEME_OF[ctx.themeRef.current].sessionBand,
+  );
 }
 
 /**
@@ -135,11 +136,18 @@ export function createChartHostKit(ctx: HostContext) {
    * Commit a finished drawing: remember the tool's style, push it to the store
    * and select it (unless the user is staying in drawing mode).
    */
-  const finishDrawing = (tool: DrawingToolId, points: Drawing["points"], chartIndex: number): string => {
+  const finishDrawing = (
+    tool: DrawingToolId,
+    points: Drawing["points"],
+    chartIndex: number,
+  ): string => {
     const st = useWorkspace.getState();
     const drawings = st.activeLayout().charts[chartIndex]?.drawings ?? [];
     if (drawings.length >= MAX_DRAWINGS_PER_CHART) {
-      notice.alert("Drawings could not be saved", `Drawing limit of ${MAX_DRAWINGS_PER_CHART} reached for this chart.`);
+      notice.alert(
+        "Drawings could not be saved",
+        `Drawing limit of ${MAX_DRAWINGS_PER_CHART} reached for this chart.`,
+      );
       chartRef.current?.setPreview(null);
       pendingRef.current = null;
       setGhost(null);
@@ -158,7 +166,10 @@ export function createChartHostKit(ctx: HostContext) {
         // Simplify in pixel space only; if any point cannot be projected (empty
         // chart) keep the raw stroke rather than mixing pixels with epoch/price.
         if (screenPts.every((p) => p.x !== null && p.y !== null)) {
-          const simplified = simplifyRdp(screenPts as { x: number; y: number; orig: (typeof points)[number] }[], 1.75);
+          const simplified = simplifyRdp(
+            screenPts as { x: number; y: number; orig: (typeof points)[number] }[],
+            1.75,
+          );
           strokePoints = simplified.map((s) => s.orig);
         }
       } else {
@@ -284,7 +295,9 @@ export function toPlotSpecs(scripts: Record<string, PineScriptRecord>): ScriptPl
   return out;
 }
 
-export function toBands(scripts: Record<string, PineScriptRecord>): { color: string; values: (number | null)[] }[] {
+export function toBands(
+  scripts: Record<string, PineScriptRecord>,
+): { color: string; values: (number | null)[] }[] {
   const out: { color: string; values: (number | null)[] }[] = [];
   for (const record of Object.values(scripts)) {
     if (record.error) continue;

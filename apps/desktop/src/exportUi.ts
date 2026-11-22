@@ -60,8 +60,12 @@ export function dataUrlToBlob(dataUrl: string): Blob {
 
 /** Dialog filter for a file name: `chart.png` → `{ name: "PNG", extensions: ["png"] }`. */
 export function saveFilterFor(filename: string): { name: string; extensions: string[] } {
-  const ext = filename.includes(".") ? filename.slice(filename.lastIndexOf(".") + 1).toLowerCase() : "";
-  return ext ? { name: ext.toUpperCase(), extensions: [ext] } : { name: "All files", extensions: ["*"] };
+  const ext = filename.includes(".")
+    ? filename.slice(filename.lastIndexOf(".") + 1).toLowerCase()
+    : "";
+  return ext
+    ? { name: ext.toUpperCase(), extensions: [ext] }
+    : { name: "All files", extensions: ["*"] };
 }
 
 const inTauri = (): boolean => typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -102,7 +106,10 @@ export function saveChartPng(source: ExportSource): void {
 }
 
 /** Save name for chart data: `chart-<symbol>-<resolution>.<ext>`. */
-export function chartDataFilename(meta: { symbol: string; resolution: string }, ext: "csv" | "json"): string {
+export function chartDataFilename(
+  meta: { symbol: string; resolution: string },
+  ext: "csv" | "json",
+): string {
   return `${sanitizeExportFilename(`chart-${meta.symbol}-${meta.resolution}`, "chart")}.${ext}`;
 }
 
@@ -114,14 +121,19 @@ export function saveChartCsv(source: ExportSource): void {
 
 /** Save the bars the user can see (replay-sliced) as JSON. */
 export function saveChartJson(source: ExportSource): void {
-  const blob = new Blob([candlesToJson(source.getCandles(), source.meta())], { type: "application/json" });
+  const blob = new Blob([candlesToJson(source.getCandles(), source.meta())], {
+    type: "application/json",
+  });
   void saveBlob(blob, chartDataFilename(source.meta(), "json"));
 }
 
 /** Save the layout as a shareable JSON file. */
 export function saveLayoutJson(layout: Layout): void {
   const blob = new Blob([exportLayoutJson(layout)], { type: "application/json" });
-  notice.alert("Exporting layout JSON", "Layout export contains unencrypted chart layout and drawing structures.");
+  notice.alert(
+    "Exporting layout JSON",
+    "Layout export contains unencrypted chart layout and drawing structures.",
+  );
   void saveBlob(blob, `${sanitizeExportFilename(`layout-${layout.name}`, "layout")}.json`);
 }
 

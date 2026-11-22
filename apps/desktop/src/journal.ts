@@ -65,7 +65,8 @@ function readReviews(value: unknown): SavedReview[] {
   for (const row of value) {
     if (!row || typeof row !== "object") continue;
     const r = row as Partial<SavedReview>;
-    if (typeof r.id !== "string" || typeof r.text !== "string" || typeof r.key !== "string") continue;
+    if (typeof r.id !== "string" || typeof r.text !== "string" || typeof r.key !== "string")
+      continue;
     if (r.period !== "daily" && r.period !== "weekly") continue;
     out.push({
       id: r.id,
@@ -88,7 +89,8 @@ function readPlans(value: unknown): TradePlan[] {
   for (const row of value) {
     if (!row || typeof row !== "object") continue;
     const p = row as Partial<TradePlan>;
-    if (typeof p.id !== "string" || typeof p.symbol !== "string" || p.symbol.trim() === "") continue;
+    if (typeof p.id !== "string" || typeof p.symbol !== "string" || p.symbol.trim() === "")
+      continue;
     if (p.side !== "long" && p.side !== "short") continue;
     if (p.status === undefined || !PLAN_STATUSES.has(p.status)) continue;
     if (typeof p.createdAt !== "number" || !Number.isFinite(p.createdAt)) continue;
@@ -116,8 +118,10 @@ function readPropFirm(value: unknown): PropFirmLimits {
   if (!value || typeof value !== "object") return {};
   const src = value as PropFirmLimits;
   const out: PropFirmLimits = {};
-  if (typeof src.dailyLossLimit === "number" && src.dailyLossLimit > 0) out.dailyLossLimit = src.dailyLossLimit;
-  if (typeof src.maxDrawdownLimit === "number" && src.maxDrawdownLimit > 0) out.maxDrawdownLimit = src.maxDrawdownLimit;
+  if (typeof src.dailyLossLimit === "number" && src.dailyLossLimit > 0)
+    out.dailyLossLimit = src.dailyLossLimit;
+  if (typeof src.maxDrawdownLimit === "number" && src.maxDrawdownLimit > 0)
+    out.maxDrawdownLimit = src.maxDrawdownLimit;
   return out;
 }
 
@@ -226,7 +230,12 @@ export interface JournalState {
   removeReview(id: string): void;
   /** Shallow-merges limits; pass `undefined` to clear a field. */
   setPropFirm(patch: Partial<PropFirmLimits>): void;
-  addPlan(input: Omit<TradePlan, "id" | "createdAt" | "status"> & { createdAt?: number; status?: TradePlanStatus }): void;
+  addPlan(
+    input: Omit<TradePlan, "id" | "createdAt" | "status"> & {
+      createdAt?: number;
+      status?: TradePlanStatus;
+    },
+  ): void;
   updatePlan(id: string, patch: Partial<Omit<TradePlan, "id" | "createdAt">>): void;
   removePlan(id: string): void;
   /** Pulls closed trades out of a deal history; returns how many were new. */
@@ -273,7 +282,9 @@ export const useJournal = create<JournalState>((set, get) => {
     updateEntries(ids, patch) {
       if (ids.length === 0) return;
       const wanted = new Set(ids);
-      const next = get().entries.map((entry) => (wanted.has(entry.id) ? Object.assign({}, entry, patch) : entry));
+      const next = get().entries.map((entry) =>
+        wanted.has(entry.id) ? Object.assign({}, entry, patch) : entry,
+      );
       set({ entries: next });
       persist();
     },
@@ -317,7 +328,9 @@ export const useJournal = create<JournalState>((set, get) => {
     },
 
     updateEntry(id, patch) {
-      const next = get().entries.map((entry) => (entry.id === id ? Object.assign({}, entry, patch) : entry));
+      const next = get().entries.map((entry) =>
+        entry.id === id ? Object.assign({}, entry, patch) : entry,
+      );
       set({ entries: next });
       persist();
     },
@@ -328,7 +341,9 @@ export const useJournal = create<JournalState>((set, get) => {
       const target = idx < 0 ? undefined : entries[idx];
       const rules = target?.rules;
       if (!target || !rules || ruleIndex < 0 || ruleIndex >= rules.length) return;
-      const flipped = rules.map((rule, j) => (j === ruleIndex ? Object.assign({}, rule, { done: !rule.done }) : rule));
+      const flipped = rules.map((rule, j) =>
+        j === ruleIndex ? Object.assign({}, rule, { done: !rule.done }) : rule,
+      );
       const next = entries.slice();
       next[idx] = Object.assign({}, target, { rules: flipped });
       set({ entries: next });
@@ -349,7 +364,9 @@ export const useJournal = create<JournalState>((set, get) => {
         // Cap only when growing: a replacement above is in-place, so the match
         // can never be the row the cap drops. The write cap mirrors readReviews,
         // so a reload can never trim what this session just saved.
-        set({ savedReviews: [{ ...input, id: uid(), savedAt }, ...existing].slice(0, MAX_REVIEWS) });
+        set({
+          savedReviews: [{ ...input, id: uid(), savedAt }, ...existing].slice(0, MAX_REVIEWS),
+        });
       }
       persist();
     },
@@ -379,7 +396,9 @@ export const useJournal = create<JournalState>((set, get) => {
     },
 
     updatePlan(id, patch) {
-      const next = get().plans.map((plan) => (plan.id === id ? Object.assign({}, plan, patch) : plan));
+      const next = get().plans.map((plan) =>
+        plan.id === id ? Object.assign({}, plan, patch) : plan,
+      );
       set({ plans: next });
       persist();
     },

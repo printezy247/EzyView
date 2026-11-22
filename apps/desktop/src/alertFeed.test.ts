@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import type { PriceAlert } from "@ezyview/data-adapters";
 import { alertSymbols, candleFromQuote } from "./alertFeed";
 
-const alert = (id: string, symbol: string, state: PriceAlert["state"], frequency: PriceAlert["frequency"]): PriceAlert => ({
+const alert = (
+  id: string,
+  symbol: string,
+  state: PriceAlert["state"],
+  frequency: PriceAlert["frequency"],
+): PriceAlert => ({
   id,
   symbol,
   message: "",

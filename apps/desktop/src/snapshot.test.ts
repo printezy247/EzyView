@@ -36,7 +36,14 @@ const entry = (id: string, entryTime: number): JournalEntry => ({
 
 describe("buildSnapshot", () => {
   const snap = buildSnapshot(
-    { layouts: [layout], activeLayoutId: "l1", alerts: [], watchlist: [], entries: [entry("old", 1), entry("new", 2)], notes: [] },
+    {
+      layouts: [layout],
+      activeLayoutId: "l1",
+      alerts: [],
+      watchlist: [],
+      entries: [entry("old", 1), entry("new", 2)],
+      notes: [],
+    },
     5_000,
   );
 

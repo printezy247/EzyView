@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { effectiveSource, isDataSourceChoice, isLiveSourceChoice, orderWarning, sourceLabel, sourceOptions } from "./chartSource";
+import {
+  effectiveSource,
+  isDataSourceChoice,
+  isLiveSourceChoice,
+  orderWarning,
+  sourceLabel,
+  sourceOptions,
+} from "./chartSource";
 
 describe("effectiveSource", () => {
   it("auto follows the global feed switch", () => {
@@ -24,8 +31,12 @@ describe("isDataSourceChoice", () => {
 
 describe("orderWarning", () => {
   it("warns only when MT5 takes the order but the chart price is elsewhere", () => {
-    expect(orderWarning("binance", true)).toBe("Chart price is from Binance; MT5 fills at the broker price");
-    expect(orderWarning("demo", true)).toBe("Chart price is from EzyView demo; MT5 fills at the broker price");
+    expect(orderWarning("binance", true)).toBe(
+      "Chart price is from Binance; MT5 fills at the broker price",
+    );
+    expect(orderWarning("demo", true)).toBe(
+      "Chart price is from EzyView demo; MT5 fills at the broker price",
+    );
     expect(orderWarning("mt5", true)).toBeNull();
     expect(orderWarning("binance", false)).toBeNull();
   });
@@ -40,10 +51,14 @@ describe("sourceOptions", () => {
     expect(ids).toEqual(["auto", "demo", "mt5", "binance"]);
   });
   it("greys out Twelve Data with a hint when no key", () => {
-    const td = sourceOptions("XAUUSD", { supports, hasTwelveKey: false }).find((o) => o.id === "twelvedata")!;
+    const td = sourceOptions("XAUUSD", { supports, hasTwelveKey: false }).find(
+      (o) => o.id === "twelvedata",
+    )!;
     expect(td.disabled).toBe(true);
     expect(td.hint).toBe("Add a key in API keys");
-    const ok = sourceOptions("XAUUSD", { supports, hasTwelveKey: true }).find((o) => o.id === "twelvedata")!;
+    const ok = sourceOptions("XAUUSD", { supports, hasTwelveKey: true }).find(
+      (o) => o.id === "twelvedata",
+    )!;
     expect(ok.disabled).toBeFalsy();
   });
   it("labels", () => {
@@ -54,7 +69,9 @@ describe("sourceOptions", () => {
 
 describe("isLiveSourceChoice", () => {
   it("is true only for the three live sources", () => {
-    expect(["binance", "kraken", "twelvedata"].every((id) => isLiveSourceChoice(id as never))).toBe(true);
+    expect(["binance", "kraken", "twelvedata"].every((id) => isLiveSourceChoice(id as never))).toBe(
+      true,
+    );
     expect(["auto", "demo", "mt5"].some((id) => isLiveSourceChoice(id as never))).toBe(false);
   });
 });

@@ -52,12 +52,12 @@
 
 ## Features
 
-| Market Data | Tooling |
-|---|---|
-| 📈 **Charts** — GPU canvas (Lightweight Charts + custom engine), multi-pane, drag stop/target, session breaks | 🧭 **Drawings** — full TradingView-style suite, magnet, styling, object tree |
-| 📊 **Indicators** — 50+ built-ins + custom Pine Script v5/v6 (transpiled JS/WASM) | ✏️ **Editor** — Pine editor with autocomplete, lint, backtest |
-| 💹 **Trading** — paper engine + live MT5 (REST bridge on Windows/Wine) | 📓 **Journal** — stats, tags, screenshots, broker sync |
-| 🗓 **Research** — calendar, news, earnings, dividends, options, screener, heatmap | 🤝 **Collaboration** — shareable links, embeddable widgets, co-editing (later) |
+| Market Data                                                                                                   | Tooling                                                                        |
+| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| 📈 **Charts** — GPU canvas (Lightweight Charts + custom engine), multi-pane, drag stop/target, session breaks | 🧭 **Drawings** — full TradingView-style suite, magnet, styling, object tree   |
+| 📊 **Indicators** — 50+ built-ins + custom Pine Script v5/v6 (transpiled JS/WASM)                             | ✏️ **Editor** — Pine editor with autocomplete, lint, backtest                  |
+| 💹 **Trading** — paper engine + live MT5 (REST bridge on Windows/Wine)                                        | 📓 **Journal** — stats, tags, screenshots, broker sync                         |
+| 🗓 **Research** — calendar, news, earnings, dividends, options, screener, heatmap                              | 🤝 **Collaboration** — shareable links, embeddable widgets, co-editing (later) |
 
 Status **v0.4.0** · plan: [`MASTERPLAN.md`](MASTERPLAN.md) · brand: [`docs/superpowers/specs/2026-10-21-investing-com-brand-redesign.md`](docs/superpowers/specs/2026-10-21-investing-com-brand-redesign.md)
 

@@ -103,7 +103,7 @@ Used as the feature-parity checklist for EzyView.
 - Economic Calendar
 - Edit
 - Enter a new chart layout name
-- Error details: 
+- Error details:
 - Error during the update. Application cannot be updated. Please try again or contact the support team.
 - Everyone started somewhere.
 - Exit

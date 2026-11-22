@@ -3,11 +3,19 @@ import { planRewardRisk } from "./model";
 
 describe("planRewardRisk", () => {
   it("computes reward and risk for a long plan", () => {
-    expect(planRewardRisk({ entry: 100, stop: 95, target: 115 })).toEqual({ risk: 5, reward: 15, ratio: 3 });
+    expect(planRewardRisk({ entry: 100, stop: 95, target: 115 })).toEqual({
+      risk: 5,
+      reward: 15,
+      ratio: 3,
+    });
   });
 
   it("uses absolute distances for a short plan", () => {
-    expect(planRewardRisk({ entry: 100, stop: 105, target: 90 })).toEqual({ risk: 5, reward: 10, ratio: 2 });
+    expect(planRewardRisk({ entry: 100, stop: 105, target: 90 })).toEqual({
+      risk: 5,
+      reward: 10,
+      ratio: 2,
+    });
   });
 
   it("refuses plans without all three levels", () => {

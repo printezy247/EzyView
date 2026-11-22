@@ -93,7 +93,14 @@ export function Popover({
               "fixed z-[var(--z-dropdown)] rounded-lg border border-ev-line bg-ev-panel p-2 shadow-xl",
               panelClassName,
             )}
-            style={{ top: placement.top, left: placement.left, width: placement.width, minWidth: placement.minWidth, maxHeight: placement.maxHeight, overflowY: "auto" }}
+            style={{
+              top: placement.top,
+              left: placement.left,
+              width: placement.width,
+              minWidth: placement.minWidth,
+              maxHeight: placement.maxHeight,
+              overflowY: "auto",
+            }}
           >
             {typeof children === "function" ? children({ close }) : children}
           </div>,

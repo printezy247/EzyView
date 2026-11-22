@@ -3,7 +3,10 @@ import { buildShareLink, parseShareLink } from "./shareLink";
 
 describe("share link", () => {
   it("builds the pinned format and round-trips", () => {
-    const link = buildShareLink("https://app.example/ezyview/", { symbol: "BTCUSDT", resolution: "4h" });
+    const link = buildShareLink("https://app.example/ezyview/", {
+      symbol: "BTCUSDT",
+      resolution: "4h",
+    });
     expect(link).toBe("https://app.example/ezyview/?share=BTCUSDT%3A4h");
     expect(parseShareLink(link)).toEqual({ symbol: "BTCUSDT", resolution: "4h" });
   });

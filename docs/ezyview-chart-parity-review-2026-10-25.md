@@ -27,7 +27,7 @@ templates. What remains is not "make drawings work" — it is:
    images/stickers, projections).
 3. **Depth**: one selected object at a time, no groups, no object snapping, no
    style clipboard, no keyboard nudge, no object-tree search/reorder.
-4. **Pine honesty**: the transpiler is a good v5/v6 *subset* but has no
+4. **Pine honesty**: the transpiler is a good v5/v6 _subset_ but has no
    user-defined functions, collections, `request.security`, drawings or alerts,
    and `strategy.exit`'s stop/profit never reach the backtester.
 5. **Terminal-level parity** that makes charts feel finished: more chart types,
@@ -41,21 +41,21 @@ breadth + multi-select), Phase 2 (chart/interaction), Phase 3 (Pine), Phase 4
 
 ## 2. What is already shipped (do not re-plan)
 
-| Area | Shipped |
-|---|---|
-| Drawing tools | 20 tools across trend, fib, shapes, annotation, prediction (`packages/drawing-tools/src/tools.ts`) |
-| Toolbar | Left rail, categories, flyouts, shortcuts (`T H V F R M`), favourites bar, global lock/hide, magnet, eraser |
-| On-chart editing | Floating mini-settings, context menu, full tabbed modal (Style/Text/Coordinates/Visibility), live preview |
-| Drawing lifecycle | Create, select, drag anchors/body, clone, copy/paste, lock, hide, z-order, rename, delete, JSON import/export |
-| Preview | Rubber-band lines/shapes/fib/position, brush strokes, magnet to OHLC |
-| History | Drawing undo/redo with one entry per drag (`commitDrawingHistory`), 30 states |
-| Templates | Named drawing style templates; per-tool style auto-learn on style edit; chart templates |
-| Visibility | Per-timeframe-unit visibility; global hide all |
-| Chart engine | 10 chart types incl. Heikin-Ashi, Renko, Kagi, P&F; log/percent/invert scale; volume profile; session breaks; replay; crosshair sync; 1–9 chart grids; link groups |
-| Indicators | ~99 catalog entries, separate panes for non-overlay studies |
-| Pine | Monaco editor, autocomplete, lint, transpile to JS in a Worker, strategy tester (the engine supports commission/slippage/multiplier, the UI does not expose them), optimizer, versioned scripts |
-| Alerts | Price conditions (9 kinds), frequency, history, drawing-bound level alerts for horizontal lines, desktop notifications |
-| Quality | 1141 tests, CI (lint/typecheck/test/build/deb/lintian/smoke/cargo), release workflow, e2e smoke |
+| Area              | Shipped                                                                                                                                                                                         |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Drawing tools     | 20 tools across trend, fib, shapes, annotation, prediction (`packages/drawing-tools/src/tools.ts`)                                                                                              |
+| Toolbar           | Left rail, categories, flyouts, shortcuts (`T H V F R M`), favourites bar, global lock/hide, magnet, eraser                                                                                     |
+| On-chart editing  | Floating mini-settings, context menu, full tabbed modal (Style/Text/Coordinates/Visibility), live preview                                                                                       |
+| Drawing lifecycle | Create, select, drag anchors/body, clone, copy/paste, lock, hide, z-order, rename, delete, JSON import/export                                                                                   |
+| Preview           | Rubber-band lines/shapes/fib/position, brush strokes, magnet to OHLC                                                                                                                            |
+| History           | Drawing undo/redo with one entry per drag (`commitDrawingHistory`), 30 states                                                                                                                   |
+| Templates         | Named drawing style templates; per-tool style auto-learn on style edit; chart templates                                                                                                         |
+| Visibility        | Per-timeframe-unit visibility; global hide all                                                                                                                                                  |
+| Chart engine      | 10 chart types incl. Heikin-Ashi, Renko, Kagi, P&F; log/percent/invert scale; volume profile; session breaks; replay; crosshair sync; 1–9 chart grids; link groups                              |
+| Indicators        | ~99 catalog entries, separate panes for non-overlay studies                                                                                                                                     |
+| Pine              | Monaco editor, autocomplete, lint, transpile to JS in a Worker, strategy tester (the engine supports commission/slippage/multiplier, the UI does not expose them), optimizer, versioned scripts |
+| Alerts            | Price conditions (9 kinds), frequency, history, drawing-bound level alerts for horizontal lines, desktop notifications                                                                          |
+| Quality           | 1141 tests, CI (lint/typecheck/test/build/deb/lintian/smoke/cargo), release workflow, e2e smoke                                                                                                 |
 
 ---
 
@@ -65,6 +65,7 @@ Severity: **P0** = wrong result / data loss, **P1** = parity gap users hit
 weekly, **P2** = polish/scale.
 
 ### P0-1 — Drawing undo is layout-global, not chart-scoped
+
 `drawingUndo` / `drawingRedo` are single stacks on the workspace
 (`apps/desktop/src/store.ts:240-243`), while `undoDrawing` applies the previous
 snapshot to `layout.activeChart` (`store.ts:656-665`). `commitDrawingHistory`
@@ -77,6 +78,7 @@ in the drawing system.
 only the affected chart's redo. Add a two-cell regression test.
 
 ### P0-2 — `strategy.exit` stop/profit never reach the backtester
+
 `strategyExit` stores the stop/profit number in the order's `qty` field
 (`packages/pine-transpiler/src/evaluate.ts:475-495`), and `backtest()` never
 reads it: an `exit` action simply closes at the fill bar's open/close
@@ -89,6 +91,7 @@ the current market-close path for `strategy.close`; add fixtures that prove a
 stop fills at the stop price, not at the next open.
 
 ### P0-2b — The strategy tester runs the engine with defaults
+
 Every run passes only closing prices: `backtest(result.orders, { close: ctx.close })`
 (`apps/desktop/src/pineRunner.ts:155,164,193`; `pine.worker.ts:93`). That means
 $10,000 starting cash, zero commission and slippage, no contract multiplier and
@@ -99,6 +102,7 @@ multiplier and fill-on-next-open in the tester UI, persist them per script, and
 show the active assumptions next to the equity curve.
 
 ### P0-3 — Drawing alerts only work on horizontal lines/rays
+
 The context menu gates the alert action on `hasLevel`, which is true only for
 `horizontal_line` and `horizontal_ray`
 (`apps/desktop/src/ChartMenuHost.tsx:108-117`). Trend lines, channels, fib
@@ -110,6 +114,7 @@ tools, level enumeration for channels/fibs/fans — and bind alerts to
 alert in `syncBoundAlert`.
 
 ### P0-4 — Brush strokes and drawing counts have no budget
+
 Brush points are appended for every pointer move and persisted verbatim
 (`apps/desktop/src/ChartHost.tsx` brush path; `drawingsIO.ts` has no cap). A few
 long strokes can exhaust the localStorage quota; the failure is silent.
@@ -118,6 +123,7 @@ and drawings per chart, and surface a "drawings could not be saved" notice.
 Validate the same limits on import.
 
 ### P0-5 — Import ignores the envelope version
+
 `serializeDrawings` writes `{ version: 1 }`, but `parseDrawings` reads only
 `drawings` and never checks `version` (`apps/desktop/src/drawingsIO.ts:10-30`).
 A future v2 file (groups, images) will be silently half-read by an old build.
@@ -125,6 +131,7 @@ A future v2 file (groups, images) will be silently half-read by an old build.
 now, before the schema grows in Phase 1.
 
 ### P1-1 — Single selection only
+
 `selectedDrawingId: string | null` (`store.ts:255`); no multi-select, marquee,
 group drag, group style/delete/lock, or `groupId` anywhere. This blocks the most
 common TradingView editing workflow.
@@ -133,6 +140,7 @@ compatibility; shift-click toggles, drag-rectangle selects, one undo entry per
 group gesture; optional named groups.
 
 ### P1-2 — Object snapping is OHLC-only
+
 `snapToOhlc` snaps to the nearest bar's O/H/L/C
 (`packages/drawing-tools/src/magnet.ts`). There is no snapping to other
 drawings' anchors, edges, midpoints or fib levels.
@@ -140,6 +148,7 @@ drawings' anchors, edges, midpoints or fib levels.
 marker and a modifier to bypass. Keep the existing weak/strong semantics.
 
 ### P1-3 — Tool catalogue breadth
+
 Present: 20 tools. Missing families, ranked by trading value:
 
 1. **Pitchfork** — standard, Schiff, modified Schiff, inside (3 anchors + median).
@@ -151,6 +160,7 @@ Present: 20 tools. Missing families, ranked by trading value:
 7. **Shapes** — rotated rectangle, circle, polyline, arc, curve, double curve.
 
 ### P1-4 — No keyboard or screen-reader path for objects
+
 Drawing selection is mouse-only; arrows do not nudge anchors; the object tree has
 no search/filter and no reorder (rows select, hide, lock, rename, delete only —
 `apps/desktop/src/ObjectTree.tsx`). Selection changes are not announced.
@@ -159,6 +169,7 @@ no search/filter and no reorder (rows select, hide, lock, rename, delete only �
 buttons or drag reorder.
 
 ### P1-5 — Style defaults are implicit
+
 `updateDrawing` auto-learns a tool's style whenever a style patch is applied
 (`store.ts:690-700`), but there is no explicit "Set as default", "Reset", "Copy
 style" / "Paste style", or "apply template to selection". Users cannot tell what
@@ -167,6 +178,7 @@ the default is or undo the learning.
 explicit reset to `DEFAULT_DRAWING_STYLE`.
 
 ### P1-6 — Chart-type breadth
+
 `ChartType` is 10 values (`packages/chart-engine/src/host.ts:38-48`). Missing
 common types: columns, high-low, line break, range, tick, and
 footprint/session-volume (data-dependent). Compare/overlay symbols are absent
@@ -175,6 +187,7 @@ even though percent scale exists.
 range); treat tick/footprint as a data-capability item, not a canvas task.
 
 ### P1-7 — Alerts are price-only
+
 `AlertCondition` has 9 price conditions
 (`packages/data-adapters/src/alerts.ts:3-12`). Alive alerts are polled for their
 own symbols (`apps/desktop/src/alertFeed.ts:63-75`), so background evaluation
@@ -186,6 +199,7 @@ optional conjunction, `expiresAt`, `snoozedUntil`, and a persisted event log;
 evaluate rules in one quote-poller pass.
 
 ### P1-8 — Pine language surface is a subset, and the gap is invisible
+
 The AST has no function-declaration node (`packages/pine-transpiler/src/ast.ts`),
 so `f(x) =>` scripts fail; there is no `request.*`, no `array/map/matrix`, no
 `label/line/box/table`, no `alert()/alertcondition()`. `plot()` ignores
@@ -197,6 +211,7 @@ discover gaps by failure.
 unsupported namespaces with a precise message, then close the gaps in Phase 3.
 
 ### P1-9 — Pine execution model is unsafe and quadratic
+
 Scripts still run through `new Function` (`apps/desktop/src/pineRunner.ts`,
 `pine.worker.ts`), so the CSP keeps `unsafe-eval`. The emitted loop runs once
 per bar and relies on a source-identity cache (`memoizeTa` in `runtime.ts:71-86`):
@@ -211,12 +226,14 @@ watchdog and caps. The existing streaming `highest`/`lowest` deque helpers
 (`packages/indicators/src/helpers.ts:86-137`) are the right pattern to extend.
 
 ### P2-1 — Documentation drift
+
 `MASTERPLAN.md:772-774` still says `highest`/`lowest` are O(n × period), but the
 helpers now use a monotonic deque (`packages/indicators/src/helpers.ts:86-137`). The same section says markers rebuild every
 tick; that should be re-checked before it is repeated. Update the plan when a
 phase lands, or the backlog starts lying.
 
 ### P2-2 — Test coverage is unit-heavy, browser-light
+
 `e2e/` has `smoke.spec.ts` and local-only visual baselines. Drawing placement,
 multi-object drag, settings modal, keyboard nudge and alert-on-drawing have no
 browser-level test. Unit tests are strong (hit-test 379 lines, magnet, edit,
@@ -225,6 +242,7 @@ templates, IO, menu) but do not exercise pointer capture, DPR or focus.
 data; keep pixel comparisons local/containerised.
 
 ### P2-3 — Performance budgets are unmeasured in CI
+
 `scripts/bench-indicators.ts` is a human-run gate. There is no budget for
 drawings (e.g. 500 objects at 60 fps), indicator recompute on a tick, or cold
 100k-bar load.
@@ -237,15 +255,15 @@ an artifact rather than a hard gate.
 
 Ship these before any new tool. They are small and each has a clear test.
 
-| # | Fix | Files | Acceptance |
-|---|---|---|---|
-| 0.1 | Chart-scoped drawing history | `store.ts`, `ChartHost.tsx`, `ChartPage.tsx` | 2-cell test: edit B, focus A, undo leaves A untouched and reverts B |
-| 0.2 | Real strategy brackets | `pine-transpiler/src/backtest.ts`, `evaluate.ts`, `runtime.ts` | Stop/target fixtures fill at the requested level; market close unchanged |
-| 0.2b | Expose backtest costs and OHLC fills | `pineRunner.ts`, `pine.worker.ts`, `PineEditor.tsx` | Tester shows and uses cash/commission/slippage/multiplier; a costed fixture loses money |
-| 0.3 | Alert any geometry | `drawing-tools/src/geometry.ts` (new `priceAt`), `ChartMenuHost.tsx`, `store.ts` | Trend line, channel and fib level alerts fire; moving the drawing updates the alert |
-| 0.4 | Brush/storage budgets | `ChartHost.tsx`, `drawingsIO.ts`, geometry | 10k-point stroke stores <2k; import over cap is rejected with a message |
-| 0.5 | IO version gate + migrations | `drawingsIO.ts` | v2 file on v1 build says "newer format"; v1 file loads |
-| 0.6 | Docs correction | `MASTERPLAN.md` | No stale complexity claim |
+| #    | Fix                                  | Files                                                                            | Acceptance                                                                              |
+| ---- | ------------------------------------ | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| 0.1  | Chart-scoped drawing history         | `store.ts`, `ChartHost.tsx`, `ChartPage.tsx`                                     | 2-cell test: edit B, focus A, undo leaves A untouched and reverts B                     |
+| 0.2  | Real strategy brackets               | `pine-transpiler/src/backtest.ts`, `evaluate.ts`, `runtime.ts`                   | Stop/target fixtures fill at the requested level; market close unchanged                |
+| 0.2b | Expose backtest costs and OHLC fills | `pineRunner.ts`, `pine.worker.ts`, `PineEditor.tsx`                              | Tester shows and uses cash/commission/slippage/multiplier; a costed fixture loses money |
+| 0.3  | Alert any geometry                   | `drawing-tools/src/geometry.ts` (new `priceAt`), `ChartMenuHost.tsx`, `store.ts` | Trend line, channel and fib level alerts fire; moving the drawing updates the alert     |
+| 0.4  | Brush/storage budgets                | `ChartHost.tsx`, `drawingsIO.ts`, geometry                                       | 10k-point stroke stores <2k; import over cap is rejected with a message                 |
+| 0.5  | IO version gate + migrations         | `drawingsIO.ts`                                                                  | v2 file on v1 build says "newer format"; v1 file loads                                  |
+| 0.6  | Docs correction                      | `MASTERPLAN.md`                                                                  | No stale complexity claim                                                               |
 
 Do not add new tool IDs until 0.1 and 0.5 land: both get harder once groups and
 images exist.
@@ -255,6 +273,7 @@ images exist.
 ## 5. Phase 1 — Drawing breadth and multi-object editing (2–3 weeks)
 
 ### 5.1 Model changes (first)
+
 - `Drawing.groupId?: string`, `Drawing.zIndex?: number` (array order stays the
   source of truth; `zIndex` is only for imported files).
 - `Drawing.pattern?: { kind, ratios?: number[], labels?: string[] }` for
@@ -268,6 +287,7 @@ images exist.
 - Schema v2 + migration; keep v1 import working.
 
 ### 5.2 Tool packs (each: spec, renderer, hit-test, anchors, tests)
+
 1. **Pitchfork pack** — 4 variants; median line + two parallels; extend modes.
 2. **Fib pack** — fan, arcs, channel, time zones, wedge; reuse `fib.ts` levels
    and per-level styles; arcs need radius/price-time scale handling.
@@ -290,6 +310,7 @@ whose renderer is a placeholder; that is the failure mode of `egui-charts`
 (98 listed types, some approximate, magnet not applied — see research below).
 
 ### 5.3 Multi-select and groups
+
 - Shift-click toggles, marquee selects, Ctrl+A selects all unlocked.
 - Group drag with one undo entry; group style/lock/hide/delete/z-order.
 - Named groups in the object tree, collapsible, with group visibility.
@@ -298,6 +319,7 @@ whose renderer is a placeholder; that is the failure mode of `egui-charts`
   objects get a thin outline.
 
 ### 5.4 Alerts on geometry
+
 - `priceAt(drawing, time)` per tool; channels and fib expose multiple levels.
 - Alert binding `{drawingId, levelKey}`; when the drawing moves, recompute the
   level and persist it, with a subtle "level updated" note in the alert list.
@@ -305,11 +327,13 @@ whose renderer is a placeholder; that is the failure mode of `egui-charts`
   horizontal levels.
 
 ### 5.5 Object snapping
+
 - Priority: anchor → edge/midpoint → fib level → OHLC (weak/strong) → free.
 - Visual snap glyph and a `Ctrl` override (already the magnet override key).
 - Snap only to visible, unlocked objects on the same chart.
 
 ### 5.6 Interaction and accessibility
+
 - Arrow nudge (1 px; Shift 10 px) with one undo entry; Alt+arrow moves by bar.
 - Tab cycles objects in z-order; Shift+Tab reverses; Enter opens settings.
 - `aria-live` announces "Trend line selected, 2 of 7".
@@ -317,6 +341,7 @@ whose renderer is a placeholder; that is the failure mode of `egui-charts`
 - Touch: 44 px handles, long-press opens the context menu, no hover-only action.
 
 ### 5.7 Rendering/perf
+
 - Cache projected geometry per drawing keyed by `(timeRange, priceRange, size)`.
 - RDP brush simplification; text metrics cache; batch strokes by style.
 - Spatial index (bbox) for hit-testing above ~200 objects.
@@ -355,11 +380,13 @@ phase so chart actions have one predictable key path.
 ## 7. Phase 3 — Pine parity and sandbox (3–5 weeks)
 
 ### 7.1 Language
+
 - User-defined functions (single- and multi-line, tuple returns), methods, UDTs,
   `switch`, `for ... in`, line continuations, library imports.
 - Correct scoping and call-site state for recursive-looking series usage.
 
 ### 7.2 Runtime
+
 - Collections: `array`, `map`, `matrix` with Pine's mutating semantics.
 - `request.security`, `request.security_lower_tf`, `lookahead`, nested requests
   with a supplied feed provider; gaps/merging tested.
@@ -373,6 +400,7 @@ phase so chart actions have one predictable key path.
   trailing stops, margin/risk rules, intrabar fill assumptions stated in the UI.
 
 ### 7.3 Execution and security
+
 - Replace runtime `new Function` with either build-time ESM generation or a
   bytecode VM; drop `unsafe-eval` from the CSP.
 - Worker watchdog with a wall-clock cap; compile-time rejection of loops over a
@@ -381,6 +409,7 @@ phase so chart actions have one predictable key path.
   run; incremental update for the live bar.
 
 ### 7.4 Performance
+
 - Memoize TA at the call site, not by source-array identity plus name/length:
   the current cache misses whenever a series argument is computed per bar. Keep
   rolling buffers and avoid per-bar array copies; benchmark 100k bars and
@@ -420,26 +449,26 @@ phase so chart actions have one predictable key path.
 
 ## 9. Priority table
 
-| Rank | Item | Phase | Impact | Effort |
-|---|---|---|---|---|
-| 1 | Chart-scoped undo | 0 | Prevents wrong-chart data loss | S |
-| 2 | Strategy brackets + cost inputs | 0 | Backtest numbers become honest | M |
-| 3 | Alert any drawing geometry | 0 | Core TradingView workflow | M |
-| 4 | Multi-select + groups | 1 | Biggest daily editing gap | L |
-| 5 | Pitchfork + fib fan/arcs/channel/time zones | 1 | Highest-value missing tools | L |
-| 6 | Gann fan/box/square | 1 | Trader expectation | M |
-| 7 | Patterns (XABCD/H&S/Elliott) | 1 | Analysis depth | L |
-| 8 | Image/sticker annotations | 1 | Research workflow | M |
-| 9 | Object snapping + keyboard nudge | 1 | Precision/accessibility | S–M |
-| 10 | Pine UDF + collections | 3 | Script compatibility | L |
-| 11 | `request.security` | 3 | Multi-timeframe scripts | L |
-| 12 | Pine drawings/alerts | 3 | Plotting parity | L |
-| 13 | Remove `new Function` | 3 | Security/CSP | L |
-| 14 | Chart types + compare | 2 | Visual parity | M |
-| 15 | Indicator/multi-condition alerts | 2 | Alert parity | M |
-| 16 | Feed-health badges | 2 | Trust | S |
-| 17 | Journal plans/playbooks | 4 | Product differentiation | L |
-| 18 | E2E + visual gates | 4 | Regression safety | M |
+| Rank | Item                                        | Phase | Impact                         | Effort |
+| ---- | ------------------------------------------- | ----- | ------------------------------ | ------ |
+| 1    | Chart-scoped undo                           | 0     | Prevents wrong-chart data loss | S      |
+| 2    | Strategy brackets + cost inputs             | 0     | Backtest numbers become honest | M      |
+| 3    | Alert any drawing geometry                  | 0     | Core TradingView workflow      | M      |
+| 4    | Multi-select + groups                       | 1     | Biggest daily editing gap      | L      |
+| 5    | Pitchfork + fib fan/arcs/channel/time zones | 1     | Highest-value missing tools    | L      |
+| 6    | Gann fan/box/square                         | 1     | Trader expectation             | M      |
+| 7    | Patterns (XABCD/H&S/Elliott)                | 1     | Analysis depth                 | L      |
+| 8    | Image/sticker annotations                   | 1     | Research workflow              | M      |
+| 9    | Object snapping + keyboard nudge            | 1     | Precision/accessibility        | S–M    |
+| 10   | Pine UDF + collections                      | 3     | Script compatibility           | L      |
+| 11   | `request.security`                          | 3     | Multi-timeframe scripts        | L      |
+| 12   | Pine drawings/alerts                        | 3     | Plotting parity                | L      |
+| 13   | Remove `new Function`                       | 3     | Security/CSP                   | L      |
+| 14   | Chart types + compare                       | 2     | Visual parity                  | M      |
+| 15   | Indicator/multi-condition alerts            | 2     | Alert parity                   | M      |
+| 16   | Feed-health badges                          | 2     | Trust                          | S      |
+| 17   | Journal plans/playbooks                     | 4     | Product differentiation        | L      |
+| 18   | E2E + visual gates                          | 4     | Regression safety              | M      |
 
 S ≈ 1–2 days, M ≈ 3–5 days, L ≈ 1–2 weeks for one developer familiar with the
 tree. Estimates exclude review time.
@@ -451,6 +480,7 @@ tree. Estimates exclude review time.
 These are references, not dependencies. All URLs were read in October 2026.
 
 ### Drawing / charting
+
 - **deepentropy/lightweight-charts-drawing** — MIT, ~142 stars, active. The
   closest architectural peer: a renderer-neutral drawing core (`kind`,
   time/price points, style/options), one Lightweight Charts primitive for
@@ -477,6 +507,7 @@ These are references, not dependencies. All URLs were read in October 2026.
   https://github.com/tradingview/lightweight-charts
 
 ### Terminal features
+
 - **TradeCanvas** — linked grids up to 6 charts, replay/backtesting, draggable
   orders, paper/custom broker, WebGL path for large histories.
 - **OpenTerminalUI** — multi-pane workstations, replay/compare, screener,
@@ -493,6 +524,7 @@ These are references, not dependencies. All URLs were read in October 2026.
   feed-health work.
 
 ### Pine
+
 - **LuxAlgo/PineTS** — v5/v6, UDFs, arrays/maps/matrices, `request.security` and
   `security_lower_tf`, label/line/box/table, alerts, strategy commission/
   slippage/pyramiding. The closest JS-native comparison to this transpiler.
@@ -519,6 +551,7 @@ These are references, not dependencies. All URLs were read in October 2026.
   a drop-in.
 
 ### Journal / AI / MCP
+
 - **TheQuantum-Dev/journedge** — local SQLite, account-scoped trades, idempotent
   imports, local screenshots, pre-trade plans linked to executions, playbook
   adherence, MAE/MFE. The clearest Phase 4 blueprint.

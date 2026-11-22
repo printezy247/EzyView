@@ -143,7 +143,9 @@ function withDerivedSeries(ctx: Context): Context {
 
 /** Element-wise mean of equal-length bar series. */
 function mid(parts: number[][]): number[] {
-  return parts[0]!.map((_, i) => parts.reduce((sum, series) => sum + (series[i] ?? Number.NaN), 0) / parts.length);
+  return parts[0]!.map(
+    (_, i) => parts.reduce((sum, series) => sum + (series[i] ?? Number.NaN), 0) / parts.length,
+  );
 }
 
 /**
@@ -181,7 +183,8 @@ function map1(v: PineValue | PineValue[], fn: (x: number) => number): PineValue 
 
 /** Truthiness of a single value: `na` is falsy, and 0 is falsy like Pine's convention. */
 function truthy(v: PineValue | PineValue[], barIndex?: number): boolean {
-  if (Array.isArray(v)) return truthy(barIndex === undefined ? (v[v.length - 1] ?? NA) : (v[barIndex] ?? NA));
+  if (Array.isArray(v))
+    return truthy(barIndex === undefined ? (v[v.length - 1] ?? NA) : (v[barIndex] ?? NA));
   if (isNa(v)) return false;
   if (typeof v === "boolean") return v;
   // Non-finite numbers (NaN, ±Infinity) carry no meaningful Pine value —
@@ -200,7 +203,11 @@ function num(v: PineValue | PineValue[]): number {
 }
 
 /** Series offset: `src[1]` is the previous bar, `src[-1]` the next. */
-function at(src: PineValue | PineValue[], offset: PineValue | PineValue[], barIndex: number): PineValue {
+function at(
+  src: PineValue | PineValue[],
+  offset: PineValue | PineValue[],
+  barIndex: number,
+): PineValue {
   if (!Array.isArray(src)) return NA;
   const off = Math.trunc(num(offset));
   const idx = barIndex - off;
@@ -367,12 +374,19 @@ function shapeCall(
     : truthy(series)
       ? (pinned ?? (isNa(series) ? NA : num(series)))
       : NA;
-  ensurePlot(plots, site, title ?? optStr(kwargs, "title") ?? `Shape ${site + 1}`, barIndex, shaped, {
-    color: typeof resolvedColor === "string" ? resolvedColor : "#2962ff",
-    linewidth: 2,
-    style: "shape",
-    overlay: true,
-  });
+  ensurePlot(
+    plots,
+    site,
+    title ?? optStr(kwargs, "title") ?? `Shape ${site + 1}`,
+    barIndex,
+    shaped,
+    {
+      color: typeof resolvedColor === "string" ? resolvedColor : "#2962ff",
+      linewidth: 2,
+      style: "shape",
+      overlay: true,
+    },
+  );
 }
 
 /** `bgcolor()` — paints the chart background where the condition is true. */
@@ -503,9 +517,18 @@ function strategyExit(
       : kwargs.profit !== undefined && !isNa(kwargs.profit)
         ? num(kwargs.profit)
         : undefined;
-  const trailPoints = kwargs.trail_points !== undefined && !isNa(kwargs.trail_points) ? num(kwargs.trail_points) : undefined;
-  const trailOffset = kwargs.trail_offset !== undefined && !isNa(kwargs.trail_offset) ? num(kwargs.trail_offset) : undefined;
-  const trail = trailPoints !== undefined || trailOffset !== undefined ? { points: trailPoints, offset: trailOffset } : undefined;
+  const trailPoints =
+    kwargs.trail_points !== undefined && !isNa(kwargs.trail_points)
+      ? num(kwargs.trail_points)
+      : undefined;
+  const trailOffset =
+    kwargs.trail_offset !== undefined && !isNa(kwargs.trail_offset)
+      ? num(kwargs.trail_offset)
+      : undefined;
+  const trail =
+    trailPoints !== undefined || trailOffset !== undefined
+      ? { points: trailPoints, offset: trailOffset }
+      : undefined;
   const targetEntry = fromEntry ?? optStr(kwargs, "from_entry");
   const oca = optStr(kwargs, "oca_name") ?? optStr(kwargs, "oca");
   const qty = kwargs.qty !== undefined && !isNa(kwargs.qty) ? num(kwargs.qty) : 0;
@@ -532,7 +555,8 @@ function strategyCloseAll(barIndex: number, orders: PineOrder[], _kwargs: Kwargs
 
 /** Mask non-finite numeric results to NA: Pine propagates na where JS yields Infinity/NaN. */
 function naGuard(v: PineValue | PineValue[]): PineValue | PineValue[] {
-  if (Array.isArray(v)) return v.map((x) => (typeof x === "number" && !Number.isFinite(x) ? NA : x));
+  if (Array.isArray(v))
+    return v.map((x) => (typeof x === "number" && !Number.isFinite(x) ? NA : x));
   return typeof v === "number" && !Number.isFinite(v) ? NA : v;
 }
 
@@ -555,15 +579,19 @@ function buildHelpers(): Record<string, unknown> {
     // Bare `crossover(…)`/`crossunder(…)` are v4 aliases of the ta.* pair.
     crossover: ta.crossover,
     crossunder: ta.crossunder,
-    add: (a: PineValue | PineValue[], b: PineValue | PineValue[]) => broadcast(a, b, (x, y) => x + y),
-    sub: (a: PineValue | PineValue[], b: PineValue | PineValue[]) => broadcast(a, b, (x, y) => x - y),
-    mul: (a: PineValue | PineValue[], b: PineValue | PineValue[]) => broadcast(a, b, (x, y) => x * y),
+    add: (a: PineValue | PineValue[], b: PineValue | PineValue[]) =>
+      broadcast(a, b, (x, y) => x + y),
+    sub: (a: PineValue | PineValue[], b: PineValue | PineValue[]) =>
+      broadcast(a, b, (x, y) => x - y),
+    mul: (a: PineValue | PineValue[], b: PineValue | PineValue[]) =>
+      broadcast(a, b, (x, y) => x * y),
     div: (a: PineValue | PineValue[], b: PineValue | PineValue[]) =>
       naGuard(broadcast(a, b, (x, y) => x / y)),
     mod: (a: PineValue | PineValue[], b: PineValue | PineValue[]) =>
       naGuard(broadcast(a, b, (x, y) => x % y)),
     eq,
-    ne: (a: PineValue | PineValue[], b: PineValue | PineValue[]) => map1(eq(a, b) as PineValue[], (x) => (x ? 0 : 1)),
+    ne: (a: PineValue | PineValue[], b: PineValue | PineValue[]) =>
+      map1(eq(a, b) as PineValue[], (x) => (x ? 0 : 1)),
     lt: (a: PineValue | PineValue[], b: PineValue | PineValue[]) => compare(a, b, (x, y) => x < y),
     le: (a: PineValue | PineValue[], b: PineValue | PineValue[]) => compare(a, b, (x, y) => x <= y),
     gt: (a: PineValue | PineValue[], b: PineValue | PineValue[]) => compare(a, b, (x, y) => x > y),

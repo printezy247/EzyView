@@ -183,7 +183,12 @@ export function computeStats(entries: readonly JournalEntry[]): JournalStats {
     // Average P&L per trade: wins and losses each weighted by their own count.
     // Using (1 - winRate) would count break-even trades as losses.
     expectancy: trades === 0 ? 0 : (wins * avgWin - losses * Math.abs(avgLoss)) / trades,
-    profitFactor: grossLoss === 0 ? (grossProfit > 0 ? Number.POSITIVE_INFINITY : 0) : grossProfit / Math.abs(grossLoss),
+    profitFactor:
+      grossLoss === 0
+        ? grossProfit > 0
+          ? Number.POSITIVE_INFINITY
+          : 0
+        : grossProfit / Math.abs(grossLoss),
     bestTrade: best,
     worstTrade: worst,
     maxDrawdown: maxDrawdown(closed),
@@ -232,7 +237,10 @@ function equitySeries(closed: readonly Closed[]): { time: number; equity: number
 /** r = pnl / plannedRisk, chronological; trades without a positive risk are skipped. */
 function rMultiplesOf(closed: readonly Closed[]): number[] {
   return [...closed]
-    .filter((entry): entry is Closed & { plannedRisk: number } => typeof entry.plannedRisk === "number" && entry.plannedRisk > 0)
+    .filter(
+      (entry): entry is Closed & { plannedRisk: number } =>
+        typeof entry.plannedRisk === "number" && entry.plannedRisk > 0,
+    )
     .sort(byTime)
     .map((entry) => entry.pnl / entry.plannedRisk);
 }
@@ -264,7 +272,10 @@ interface PnlBucket {
 }
 
 /** Tally closed trades under every key they carry; undefined keys are skipped. */
-function groupPnl(closed: readonly Closed[], keysOf: (entry: Closed) => readonly string[] | undefined): Map<string, PnlBucket> {
+function groupPnl(
+  closed: readonly Closed[],
+  keysOf: (entry: Closed) => readonly string[] | undefined,
+): Map<string, PnlBucket> {
   const buckets = new Map<string, PnlBucket>();
   for (const entry of closed) {
     for (const key of keysOf(entry) ?? []) {
@@ -279,7 +290,9 @@ function groupPnl(closed: readonly Closed[], keysOf: (entry: Closed) => readonly
 }
 
 /** Shared projection: bucket map → rows ordered by net P&L descending. */
-function rankedRows(buckets: Map<string, PnlBucket>): { key: string; trades: number; netPnl: number; winRate: number }[] {
+function rankedRows(
+  buckets: Map<string, PnlBucket>,
+): { key: string; trades: number; netPnl: number; winRate: number }[] {
   return [...buckets.entries()]
     .map(([key, bucket]) => ({
       key,

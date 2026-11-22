@@ -53,7 +53,6 @@ export function CompareDialog({ open, onClose }: Props) {
         </Button>
       }
     >
-
       <form
         className="mt-3 flex gap-1.5"
         onSubmit={(e) => {
@@ -86,8 +85,16 @@ export function CompareDialog({ open, onClose }: Props) {
       ) : (
         <ul className="mt-3 space-y-1">
           {compare.map((entry) => (
-            <li key={entry.id} className="flex items-center gap-1.5 rounded bg-ev-bg px-1.5 py-1 text-dense">
-              <ColorInput label={`Colour for ${entry.symbol}`} value={entry.color} onChange={(value) => updateCompare(entry.id, { color: value })} className="size-5 shrink-0 cursor-pointer rounded border border-ev-line bg-transparent" />
+            <li
+              key={entry.id}
+              className="flex items-center gap-1.5 rounded bg-ev-bg px-1.5 py-1 text-dense"
+            >
+              <ColorInput
+                label={`Colour for ${entry.symbol}`}
+                value={entry.color}
+                onChange={(value) => updateCompare(entry.id, { color: value })}
+                className="size-5 shrink-0 cursor-pointer rounded border border-ev-line bg-transparent"
+              />
               <span className="min-w-0 flex-1 truncate text-ev-text">{entry.symbol}</span>
               <Select
                 label={`Mode for ${entry.symbol}`}
@@ -103,7 +110,11 @@ export function CompareDialog({ open, onClose }: Props) {
                 aria-pressed={entry.visible === false}
                 onClick={() => updateCompare(entry.id, { visible: entry.visible === false })}
               >
-                {entry.visible === false ? <EyeOff size={12} aria-hidden /> : <Eye size={12} aria-hidden />}
+                {entry.visible === false ? (
+                  <EyeOff size={12} aria-hidden />
+                ) : (
+                  <Eye size={12} aria-hidden />
+                )}
               </IconButton>
               <IconButton
                 label={`Remove ${entry.symbol}`}
@@ -117,7 +128,6 @@ export function CompareDialog({ open, onClose }: Props) {
           ))}
         </ul>
       )}
-
     </Dialog>
   );
 }

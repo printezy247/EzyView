@@ -5,6 +5,7 @@ Date: 2026-10-21 · Owner: printezy247 · Status: awaiting approval
 ## Why
 
 Jack runs v0.2.0 and wants the chart to behave like TradingView:
+
 - the chart is frozen after load (only panels use live quotes), so MT5/demo prices look dead;
 - the chart has no right-click menu (reset view, copy price, alert/order at price, templates...);
 - the Events overlay is one blunt on/off button and crowds the chart.
@@ -28,20 +29,20 @@ Jack runs v0.2.0 and wants the chart to behave like TradingView:
 
 ## Right-click menu contents
 
-| Item | Behaviour |
-| --- | --- |
-| Reset chart view | fit all bars on screen |
-| Copy price *p* | clipboard (falls back like other copies) |
-| Paste | pastes the copied drawing with its first anchor at the cursor (disabled when nothing copied) |
-| Add alert on *SYM* at *p* | creates a crossing alert at *p* |
-| Sell limit / Buy stop / Add order at *p* | **only while the MT5 source is active**; fills the order ticket (type + price), user still presses Buy/Sell; existing safety rails apply |
-| Lock / Unlock vertical cursor line | my call: drops a vertical line (named "Cursor lock") at the clicked time; unlock removes it |
-| Table view | modal list of the visible bars (time, OHLCV), newest first, capped at 500 rows, CSV button |
-| Object tree | toggles the panel |
-| Chart template ▸ | Save current as…, apply a saved one, delete; stores indicators + chart type + volume/grid/theme/scale settings |
-| Remove *n* indicator(s) ▸ | one entry per indicator |
-| Events ▸ | the same switches as the bottom bar |
-| Settings… | Settings → Appearance |
+| Item                                     | Behaviour                                                                                                                                |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Reset chart view                         | fit all bars on screen                                                                                                                   |
+| Copy price _p_                           | clipboard (falls back like other copies)                                                                                                 |
+| Paste                                    | pastes the copied drawing with its first anchor at the cursor (disabled when nothing copied)                                             |
+| Add alert on _SYM_ at _p_                | creates a crossing alert at _p_                                                                                                          |
+| Sell limit / Buy stop / Add order at _p_ | **only while the MT5 source is active**; fills the order ticket (type + price), user still presses Buy/Sell; existing safety rails apply |
+| Lock / Unlock vertical cursor line       | my call: drops a vertical line (named "Cursor lock") at the clicked time; unlock removes it                                              |
+| Table view                               | modal list of the visible bars (time, OHLCV), newest first, capped at 500 rows, CSV button                                               |
+| Object tree                              | toggles the panel                                                                                                                        |
+| Chart template ▸                         | Save current as…, apply a saved one, delete; stores indicators + chart type + volume/grid/theme/scale settings                           |
+| Remove _n_ indicator(s) ▸                | one entry per indicator                                                                                                                  |
+| Events ▸                                 | the same switches as the bottom bar                                                                                                      |
+| Settings…                                | Settings → Appearance                                                                                                                    |
 
 Ctrl+C copies the selected drawing; Ctrl+V pastes it at the last cursor position.
 

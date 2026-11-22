@@ -46,7 +46,9 @@ describe("layout share file", () => {
       grid: "1",
       activeChart: 0,
     };
-    expect(parseLayoutJson(exportLayoutJson(withInd), FALLBACK, noDefs).charts[0]!.indicators).toEqual([]);
+    expect(
+      parseLayoutJson(exportLayoutJson(withInd), FALLBACK, noDefs).charts[0]!.indicators,
+    ).toEqual([]);
   });
 
   it.each([
@@ -54,7 +56,10 @@ describe("layout share file", () => {
     ["wrong format", JSON.stringify({ format: "other", version: 1, layout: LAYOUT })],
     ["wrong version", JSON.stringify({ format: "ezyview-layout", version: 2, layout: LAYOUT })],
     ["no layout", JSON.stringify({ format: "ezyview-layout", version: 1 })],
-    ["no charts", JSON.stringify({ format: "ezyview-layout", version: 1, layout: { id: "x", charts: [] } })],
+    [
+      "no charts",
+      JSON.stringify({ format: "ezyview-layout", version: 1, layout: { id: "x", charts: [] } }),
+    ],
     ["null", "null"],
   ])("rejects %s with the opaque message", (_label, text) => {
     expect(() => parseLayoutJson(text, FALLBACK, noDefs)).toThrow("Not an EzyView layout");

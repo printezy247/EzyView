@@ -27,7 +27,11 @@ const BARS: DrawingBar[] = [1000, 2000, 3000, 4000, 5000].map(BAR);
 const pts = (...xs: number[]): { time: number; price: number }[] =>
   xs.map((price, i) => ({ time: (i + 1) * 1000, price }));
 
-const drawing = (points: { time: number; price: number }[], style: Partial<Drawing["style"]> = {}, tool: Drawing["tool"] = "trend_line"): Drawing => ({
+const drawing = (
+  points: { time: number; price: number }[],
+  style: Partial<Drawing["style"]> = {},
+  tool: Drawing["tool"] = "trend_line",
+): Drawing => ({
   id: "d1",
   tool,
   points,
@@ -108,12 +112,18 @@ describe("midpoint / priceToYFor", () => {
     expect(midpoint({ x: 0, y: 0 }, { x: 10, y: 20 })).toEqual({ x: 5, y: 10 });
   });
   it("priceToYFor interpolates linearly along the anchor segment", () => {
-    const d = drawing([{ time: 1, price: 100 }, { time: 2, price: 200 }]);
+    const d = drawing([
+      { time: 1, price: 100 },
+      { time: 2, price: 200 },
+    ]);
     expect(priceToYFor(d, 150, { x: 0, y: 0 }, { x: 0, y: 100 })).toBe(50);
     expect(priceToYFor(d, 100, { x: 0, y: 0 }, { x: 0, y: 100 })).toBe(0);
   });
   it("returns null on a flat anchor line or missing points", () => {
-    const flat = drawing([{ time: 1, price: 100 }, { time: 2, price: 100 }]);
+    const flat = drawing([
+      { time: 1, price: 100 },
+      { time: 2, price: 100 },
+    ]);
     expect(priceToYFor(flat, 100, { x: 0, y: 0 }, { x: 0, y: 100 })).toBeNull();
     const noPoints = drawing([]);
     expect(priceToYFor(noPoints, 100, { x: 0, y: 0 }, { x: 0, y: 100 })).toBeNull();
@@ -145,7 +155,10 @@ describe("extendOf / displaySegment", () => {
   it("extendOf maps style flags to booleans", () => {
     expect(extendOf(drawing(pts(1, 2), {}))).toEqual([false, false]);
     expect(extendOf(drawing(pts(1, 2), { extendRight: true }))).toEqual([false, true]);
-    expect(extendOf(drawing(pts(1, 2), { extendLeft: true, extendRight: true }))).toEqual([true, true]);
+    expect(extendOf(drawing(pts(1, 2), { extendLeft: true, extendRight: true }))).toEqual([
+      true,
+      true,
+    ]);
   });
   it("displaySegment returns the raw segment with no extend", () => {
     const a = { x: 0, y: 0 };
@@ -163,7 +176,13 @@ describe("extendOf / displaySegment", () => {
     expect(s2.x).toBeLessThan(10);
   });
   it("displaySegment extends both ends when asked", () => {
-    const [s, e] = displaySegment(drawing(pts(1, 2), { extendLeft: true, extendRight: true }), { x: 40, y: 50 }, { x: 60, y: 50 }, 100, 100);
+    const [s, e] = displaySegment(
+      drawing(pts(1, 2), { extendLeft: true, extendRight: true }),
+      { x: 40, y: 50 },
+      { x: 60, y: 50 },
+      100,
+      100,
+    );
     expect(s.x).toBeLessThan(40);
     expect(e.x).toBeGreaterThan(60);
   });
@@ -176,10 +195,12 @@ describe("lineDash / fontOf", () => {
     expect(lineDash("solid")).toEqual([]);
   });
   it("fontOf composes style, weight and size", () => {
-    expect(fontOf({ ...DEFAULT_DRAWING_STYLE })).toBe("normal normal 13px Inter, system-ui, sans-serif");
-    expect(fontOf({ ...DEFAULT_DRAWING_STYLE, fontSize: 20, fontWeight: "bold", fontStyle: "italic" })).toBe(
-      "italic bold 20px Inter, system-ui, sans-serif",
+    expect(fontOf({ ...DEFAULT_DRAWING_STYLE })).toBe(
+      "normal normal 13px Inter, system-ui, sans-serif",
     );
+    expect(
+      fontOf({ ...DEFAULT_DRAWING_STYLE, fontSize: 20, fontWeight: "bold", fontStyle: "italic" }),
+    ).toBe("italic bold 20px Inter, system-ui, sans-serif");
   });
 });
 
@@ -222,16 +243,31 @@ describe("statsAnchor", () => {
   const a = { x: 10, y: 90 };
   const b = { x: 90, y: 10 };
   it("top places above the higher edge, flagged above", () => {
-    expect(statsAnchor(drawing(pts(1, 2), { statsPosition: "top" }), a, b, 200)).toEqual({ x: 50, y: 10, above: true });
+    expect(statsAnchor(drawing(pts(1, 2), { statsPosition: "top" }), a, b, 200)).toEqual({
+      x: 50,
+      y: 10,
+      above: true,
+    });
   });
   it("bottom places below the lower edge", () => {
-    expect(statsAnchor(drawing(pts(1, 2), { statsPosition: "bottom" }), a, b, 200)).toEqual({ x: 50, y: 104 });
+    expect(statsAnchor(drawing(pts(1, 2), { statsPosition: "bottom" }), a, b, 200)).toEqual({
+      x: 50,
+      y: 104,
+    });
   });
   it("middle centres on the segment", () => {
-    expect(statsAnchor(drawing(pts(1, 2), { statsPosition: "middle" }), a, b, 200)).toEqual({ x: 50, y: 50 });
+    expect(statsAnchor(drawing(pts(1, 2), { statsPosition: "middle" }), a, b, 200)).toEqual({
+      x: 50,
+      y: 50,
+    });
   });
   it("right clamps inside the pane and sits at the far edge", () => {
-    expect(statsAnchor(drawing(pts(1, 2), { statsPosition: "right" }), a, b, 200)).toEqual({ x: 100, y: 50 });
-    expect(statsAnchor(drawing(pts(1, 2), { statsPosition: "right" }), a, { x: 500, y: 10 }, 200)).toEqual({ x: 188, y: 50 });
+    expect(statsAnchor(drawing(pts(1, 2), { statsPosition: "right" }), a, b, 200)).toEqual({
+      x: 100,
+      y: 50,
+    });
+    expect(
+      statsAnchor(drawing(pts(1, 2), { statsPosition: "right" }), a, { x: 500, y: 10 }, 200),
+    ).toEqual({ x: 188, y: 50 });
   });
 });

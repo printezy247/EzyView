@@ -35,7 +35,9 @@ const TapeRow = memo(function TapeRow({
   return (
     <tr className="ev-row border-b border-ev-panel">
       <td className="px-2 text-micro text-ev-faint">{when(ts)}</td>
-      <td className={`num px-2 text-right font-medium ${side === "buy" ? "text-ev-up-text" : "text-ev-down-text"}`}>
+      <td
+        className={`num px-2 text-right font-medium ${side === "buy" ? "text-ev-up-text" : "text-ev-down-text"}`}
+      >
         {safePrice.toFixed(digits)}
       </td>
       <td className="num px-2 text-right text-ev-muted">
@@ -103,10 +105,19 @@ export function TimeAndSales() {
           onClick={() => setPaused((v) => !v)}
           title={paused ? "Resume tape" : "Pause tape"}
         >
-          {paused ? <Play size={13} className="text-ev-up-text" aria-hidden /> : <Pause size={13} aria-hidden />}
+          {paused ? (
+            <Play size={13} className="text-ev-up-text" aria-hidden />
+          ) : (
+            <Pause size={13} aria-hidden />
+          )}
         </IconButton>
 
-        <Button variant="outline" size="sm" onClick={() => navigate("/chart")} title="Open the chart">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigate("/chart")}
+          title="Open the chart"
+        >
           Chart
         </Button>
 
@@ -131,7 +142,11 @@ export function TimeAndSales() {
           </span>
           <span
             className="num text-micro text-ev-faint"
-            title={flow.sized ? "Cumulative delta over the visible window (real trade sizes)" : "Tick-count imbalance: this feed reports no trade sizes, so no volume delta exists"}
+            title={
+              flow.sized
+                ? "Cumulative delta over the visible window (real trade sizes)"
+                : "Tick-count imbalance: this feed reports no trade sizes, so no volume delta exists"
+            }
           >
             {flow.sized ? `Δ ${flow.delta} ` : "ticks "}
           </span>
@@ -147,9 +162,15 @@ export function TimeAndSales() {
           <table className="w-full border-collapse text-left">
             <thead className="sticky top-0 bg-ev-bg">
               <tr className="border-b border-ev-line text-micro font-semibold uppercase tracking-wider text-ev-faint">
-                <th scope="col" className="px-2 py-1">Time</th>
-                <th scope="col" className="px-2 py-1 text-right">Price</th>
-                <th scope="col" className="px-2 py-1 text-right">Size</th>
+                <th scope="col" className="px-2 py-1">
+                  Time
+                </th>
+                <th scope="col" className="px-2 py-1 text-right">
+                  Price
+                </th>
+                <th scope="col" className="px-2 py-1 text-right">
+                  Size
+                </th>
               </tr>
             </thead>
             <tbody>

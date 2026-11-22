@@ -7,9 +7,6 @@ import { withLinkedUpdate } from "../linkGroups";
 import type { LinkPatch } from "../linkGroups";
 import type { WorkspaceStore } from "./types";
 
-
-
-
 /** Deep copy for "Duplicate layout"; indicator defs are shared, not cloned, as they hold functions. */
 export const LAYOUT_COLORS = ["#ef4444", "#22c55e", "#fbbf24", "#60a5fa", "#a78bfa", "#22d3ee"];
 export const COMPARE_COLORS = ["#fbbf24", "#a78bfa", "#2dd4bf", "#f87171", "#60a5fa", "#fde047"];
@@ -43,12 +40,18 @@ export function pushChartHistory(
   drawingRedo: Drawing[][];
 } {
   const key = `${layoutId}:${chartIndex}`;
-  const currentUndo = s.drawingUndoStacks[key] ?? (key === `${s.activeLayout().id}:${s.activeLayout().activeChart}` && s.drawingUndo.length > 0 ? s.drawingUndo : []);
+  const currentUndo =
+    s.drawingUndoStacks[key] ??
+    (key === `${s.activeLayout().id}:${s.activeLayout().activeChart}` && s.drawingUndo.length > 0
+      ? s.drawingUndo
+      : []);
   const nextUndo = pushUndo(currentUndo, [...snapshot]);
   const nextUndoStacks = { ...s.drawingUndoStacks, [key]: nextUndo };
   const nextRedoStacks = { ...s.drawingRedoStacks, [key]: [] };
   const nextOrder = [
-    ...s.drawingHistoryOrder.filter((o) => !(o.layoutId === layoutId && o.chartIndex === chartIndex)),
+    ...s.drawingHistoryOrder.filter(
+      (o) => !(o.layoutId === layoutId && o.chartIndex === chartIndex),
+    ),
     { layoutId, chartIndex },
   ];
 
@@ -94,7 +97,10 @@ export function defaultLayout(index: number): Layout {
 }
 
 /** Apply `fn` to the active layout and flag it as edited. */
-export function editActive(s: WorkspaceStore, fn: (layout: Layout) => Layout): Partial<WorkspaceStore> {
+export function editActive(
+  s: WorkspaceStore,
+  fn: (layout: Layout) => Layout,
+): Partial<WorkspaceStore> {
   const current = s.layouts.find((l) => l.id === s.activeLayoutId);
   if (!current) return {};
   const updated = fn(current);
@@ -106,7 +112,10 @@ export function editActive(s: WorkspaceStore, fn: (layout: Layout) => Layout): P
 }
 
 /** Apply `fn` to the focused chart cell of the active layout. */
-export function editChart(s: WorkspaceStore, fn: (chart: ChartState) => ChartState): Partial<WorkspaceStore> {
+export function editChart(
+  s: WorkspaceStore,
+  fn: (chart: ChartState) => ChartState,
+): Partial<WorkspaceStore> {
   return editActive(s, (l) => updateChart(l, l.activeChart, fn));
 }
 
@@ -145,7 +154,8 @@ export function syncBoundAlert(
     alerts: s.alerts.map((a) => {
       if (a.drawingId !== drawingId || !("value" in a.condition)) return a;
       const evalTime = a.lastBarTime ?? updatedDrawing.points[0]?.time ?? Date.now() / 1000;
-      const newPrice = priceAt(updatedDrawing, evalTime, a.levelKey) ?? updatedDrawing.points[0]?.price;
+      const newPrice =
+        priceAt(updatedDrawing, evalTime, a.levelKey) ?? updatedDrawing.points[0]?.price;
       if (newPrice === undefined || !Number.isFinite(newPrice)) return a;
       return { ...a, condition: { ...a.condition, value: newPrice } };
     }),

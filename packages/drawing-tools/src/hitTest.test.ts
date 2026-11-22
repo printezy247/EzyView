@@ -5,7 +5,18 @@ import { distToSegment, insideRect } from "./geometry.js";
 import { fibLevels } from "./fib.js";
 import { hitTest, hitTestAll } from "./hitTest.js";
 import { resolvedFibLevels } from "./fib.js";
-import { ALL_TOOLS, TOOL_SHORTCUTS, TOOL_SPECS, isFibTool, isPositionTool, toolForShortcut, toolHasFill, toolShowsText, toolSpec, toolSupportsExtend } from "./tools.js";
+import {
+  ALL_TOOLS,
+  TOOL_SHORTCUTS,
+  TOOL_SPECS,
+  isFibTool,
+  isPositionTool,
+  toolForShortcut,
+  toolHasFill,
+  toolShowsText,
+  toolSpec,
+  toolSupportsExtend,
+} from "./tools.js";
 import { timeframeUnit, visibleOnResolution } from "./visibility.js";
 
 const line = (id: string, tool: Drawing["tool"], points: Drawing["points"]): Drawing => ({
@@ -181,13 +192,23 @@ describe("tool table", () => {
   it("P1 tools all declare anchor counts", () => {
     for (const tool of P1_TOOLS) {
       expect(TOOL_ANCHORS[tool]).toBeGreaterThan(0);
-      expect(isComplete(tool, Array.from({ length: TOOL_ANCHORS[tool] }, (_, i) => ({ time: i, price: i })))).toBe(true);
+      expect(
+        isComplete(
+          tool,
+          Array.from({ length: TOOL_ANCHORS[tool] }, (_, i) => ({ time: i, price: i })),
+        ),
+      ).toBe(true);
       expect(isComplete(tool, [])).toBe(false);
     }
   });
 });
 
-const styled = (id: string, tool: Drawing["tool"], points: Drawing["points"], style: Partial<Drawing["style"]> = {}): Drawing => ({
+const styled = (
+  id: string,
+  tool: Drawing["tool"],
+  points: Drawing["points"],
+  style: Partial<Drawing["style"]> = {},
+): Drawing => ({
   ...line(id, tool, points),
   style: { ...DEFAULT_DRAWING_STYLE, ...style },
 });

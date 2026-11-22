@@ -35,7 +35,8 @@ export interface Context {
   inputs: Record<string, PineValue>;
 }
 
-export const isNa = (v: PineValue | undefined): boolean => v === NA || v === undefined || v === null;
+export const isNa = (v: PineValue | undefined): boolean =>
+  v === NA || v === undefined || v === null;
 
 /** Coerce a Pine value to a number, treating `na` as 0. */
 export function nz(value: PineValue | undefined, fallback = 0): number {
@@ -70,7 +71,12 @@ function series2(
 
 const taCache = new WeakMap<object, Map<string, PineValue[]>>();
 
-function memoizeTa(fnName: string, src: PineValue[], period: number, compute: () => PineValue[]): PineValue[] {
+function memoizeTa(
+  fnName: string,
+  src: PineValue[],
+  period: number,
+  compute: () => PineValue[],
+): PineValue[] {
   if (typeof src !== "object" || src === null) return compute();
   let cache = taCache.get(src);
   if (!cache) {
@@ -111,7 +117,13 @@ const trCache = new WeakMap<object, number[]>();
 function rawTrueRange(ctx: Context): number[] {
   const cached = trCache.get(ctx);
   if (cached) return cached;
-  const data = { open: ctx.open, high: ctx.high, low: ctx.low, close: ctx.close, volume: ctx.volume };
+  const data = {
+    open: ctx.open,
+    high: ctx.high,
+    low: ctx.low,
+    close: ctx.close,
+    volume: ctx.volume,
+  };
   const out = trueRange(data);
   trCache.set(ctx, out);
   return out;
@@ -187,8 +199,11 @@ export const ta = {
     for (let i = 1; i < a.length; i++) {
       const prevA = a[i - 1];
       const prevB = bv[i - 1];
-      if (isNa(prevA as PineValue) || isNa(prevB as PineValue) || isNa(a[i]!) || isNa(bv[i]!)) continue;
-      out[i] = toNumber(prevA as PineValue) <= toNumber(prevB as PineValue) && toNumber(a[i]!) > toNumber(bv[i]!);
+      if (isNa(prevA as PineValue) || isNa(prevB as PineValue) || isNa(a[i]!) || isNa(bv[i]!))
+        continue;
+      out[i] =
+        toNumber(prevA as PineValue) <= toNumber(prevB as PineValue) &&
+        toNumber(a[i]!) > toNumber(bv[i]!);
     }
     return out;
   },
@@ -198,13 +213,18 @@ export const ta = {
     for (let i = 1; i < a.length; i++) {
       const prevA = a[i - 1];
       const prevB = bv[i - 1];
-      if (isNa(prevA as PineValue) || isNa(prevB as PineValue) || isNa(a[i]!) || isNa(bv[i]!)) continue;
-      out[i] = toNumber(prevA as PineValue) >= toNumber(prevB as PineValue) && toNumber(a[i]!) < toNumber(bv[i]!);
+      if (isNa(prevA as PineValue) || isNa(prevB as PineValue) || isNa(a[i]!) || isNa(bv[i]!))
+        continue;
+      out[i] =
+        toNumber(prevA as PineValue) >= toNumber(prevB as PineValue) &&
+        toNumber(a[i]!) < toNumber(bv[i]!);
     }
     return out;
   },
   cross: (a: PineValue[], b: PineValue | PineValue[]): PineValue[] =>
-    series2(ta.crossover(a, b), ta.crossunder(a, b), (x, y) => (x || y ? 1 : 0)).map((v) => v !== NA && v !== 0),
+    series2(ta.crossover(a, b), ta.crossunder(a, b), (x, y) => (x || y ? 1 : 0)).map(
+      (v) => v !== NA && v !== 0,
+    ),
 };
 
 /** Every `math.*` function. Scalars stay scalar; series map elementwise. */
@@ -233,7 +253,11 @@ export const math = {
     Array.isArray(v) ? series1(v, Math.sign) : Math.sign(toNumber(v)),
   avg: (...args: (PineValue | PineValue[])[]): PineValue | PineValue[] => {
     const n = args.length || 1;
-    return reduce2(args, (a, b) => a + b, (v) => v / n);
+    return reduce2(
+      args,
+      (a, b) => a + b,
+      (v) => v / n,
+    );
   },
   sum: (src: PineValue[], length: number): PineValue[] => {
     const out: PineValue[] = Array.from({ length: src.length }, () => NA);
@@ -289,7 +313,8 @@ function binaryScalarOrSeries(
 }
 
 /** `color.*` constants used by `plot()` and `plotshape()`. */
-export const color = {  red: "#ef5350",
+export const color = {
+  red: "#ef5350",
   green: "#26a69a",
   blue: "#2962ff",
   orange: "#ff9800",

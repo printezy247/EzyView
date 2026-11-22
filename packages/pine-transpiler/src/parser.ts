@@ -271,7 +271,12 @@ class Parser {
             ? t.value
             : undefined;
       if (opValue === undefined) break;
-      const prec = opValue === "and" ? BINARY_PRECEDENCE["&&"] : opValue === "or" ? BINARY_PRECEDENCE["||"] : BINARY_PRECEDENCE[opValue];
+      const prec =
+        opValue === "and"
+          ? BINARY_PRECEDENCE["&&"]
+          : opValue === "or"
+            ? BINARY_PRECEDENCE["||"]
+            : BINARY_PRECEDENCE[opValue];
       if (prec === undefined || prec < minPrec) break;
 
       const loc = this.loc();
@@ -435,7 +440,12 @@ class Parser {
       if (this.at("eof")) throw this.err("unterminated call");
     }
     this.expectPunct(")");
-    return { kind: "CallExpr", callee: { kind: "Identifier", name: nameTok.value, ...loc }, args, ...loc };
+    return {
+      kind: "CallExpr",
+      callee: { kind: "Identifier", name: nameTok.value, ...loc },
+      args,
+      ...loc,
+    };
   }
 
   // --- helpers --------------------------------------------------------------
@@ -498,13 +508,15 @@ class Parser {
 
   private expectOp(op: string): void {
     const t = this.peek();
-    if (t.type !== "op" || t.value !== op) throw this.err(`expected \`${op}\`, found \`${t.value}\``);
+    if (t.type !== "op" || t.value !== op)
+      throw this.err(`expected \`${op}\`, found \`${t.value}\``);
     this.advance();
   }
 
   private expectPunct(p: string): void {
     const t = this.peek();
-    if (t.type !== "punct" || t.value !== p) throw this.err(`expected \`${p}\`, found \`${t.value}\``);
+    if (t.type !== "punct" || t.value !== p)
+      throw this.err(`expected \`${p}\`, found \`${t.value}\``);
     this.advance();
   }
 }
