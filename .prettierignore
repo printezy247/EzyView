@@ -1,0 +1,3 @@
+# Handlebars template for the .desktop entry — oxfmt would collapse its
+# newlines and produce a malformed desktop file inside the deb.
+packaging/EzyView.desktop.hbs
