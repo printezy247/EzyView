@@ -5,21 +5,26 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-  schedule:
-    - cron: "0 3 * * *"
   workflow_dispatch:
+    inputs:
+      run_visual:
+        description: "Run visual baselines job (usually local-only)"
+        type: boolean
+        default: false
+
+# Billing guard (Nov 2026): private-repo Actions minutes are capped at the
+# 2,000/month free allowance. Matrix jobs on macOS bill at 10x and Windows
+# at 2x, so the web and e2e matrices are Linux-only now. The full three-OS
+# matrix only makes sense in release.yml, which runs on a tag you cut
+# deliberately.
 
 jobs:
-  # The web shell is the part every platform shares, so it is checked on all
-  # three: a Windows-only path or line-ending bug is a real bug, and this is
-  # the cheapest place to catch it.
+  # The web shell is shared, but cross-OS matrix runs bill macOS at 10x and
+  # Windows at 2x on every push. Linux-only here; the other OSes are covered
+  # in release.yml when you cut a tag.
   web:
-    name: lint · typecheck · test · build (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+    name: lint · typecheck · test · build (linux)
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -66,13 +71,12 @@ jobs:
       - name: Rust unit tests
         run: cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
 
+  # Linux-only on every push: the visual baselines are a local tool, and
+  # cross-OS smoke runs bill 10x/2x. macOS/Windows smoke runs ride along in
+  # release.yml when a tag is cut.
   e2e:
-    name: end-to-end smoke (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+    name: end-to-end smoke (linux)
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -82,10 +86,6 @@ jobs:
       - run: npm ci
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-        if: runner.os == 'Linux'
-      - name: Install Chromium
-        run: npx playwright install chromium
-        if: runner.os != 'Linux'
       # Only the smoke spec runs here on PRs. The visual baselines are a local tool:
       # they compare rendered pixels, and a runner's font rasteriser is not
       # the same as a developer's, so a CI pixel diff would report a
@@ -101,11 +101,12 @@ jobs:
           retention-days: 7
 
   visual-nightly:
-    name: visual baselines (nightly)
+    name: visual baselines (manual / nightly)
     runs-on: ubuntu-latest
     # Nightly + manual dispatch only: font raster differs per runner, so this
-    # is a signal, not a PR gate.
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    # is a signal, not a PR gate. Cron removed (bills minutes daily);
+    # schedule it locally or run on demand via Run workflow.
+    if: github.event_name == 'workflow_dispatch' && inputs.run_visual == true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
